@@ -35,6 +35,12 @@ class PositionBook:
     def snapshot(self) -> dict[str, Decimal]:
         return {symbol: net for symbol, net in self._net.items() if net != 0}
 
+    def adopt(self, net_by_symbol: Mapping[str, Decimal]) -> None:
+        """Ersetze das Buch durch die gegebenen Nettopositionen (Neustart-Adoption)."""
+        self._net = {
+            symbol: net for symbol, net in net_by_symbol.items() if net != 0
+        }
+
 
 def positions_to_net(positions: Iterable[Position]) -> dict[str, Decimal]:
     """Fasse gemeldete Positionen zu einer Nettomenge je Symbol zusammen."""

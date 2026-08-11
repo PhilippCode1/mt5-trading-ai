@@ -562,3 +562,48 @@ reale Terminal-Bindung).
 
 **Zeilenstand (gemessen):** `execution/reconcile.py` neu; Paket-Quellcode `mt5_trading_ai/` =
 3.804 Zeilen, 16 Module, 172 Testfunktionen.
+
+---
+
+## ERLEDIGT — Buch-Adoption beim Neustart
+
+**Was geschehen ist:** `PositionBook.adopt(net_by_symbol)` ersetzt das Buch durch die
+gegebenen Nettopositionen; `Mt5Venue.adopt_book()` uebernimmt die gemeldeten Positionen als
+Buch. Bewusst **explizit** (kein Automatismus in `connect()` — das wuerde unerwartete
+Positionen still uebernehmen); der Global-Halt-Latch bleibt unberuehrt (`clear_halt()` ist
+getrennt). Damit ist der Neustart-Ablauf vollstaendig: Halt bei Drift → adoptieren →
+deckungsgleich → freigeben.
+
+**Abnahme (Befehle und Ausgaben):**
+```
+$ python -m pytest -q
+230 passed
+$ python -m ruff check .
+All checks passed!
+$ python -m mypy --strict mt5_trading_ai tools
+Success: no issues found in 25 source files
+```
+
+**Adversariale Review (Workflow `review-book-adoption`, 4 Dimensionen, jede Fund-Behauptung
+gegengeprueft):** 2 bestaetigte Befunde (beide „Test-Abdeckung"), beide eingearbeitet — die
+ersten Adoptions-Tests bewiesen das **Ersetzen** nicht (sie starteten mit leerem oder
+ueberlappendem Buch; eine `= {...}` → `.update({...})`-Merge-Regression waere gruen
+durchgelaufen und haette ein Phantom im Buch gelassen, das der naechste Reconcile
+faelschlich als Drift haelt).
+
+**Negativ gefahren — Merge statt Ersetzen** (`self._net = {` → `self._net.update({`):
+```
+FAILED tests/test_reconcile.py::test_book_adopt_replaces_and_drops_zeros
+FAILED tests/test_mt5_venue.py::test_adopt_book_empty_clears_prior_book
+2 failed
+# Schaden zurueckgenommen:
+39 passed
+```
+
+**Entscheidungen, die ich selbst getroffen habe:** Adoption **ersetzt** (kein Zusammen-
+fuehren), damit offline geschlossene Positionen das Buch tatsaechlich leeren. Der Unit-Test
+pinnt jetzt ein nur-altes Symbol (muss wegfallen), und ein Venue-Test deckt die Gegenrichtung
+(Buch gefuellt, Boerse leer → Buch leer); beide fangen die Merge-Regression.
+
+**Zeilenstand (gemessen):** keine neue Datei; Paket-Quellcode `mt5_trading_ai/` = 3.822
+Zeilen, 16 Module, 176 Testfunktionen.

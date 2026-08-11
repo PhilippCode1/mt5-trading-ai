@@ -28,7 +28,9 @@ genau die falsche Richtung.
   indikativ und je Broker zu verifizieren; die Anlageklassen-Zuordnung steuert den Hebeldeckel.
 - **Order-Lebenszyklus & Reconcile: ERLEDIGT** — `mt5_trading_ai/execution/reconcile.py`
   (Buch + Notional-Drift-Halt), in `Mt5Venue` verdrahtet (`reconcile()`, Global-Halt-Latch,
-  `clear_halt()`). Offen bleibt nur die **Adoption** des Buchs aus der Boerse beim Neustart.
+  `clear_halt()`).
+- **Buch-Adoption beim Neustart: ERLEDIGT** — `PositionBook.adopt` / `Mt5Venue.adopt_book()`
+  (explizit, ersetzt statt zusammenzufuehren; Latch bleibt manuell).
 - **Offen:** Demo-Smoke-Test von `RealMt5Terminal` gegen ein echtes Terminal, dann bewusst
   `allow_write=True`; private WS-Sync (Order-/Positions-Ereignisse in Echtzeit statt Abruf).
 - **Hebelklammer-Anschluss: ERLEDIGT** — `execution/leverage_preflight.py`, in

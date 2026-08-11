@@ -46,6 +46,17 @@ def test_book_snapshot_drops_flat_symbols() -> None:
     assert book.snapshot() == {}
 
 
+def test_book_adopt_replaces_and_drops_zeros() -> None:
+    book = PositionBook()
+    book.apply_fill("GBPUSD", OrderSide.BUY, Decimal("0.30"))  # NICHT in der Adoption
+    book.apply_fill("EURUSD", OrderSide.BUY, Decimal("0.10"))  # wird ueberschrieben
+    book.adopt(
+        {"XAUUSD": Decimal("-1.0"), "EURUSD": Decimal("0.5"), "US500": Decimal("0")}
+    )
+    # Ersetzen, kein Zusammenfuehren: GBPUSD (nur im alten Buch) faellt weg, US500=0 auch.
+    assert book.snapshot() == {"XAUUSD": Decimal("-1.0"), "EURUSD": Decimal("0.5")}
+
+
 def test_positions_to_net_sums_signed() -> None:
     positions = (
         _position("EURUSD", OrderSide.BUY, Decimal("0.30")),

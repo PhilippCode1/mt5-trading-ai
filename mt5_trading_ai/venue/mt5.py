@@ -515,6 +515,18 @@ class Mt5Venue(TradingVenue):
             self._halted = True
         return result
 
+    def adopt_book(self) -> dict[str, Decimal]:
+        """Uebernimm die gemeldeten Positionen als Buch (bewusster Neustart-Schritt).
+
+        Danach deckt sich das Buch mit der Meldung; ein folgender ``reconcile()`` findet
+        keine Drift. Bewusst **nicht** automatisch in ``connect()`` — das wuerde
+        unerwartete Positionen still uebernehmen. Der Halt-Latch bleibt unberuehrt; die
+        Freigabe ist ein getrennter Schritt (``clear_halt()``).
+        """
+        self._require_healthy()
+        self._book.adopt(positions_to_net(self.get_positions()))
+        return self._book.snapshot()
+
 
 class RealMt5Terminal:
     """Duenne Bindung an das echte ``MetaTrader5``-Paket.

@@ -524,3 +524,46 @@ def test_reconcile_drift_halts_and_blocks_opening() -> None:
     venue.clear_halt()
     assert venue.is_halted() is False
     assert venue.submit_order(_order(client_order_id="o-2")).accepted is True
+
+
+def test_adopt_book_from_positions_matches_reconcile() -> None:
+    venue, _ = _venue(
+        is_demo=True,
+        positions=(
+            _mt5_position("EURUSD", is_buy=True, volume=Decimal("0.50")),
+            _mt5_position("BTCUSD", is_buy=False, volume=Decimal("1.00")),
+        ),
+    )
+    snapshot = venue.adopt_book()
+    assert snapshot == {"EURUSD": Decimal("0.50"), "BTCUSD": Decimal("-1.00")}
+    result = venue.reconcile()
+    assert result.matched is True
+    assert venue.is_halted() is False
+
+
+def test_adopt_resolves_restart_drift_then_manual_clear() -> None:
+    venue, _ = _venue(
+        is_demo=True,
+        positions=(_mt5_position("EURUSD", is_buy=True, volume=Decimal("0.50")),),
+    )
+    # Vor Adoption: das leere Buch sieht die Boersen-Position als Drift -> Halt.
+    assert venue.reconcile().halt is True
+    assert venue.is_halted() is True
+    # Adoption loest die Drift; der Latch bleibt aber bewusst gesetzt.
+    venue.adopt_book()
+    assert venue.reconcile().matched is True
+    assert venue.is_halted() is True
+    # Erst die manuelle Freigabe gibt Eroeffnungen wieder frei.
+    venue.clear_halt()
+    assert venue.submit_order(_order(client_order_id="a-1")).accepted is True
+
+
+def test_adopt_book_empty_clears_prior_book() -> None:
+    # Gegenrichtung: Buch haelt eine Position, die Boerse meldet keine mehr
+    # ("offline geschlossen"). Adoption muss das Buch leeren, nicht zusammenfuehren.
+    venue, _ = _venue(is_demo=True)  # FakeMt5Terminal.positions() == ()
+    venue.submit_order(_order(client_order_id="f-1"))
+    assert venue.book_snapshot() == {"EURUSD": Decimal("0.10")}
+    assert venue.adopt_book() == {}
+    assert venue.reconcile().matched is True
+    assert venue.is_halted() is False
