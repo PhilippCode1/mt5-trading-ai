@@ -14,6 +14,7 @@ from decimal import Decimal
 from types import SimpleNamespace
 
 import pytest
+from mt5_trading_ai.execution.leverage_preflight import evaluate_leverage_preflight
 from mt5_trading_ai.venue.mt5 import (
     CatalogEntry,
     Mt5Account,
@@ -72,11 +73,32 @@ def _eurusd_symbol() -> Mt5Symbol:
     )
 
 
+def _btcusd_symbol() -> Mt5Symbol:
+    return Mt5Symbol(
+        name="BTCUSD",
+        digits=2,
+        tick_size=Decimal("0.01"),
+        pip_size=Decimal("0.01"),
+        contract_size=Decimal("1"),
+        volume_min=Decimal("0.01"),
+        volume_step=Decimal("0.01"),
+        volume_max=Decimal("100"),
+        base_currency="BTC",
+        quote_currency="USD",
+        stop_level_points=10,
+        freeze_level_points=0,
+        visible=True,
+    )
+
+
 def _catalog() -> dict[str, CatalogEntry]:
     sessions = tuple(
         TradingSession(weekday=d, open_utc="00:00", close_utc="22:00") for d in range(5)
     )
-    return {"EURUSD": CatalogEntry(AssetClass.FX_MAJOR, _fees(), sessions)}
+    return {
+        "EURUSD": CatalogEntry(AssetClass.FX_MAJOR, _fees(), sessions),
+        "BTCUSD": CatalogEntry(AssetClass.CRYPTO, _fees(), sessions),
+    }
 
 
 def _released_settings() -> SimpleNamespace:
@@ -92,16 +114,18 @@ def _released_settings() -> SimpleNamespace:
 class FakeMt5Terminal:
     """In-Memory-Terminal fuer den Vertragstest. Erfuellt ``Mt5Terminal``."""
 
-    def __init__(self, *, is_demo: bool) -> None:
+    def __init__(
+        self, *, is_demo: bool, margin_free: Decimal = Decimal("10000")
+    ) -> None:
         self._connected = False
-        self._symbols = {"EURUSD": _eurusd_symbol()}
+        self._symbols = {"EURUSD": _eurusd_symbol(), "BTCUSD": _btcusd_symbol()}
         self._account = Mt5Account(
             account_id="123",
             currency="USD",
             balance=Decimal("10000"),
             equity=Decimal("10000"),
             margin_used=Decimal("0"),
-            margin_free=Decimal("10000"),
+            margin_free=margin_free,
             is_demo=is_demo,
             ts=TS,
         )
@@ -129,6 +153,8 @@ class FakeMt5Terminal:
     def tick(self, name: str) -> Mt5Tick | None:
         if name not in self._symbols:
             return None
+        if name == "BTCUSD":
+            return Mt5Tick(ts=TS, bid=Decimal("60000"), ask=Decimal("60010"))
         return Mt5Tick(ts=TS, bid=Decimal("1.09990"), ask=Decimal("1.10000"))
 
     def rates(
@@ -185,8 +211,10 @@ class FakeMt5Terminal:
         return self._account
 
 
-def _venue(*, is_demo: bool, settings: object = None) -> tuple[Mt5Venue, FakeMt5Terminal]:
-    terminal = FakeMt5Terminal(is_demo=is_demo)
+def _venue(
+    *, is_demo: bool, settings: object = None, margin_free: Decimal = Decimal("10000")
+) -> tuple[Mt5Venue, FakeMt5Terminal]:
+    terminal = FakeMt5Terminal(is_demo=is_demo, margin_free=margin_free)
     venue = Mt5Venue(
         name="mt5-demo",
         terminal=terminal,
@@ -364,3 +392,70 @@ def test_get_account_maps_state() -> None:
     assert acc.is_demo is True
     assert acc.balance == Decimal("10000")
     assert acc.currency == "USD"
+
+
+# --- Hebelklammer-Anschluss am Order-Pfad --------------------------------
+
+
+def test_leverage_preflight_clamps_and_checks_margin() -> None:
+    venue, _ = _venue(is_demo=True)
+    pre = evaluate_leverage_preflight(
+        instrument=venue.get_instrument("EURUSD"),
+        request=_order(),
+        account=venue.get_account(),
+        price=Decimal("1.10"),
+        requested_leverage=50,
+    )
+    assert pre.approved is True
+    assert pre.effective_leverage == 10  # min(50, 10, 30)
+
+
+def test_leverage_preflight_crypto_is_no_trade() -> None:
+    venue, _ = _venue(is_demo=True)
+    pre = evaluate_leverage_preflight(
+        instrument=venue.get_instrument("BTCUSD"),
+        request=_order(symbol="BTCUSD"),
+        account=venue.get_account(),
+        price=Decimal("60000"),
+        requested_leverage=50,
+    )
+    assert pre.approved is False
+    assert pre.reason == "class_cap_below_system_minimum"
+
+
+def test_leverage_preflight_insufficient_margin() -> None:
+    venue, _ = _venue(is_demo=True, margin_free=Decimal("500"))
+    pre = evaluate_leverage_preflight(
+        instrument=venue.get_instrument("EURUSD"),
+        request=_order(),
+        account=venue.get_account(),
+        price=Decimal("1.10"),
+        requested_leverage=50,
+    )
+    assert pre.approved is False
+    assert pre.reason == "insufficient_margin"
+
+
+def test_venue_opening_blocks_untradeable_crypto() -> None:
+    venue, terminal = _venue(is_demo=True)
+    with pytest.raises(OrderRejectedError) as excinfo:
+        venue.submit_order(_order(client_order_id="btc-1", symbol="BTCUSD"))
+    assert excinfo.value.reason == "class_cap_below_system_minimum"
+    assert terminal.order_send_calls == 0
+
+
+def test_venue_opening_blocks_on_insufficient_margin() -> None:
+    venue, terminal = _venue(is_demo=True, margin_free=Decimal("500"))
+    with pytest.raises(OrderRejectedError) as excinfo:
+        venue.submit_order(
+            _order(client_order_id="m-1", meta={"requested_leverage": 50})
+        )
+    assert excinfo.value.reason == "insufficient_margin"
+    assert terminal.order_send_calls == 0
+
+
+def test_venue_opening_passes_with_default_leverage() -> None:
+    venue, terminal = _venue(is_demo=True)
+    result = venue.submit_order(_order(client_order_id="ok-1"))
+    assert result.accepted is True
+    assert terminal.order_send_calls == 1

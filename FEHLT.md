@@ -25,8 +25,10 @@ genau die falsche Richtung.
   `allow_write=False` (fail-closed).
 - **Offen:** Demo-Smoke-Test von `RealMt5Terminal` gegen ein echtes Terminal, dann bewusst
   `allow_write=True`; Instrumentenkatalog (Klasse/Kosten/Zeiten) befuellen; private WS-Sync,
-  Order-Lebenszyklus und Reconcile (Konto ↔ Buch); Anschluss der Hebelklammer an die
-  Order-Erzeugung.
+  Order-Lebenszyklus und Reconcile (Konto ↔ Buch).
+- **Hebelklammer-Anschluss: ERLEDIGT** — `execution/leverage_preflight.py`, in
+  `Mt5Venue.submit_order` bei jeder eroeffnenden Order verdrahtet. Offen bleibt nur, den
+  geklammerten Hebel am realen Terminal je Symbol zu **setzen** (MT5-Symbol-Leverage).
 
 ## 2. Marktdaten
 
@@ -74,11 +76,12 @@ Vollstaendige Liste mit Ankern in `VERLUST.md` §2b. Kern:
    im Order-Trace, und **kein Produktionscode setzte den Schluessel** — der Guard blockierte
    damit jede eroeffnende Order. Beim Bau des Order-Pfads ist zu klaeren: wer setzt den
    Schluessel korrekt, und wie wird belegt, dass der Pfad je durchlaeuft?
-2. **Anschluss der Hebelklammer.** Das Modul ist im Kern (`mt5_trading_ai/risk/leverage.py`,
-   Deckel ≤ 10) und rot-geprueft, aber an keinen Order-Pfad gebunden. Der Altbestand hatte
-   7/75-Defaults in `config/settings.py` und `paper-broker/config.py`; der Kern senkt die
-   Obergrenze auf 10. Der **Anschluss** an den realen Pfad ist neu zu schreiben — und er
-   ist der Ort, an dem Befund 1 mitgeprueft gehoert.
+2. **Anschluss der Hebelklammer — ERLEDIGT.** Das Modul (`mt5_trading_ai/risk/leverage.py`,
+   Deckel ≤ 10) ist jetzt an den Order-Pfad gebunden: `execution/leverage_preflight.py`,
+   aufgerufen in `Mt5Venue.submit_order`. Der Altbestand hatte 7/75-Defaults in
+   `config/settings.py` und `paper-broker/config.py`; der Kern senkt die Obergrenze auf 10.
+   **Offen bleibt Befund 1** (`portfolio_risk_check_fresh`): er gehoert an genau diesen
+   Preflight, sobald der Portfolio-Risikozustand existiert.
 
 ---
 

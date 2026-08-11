@@ -25,6 +25,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any, Protocol, runtime_checkable
 
+from mt5_trading_ai.execution.leverage_preflight import evaluate_leverage_preflight
 from mt5_trading_ai.execution.release import live_release_blocks_opening_order
 from mt5_trading_ai.venue.protocol import (
     AccountState,
@@ -329,6 +330,8 @@ class Mt5Venue(TradingVenue):
                 )
             # Live-Freigabe-Tor: nur eroeffnende Orders an einem Live-Konto.
             self._require_live_release_for_opening()
+            # Hebelklammer am Order-Pfad: handelbar, geklammert, Marge frei?
+            self._enforce_leverage(instrument, request)
 
         send = self._terminal.order_send(self._to_terminal_request(request))
         if not send.accepted:
@@ -359,6 +362,27 @@ class Mt5Venue(TradingVenue):
             raise OrderRejectedError(
                 "Live-Freigabe unvollstaendig — eroeffnende Order blockiert",
                 reason=blocked.reason or "live_release_incomplete",
+                retryable=False,
+            )
+
+    def _enforce_leverage(self, instrument: Instrument, request: OrderRequest) -> None:
+        raw_tick = self._terminal.tick(request.symbol)
+        if raw_tick is None:
+            raise OrderRejectedError(
+                "Kein Preis fuer Hebelpruefung", reason="no_tick", retryable=True
+            )
+        price = raw_tick.ask if request.side is OrderSide.BUY else raw_tick.bid
+        preflight = evaluate_leverage_preflight(
+            instrument=instrument,
+            request=request,
+            account=self.get_account(),
+            price=price,
+            requested_leverage=request.meta.get("requested_leverage"),
+        )
+        if not preflight.approved:
+            raise OrderRejectedError(
+                f"Hebel-Anschluss abgelehnt: {preflight.reason}",
+                reason=preflight.reason or "leverage_rejected",
                 retryable=False,
             )
 

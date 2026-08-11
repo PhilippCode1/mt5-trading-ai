@@ -22,6 +22,13 @@ Datenqualitaet als Gate (Phase 7.2).
 - `def assess_bars`
 - `def render_markdown`
 
+## `mt5_trading_ai/execution/leverage_preflight.py`
+
+Anschluss der Hebelklammer an den Order-Pfad.
+
+- `class LeveragePreflight`
+- `def evaluate_leverage_preflight`
+
 ## `mt5_trading_ai/execution/release.py`
 
 Mehrteilige Freigabe fuer Order-Submit an einen echten Markt.

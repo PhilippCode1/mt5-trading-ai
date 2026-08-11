@@ -429,3 +429,47 @@ Order-Pfad (das Protokoll traegt kein Hebelfeld); das bleibt der naechste Anschl
 
 **Zeilenstand (gemessen):** `venue/mt5.py` neu; Paket-Quellcode `mt5_trading_ai/` = 3.381
 Zeilen.
+
+---
+
+## ERLEDIGT — Hebelklammer-Anschluss an den Order-Pfad
+
+**Was geschehen ist:** Die (bereits getestete) Hebelklammer `risk/leverage.py` ist an den
+Order-Pfad gebunden. `execution/leverage_preflight.py` verbindet die Klammer mit Instrument,
+Konto und Auftrag: Klasse handelbar? (unbekannt/Krypto → no_trade), Hebel geklammert
+(`min(want, 10, Deckel)`), Marge frei? `Mt5Venue.submit_order` ruft den Preflight bei
+**jeder** eroeffnenden Order — fehlt ein Strategiewunsch, klammert die Klammer auf ihren
+Default (Betriebsminimum), nie den gefaehrlichsten Wert. Damit ist der in `VERLUST.md` §3 /
+`FEHLT.md` markierte Anschluss gebaut — **mit** dem Tor, nicht daran vorbei.
+
+**Abnahme (Befehle und Ausgaben):**
+```
+$ python -m pytest -q
+202 passed
+$ python -m ruff check .
+All checks passed!
+$ python -m mypy --strict mt5_trading_ai tools
+Success: no issues found in 23 source files
+```
+
+**Negativ gefahren — Hebel-Anschluss** (`self._enforce_leverage(...)` → `pass`):
+```
+FAILED tests/test_mt5_venue.py::test_venue_opening_blocks_untradeable_crypto
+FAILED tests/test_mt5_venue.py::test_venue_opening_blocks_on_insufficient_margin
+2 failed
+# Schaden zurueckgenommen:
+24 passed
+```
+
+**Entscheidungen, die ich selbst getroffen habe:** Der Preflight nimmt die freie Marge ueber
+den Kontozustand (`AccountState`, Protokolltyp), nicht das MT5-Rohkonto — der Adapter reicht
+`get_account()` hinein. Krypto (Deckel 2 < Betriebsminimum 5) ist im Order-Pfad damit
+**nicht handelbar** — fail-closed, wie schon in `VERLUST.md` vermerkt.
+
+**Auffaelligkeiten, gemeldet, nicht angefasst:** Der effektive geklammerte Hebel muss am
+realen Terminal noch je Symbol gesetzt werden (MT5-Symbol-Leverage/Margin); bisher prueft
+der Preflight, dass die noetige Marge zum geklammerten Hebel frei ist. Das gehoert an die
+reale Terminal-Bindung.
+
+**Zeilenstand (gemessen):** `execution/leverage_preflight.py` neu; Paket-Quellcode
+`mt5_trading_ai/` = 3.496 Zeilen, 14 Module, 148 Testfunktionen.
