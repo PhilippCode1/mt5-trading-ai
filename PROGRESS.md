@@ -298,8 +298,12 @@ Faehigkeiten sind aus `app.py`-Importen und Modulbaeumen abgeleitet.
 aus `VERLUST.md` nachtraeglich mit; alle offenen Faehigkeiten/Sperren bleiben in `FEHLT.md`
 fuer den naechsten Auftrag. Die 16 `.pth`-Eintraege, die in den Altbaum zeigten, sind
 entfernt (die `strategy-validation`-`.pth` eines anderen Projekts blieb unangetastet).
-`FEHLT.md` ist geschrieben. Der Altbaum wird als letzter Schritt umbenannt
-(`bitget-btc-ai` → `bitget-btc-ai_archiv`) — **nicht geloescht**, per Tag
+`FEHLT.md` ist geschrieben. Die **funktionale** Isolation ist hergestellt (16 `.pth` weg,
+`import signal_engine` scheitert). Die **Umbenennung** des Altbaums in `_archiv` schlug im
+Session-Kontext fehl — `mv` meldete `Device or resource busy`, weil der Ordner das
+Arbeitsverzeichnis der Session ist und zusaetzlich von OneDrive gehalten wird. Sie ist der
+einzige offene, umgebungsbedingt **manuell** nachzuholende Handgriff (aus einem Terminal
+ausserhalb des Ordners). Der Altbaum ist **nicht geloescht** und per Tag
 `archive/pre-extraction` auf dem Remote gesichert.
 
 **Abnahme (Befehle und Ausgaben):**
@@ -337,5 +341,6 @@ gesperrt.
 Sechs Pakete, sechs Commits. Der Kern ist gruen, seine Sperren werden nachweislich rot,
 wenn man sie beschaedigt, seine Splits reichen bis zum Datenende und tragen kein
 Null-Purge, seine Doku kann nicht mehr behaupten, was der Code nicht tut. `VERLUST.md`
-sagt, was zurueckblieb; `FEHLT.md`, was der naechste Auftrag fuellt. Der Altbestand liegt
-im Archiv, per Tag erreichbar, und `import signal_engine` scheitert.
+sagt, was zurueckblieb; `FEHLT.md`, was der naechste Auftrag fuellt. Der Altbestand ist per
+Tag `archive/pre-extraction` gesichert, und `import signal_engine` scheitert; die
+Umbenennung des Ordners in `_archiv` ist umgebungsbedingt manuell nachzuholen.
