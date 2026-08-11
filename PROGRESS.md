@@ -143,10 +143,69 @@ noch hinzu, bleiben aber deutlich darunter.
 
 ---
 
+## ERLEDIGT U3 — Validierungsschicht (Zeitreihen-Splits) umgezogen
+
+**Was geschehen ist:** Aus `learning_engine/backtest/splits.py` sind nur die drei
+Funktionen `purged_walk_forward_indices`, `purged_kfold_embargo_indices`,
+`walk_forward_indices` samt der Helfer, die sie brauchen (`Range`, `_overlaps`,
+`_band_for_purge_and_embargo`), nach `mastertrade/backtest/splits.py` uebernommen — die
+fuenf uebrigen Funktionen blieben zurueck. Der Test zog mit (ohne seinen sys.path-Shim).
+Der Fix, der den letzten Fold bis zum Datenende fuehrt, ist enthalten.
+
+**Default-Korrektur (Auftrag Teil 3 VI), berichtet:** `purge_ms` und `embargo_ms` trugen
+im Altbestand den Default `0`. **Alt:** `purge_ms: int = 0, embargo_ms: int = 0` (bzw.
+`purge_ms: int = 0` in der K-Fold-Variante). **Neu:** pflichtige keyword-only-Parameter
+ohne Default. Ein stiller Null-Default sieht im Protokoll aus wie eine Sperre und ist offen.
+
+**Abnahme (Befehle und Ausgaben):**
+```
+$ python -m pytest -q
+175 passed              # 155 (U2) + 20 (Splits)
+$ python -m pytest tests/test_splits.py -q
+20 passed
+$ python -m ruff check .
+All checks passed!
+$ python -m mypy --strict mastertrade
+Success: no issues found in 19 source files
+```
+
+**Negativ gefahren — Fold-Fix zurueckgenommen** (`hi = n if i==k-1 else …` → `hi = …`):
+```
+# 15 rot / 5 gruen — rot: die drei 'reaches_the_last_sample'-Gruppen (je 5 Faelle),
+# gruen: die 5 Leckage-Gegenproben. Deckt sich mit dem Auftrag ("15 rote von 20").
+15 failed, 5 passed
+# no_leakage-FAILED: 0   (die Gegenprobe bleibt gruen, weil der Fehler ein Auslassen war,
+#                         kein Ueberschneiden)
+# Schaden zurueckgenommen:
+20 passed
+```
+
+**Entscheidungen, die ich selbst getroffen habe:** Statt eines willkuerlichen
+Nicht-Null-Defaults (jeder ms-Wert waere ohne Kenntnis der Datenrate falsch) sind
+`purge_ms`/`embargo_ms` pflichtig — die staerkste Fail-Closed-Form, und die bewusste Wahl
+`0` (Abdeckungstest) bleibt sichtbar. Nur die drei genannten Funktionen plus die von ihnen
+benoetigten Helfer kamen mit; die fuenf uebrigen (`purged_kfold_embargo`,
+`walk_forward_splits`, `range_bounds_for_indices`, `range_time_overlap`,
+`build_purge_embargo_guard_band`) gehoeren in `VERLUST.md`.
+
+**Eigene Fehler in diesem Paket:** Meine Restore-`sed` (`hi = min(` →
+`hi = n if i==k-1 else min(`) traf als Teilzeichenkette auch `embargo_hi = min(` und
+veraenderte diese Zeile ungewollt — funktional wirkungslos (fuer den letzten Fold ist das
+Embargo-Fenster ohnehin leer), aber eine stille Mutation. Mit einem `diff` gegen das
+Original gefunden und punktgenau zurueckgesetzt; die Algorithmuszeilen sind nun
+zeichengleich zum Altbestand.
+
+**Auffaelligkeiten, gemeldet, nicht angefasst:** Die Testdatei enthielt bereits alle vom
+Auftrag verlangten Faelle (`n=100/k=7`, `n=97/k=5`, `n=10/k=3`, dazu `50/3`, `101/4`) und
+eine fertige Leckage-Gegenprobe — gemessen, nicht neu geschrieben.
+
+**Zeilenstand:** `mastertrade/backtest/splits.py` = 190 Zeilen; Paket-Summe waechst
+entsprechend, bleibt deutlich unter 6.000.
+
+---
+
 ## OFFEN — als Naechstes
 
-- **U3** — `splits.py` umziehen, Purge/Embargo-Default ≠ 0 korrigieren, Leckage-Gegentest,
-  negativ fahren.
 - **U4** — Doku-Tore (`gen_docs`, `check_docs_claims` auf alle Markdown-Dateien) + README-Zahlentest.
 - **U5** — `VERLUST.md` (Faehigkeiten und Sperren des Altbestands einordnen). Vor U6 vorlegen.
 - **U6** — Altbaum archivieren, `.pth`-Leckagen pruefen (`import signal_engine` muss scheitern),
