@@ -1,0 +1,36 @@
+[project]
+name = "mastertrade"
+version = "0.0.1"
+description = "Herausgeloester Kern: Risiko- und Sperrschicht, Validierung, Doku-Tore."
+requires-python = ">=3.11"
+readme = "README.md"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning"]
+
+# Ruff-Konfiguration bewusst identisch zum Altbestand (line-length 88, gleiche
+# Regelauswahl, gleiche Test-Ausnahmen), damit "gruen im Alt" und "gruen im Neu"
+# dasselbe bedeuten und kein Konfigurationsartefakt sind.
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+src = ["mastertrade", "tests", "tools"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests: sys.path-Shims vor Imports (E402), lange Legacy-Zeilen (E501).
+"tests/**" = ["E402", "E501"]
+
+# Mypy strict gilt fuer das Paket ``mastertrade`` (Teil 8, Punkt 2). Aufruf:
+# ``mypy --strict mastertrade``.
+[tool.mypy]
+python_version = "3.11"
+strict = true
+
+[tool.black]
+line-length = 88
+target-version = ["py311"]

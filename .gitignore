@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Werkzeug-Caches
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Laufzeitdaten des Versuchsregisters (anhaengend, kein Quellcode)
+TRIALS.jsonl
