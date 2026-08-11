@@ -1,0 +1,406 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MT5 Trading AI — Masterübersicht</title>
+<style>
+  :root {
+    --ground: #f6f8f4;
+    --panel: #ffffff;
+    --panel-2: #f0f4ee;
+    --ink: #12201a;
+    --muted: #5e6e64;
+    --hair: #dce5dc;
+    --accent: #166c3b;
+    --accent-bright: #2e9e5b;
+    --warn: #9c6a12;
+    --crit: #a63a28;
+    --shadow: 0 1px 2px rgba(18, 32, 26, .06), 0 8px 24px rgba(18, 32, 26, .05);
+    --mono: ui-monospace, "Cascadia Code", "SF Mono", "Menlo", "Consolas", monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, "Roboto", sans-serif;
+    --maxw: 1140px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #0d130f;
+      --panel: #141c16;
+      --panel-2: #101711;
+      --ink: #e7f0e9;
+      --muted: #8fa096;
+      --hair: #233029;
+      --accent: #3dbb72;
+      --accent-bright: #59d389;
+      --warn: #d0a24a;
+      --crit: #e0745e;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 10px 30px rgba(0, 0, 0, .35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0d130f; --panel: #141c16; --panel-2: #101711; --ink: #e7f0e9;
+    --muted: #8fa096; --hair: #233029; --accent: #3dbb72; --accent-bright: #59d389;
+    --warn: #d0a24a; --crit: #e0745e;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.35);
+  }
+  :root[data-theme="light"] {
+    --ground: #f6f8f4; --panel: #ffffff; --panel-2: #f0f4ee; --ink: #12201a;
+    --muted: #5e6e64; --hair: #dce5dc; --accent: #166c3b; --accent-bright: #2e9e5b;
+    --warn: #9c6a12; --crit: #a63a28;
+    --shadow: 0 1px 2px rgba(18,32,26,.06), 0 8px 24px rgba(18,32,26,.05);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: var(--sans); line-height: 1.55;
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  :focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; border-radius: 4px; }
+
+  .eyebrow {
+    font-family: var(--mono); font-size: 12px; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--accent); font-weight: 600;
+  }
+  h1, h2, h3 { text-wrap: balance; margin: 0; }
+  .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  /* Header */
+  header.top {
+    border-bottom: 1px solid var(--hair);
+    background:
+      radial-gradient(120% 140% at 88% -20%, color-mix(in oklab, var(--accent) 12%, transparent), transparent 60%),
+      var(--panel);
+  }
+  .top-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 22px; }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .glyph {
+    width: 34px; height: 34px; border-radius: 9px; flex: none;
+    border: 1.5px solid var(--accent);
+    display: grid; place-items: center; color: var(--accent);
+    font-family: var(--mono); font-weight: 700; font-size: 15px;
+    background: color-mix(in oklab, var(--accent) 8%, transparent);
+  }
+  .brand b { font-size: 15px; letter-spacing: .01em; }
+  .brand span { display: block; font-size: 12px; color: var(--muted); font-family: var(--mono); }
+  .toggle {
+    font-family: var(--mono); font-size: 12px; color: var(--ink);
+    background: var(--panel-2); border: 1px solid var(--hair); border-radius: 999px;
+    padding: 7px 13px; cursor: pointer; letter-spacing: .03em;
+  }
+  .toggle:hover { border-color: var(--accent); }
+  .hero { padding: 26px 0 34px; }
+  .hero h1 { font-size: clamp(28px, 4.6vw, 46px); line-height: 1.05; letter-spacing: -.02em; font-weight: 800; }
+  .hero p.lead { max-width: 62ch; margin: 14px 0 0; font-size: clamp(15px, 1.6vw, 18px); color: var(--muted); }
+  .pills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+  .pill {
+    font-family: var(--mono); font-size: 12px; color: var(--ink);
+    background: var(--panel-2); border: 1px solid var(--hair);
+    padding: 5px 11px; border-radius: 999px; display: inline-flex; align-items: center; gap: 7px;
+  }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent-bright); }
+
+  section { padding: 44px 0; border-bottom: 1px solid var(--hair); }
+  .sec-head { margin-bottom: 22px; }
+  .sec-head h2 { font-size: clamp(20px, 2.5vw, 26px); margin-top: 6px; letter-spacing: -.01em; }
+  .sec-head p { color: var(--muted); margin: 8px 0 0; max-width: 68ch; }
+
+  /* Metrics */
+  .metrics { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; }
+  @media (max-width: 860px) { .metrics { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 520px) { .metrics { grid-template-columns: repeat(2, 1fr); } }
+  .stat {
+    background: var(--panel); border: 1px solid var(--hair); border-radius: 12px;
+    padding: 16px 16px 14px; box-shadow: var(--shadow);
+  }
+  .stat .num { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 30px; font-weight: 700; letter-spacing: -.02em; color: var(--ink); line-height: 1; }
+  .stat .lbl { font-size: 12.5px; color: var(--muted); margin-top: 8px; }
+  .stat .num.ok { color: var(--accent-bright); }
+
+  /* Order path */
+  .flow { display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch; }
+  .gate {
+    position: relative; flex: 1 1 150px; min-width: 150px;
+    background: var(--panel); border: 1px solid var(--hair); border-left: 3px solid var(--accent);
+    border-radius: 10px; padding: 13px 14px; box-shadow: var(--shadow);
+    transition: transform .16s ease, border-color .16s ease;
+  }
+  @media (prefers-reduced-motion: reduce) { .gate { transition: none; } }
+  .gate:hover { transform: translateY(-3px); border-left-color: var(--accent-bright); }
+  .gate .n { font-family: var(--mono); font-size: 11px; color: var(--accent); font-weight: 700; }
+  .gate .name { font-family: var(--mono); font-size: 13.5px; font-weight: 600; margin-top: 4px; letter-spacing: -.01em; }
+  .gate .blocks { font-size: 12.5px; color: var(--muted); margin-top: 6px; }
+  .gate.term { border-left-color: var(--crit); }
+  .flow-note { margin-top: 16px; font-size: 13px; color: var(--muted); }
+  .flow-note b { color: var(--ink); font-weight: 600; }
+
+  /* Layers */
+  .layers { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  @media (max-width: 780px) { .layers { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--panel); border: 1px solid var(--hair); border-radius: 14px;
+    padding: 18px 18px 8px; box-shadow: var(--shadow);
+  }
+  .card > h3 { font-size: 15px; display: flex; align-items: baseline; gap: 10px; }
+  .card > h3 .path { font-family: var(--mono); color: var(--accent); font-weight: 600; }
+  .card > p.role { color: var(--muted); font-size: 13px; margin: 6px 0 12px; }
+  .rows { list-style: none; margin: 0; padding: 0; }
+  .rows li {
+    display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 10px;
+    padding: 9px 0; border-top: 1px solid var(--hair);
+  }
+  .rows li .m { font-family: var(--mono); font-size: 13px; }
+  .rows li .m small { display: block; color: var(--muted); font-family: var(--sans); font-size: 12px; margin-top: 2px; }
+  .loc { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 12px; color: var(--muted); white-space: nowrap; }
+
+  /* Discipline */
+  .disc { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  @media (max-width: 780px) { .disc { grid-template-columns: 1fr; } }
+  .disc .item { background: var(--panel); border: 1px solid var(--hair); border-radius: 12px; padding: 16px 18px; box-shadow: var(--shadow); }
+  .disc .item h4 { margin: 0 0 6px; font-size: 14.5px; }
+  .disc .item p { margin: 0; color: var(--muted); font-size: 13.5px; }
+  .disc .item .k { font-family: var(--mono); color: var(--accent); font-size: 12px; letter-spacing: .04em; text-transform: uppercase; }
+
+  /* Split: limits vs potential */
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 780px) { .split { grid-template-columns: 1fr; } }
+  .col { background: var(--panel); border: 1px solid var(--hair); border-radius: 14px; padding: 18px 20px; box-shadow: var(--shadow); }
+  .col h3 { font-size: 15px; display: flex; align-items: center; gap: 9px; }
+  .tag { font-family: var(--mono); font-size: 11px; padding: 3px 8px; border-radius: 6px; letter-spacing: .04em; }
+  .tag.open { color: var(--warn); background: color-mix(in oklab, var(--warn) 14%, transparent); }
+  .tag.next { color: var(--accent-bright); background: color-mix(in oklab, var(--accent-bright) 14%, transparent); }
+  .col ul { margin: 12px 0 0; padding: 0; list-style: none; }
+  .col li { padding: 9px 0 9px 20px; position: relative; border-top: 1px solid var(--hair); font-size: 13.5px; }
+  .col li:first-child { border-top: none; }
+  .col li::before { content: ""; position: absolute; left: 2px; top: 15px; width: 7px; height: 7px; border-radius: 2px; }
+  .col.limits li::before { background: var(--warn); }
+  .col.pot li::before { background: var(--accent-bright); }
+  .col li b { font-weight: 600; }
+
+  footer { padding: 34px 0 48px; color: var(--muted); font-size: 13px; }
+  footer .row { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; align-items: center; }
+  footer .mono { font-size: 12px; }
+  .reveal { opacity: 0; transform: translateY(10px); animation: rise .5s ease forwards; }
+  @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; animation: none; } }
+  @keyframes rise { to { opacity: 1; transform: none; } }
+</style>
+
+<header class="top">
+  <div class="wrap">
+    <div class="top-row">
+      <div class="brand">
+        <div class="glyph">M5</div>
+        <div>
+          <b>MT5 Trading AI</b>
+          <span>PhilippCode1/mt5-trading-ai · privat</span>
+        </div>
+      </div>
+      <button class="toggle" id="themeToggle" type="button" aria-label="Hell/Dunkel umschalten">Theme</button>
+    </div>
+    <div class="hero">
+      <p class="eyebrow">Masterübersicht · gemessen 2026-08-11</p>
+      <h1>Der geprüfte Sicherheitskern eines MT5-Handelssystems.</h1>
+      <p class="lead">
+        Aus einem 15-Dienste-Monorepo herausgelöst: die Risiko-, Sperr- und Validierungsschicht,
+        plus ein venue-unabhängiges Handelsplatz-Gerüst für MT4/MT5. Jede Sperre ist negativ
+        gefahren. Echtgeld-Handel bleibt hinter der mehrteiligen menschlichen Freigabe — er ist
+        nicht Teil dieses Stands.
+      </p>
+      <div class="pills">
+        <span class="pill"><span class="dot"></span>master · 17 Commits</span>
+        <span class="pill">ruff sauber</span>
+        <span class="pill">mypy --strict sauber</span>
+        <span class="pill">244 Tests grün</span>
+        <span class="pill">fail-closed</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section id="metrics">
+    <div class="metrics">
+      <div class="stat reveal"><div class="num">18</div><div class="lbl">Kernmodule</div></div>
+      <div class="stat reveal"><div class="num">4.112</div><div class="lbl">Zeilen Kerncode</div></div>
+      <div class="stat reveal"><div class="num">190</div><div class="lbl">Testfunktionen</div></div>
+      <div class="stat reveal"><div class="num ok">244</div><div class="lbl">Tests grün</div></div>
+      <div class="stat reveal"><div class="num ok">0</div><div class="lbl">ruff / mypy-Fehler</div></div>
+      <div class="stat reveal"><div class="num">3</div><div class="lbl">Live-Sperren in Reihe</div></div>
+    </div>
+  </section>
+
+  <section id="orderpath">
+    <div class="sec-head">
+      <p class="eyebrow">Die These</p>
+      <h2>Der Order-Pfad und seine Tore</h2>
+      <p>Eine <b>eröffnende</b> Order durchläuft mehrere Sperren in Folge. Fällt eine, wird
+        nicht gesendet. Reduce-Only (Risikoabbau) bleibt bewusst freier.</p>
+    </div>
+    <div class="flow">
+      <div class="gate"><div class="n">01</div><div class="name">Idempotenz</div><div class="blocks">Dieselbe Kennung erzeugt keine zweite Order.</div></div>
+      <div class="gate"><div class="n">02</div><div class="name">Global-Halt</div><div class="blocks">Reconcile-Drift oder Sync-Desync → gesperrt.</div></div>
+      <div class="gate"><div class="n">03</div><div class="name">Stop-Pflicht</div><div class="blocks">Ohne gültigen Stop wird nicht eröffnet.</div></div>
+      <div class="gate"><div class="n">04</div><div class="name">Live-Freigabe</div><div class="blocks">Vier Schalter + Kennung, sonst abgelehnt.</div></div>
+      <div class="gate"><div class="n">05</div><div class="name">Hebel-Preflight</div><div class="blocks">Klasse handelbar? Hebel ≤ 10? Marge frei?</div></div>
+      <div class="gate term"><div class="n">06</div><div class="name">Terminal</div><div class="blocks">Schreibpfad zusätzlich <span class="mono">allow_write=False</span>.</div></div>
+    </div>
+    <p class="flow-note">
+      <b>Drei unabhängige Sperren</b> stehen hintereinander gegen einen ungewollten Schreibzugriff
+      auf ein Live-Konto: die Live-Freigabe im Adapter, <span class="mono">allow_write</span> im
+      Terminal und der harte Demo-Abbruch im Smoke-Runner. Der Drift- und der Desync-Halt rasten
+      und lösen sich nicht selbst — erst <span class="mono">adopt_book()</span> + <span class="mono">clear_halt()</span>.
+    </p>
+  </section>
+
+  <section id="layers">
+    <div class="sec-head">
+      <p class="eyebrow">Die Schichten</p>
+      <h2>18 Module in fünf Schichten</h2>
+      <p>Jedes Modul mit gemessener Zeilenzahl. Kein Modul außerhalb <span class="mono">venue/</span>
+        kennt einen Plattformnamen — Signal- und Risikopfad sprechen nur gegen das Protokoll.</p>
+    </div>
+    <div class="layers">
+
+      <div class="card">
+        <h3><span class="path">risk/</span> Risiko- und Sperrschicht</h3>
+        <p class="role">Das Herz: Hebelklammer, Verlustgrenzen, Positionsgröße, Stop-Budget.</p>
+        <ul class="rows">
+          <li><span class="m">leverage.py<small>min(Wunsch, 10, Klassendeckel); unbekannt → no_trade</small></span><span class="loc">276</span></li>
+          <li><span class="m">sizing.py<small>Positionsgröße aus Risikoanteil, Stop-Floor</small></span><span class="loc">220</span></li>
+          <li><span class="m">stop_budget.py<small>Stop-Budget je Anlageklasse</small></span><span class="loc">160</span></li>
+          <li><span class="m">limits.py<small>Tagesverlust, Drawdown-Halt, Positionsdeckel</small></span><span class="loc">145</span></li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3><span class="path">gates/</span> Bewertung &amp; Register</h3>
+        <p class="role">„Evaluating ≠ trading": Tor, Kriterien, Versuchsregister, Lernphase.</p>
+        <ul class="rows">
+          <li><span class="m">criteria.py<small>Vorregistrierte Kriterien, Deflated Sharpe</small></span><span class="loc">348</span></li>
+          <li><span class="m">learning_phase.py<small>Rangliste, Schwächenbefunde, Grenzen</small></span><span class="loc">292</span></li>
+          <li><span class="m">trials.py<small>Versuchsregister TRIALS.jsonl (anhängend)</small></span><span class="loc">204</span></li>
+          <li><span class="m">evaluation.py<small>Schwelle, Haltedauer, Abklingzeit, Korrelation</small></span><span class="loc">202</span></li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3><span class="path">venue/</span> Handelsplatz (venue-unabhängig)</h3>
+        <p class="role">Das Protokoll, der MT5-Adapter, der Katalog-Lader, der Demo-Smoke.</p>
+        <ul class="rows">
+          <li><span class="m">mt5.py<small>Mt5Venue + RealMt5Terminal (fail-closed Schreibpfad)</small></span><span class="loc">818</span></li>
+          <li><span class="m">protocol.py<small>TradingVenue — Vertrag, fail-closed</small></span><span class="loc">274</span></li>
+          <li><span class="m">smoke.py<small>Demo-Smoke-Orchestrierung, harter Demo-Abbruch</small></span><span class="loc">162</span></li>
+          <li><span class="m">catalog.py<small>Instrumentenkatalog, versioniert, fail-closed</small></span><span class="loc">159</span></li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3><span class="path">execution/</span> Tore am Order-Pfad</h3>
+        <p class="role">Live-Freigabe, Hebel-Anschluss, Reconcile, Private-Sync.</p>
+        <ul class="rows">
+          <li><span class="m">release.py<small>Vier Schalter + Kennung; „nicht bewertbar = nicht erfüllt"</small></span><span class="loc">128</span></li>
+          <li><span class="m">reconcile.py<small>Buch ↔ Konto, Notional-Drift → Global-Halt, Adoption</small></span><span class="loc">113</span></li>
+          <li><span class="m">leverage_preflight.py<small>Hebelklammer an Instrument/Konto/Auftrag</small></span><span class="loc">91</span></li>
+          <li><span class="m">private_sync.py<small>Kontostrom führt das Buch; Desync → Halt</small></span><span class="loc">89</span></li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3><span class="path">data/ · backtest/</span> Validierung</h3>
+        <p class="role">Datenqualitäts-Tor und leckagefreie Zeitreihen-Splits.</p>
+        <ul class="rows">
+          <li><span class="m">data/quality.py<small>Lückenquote, Zeitstempel, Ausreißer, Handelszeiten</small></span><span class="loc">228</span></li>
+          <li><span class="m">backtest/splits.py<small>Purge/Embargo (pflichtig), Walk-Forward bis Datenende</small></span><span class="loc">190</span></li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3><span class="path">tests/ · tools/</span> Prüfstand</h3>
+        <p class="role">190 Testfunktionen und die Doku-Tore, die die Doku ehrlich halten.</p>
+        <ul class="rows">
+          <li><span class="m">tests/<small>18 Dateien, 244 parametrisierte Fälle grün</small></span><span class="loc">2.628</span></li>
+          <li><span class="m">tools/gen_docs.py<small>MODULES.md aus dem Code + --check-Tor</small></span><span class="loc">—</span></li>
+          <li><span class="m">tools/check_docs_claims.py<small>blockiert Reifegrad-Phrasen ohne Beleg</small></span><span class="loc">—</span></li>
+          <li><span class="m">tools/mt5_smoke.py<small>Demo-Smoke-CLI (nur lesend / --allow-write)</small></span><span class="loc">—</span></li>
+        </ul>
+      </div>
+
+    </div>
+  </section>
+
+  <section id="discipline">
+    <div class="sec-head">
+      <p class="eyebrow">Warum den Zahlen zu trauen ist</p>
+      <h2>Die Prüf-Disziplin</h2>
+    </div>
+    <div class="disc">
+      <div class="item"><div class="k">01 — negativ fahren</div><h4>Jede Sperre wurde absichtlich beschädigt</h4><p>… lief rot, dann wurde der Schaden zurückgenommen. So ist bewiesen, dass der Test die Sperre wirklich prüft und nicht hohl ist.</p></div>
+      <div class="item"><div class="k">02 — grün = grün</div><h4>Konfiguration identisch zum Altbestand</h4><p>ruff/mypy-Regeln wurden wörtlich übernommen. „Grün im Alt" und „grün im Neu" bedeuten dasselbe — kein Konfigurationsartefakt.</p></div>
+      <div class="item"><div class="k">03 — Doku-Tore</div><h4>Die Doku kann nicht lügen</h4><p>MODULES.md wird aus dem Code erzeugt und geprüft; ein Zahlen-Test hält die Kennzahlen ehrlich; ein Claims-Tor blockiert Reifegrad-Phrasen ohne Beleg.</p></div>
+      <div class="item"><div class="k">04 — adversariale Review</div><h4>Mehrperspektivische Gegenkontrolle</h4><p>Für drei sicherheitsnahe Bausteine lief eine Review mit Gegenprüfung jedes Befunds. Zwei fanden reale Fehler im Schreibpfad — beide eingearbeitet und getestet.</p></div>
+    </div>
+  </section>
+
+  <section id="future">
+    <div class="sec-head">
+      <p class="eyebrow">Ehrliche Grenzen &amp; das Potenzial darauf</p>
+      <h2>Wo der nächste Auftrag beginnt</h2>
+      <p>Die harte Regel bleibt: <b>kein Ausführungspfad, bevor der Fail-Closed-Apparat und die
+        menschlichen Tore stehen.</b> Weil die Sicherheit zuerst gebaut wurde, kann alles Weitere
+        gefahrlos darauf iterieren.</p>
+    </div>
+    <div class="split">
+      <div class="col limits">
+        <h3><span class="tag open">offen</span> Die Leerstellen (FEHLT.md)</h3>
+        <ul>
+          <li><b>Konkrete Terminal-/Feed-Bindung.</b> RealMt5Terminal und die Ereignis-Quelle gegen ein echtes Demo-MT5 — der Demo-Smoke ist der erste Schritt.</li>
+          <li><b>Marktdaten &amp; Signal.</b> Orderbuch-Prüfsumme, Struktur-/Signalkern — neu zu schreiben, geführt durch die vorhandenen Kriterien.</li>
+          <li><b>Kosten-/Kontraktmodell</b> (Fee/Funding/Slippage) für den Papierhandel.</li>
+          <li><b>Restlicher Fail-Closed-Apparat:</b> Kill-Switch, Safety-Oracle, Exchange-Readiness, VPIN-Halt.</li>
+        </ul>
+      </div>
+      <div class="col pot">
+        <h3><span class="tag next">Potenzial</span> Worauf das Fundament trägt</h3>
+        <ul>
+          <li><b>Autonomer MT4/MT5-Handel hinter der Freigabe.</b> Protokoll, Tore und Reconcile-Kreis stehen; Strategie iteriert erst als Demo/Paper.</li>
+          <li><b>Intelligentes Modell-Ensemble.</b> Mehrere Strategien schlagen vor, während Hebelklammer und Global-Halt unabhängig wachen — kein Modell schreibt Produktionscode zur Laufzeit.</li>
+          <li><b>Mehrere Handelsplätze aus einem Kern.</b> Ein zweiter Adapter ist eine neue venue/-Implementierung gegen denselben Vertrag.</li>
+          <li><b>Nachprüfbare Forschung.</b> Purge/Embargo-Splits, Deflated Sharpe und Versuchsregister — gemessen statt behauptet.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="row">
+      <span>Bismillah · erst die Sicherheit, dann die Fähigkeit. Alhamdulillah.</span>
+      <span class="mono">docs/overview.html · aus gemessenen Zahlen (2026-08-11)</span>
+    </div>
+  </footer>
+
+</main>
+
+<script>
+  (function () {
+    var btn = document.getElementById('themeToggle');
+    var root = document.documentElement;
+    function current() {
+      return root.getAttribute('data-theme') ||
+        (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    }
+    btn.addEventListener('click', function () {
+      var next = current() === 'dark' ? 'light' : 'dark';
+      root.setAttribute('data-theme', next);
+      btn.textContent = next === 'dark' ? 'Hell' : 'Dunkel';
+    });
+    btn.textContent = current() === 'dark' ? 'Hell' : 'Dunkel';
+    // dezenter Load-in der Kennzahlen
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      document.querySelectorAll('.stat.reveal').forEach(function (el, i) {
+        el.style.animationDelay = (i * 60) + 'ms';
+      });
+    }
+  })();
+</script>
