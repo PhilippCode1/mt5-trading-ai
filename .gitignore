@@ -14,3 +14,8 @@ htmlcov/
 
 # Laufzeitdaten des Versuchsregisters (anhaengend, kein Quellcode)
 TRIALS.jsonl
+
+# Geheimnisse / lokale Konfiguration — nie einchecken (.env.example bleibt)
+.env
+.env.*
+!.env.example
