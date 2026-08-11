@@ -29,6 +29,14 @@ Anschluss der Hebelklammer an den Order-Pfad.
 - `class LeveragePreflight`
 - `def evaluate_leverage_preflight`
 
+## `mt5_trading_ai/execution/private_sync.py`
+
+Private Ereignis-Synchronisation: der Kontostrom haelt das Buch aktuell.
+
+- `class PrivateEventKind`
+- `class PrivateEvent`
+- `class PrivateSync`
+
 ## `mt5_trading_ai/execution/reconcile.py`
 
 Order-Lebenszyklus und Reconcile: Konto gegen Buch.

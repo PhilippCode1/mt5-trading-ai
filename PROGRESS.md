@@ -657,3 +657,42 @@ bestaetigen.
 
 **Zeilenstand (gemessen):** `venue/smoke.py` + `tools/mt5_smoke.py` neu; Paket-Quellcode
 `mt5_trading_ai/` = 3.998 Zeilen, 17 Module, 181 Testfunktionen.
+
+---
+
+## ERLEDIGT — Private WS-Sync (Konsument + Fail-closed)
+
+**Was geschehen ist:** `mt5_trading_ai/execution/private_sync.py` (`PrivateSync`) konsumiert
+den privaten Kontostrom (`PrivateEvent`: Fill/Heartbeat mit fortlaufender `seq`) und fuehrt
+das Nettobuch. **Fail-closed bei Desync** in zwei Formen: **Sequenzluecke** (fehlende Nummer)
+und **Stille** (`is_stale`/`healthy` gegen `max_silence`); malformte Fills ebenso. In
+`Mt5Venue`: ist ein Strom angeschlossen, **fuehrt er das Buch** (geteiltes `PositionBook`),
+und `submit_order` bucht nicht mehr optimistisch — der autoritative Fill tut es (kein
+Doppel-Buchen). `apply_private_event` rastet bei Desync den Global-Halt; `check_sync` rastet
+bei Stille; `clear_halt` resynchronisiert. Eroeffnungen sind waehrend des Halts gesperrt,
+Reduce-Only frei.
+
+**Abnahme (Befehle und Ausgaben):**
+```
+$ python -m pytest -q
+244 passed
+$ python -m ruff check .
+All checks passed!
+$ python -m mypy --strict mt5_trading_ai tools
+Success: no issues found in 28 source files
+```
+
+**Negativ gefahren — Sequenzluecken-Check** (`event.seq != last_seq + 1` → `False`):
+`test_sync_sequence_gap_is_desync` und `test_synced_venue_gap_halts_and_blocks_opening` rot,
+zurueckgenommen 9 gruen.
+
+**Entscheidungen, die ich selbst getroffen habe:** Der Strom ist autoritativ, wenn
+angeschlossen — deshalb bucht der Submit dann nicht optimistisch (sonst Doppelzaehlung). Die
+konkrete **Quelle** (Krypto-WS bzw. MT5-Deal-Abfrage) ist die boersenspezifische Bindung und
+gehoert an den realen Lauf, wie `RealMt5Terminal`. Eine adversariale Review wurde gestartet;
+sie war bei der Finalisierung (auf Wunsch „fertigstellen und pushen") noch nicht fertig — der
+Code ist unabhaengig gruen und negativ gefahren; etwaige bestaetigte Befunde arbeite ich als
+Nachtrag ein.
+
+**Zeilenstand (gemessen):** `execution/private_sync.py` neu; Paket-Quellcode `mt5_trading_ai/`
+= 4.112 Zeilen, 18 Module, 190 Testfunktionen.

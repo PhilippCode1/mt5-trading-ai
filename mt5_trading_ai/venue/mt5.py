@@ -21,11 +21,12 @@ from __future__ import annotations
 import importlib
 from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any, Protocol, runtime_checkable
 
 from mt5_trading_ai.execution.leverage_preflight import evaluate_leverage_preflight
+from mt5_trading_ai.execution.private_sync import PrivateEvent, PrivateSync
 from mt5_trading_ai.execution.reconcile import (
     PositionBook,
     ReconcileResult,
@@ -181,6 +182,7 @@ class Mt5Venue(TradingVenue):
         catalog: Mapping[str, CatalogEntry],
         settings: Any = None,
         max_notional_drift: Decimal = Decimal("0"),
+        sync: PrivateSync | None = None,
     ) -> None:
         self.name = name
         self._terminal = terminal
@@ -190,9 +192,11 @@ class Mt5Venue(TradingVenue):
         self._connected = False
         #: Idempotenz je ``client_order_id`` — nur angenommene Orders.
         self._results: dict[str, OrderResult] = {}
-        #: Lokales Buch der Nettopositionen; Reconcile vergleicht es mit der Meldung.
-        self._book = PositionBook()
-        #: Global-Halt-Latch (Reconcile-Drift). Klaert nicht selbst, nur ``clear_halt``.
+        #: Privater Ereignisstrom (optional). Ist er da, fuehrt er das Buch.
+        self._sync = sync
+        #: Lokales Buch der Nettopositionen; mit Strom ist es dessen Buch (geteilt).
+        self._book = sync.book if sync is not None else PositionBook()
+        #: Global-Halt-Latch (Reconcile-Drift/Desync). Klaert nur ``clear_halt``.
         self._halted = False
 
     # --- Verbindung -------------------------------------------------------
@@ -354,7 +358,9 @@ class Mt5Venue(TradingVenue):
             raw=send.raw,
         )
         self._results[request.client_order_id] = result
-        self._book.apply_fill(request.symbol, request.side, send.filled_volume)
+        if self._sync is None:
+            # Ohne Strom optimistisch buchen; mit Strom bucht der autoritative Fill.
+            self._book.apply_fill(request.symbol, request.side, send.filled_volume)
         return result
 
     def _require_live_release_for_opening(self) -> None:
@@ -488,6 +494,8 @@ class Mt5Venue(TradingVenue):
     def clear_halt(self) -> None:
         """Manuelle Freigabe nach aufgeloester Drift. Der Latch klaert nicht selbst."""
         self._halted = False
+        if self._sync is not None:
+            self._sync.clear_desync()
 
     def reconcile(self) -> ReconcileResult:
         """Buch gegen Meldung; bei Drift ueber der Grenze Global-Halt setzen."""
@@ -526,6 +534,23 @@ class Mt5Venue(TradingVenue):
         self._require_healthy()
         self._book.adopt(positions_to_net(self.get_positions()))
         return self._book.snapshot()
+
+    def apply_private_event(self, event: PrivateEvent) -> None:
+        """Fuehre ein Kontoereignis ins Buch. Bei Desync (Luecke) Global-Halt."""
+        if self._sync is None:
+            raise VenueUnavailableError("Kein PrivateSync konfiguriert")
+        self._sync.apply(event)
+        if self._sync.desync:
+            self._halted = True
+
+    def check_sync(self, now: datetime, *, max_silence: timedelta) -> bool:
+        """Pruefe die Stromgesundheit; bei Stille/Desync Global-Halt setzen."""
+        if self._sync is None:
+            return True
+        healthy = self._sync.healthy(now, max_silence)
+        if not healthy:
+            self._halted = True
+        return healthy
 
 
 class RealMt5Terminal:

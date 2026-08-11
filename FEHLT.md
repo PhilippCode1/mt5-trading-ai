@@ -36,8 +36,11 @@ genau die falsche Richtung.
   Lauf gegen ein echtes (Demo-)MT5 ist der Schritt des Betreibers:
   `python tools/mt5_smoke.py` (nur lesend) bzw. `--allow-write` (winzige Order, sofort zu).
   Dort bestaetigt sich auch Fix 2 (Reduce-Only-Close per Ticket).
-- **Offen:** private WS-Sync (Order-/Positions-Ereignisse in Echtzeit statt Abruf);
-  geklammerten Hebel am Terminal je Symbol setzen; restlicher Fail-Closed-Apparat
+- **Private WS-Sync: Konsument ERLEDIGT** — `mt5_trading_ai/execution/private_sync.py`
+  (`PrivateSync`, Fail-closed bei Sequenzluecke/Stille), in `Mt5Venue` verdrahtet
+  (`apply_private_event`, `check_sync`, geteiltes Buch). Offen bleibt die konkrete **Quelle**
+  (Krypto-WS bzw. MT5-Deal-Abfrage, die die Ereignisse erzeugt) — On-Machine-Bindung.
+- **Offen:** geklammerten Hebel am Terminal je Symbol setzen; restlicher Fail-Closed-Apparat
   (Kill-Switch, Runtime-Safety-Oracle, Exchange-Readiness).
 - **Hebelklammer-Anschluss: ERLEDIGT** — `execution/leverage_preflight.py`, in
   `Mt5Venue.submit_order` bei jeder eroeffnenden Order verdrahtet. Offen bleibt nur, den
