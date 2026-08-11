@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from mastertrade.gates.evaluation import (
+from mt5_trading_ai.gates.evaluation import (
     Candidate,
     GateState,
     OpenPosition,

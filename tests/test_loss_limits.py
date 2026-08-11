@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
-from mastertrade.risk.limits import (
+from mt5_trading_ai.risk.limits import (
     AccountSnapshot,
     LossLimits,
     TradingState,

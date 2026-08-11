@@ -5,7 +5,7 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
-from mastertrade.risk.sizing import (
+from mt5_trading_ai.risk.sizing import (
     DEFAULT_RISK_FRACTION,
     MAX_RISK_FRACTION,
     MIN_RISK_FRACTION,

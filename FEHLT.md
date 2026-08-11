@@ -18,7 +18,7 @@ genau die falsche Richtung.
 
 ## 1. Anbindung (venue)
 
-- Eine konkrete Implementierung des `TradingVenue`-Protokolls (`mastertrade/venue/protocol.py`)
+- Eine konkrete Implementierung des `TradingVenue`-Protokolls (`mt5_trading_ai/venue/protocol.py`)
   fuer MT4/MT5 bzw. die Zielboerse — inkl. **Vertragstest** (das Protokoll ist bisher das
   einzige Kernmodul ohne Test).
 - Private REST/WS-Synchronisation, Order-Lebenszyklus, Reconcile (Konto ↔ Buch).
@@ -41,11 +41,11 @@ genau die falsche Richtung.
 
 - Signal-/Entscheidungslogik, Ensemble, Scoring (aus `signal-engine`, neu zu schreiben) —
   gefuehrt durch die vorregistrierten Kriterien und das Versuchsregister, die schon im Kern
-  liegen (`mastertrade/gates/`).
+  liegen (`mt5_trading_ai/gates/`).
 
 ## 6. Backtest-Maschine
 
-- Eine Backtest-Maschine, die die Zeitreihen-Splits (`mastertrade/backtest/splits.py`) mit
+- Eine Backtest-Maschine, die die Zeitreihen-Splits (`mt5_trading_ai/backtest/splits.py`) mit
   echten Daten fuettert — Purge/Embargo sind jetzt pflichtige Parameter, kein stiller Null-Default.
 
 ## 7. Sicherheitsapparat (Tore) — vor jedem Live-Pfad
@@ -69,7 +69,7 @@ Vollstaendige Liste mit Ankern in `VERLUST.md` §2b. Kern:
    im Order-Trace, und **kein Produktionscode setzte den Schluessel** — der Guard blockierte
    damit jede eroeffnende Order. Beim Bau des Order-Pfads ist zu klaeren: wer setzt den
    Schluessel korrekt, und wie wird belegt, dass der Pfad je durchlaeuft?
-2. **Anschluss der Hebelklammer.** Das Modul ist im Kern (`mastertrade/risk/leverage.py`,
+2. **Anschluss der Hebelklammer.** Das Modul ist im Kern (`mt5_trading_ai/risk/leverage.py`,
    Deckel ≤ 10) und rot-geprueft, aber an keinen Order-Pfad gebunden. Der Altbestand hatte
    7/75-Defaults in `config/settings.py` und `paper-broker/config.py`; der Kern senkt die
    Obergrenze auf 10. Der **Anschluss** an den realen Pfad ist neu zu schreiben — und er
@@ -79,7 +79,7 @@ Vollstaendige Liste mit Ankern in `VERLUST.md` §2b. Kern:
 
 ## Menschliche Tore, die bleiben
 
-Die mehrteilige Live-Freigabe (`mastertrade/execution/release.py`) ist da und rot-geprueft:
+Die mehrteilige Live-Freigabe (`mt5_trading_ai/execution/release.py`) ist da und rot-geprueft:
 vier unabhaengige Schalter **und** eine nichtleere Freigabekennung, alle Defaults aus, „nicht
 bewertbar = nicht erfuellt". Ein realer Order-Pfad darf diese Freigabe nicht umgehen. Reduce-
 Only (Risikoabbau) bleibt ohne Freigabe moeglich, weil eine Sperre, die das Schliessen

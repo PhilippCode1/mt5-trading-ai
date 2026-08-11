@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from mastertrade.data.quality import (
+from mt5_trading_ai.data.quality import (
     BarRow,
     SessionPredicate,
     assess_bars,

@@ -31,7 +31,7 @@ from pathlib import Path
 from statistics import fmean, pstdev
 from typing import Any
 
-from mastertrade.gates import trials as trials_ledger
+from mt5_trading_ai.gates import trials as trials_ledger
 
 LEARNING_PHASE_VERSION = "learning-phase-v1"
 

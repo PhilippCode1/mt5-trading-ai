@@ -11,7 +11,7 @@ import itertools
 from types import SimpleNamespace
 
 import pytest
-from mastertrade.execution.release import (
+from mt5_trading_ai.execution.release import (
     RELEASE_ID_FIELD,
     REQUIRED_SWITCHES,
     evaluate_live_release,

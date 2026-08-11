@@ -1,4 +1,4 @@
-"""mastertrade — der herausgeloeste Kern.
+"""MT5 Trading AI — der herausgeloeste Kern.
 
 Additiv aus dem Altbestand uebernommen (Archiv-Tag ``archive/pre-extraction``):
 die Risiko- und Sperrschicht, die Validierungs-Splits, die vorregistrierten

@@ -17,7 +17,7 @@ reine Abdeckung, nicht das Sperrband.
 from __future__ import annotations
 
 import pytest
-from mastertrade.backtest.splits import (
+from mt5_trading_ai.backtest.splits import (
     Range,
     purged_kfold_embargo_indices,
     purged_walk_forward_indices,

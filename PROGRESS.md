@@ -1,4 +1,4 @@
-# PROGRESS — mastertrade
+# PROGRESS — mt5_trading_ai
 
 Angehaengt, nie ueberschrieben. Je Paket ein Eintrag. Jede Zahl gemessen
 (`measured`, 2026-08-11), oder als Schaetzung gekennzeichnet. Keine
@@ -29,7 +29,7 @@ bestaetigt statt eine offene Frage zu sein.
 
 ## ERLEDIGT U1 — Leeres Paket und Werkzeugkette
 
-**Was geschehen ist:** Ein neues Paket `mastertrade/` wurde unter `C:\Users\Acer\mastertrade`
+**Was geschehen ist:** Ein neues Paket `mt5_trading_ai/` wurde unter `C:\Users\Acer\mt5_trading_ai`
 angelegt — ausserhalb des Altbaums und ausserhalb von OneDrive. Es enthaelt die
 Verzeichnisstruktur aus Teil 2, `pyproject.toml` (Ruff/Mypy/Pytest), `README.md`,
 `.env.example`, `.gitignore` und einen Rauchtest. Ein frisches `git init` mit einem ersten
@@ -37,19 +37,19 @@ Commit haelt es von der alten Historie getrennt.
 
 **Abnahme (Befehle und Ausgaben):**
 ```
-$ python -c "import mastertrade, inspect; print(inspect.getfile(mastertrade))"
-C:\Users\Acer\mastertrade\mastertrade\__init__.py        # zeigt in den NEUEN Baum
+$ python -c "import mt5_trading_ai, inspect; print(inspect.getfile(mt5_trading_ai))"
+C:\Users\Acer\mt5_trading_ai\mt5_trading_ai\__init__.py        # zeigt in den NEUEN Baum
 $ python -m ruff check .
 All checks passed!
-$ python -m mypy --strict mastertrade
+$ python -m mypy --strict mt5_trading_ai
 Success: no issues found in 7 source files
 $ python -m pytest -q
 1 passed in 0.09s
 ```
 
-**Entscheidungen, die ich selbst getroffen habe:** Ort `C:\Users\Acer\mastertrade` statt
+**Entscheidungen, die ich selbst getroffen habe:** Ort `C:\Users\Acer\mt5_trading_ai` statt
 eines Geschwisterordners im OneDrive-Baum, um Sync-Last und Platzrisiko auf der knappen
-Platte zu vermeiden; die Isolation (`import mastertrade` zeigt in den neuen Baum) ist
+Platte zu vermeiden; die Isolation (`import mt5_trading_ai` zeigt in den neuen Baum) ist
 nachgewiesen. Die Ruff-Konfiguration ist bewusst identisch zum Altbestand (line-length 88,
 Regelauswahl `E,F,I,UP,B`, Test-Ausnahmen `E402,E501`), damit „gruen im Alt" und „gruen im
 Neu" dasselbe bedeuten.
@@ -64,20 +64,20 @@ Neu" dasselbe bedeuten.
 
 **Was geschehen ist:** Die elf Module aus Teil 4.1 und ihre zehn Testdateien wurden in den
 neuen Baum kopiert, die Importe von `shared_py.*` auf die neuen Paketpfade umgeschrieben
-(`from shared_py import trials_ledger` → `from mastertrade.gates import trials as
+(`from shared_py import trials_ledger` → `from mt5_trading_ai.gates import trials as
 trials_ledger`). Nach dem Umzug ist keine `shared_py`-Referenz mehr im Paket. Die beiden
 Sperren wurden anschliessend absichtlich beschaedigt und liefen rot, bevor der Schaden
 zurueckgenommen wurde.
 
 **Abnahme (Befehle und Ausgaben):**
 ```
-$ grep -rn 'shared_py' mastertrade tests
+$ grep -rn 'shared_py' mt5_trading_ai tests
 (keine)
 $ python -m pytest -q
 155 passed in 0.85s                 # 154 Kern-Faelle + 1 Rauchtest
 $ python -m ruff check .
 All checks passed!
-$ python -m mypy --strict mastertrade
+$ python -m mypy --strict mt5_trading_ai
 Success: no issues found in 18 source files
 ```
 
@@ -122,7 +122,7 @@ einem flachen `tests/`-Verzeichnis (kein Umbenennen auf die neuen Modulnamen) �
 Aenderung, erhaelt die Rueckverfolgbarkeit zum Archiv. Kopie aller elf Module in einem
 mechanischen Schritt mit anschliessender Pruefung je Testdatei, weil die Module stdlib-rein
 und voneinander unabhaengig sind; ein Fehlschlag isoliert damit auf seine Datei. `mypy
---strict` gilt fuer das Paket `mastertrade` (Teil 8, Punkt 2), Tests bestehen `ruff`.
+--strict` gilt fuer das Paket `mt5_trading_ai` (Teil 8, Punkt 2), Tests bestehen `ruff`.
 
 **Eigene Fehler in diesem Paket:** Die mechanische Import-Umschreibung veraenderte die
 Import-Sortierung und erzeugte 7 `ruff`-Fehler (I001) in Testdateien. Von `ruff` gefangen,
@@ -133,7 +133,7 @@ umgezogen (es gab keinen). Gehoert in `VERLUST.md` (U5).
 
 **Zeilenstand (gemessen):**
 ```
-$ find mastertrade -name '*.py' | xargs wc -l | tail -1
+$ find mt5_trading_ai -name '*.py' | xargs wc -l | tail -1
 2490 total
 $ find tests -name '*.py' | xargs wc -l | tail -1
 1440 total
@@ -148,7 +148,7 @@ noch hinzu, bleiben aber deutlich darunter.
 **Was geschehen ist:** Aus `learning_engine/backtest/splits.py` sind nur die drei
 Funktionen `purged_walk_forward_indices`, `purged_kfold_embargo_indices`,
 `walk_forward_indices` samt der Helfer, die sie brauchen (`Range`, `_overlaps`,
-`_band_for_purge_and_embargo`), nach `mastertrade/backtest/splits.py` uebernommen — die
+`_band_for_purge_and_embargo`), nach `mt5_trading_ai/backtest/splits.py` uebernommen — die
 fuenf uebrigen Funktionen blieben zurueck. Der Test zog mit (ohne seinen sys.path-Shim).
 Der Fix, der den letzten Fold bis zum Datenende fuehrt, ist enthalten.
 
@@ -165,7 +165,7 @@ $ python -m pytest tests/test_splits.py -q
 20 passed
 $ python -m ruff check .
 All checks passed!
-$ python -m mypy --strict mastertrade
+$ python -m mypy --strict mt5_trading_ai
 Success: no issues found in 19 source files
 ```
 
@@ -199,7 +199,7 @@ zeichengleich zum Altbestand.
 Auftrag verlangten Faelle (`n=100/k=7`, `n=97/k=5`, `n=10/k=3`, dazu `50/3`, `101/4`) und
 eine fertige Leckage-Gegenprobe — gemessen, nicht neu geschrieben.
 
-**Zeilenstand:** `mastertrade/backtest/splits.py` = 190 Zeilen; Paket-Summe waechst
+**Zeilenstand:** `mt5_trading_ai/backtest/splits.py` = 190 Zeilen; Paket-Summe waechst
 entsprechend, bleibt deutlich unter 6.000.
 
 ---
@@ -221,7 +221,7 @@ $ python tools/check_docs_claims.py
 ok - 3/12 Markdown-Dateien, keine Zusicherung ohne Beleg
 $ python -m ruff check .
 All checks passed!
-$ python -m mypy --strict mastertrade tools
+$ python -m mypy --strict mt5_trading_ai tools
 Success: no issues found in 21 source files
 $ python -m pytest -q
 178 passed
@@ -240,7 +240,7 @@ FAILED tests/test_readme_numbers.py::test_readme_module_count_matches_code
 woertlich umgezogen — seine alten Quellen (Service-Manifest, Settings-AST, `.env*.example`)
 existieren im Kern nicht, ein Verbatim-Port waere sofort gescheitert; der Zweck (Doku aus
 Code + Gate) bleibt, der Umfang ist das neue Paket. `mypy --strict` habe ich zusaetzlich
-ueber `tools/` gefahren (ueber das Teil-8-Minimum `mypy --strict mastertrade` hinaus), um
+ueber `tools/` gefahren (ueber das Teil-8-Minimum `mypy --strict mt5_trading_ai` hinaus), um
 Teil 3 VIII fuer selbstgeschriebenen Code einzuloesen; die Tests bleiben unter `ruff` +
 `pytest`.
 
@@ -254,7 +254,7 @@ Schleifenvariable umbenannt; Logik und Meldungen unveraendert.
 verfolgte Markdown-Dateien, viel Luft.
 
 **Zeilenstand:** `tools/gen_docs.py` und `tools/check_docs_claims.py` neu; `MODULES.md`
-generiert (159 Zeilen, nicht handgepflegt). Paket-Quellcode `mastertrade/` unveraendert 2.680.
+generiert (159 Zeilen, nicht handgepflegt). Paket-Quellcode `mt5_trading_ai/` unveraendert 2.680.
 
 ---
 
@@ -311,13 +311,13 @@ ausserhalb des Ordners). Der Altbaum ist **nicht geloescht** und per Tag
 $ (16 .pth mit Bezug bitget-btc-ai entfernt)
 $ python -c "import signal_engine"
 ModuleNotFoundError: No module named 'signal_engine'      # die stille Probe: scheitert
-$ python -c "import mastertrade, inspect; print(inspect.getfile(mastertrade))"
-C:\Users\Acer\mastertrade\mastertrade\__init__.py          # zeigt weiter in den neuen Baum
+$ python -c "import mt5_trading_ai, inspect; print(inspect.getfile(mt5_trading_ai))"
+C:\Users\Acer\mt5_trading_ai\mt5_trading_ai\__init__.py          # zeigt weiter in den neuen Baum
 $ python -m pytest -q
 178 passed
 $ python -m ruff check .
 All checks passed!
-$ python -m mypy --strict mastertrade tools
+$ python -m mypy --strict mt5_trading_ai tools
 Success: no issues found in 21 source files
 $ python tools/gen_docs.py --check
 ok — MODULES.md ist aktuell
@@ -331,7 +331,7 @@ entzieht. `README.md` wurde nicht neu geschrieben: es beschreibt bereits, was da
 kann und nicht kann, und seine Kennzahlen sind gemessen und per Test gegen den Code
 gesperrt.
 
-**Zeilenstand (gemessen):** `.py` gesamt **4.462** (Quellcode `mastertrade/` 2.680, Tests
+**Zeilenstand (gemessen):** `.py` gesamt **4.462** (Quellcode `mt5_trading_ai/` 2.680, Tests
 1.567, Werkzeuge `tools/` 215). Zielgroesse < 6.000 eingehalten.
 
 ---
@@ -344,3 +344,36 @@ Null-Purge, seine Doku kann nicht mehr behaupten, was der Code nicht tut. `VERLU
 sagt, was zurueckblieb; `FEHLT.md`, was der naechste Auftrag fuellt. Der Altbestand ist per
 Tag `archive/pre-extraction` gesichert, und `import signal_engine` scheitert; die
 Umbenennung des Ordners in `_archiv` ist umgebungsbedingt manuell nachzuholen.
+
+---
+
+## ERLEDIGT — Umbenennung in MT5 Trading AI
+
+**Was geschehen ist:** Das gesamte Paket ist von `mastertrade` in **`mt5_trading_ai`**
+umbenannt — Wurzelordner (`C:\Users\Acer\mt5_trading_ai`), Python-Paket (`mt5_trading_ai/`),
+Distributionsname (`mt5-trading-ai`) und **jede Referenz in jeder Datei**. Alle 43 Dateien
+wurden angefasst und geprueft; keine blieb unberuehrt. **Entscheidung „bleibt/geht":** alle
+43 bleiben — jede hatte in U0–U6 einzeln ihren Nachweis; etwas zu entfernen braeche den Kern.
+
+**Abnahme (Befehle und Ausgaben):**
+```
+$ git ls-files | grep -v __pycache__ | xargs grep -li mastertrade
+(leer)
+$ python -c "import mt5_trading_ai, inspect; print(inspect.getfile(mt5_trading_ai))"
+C:\Users\Acer\mt5_trading_ai\mt5_trading_ai\__init__.py
+$ python -m pytest -q
+178 passed
+$ python -m ruff check .
+All checks passed!
+$ python -m mypy --strict mt5_trading_ai tools
+Success: no issues found in 21 source files
+$ python tools/gen_docs.py --check
+ok — MODULES.md ist aktuell (159 Zeilen)
+$ python tools/check_docs_claims.py
+ok - 5/12 Markdown-Dateien, keine Zusicherung ohne Beleg
+```
+
+**Entscheidung, die ich selbst getroffen habe:** Ordner und Importpaket beide
+`mt5_trading_ai` (Unterstrich, konsistent und importierbar); der Distributionsname bleibt
+`mt5-trading-ai` (Bindestrich, PyPI-Konvention). Der alte Baum `bitget-btc-ai` ist davon
+unberuehrt und weiterhin per Tag gesichert.

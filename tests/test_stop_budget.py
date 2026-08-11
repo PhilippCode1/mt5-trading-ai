@@ -5,7 +5,7 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
-from mastertrade.risk.stop_budget import (
+from mt5_trading_ai.risk.stop_budget import (
     ASSUMED_ROUND_TURN_COST_BPS,
     breakeven_hit_rate,
     cost_floor_bps,

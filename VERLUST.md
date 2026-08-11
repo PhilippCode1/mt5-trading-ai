@@ -18,18 +18,18 @@ und `config/`). Anker stehen als `pfad:zeile`. Gemessen, nicht angenommen.
 
 | Faehigkeit | Datei im Kern | Test |
 | --- | --- | --- |
-| Hebelklammer `min(want, 10, Klassendeckel)`, unbekannte Klasse → no_trade | `mastertrade/risk/leverage.py` | `test_asset_class_leverage.py` (rot-geprueft) |
-| Tagesverlust, Drawdown-Halt (kein Selbst-Reset), Positionsdeckel | `mastertrade/risk/limits.py` | `test_loss_limits.py` |
-| Risikoanteil, Stop-Floor, Positionsgroesse | `mastertrade/risk/sizing.py` | `test_risk_sizing.py` |
-| Stop-Budget je Anlageklasse | `mastertrade/risk/stop_budget.py` | `test_stop_budget.py` |
-| Mehrteilige Live-Freigabe (4 Schalter + Kennung, Fail-Closed) | `mastertrade/execution/release.py` | `test_live_release.py` (rot-geprueft) |
-| Bewertungstor: Schwelle, Haltedauer, Abklingzeit, Korrelationsdeckel | `mastertrade/gates/evaluation.py` | `test_evaluation_gate.py` |
-| Vorregistrierte Kriterien, Deflated Sharpe | `mastertrade/gates/criteria.py` | `test_strategy_criteria.py` |
-| Versuchsregister `TRIALS.jsonl` (anhaengend) | `mastertrade/gates/trials.py` | `test_trials_ledger.py` |
-| Lernphase: Rangliste, Schwaechenbefunde, Grenzen | `mastertrade/gates/learning_phase.py` | `test_learning_phase.py` |
-| Datenqualitaet: Lueckenquote, Zeitstempel, Ausreisser, Handelszeiten | `mastertrade/data/quality.py` | `test_data_quality.py` |
-| `TradingVenue`-Protokoll | `mastertrade/venue/protocol.py` | **kein Test** (gab es im Altbestand nicht) |
-| Zeitreihen-Splits mit Purge/Embargo, Walk-Forward bis Datenende | `mastertrade/backtest/splits.py` | `test_splits.py` (Fold-Fix rot-geprueft) |
+| Hebelklammer `min(want, 10, Klassendeckel)`, unbekannte Klasse → no_trade | `mt5_trading_ai/risk/leverage.py` | `test_asset_class_leverage.py` (rot-geprueft) |
+| Tagesverlust, Drawdown-Halt (kein Selbst-Reset), Positionsdeckel | `mt5_trading_ai/risk/limits.py` | `test_loss_limits.py` |
+| Risikoanteil, Stop-Floor, Positionsgroesse | `mt5_trading_ai/risk/sizing.py` | `test_risk_sizing.py` |
+| Stop-Budget je Anlageklasse | `mt5_trading_ai/risk/stop_budget.py` | `test_stop_budget.py` |
+| Mehrteilige Live-Freigabe (4 Schalter + Kennung, Fail-Closed) | `mt5_trading_ai/execution/release.py` | `test_live_release.py` (rot-geprueft) |
+| Bewertungstor: Schwelle, Haltedauer, Abklingzeit, Korrelationsdeckel | `mt5_trading_ai/gates/evaluation.py` | `test_evaluation_gate.py` |
+| Vorregistrierte Kriterien, Deflated Sharpe | `mt5_trading_ai/gates/criteria.py` | `test_strategy_criteria.py` |
+| Versuchsregister `TRIALS.jsonl` (anhaengend) | `mt5_trading_ai/gates/trials.py` | `test_trials_ledger.py` |
+| Lernphase: Rangliste, Schwaechenbefunde, Grenzen | `mt5_trading_ai/gates/learning_phase.py` | `test_learning_phase.py` |
+| Datenqualitaet: Lueckenquote, Zeitstempel, Ausreisser, Handelszeiten | `mt5_trading_ai/data/quality.py` | `test_data_quality.py` |
+| `TradingVenue`-Protokoll | `mt5_trading_ai/venue/protocol.py` | **kein Test** (gab es im Altbestand nicht) |
+| Zeitreihen-Splits mit Purge/Embargo, Walk-Forward bis Datenende | `mt5_trading_ai/backtest/splits.py` | `test_splits.py` (Fold-Fix rot-geprueft) |
 
 ### 1b. Neu zu schreiben (wird gebraucht → `FEHLT.md`)
 

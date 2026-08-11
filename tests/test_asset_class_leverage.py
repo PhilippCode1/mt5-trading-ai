@@ -10,7 +10,7 @@ import json
 from pathlib import Path
 
 import pytest
-from mastertrade.risk.leverage import (
+from mt5_trading_ai.risk.leverage import (
     DEFAULT_LEVERAGE,
     SYSTEM_MAX_LEVERAGE,
     SYSTEM_MIN_LEVERAGE,

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Erzeugt MODULES.md AUS DEM CODE des Pakets ``mastertrade``.
+"""Erzeugt MODULES.md AUS DEM CODE des Pakets ``mt5_trading_ai``.
 
 Warum generiert statt geschrieben: eine handgeschriebene Modeluebersicht veraltet
 lautlos. Generierung plus das Gate ``--check`` haelt die Uebersicht ehrlich -- wer
@@ -22,7 +22,7 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-PKG = REPO / "mastertrade"
+PKG = REPO / "mt5_trading_ai"
 OUT = REPO / "MODULES.md"
 BANNER = "<!-- GENERIERT von tools/gen_docs.py — nicht von Hand bearbeiten -->"
 

@@ -6,8 +6,8 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
-from mastertrade.gates import trials as trials_ledger
-from mastertrade.gates.learning_phase import (
+from mt5_trading_ai.gates import trials as trials_ledger
+from mt5_trading_ai.gates.learning_phase import (
     EvaluationRow,
     LearningPhaseError,
     Proposal,
@@ -43,7 +43,7 @@ def _trade(
 
 
 def test_module_cannot_change_a_strategy_state() -> None:
-    import mastertrade.gates.learning_phase as module
+    import mt5_trading_ai.gates.learning_phase as module
 
     forbidden = {"release", "approve", "promote", "activate", "set_state", "enable"}
     exported = {name.lower() for name in dir(module) if not name.startswith("_")}

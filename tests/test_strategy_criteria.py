@@ -6,7 +6,7 @@ import math
 from dataclasses import replace
 
 import pytest
-from mastertrade.gates.criteria import (
+from mt5_trading_ai.gates.criteria import (
     BacktestEvidence,
     Preregistration,
     annualise_sharpe,

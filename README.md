@@ -1,4 +1,4 @@
-# mastertrade
+# MT5 Trading AI
 
 Ein einzelnes, lokal lauffaehiges Python-Paket. Es enthaelt den herausgeloesten Kern
 eines Handelssystems: die **Risiko- und Sperrschicht** (Hebelklammer, Verlustgrenzen,

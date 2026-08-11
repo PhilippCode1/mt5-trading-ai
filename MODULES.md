@@ -2,7 +2,7 @@
 
 # MODULES — oeffentliche API je Modul (generiert aus dem Code)
 
-## `mastertrade/backtest/splits.py`
+## `mt5_trading_ai/backtest/splits.py`
 
 Zeitreihen-Splits mit Purge und Embargo — herausgeloest aus learning_engine.
 
@@ -11,7 +11,7 @@ Zeitreihen-Splits mit Purge und Embargo — herausgeloest aus learning_engine.
 - `def purged_kfold_embargo_indices`
 - `def walk_forward_indices`
 
-## `mastertrade/data/quality.py`
+## `mt5_trading_ai/data/quality.py`
 
 Datenqualitaet als Gate (Phase 7.2).
 
@@ -22,7 +22,7 @@ Datenqualitaet als Gate (Phase 7.2).
 - `def assess_bars`
 - `def render_markdown`
 
-## `mastertrade/execution/release.py`
+## `mt5_trading_ai/execution/release.py`
 
 Mehrteilige Freigabe fuer Order-Submit an einen echten Markt.
 
@@ -30,7 +30,7 @@ Mehrteilige Freigabe fuer Order-Submit an einen echten Markt.
 - `def evaluate_live_release`
 - `def live_release_blocks_opening_order`
 
-## `mastertrade/gates/criteria.py`
+## `mt5_trading_ai/gates/criteria.py`
 
 Vorregistrierte Kriterien und ihre Auswertung (Phase 9.3).
 
@@ -44,7 +44,7 @@ Vorregistrierte Kriterien und ihre Auswertung (Phase 9.3).
 - `def annualise_sharpe`
 - `def percentile_against_random`
 
-## `mastertrade/gates/evaluation.py`
+## `mt5_trading_ai/gates/evaluation.py`
 
 Bewerten ist nicht handeln (Phase 8.3).
 
@@ -57,7 +57,7 @@ Bewerten ist nicht handeln (Phase 8.3).
 - `def select_one`
 - `def trade_rate`
 
-## `mastertrade/gates/learning_phase.py`
+## `mt5_trading_ai/gates/learning_phase.py`
 
 Lernphase: bewerten und ordnen (Phase 9.5).
 
@@ -75,7 +75,7 @@ Lernphase: bewerten und ordnen (Phase 9.5).
 - `def propose_parameter_sets`
 - `def build_report`
 
-## `mastertrade/gates/trials.py`
+## `mt5_trading_ai/gates/trials.py`
 
 Trials-Ledger (Phase 9.4) — ``TRIALS.jsonl``, ausschliesslich anhaengend.
 
@@ -90,7 +90,7 @@ Trials-Ledger (Phase 9.4) — ``TRIALS.jsonl``, ausschliesslich anhaengend.
 - `class LedgerIntegrity`
 - `def check_integrity`
 
-## `mastertrade/risk/leverage.py`
+## `mt5_trading_ai/risk/leverage.py`
 
 Gesetzlicher Hebeldeckel je Anlageklasse — geladen aus einer versionierten Datei.
 
@@ -103,7 +103,7 @@ Gesetzlicher Hebeldeckel je Anlageklasse — geladen aus einer versionierten Dat
 - `def get_policy`
 - `def clamp_leverage`
 
-## `mastertrade/risk/limits.py`
+## `mt5_trading_ai/risk/limits.py`
 
 Verlustgrenzen und Kill-Switch (Phase 6.4).
 
@@ -113,7 +113,7 @@ Verlustgrenzen und Kill-Switch (Phase 6.4).
 - `class LimitDecision`
 - `def evaluate_limits`
 
-## `mastertrade/risk/sizing.py`
+## `mt5_trading_ai/risk/sizing.py`
 
 Risiko je Trade, ausfuehrbarer Stop-Floor und Positionsgroesse (Phase 6.2/6.3).
 
@@ -125,7 +125,7 @@ Risiko je Trade, ausfuehrbarer Stop-Floor und Positionsgroesse (Phase 6.2/6.3).
 - `def executable_stop_floor`
 - `def size_position`
 
-## `mastertrade/risk/stop_budget.py`
+## `mt5_trading_ai/risk/stop_budget.py`
 
 Stop-Budget je Anlageklasse — hergeleitet, nicht uebertragen (Phase 6.5).
 
@@ -135,7 +135,7 @@ Stop-Budget je Anlageklasse — hergeleitet, nicht uebertragen (Phase 6.5).
 - `def stop_budget`
 - `def breakeven_hit_rate`
 
-## `mastertrade/venue/protocol.py`
+## `mt5_trading_ai/venue/protocol.py`
 
 Plattformunabhaengiger Handelsplatz-Vertrag.
 

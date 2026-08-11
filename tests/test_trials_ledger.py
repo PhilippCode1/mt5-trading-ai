@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
-from mastertrade.gates import trials as ledger
+from mt5_trading_ai.gates import trials as ledger
 
 START = datetime(2024, 1, 1, tzinfo=UTC)
 END = datetime(2026, 1, 1, tzinfo=UTC)

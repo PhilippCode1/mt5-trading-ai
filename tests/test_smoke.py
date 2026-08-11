@@ -6,8 +6,8 @@ Bewusst trivial. Der Punkt ist nicht die Aussage des Tests, sondern dass
 
 from __future__ import annotations
 
-import mastertrade
+import mt5_trading_ai
 
 
 def test_package_imports() -> None:
-    assert mastertrade.__doc__
+    assert mt5_trading_ai.__doc__
