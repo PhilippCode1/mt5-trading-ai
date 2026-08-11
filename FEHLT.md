@@ -18,10 +18,15 @@ genau die falsche Richtung.
 
 ## 1. Anbindung (venue)
 
-- Eine konkrete Implementierung des `TradingVenue`-Protokolls (`mt5_trading_ai/venue/protocol.py`)
-  fuer MT4/MT5 bzw. die Zielboerse — inkl. **Vertragstest** (das Protokoll ist bisher das
-  einzige Kernmodul ohne Test).
-- Private REST/WS-Synchronisation, Order-Lebenszyklus, Reconcile (Konto ↔ Buch).
+- **ERLEDIGT:** `mt5_trading_ai/venue/mt5.py` implementiert `TradingVenue` (`Mt5Venue`) mit
+  Vertragstest (`tests/test_mt5_venue.py`, 18 Faelle) — das Protokoll hat damit erstmals
+  einen Test. Das Live-Freigabe-Tor ist verdrahtet (eroeffnende Live-Order nur mit
+  vollstaendiger Freigabe). `RealMt5Terminal` bindet MetaTrader5 (lazy), Schreibpfad
+  `allow_write=False` (fail-closed).
+- **Offen:** Demo-Smoke-Test von `RealMt5Terminal` gegen ein echtes Terminal, dann bewusst
+  `allow_write=True`; Instrumentenkatalog (Klasse/Kosten/Zeiten) befuellen; private WS-Sync,
+  Order-Lebenszyklus und Reconcile (Konto ↔ Buch); Anschluss der Hebelklammer an die
+  Order-Erzeugung.
 
 ## 2. Marktdaten
 

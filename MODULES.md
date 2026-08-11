@@ -135,6 +135,21 @@ Stop-Budget je Anlageklasse — hergeleitet, nicht uebertragen (Phase 6.5).
 - `def stop_budget`
 - `def breakeven_hit_rate`
 
+## `mt5_trading_ai/venue/mt5.py`
+
+MT5-Anbindung an das ``TradingVenue``-Protokoll.
+
+- `class Mt5Symbol`
+- `class Mt5Tick`
+- `class Mt5Rate`
+- `class Mt5Position`
+- `class Mt5Account`
+- `class Mt5SendResult`
+- `class CatalogEntry`
+- `class Mt5Terminal`
+- `class Mt5Venue`
+- `class RealMt5Terminal`
+
 ## `mt5_trading_ai/venue/protocol.py`
 
 Plattformunabhaengiger Handelsplatz-Vertrag.

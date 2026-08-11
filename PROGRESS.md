@@ -377,3 +377,55 @@ ok - 5/12 Markdown-Dateien, keine Zusicherung ohne Beleg
 `mt5_trading_ai` (Unterstrich, konsistent und importierbar); der Distributionsname bleibt
 `mt5-trading-ai` (Bindestrich, PyPI-Konvention). Der alte Baum `bitget-btc-ai` ist davon
 unberuehrt und weiterhin per Tag gesichert.
+
+---
+
+## ERLEDIGT — MT5-Venue-Anbindung mit Vertragstest
+
+**Was geschehen ist:** Der erste Punkt aus `FEHLT.md` (Anbindung) ist gebaut.
+`mt5_trading_ai/venue/mt5.py` implementiert das `TradingVenue`-Protokoll (`Mt5Venue`),
+gespeist aus der schmalen, injizierbaren Naht `Mt5Terminal`. Die reale MetaTrader5-Bindung
+(`RealMt5Terminal`) liegt als duenne, optionale Schicht daneben; `MetaTrader5` wird nur lazy
+geladen, der Modulimport bleibt stdlib-rein. Der Vertragstest (`tests/test_mt5_venue.py`, 18
+Faelle) prueft Protokoll-Konformitaet, MT5→Protokoll-Abbildung und das Sicherheitstor — damit
+hat `venue/protocol.py` erstmals einen Test.
+
+**Sicherheit — das Live-Freigabe-Tor ist verdrahtet, nicht umgangen:** Eine **eroeffnende**
+Order an ein **Live**-Konto passiert nur mit vollstaendiger Freigabe (`execution/release.py`);
+Demo und Reduce-Only passieren ohne. Der Schreibpfad von `RealMt5Terminal` ist zusaetzlich
+`allow_write=False` (fail-closed) — auch das echte Terminal sendet keine Order, bevor es
+bewusst nach einem Demo-Smoke-Test freigegeben wird.
+
+**Abnahme (Befehle und Ausgaben):**
+```
+$ python -m pytest -q
+196 passed
+$ python -m ruff check .
+All checks passed!
+$ python -m mypy --strict mt5_trading_ai tools
+Success: no issues found in 22 source files
+$ python tools/gen_docs.py --check
+ok — MODULES.md ist aktuell (174 Zeilen)
+```
+
+**Negativ gefahren — Live-Freigabe-Tor** (`if account.is_demo:` → `if True:`):
+```
+# mit Schaden: die Live-Order wird faelschlich akzeptiert
+FAILED tests/test_mt5_venue.py::test_live_opening_order_blocked_without_release
+1 failed
+# Schaden zurueckgenommen:
+18 passed
+```
+
+**Entscheidungen, die ich selbst getroffen habe:** Die MT5→Protokoll-Abbildung liegt im
+Adapter (getestet gegen ein Fake-Terminal), nicht in der Terminal-Bindung — so ist der
+riskante Teil geprueft. `RealMt5Terminal` ist nicht unit-getestet (kann es ohne Terminal
+nicht sein) und deshalb schreibgesperrt. Der Instrumentenkatalog (Klasse/Kosten/Zeiten) wird
+injiziert; ohne Eintrag ist ein Symbol unbekannt (fail-closed).
+
+**Auffaelligkeiten, gemeldet, nicht angefasst:** Die Hebelklammer steckt noch nicht im
+Order-Pfad (das Protokoll traegt kein Hebelfeld); das bleibt der naechste Anschluss.
+`RealMt5Terminal` braucht einen Demo-Smoke-Test, bevor `allow_write=True` sinnvoll ist.
+
+**Zeilenstand (gemessen):** `venue/mt5.py` neu; Paket-Quellcode `mt5_trading_ai/` = 3.381
+Zeilen.
