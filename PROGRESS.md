@@ -258,8 +258,42 @@ generiert (159 Zeilen, nicht handgepflegt). Paket-Quellcode `mastertrade/` unver
 
 ---
 
-## OFFEN — als Naechstes
+## ERLEDIGT U5 — Verlustnachweis (VERLUST.md), vorgelegt
 
-- **U5** — `VERLUST.md` (Faehigkeiten und Sperren des Altbestands einordnen). Vor U6 vorlegen.
-- **U6** — Altbaum archivieren, `.pth`-Leckagen pruefen (`import signal_engine` muss scheitern),
-  `README.md`/`FEHLT.md` finalisieren.
+**Was geschehen ist:** Der Altbestand (15 Dienste unter `services/`, dazu `shared_py/` und
+`config/`) wurde per Subagent vollstaendig aus dem Code enumeriert. `VERLUST.md` ordnet jede
+Faehigkeit und **jede Sperre** einzeln ein (mitgekommen / neu zu schreiben / bewusst
+entfallen), mit `pfad:zeile`-Ankern und Begruendung bei „entfallen". Die zwei Pflicht-Befunde
+sind uebernommen.
+
+**Abnahme (Befehle und Ausgaben):**
+```
+$ python tools/check_docs_claims.py
+ok - 4/12 Markdown-Dateien, keine Zusicherung ohne Beleg
+```
+`VERLUST.md` vollstaendig; jede Sperre eingeordnet; keine Zeile ohne Einordnung.
+
+**Ueberraschender Befund, zuerst verstanden (Regel 12):** Die Auftragsangabe „Hebelklammer
+war nicht angeschlossen" stimmt nur fuer den **Live-Broker-Order-Pfad**. Gemessen ist der
+7/75-Deckel in `signal-engine`, `paper-broker` und `shared_py` sehr wohl verdrahtet
+(`risk_governor.py:558` u. a.). Zwei Konsequenzen im Bericht festgehalten: der Live-Pfad war
+ungeklammert (aber durch Befund 1 ohnehin blockiert), und der Kern **senkt die Obergrenze
+von 75 auf 10** (ESMA-Deckel), die alten 7/75-Defaults bleiben bewusst zurueck.
+
+**Entscheidungen, die ich selbst getroffen habe:** Enumeration per Subagent statt manuell,
+weil der Altbaum gross und die Platte langsam ist; das Ergebnis ist mit `pfad:zeile`-Ankern
+nachpruefbar. Der grosse Fail-Closed-Apparat des Live-Pfads (Kill-Switch, Global-Halt-Latch,
+Runtime-Safety-Oracle, Exchange-Readiness mit `WRITE_ORDER_ALLOWED_DEFAULT=False`, VPIN-Halt,
+Positions-Drift-Halt …) ist als **neu zu schreiben** eingeordnet — nichts davon kann der Kern
+heute tragen, aber jedes muss stehen, bevor ein Ausfuehrungspfad entsteht.
+
+**Auffaelligkeiten, gemeldet, nicht angefasst:** Kein Dienst hat ein eigenes README; die
+Faehigkeiten sind aus `app.py`-Importen und Modulbaeumen abgeleitet.
+
+---
+
+## OFFEN — nach der Entscheidung zu VERLUST.md
+
+- **U6** — Altbaum archivieren (nicht loeschen), `.pth`-Leckagen pruefen
+  (`import signal_engine` muss scheitern), `README.md`/`FEHLT.md` finalisieren.
+  **Beginnt erst, wenn Philipp ueber VERLUST.md entschieden hat.**
