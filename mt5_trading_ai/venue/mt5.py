@@ -559,7 +559,12 @@ class RealMt5Terminal:
         self._mt5: Any = None
 
     def initialize(self) -> bool:
-        mt5: Any = importlib.import_module("MetaTrader5")
+        try:
+            mt5: Any = importlib.import_module("MetaTrader5")
+        except ImportError as exc:
+            raise VenueUnavailableError(
+                "MetaTrader5 nicht installiert (pip install MetaTrader5)"
+            ) from exc
         self._mt5 = mt5
         kwargs: dict[str, Any] = {}
         if self._path is not None:
@@ -731,6 +736,15 @@ class RealMt5Terminal:
         take_profit = request.get("take_profit")
         if take_profit is not None:
             req["tp"] = float(take_profit)
+        if request.get("reduce_only") and action == mt5.TRADE_ACTION_DEAL:
+            # Gegenposition gezielt schliessen (Ticket setzen) — sonst entsteht auf
+            # Hedging-Konten eine neue Position statt eines Close.
+            want_long = not is_buy
+            buy_type = int(getattr(mt5, "POSITION_TYPE_BUY", 0))
+            for pos in mt5.positions_get(symbol=symbol) or ():
+                if (int(pos.type) == buy_type) == want_long:
+                    req["position"] = int(pos.ticket)
+                    break
         res = mt5.order_send(req)
         done = int(getattr(mt5, "TRADE_RETCODE_DONE", 10009))
         accepted = res is not None and int(res.retcode) == done

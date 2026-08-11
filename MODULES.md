@@ -197,3 +197,11 @@ Plattformunabhaengiger Handelsplatz-Vertrag.
 - `class Position`
 - `class AccountState`
 - `class TradingVenue`
+
+## `mt5_trading_ai/venue/smoke.py`
+
+Demo-Smoke-Test der MT5-Bindung — die Orchestrierung, terminalunabhaengig.
+
+- `class SmokeStep`
+- `class SmokeReport`
+- `def run_smoke`

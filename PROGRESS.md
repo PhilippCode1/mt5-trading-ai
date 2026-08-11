@@ -607,3 +607,53 @@ pinnt jetzt ein nur-altes Symbol (muss wegfallen), und ein Venue-Test deckt die 
 
 **Zeilenstand (gemessen):** keine neue Datei; Paket-Quellcode `mt5_trading_ai/` = 3.822
 Zeilen, 16 Module, 176 Testfunktionen.
+
+---
+
+## ERLEDIGT — Demo-Smoke-Test (Runner + Sicherheitslogik)
+
+**Was geschehen ist:** `mt5_trading_ai/venue/smoke.py` (`run_smoke` + `SmokeReport`) faehrt
+eine feste Folge gegen einen `Mt5Venue`: verbinden, Konto lesen und **auf Demo bestehen
+(harter Abbruch)**, Marktdaten, Buch adoptieren, reconcilen, optional die Schreib-Probe
+(winzige Order, sofort per Reduce-Only geschlossen). `tools/mt5_smoke.py` ist die CLI fuer die
+MT5-Maschine (bindet `RealMt5Terminal`, haengt sich ans laufende Terminal, keine Zugangsdaten
+auf der Kommandozeile). `RealMt5Terminal.initialize` meldet fehlendes `MetaTrader5` jetzt
+sauber statt mit Traceback.
+
+**Sicherheit — dreifach gegen Schreibzugriff auf Live:** Demo-Abbruch in `run_smoke`,
+`RealMt5Terminal.allow_write=False`, und das Live-Freigabe-Tor. Standardlauf nur lesend.
+
+**Abnahme (Befehle und Ausgaben):**
+```
+$ python -m pytest -q
+235 passed
+$ python tools/mt5_smoke.py          # hier, ohne MetaTrader5:
+!! connect: MetaTrader5 nicht installiert (pip install MetaTrader5)
+SMOKE FEHLGESCHLAGEN
+$ python -m ruff check .
+All checks passed!
+$ python -m mypy --strict mt5_trading_ai tools
+Success: no issues found in 27 source files
+```
+
+**Negativ gefahren — Demo-Abbruch** (`if not account.is_demo:` → `if False:`):
+`test_smoke_demo_guard_hard_stops_on_live` rot; die Schreib-Probe bleibt dennoch blockiert
+(Live-Freigabe haelt) — defense-in-depth.
+**Negativ gefahren — Tick-Rundung** (Stop ungerundet): `test_probe_stop_snaps_to_tick_grid`
+rot, zurueckgenommen gruen.
+
+**Adversariale Review (Workflow `review-demo-smoke`, 4 Dimensionen, 7 erhoben, 5 in der
+Gegenpruefung verworfen, 2 bestaetigt) — beide eingearbeitet:**
+1. Der Probe-Stop war nicht aufs Tick-Raster gerundet (`bid - bid*0.01` → Sub-Tick, MT5 lehnt
+   mit INVALID_STOPS ab); jetzt in `_probe_stop`, tick-gerundet und getestet.
+2. `RealMt5Terminal.order_send` behandelte `reduce_only` nicht (auf Hedging-Konten oeffnete
+   der Close eine neue Gegenposition); jetzt wird die Gegenposition per Ticket geschlossen.
+
+**Entscheidungen, die ich selbst getroffen habe:** Der eigentliche Terminal-Lauf ist der
+Schritt des Betreibers (hier kein MT5); die Orchestrierung ist gegen ein Fake gepruft. Die
+zwei Review-Befunde liegen im realen Schreibpfad, den genau dieser Smoke verifiziert — Fix 1
+ist rasterrundungs-getestet, Fix 2 bleibt am Demo-Smoke gegen ein echtes Terminal zu
+bestaetigen.
+
+**Zeilenstand (gemessen):** `venue/smoke.py` + `tools/mt5_smoke.py` neu; Paket-Quellcode
+`mt5_trading_ai/` = 3.998 Zeilen, 17 Module, 181 Testfunktionen.
