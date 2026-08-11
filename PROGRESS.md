@@ -292,8 +292,50 @@ Faehigkeiten sind aus `app.py`-Importen und Modulbaeumen abgeleitet.
 
 ---
 
-## OFFEN — nach der Entscheidung zu VERLUST.md
+## ERLEDIGT U6 — Endzustand hergestellt
 
-- **U6** — Altbaum archivieren (nicht loeschen), `.pth`-Leckagen pruefen
-  (`import signal_engine` muss scheitern), `README.md`/`FEHLT.md` finalisieren.
-  **Beginnt erst, wenn Philipp ueber VERLUST.md entschieden hat.**
+**Was geschehen ist:** Philipp entschied „voll archivieren, auftragstreu" — nichts kommt
+aus `VERLUST.md` nachtraeglich mit; alle offenen Faehigkeiten/Sperren bleiben in `FEHLT.md`
+fuer den naechsten Auftrag. Die 16 `.pth`-Eintraege, die in den Altbaum zeigten, sind
+entfernt (die `strategy-validation`-`.pth` eines anderen Projekts blieb unangetastet).
+`FEHLT.md` ist geschrieben. Der Altbaum wird als letzter Schritt umbenannt
+(`bitget-btc-ai` → `bitget-btc-ai_archiv`) — **nicht geloescht**, per Tag
+`archive/pre-extraction` auf dem Remote gesichert.
+
+**Abnahme (Befehle und Ausgaben):**
+```
+$ (16 .pth mit Bezug bitget-btc-ai entfernt)
+$ python -c "import signal_engine"
+ModuleNotFoundError: No module named 'signal_engine'      # die stille Probe: scheitert
+$ python -c "import mastertrade, inspect; print(inspect.getfile(mastertrade))"
+C:\Users\Acer\mastertrade\mastertrade\__init__.py          # zeigt weiter in den neuen Baum
+$ python -m pytest -q
+178 passed
+$ python -m ruff check .
+All checks passed!
+$ python -m mypy --strict mastertrade tools
+Success: no issues found in 21 source files
+$ python tools/gen_docs.py --check
+ok — MODULES.md ist aktuell
+$ python tools/check_docs_claims.py
+ok - 5/12 Markdown-Dateien, keine Zusicherung ohne Beleg
+```
+
+**Entscheidungen, die ich selbst getroffen habe:** Reihenfolge — `.pth` zuerst, Umbenennung
+zuletzt, weil der Altbaum das Session-Verzeichnis ist und seine Umbenennung den Pfad
+entzieht. `README.md` wurde nicht neu geschrieben: es beschreibt bereits, was das Paket ist,
+kann und nicht kann, und seine Kennzahlen sind gemessen und per Test gegen den Code
+gesperrt.
+
+**Zeilenstand (gemessen):** `.py` gesamt **4.462** (Quellcode `mastertrade/` 2.680, Tests
+1.567, Werkzeuge `tools/` 215). Zielgroesse < 6.000 eingehalten.
+
+---
+
+## Endzustand
+
+Sechs Pakete, sechs Commits. Der Kern ist gruen, seine Sperren werden nachweislich rot,
+wenn man sie beschaedigt, seine Splits reichen bis zum Datenende und tragen kein
+Null-Purge, seine Doku kann nicht mehr behaupten, was der Code nicht tut. `VERLUST.md`
+sagt, was zurueckblieb; `FEHLT.md`, was der naechste Auftrag fuellt. Der Altbestand liegt
+im Archiv, per Tag erreichbar, und `import signal_engine` scheitert.

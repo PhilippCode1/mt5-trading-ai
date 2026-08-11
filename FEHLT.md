@@ -1,0 +1,86 @@
+# FEHLT.md — die Leerstellen, die der nächste Auftrag füllt
+
+*Was im Kern **nicht** ist. Dieser Auftrag hat den bewiesenen Kern herausgeloest; das
+Fuellen der Leerstellen ist der naechste Auftrag (Teil 2). Nichts hier ist ein Mangel des
+Kerns — es ist die bewusst gezogene Grenze. Die vollstaendige Einordnung mit Ankern steht in
+`VERLUST.md`; diese Datei fasst zusammen, was gebaut werden muss, und in welcher Reihenfolge.*
+
+---
+
+## Die harte Reihenfolge-Regel
+
+**Kein Ausfuehrungspfad, bevor der Fail-Closed-Apparat und die menschlichen Tore stehen.**
+Die Risiko- und Sperrschicht ist da und geprueft, aber sie ist noch an **keinen** realen
+Order-Pfad angeschlossen. Ein Anschluss ohne die Tore aus „Sicherheitsapparat" unten waere
+genau die falsche Richtung.
+
+---
+
+## 1. Anbindung (venue)
+
+- Eine konkrete Implementierung des `TradingVenue`-Protokolls (`mastertrade/venue/protocol.py`)
+  fuer MT4/MT5 bzw. die Zielboerse — inkl. **Vertragstest** (das Protokoll ist bisher das
+  einzige Kernmodul ohne Test).
+- Private REST/WS-Synchronisation, Order-Lebenszyklus, Reconcile (Konto ↔ Buch).
+
+## 2. Marktdaten
+
+- Marktdatenstrom mit Orderbuch-CRC32-Pruefsumme, Sequenzluecken-Erkennung, REST-Nachzug nach
+  Verbindungsabriss, Feed-Health-Ereignissen (aus `market-stream`, neu zu schreiben).
+
+## 3. Kosten
+
+- Family-aware Fee-/Funding-/Slippage-/Liquidations-Modell (aus `paper-broker`, neu zu schreiben).
+
+## 4. Universum (Instrumentenkatalog)
+
+- Instrumentenkatalog mit Fail-Closed-Pruefungen (Katalog/Metadaten/Family/Product-Type/
+  Margin-Coin), an den die Hebelklammer die Anlageklasse bindet.
+
+## 5. Strategie
+
+- Signal-/Entscheidungslogik, Ensemble, Scoring (aus `signal-engine`, neu zu schreiben) —
+  gefuehrt durch die vorregistrierten Kriterien und das Versuchsregister, die schon im Kern
+  liegen (`mastertrade/gates/`).
+
+## 6. Backtest-Maschine
+
+- Eine Backtest-Maschine, die die Zeitreihen-Splits (`mastertrade/backtest/splits.py`) mit
+  echten Daten fuettert — Purge/Embargo sind jetzt pflichtige Parameter, kein stiller Null-Default.
+
+## 7. Sicherheitsapparat (Tore) — vor jedem Live-Pfad
+
+Der Altbestand trug diese Fail-Closed-Sperren am Live-Order-Pfad. **Keine** kam mit (sie
+haengt am echten Konto/Feed); **jede** muss stehen, bevor ein Ausfuehrungspfad entsteht.
+Vollstaendige Liste mit Ankern in `VERLUST.md` §2b. Kern:
+
+- **Kill-Switch** (arm/release, reduce-only-Pfad) und **Global-Halt-Latch**.
+- **Runtime-Safety-Oracle** (Axiom-Checks → Global-Halt) und **Exchange-Readiness**
+  (`WRITE_ORDER_ALLOWED_DEFAULT=False`, Zeitversatz-Deckel).
+- **Live-Preflight** (Owner-Freigabe/Execution-Mode) und **exit_safety** (Reduce-Only).
+- VPIN-Hard-Halt, Liquiditaets-/Slippage-Guard, Strategie-Config-Pruefsumme,
+  Positions-Drift-Halt, Reconcile-Snapshot-Fail-Closed.
+- portfolio_risk_controls (halt_new_entries/reduce_only/global_halt), uncertainty_gates,
+  rejection_rules, pipeline_gates/health_map, secret_leak_guard.
+
+## 8. Zwei konkrete offene Befunde (aus `VERLUST.md` §3)
+
+1. **`portfolio_risk_state_unknown_or_stale`** verlangte im Altbestand `portfolio_risk_check_fresh`
+   im Order-Trace, und **kein Produktionscode setzte den Schluessel** — der Guard blockierte
+   damit jede eroeffnende Order. Beim Bau des Order-Pfads ist zu klaeren: wer setzt den
+   Schluessel korrekt, und wie wird belegt, dass der Pfad je durchlaeuft?
+2. **Anschluss der Hebelklammer.** Das Modul ist im Kern (`mastertrade/risk/leverage.py`,
+   Deckel ≤ 10) und rot-geprueft, aber an keinen Order-Pfad gebunden. Der Altbestand hatte
+   7/75-Defaults in `config/settings.py` und `paper-broker/config.py`; der Kern senkt die
+   Obergrenze auf 10. Der **Anschluss** an den realen Pfad ist neu zu schreiben — und er
+   ist der Ort, an dem Befund 1 mitgeprueft gehoert.
+
+---
+
+## Menschliche Tore, die bleiben
+
+Die mehrteilige Live-Freigabe (`mastertrade/execution/release.py`) ist da und rot-geprueft:
+vier unabhaengige Schalter **und** eine nichtleere Freigabekennung, alle Defaults aus, „nicht
+bewertbar = nicht erfuellt". Ein realer Order-Pfad darf diese Freigabe nicht umgehen. Reduce-
+Only (Risikoabbau) bleibt ohne Freigabe moeglich, weil eine Sperre, die das Schliessen
+verhindert, das Risiko erhoeht.
