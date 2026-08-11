@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "policy_id": "eu-retail-cfd-leverage",
+  "policy_version": "2026-08-06",
+  "jurisdiction": "EU/EEA, Kleinanleger (retail client)",
+  "valid_from": "2026-08-06",
+  "valid_until": null,
+  "verified_on": "2026-08-06",
+  "sources": [
+    {
+      "title": "ESMA — Public statement on derivatives in scope of the CFD product intervention measures",
+      "reference": "ESMA35-243228190-8024",
+      "date": "2026-02-24",
+      "url": "https://www.esma.europa.eu/sites/default/files/2026-02/ESMA35-243228190-8024_-_Public_statement_on_derivatives_in_scope_of_the_CFD_product_intervention_measures.pdf",
+      "note": "Derivate, die als 'perpetual futures' oder 'perpetual contracts' vermarktet werden, fallen wahrscheinlich unter die nationalen Produktinterventionsmassnahmen fuer CFDs. Der kommerzielle Name ist fuer die Einordnung unerheblich."
+    },
+    {
+      "title": "ESMA — Product intervention measures on CFDs (Entscheidung 2018/796, seither dauerhaft durch nationale Massnahmen)",
+      "reference": "ESMA71-99-1041 / nationale Umsetzungen",
+      "date": "2018-08-01",
+      "url": "https://www.esma.europa.eu/press-news/esma-news/esma-adopts-final-product-intervention-measures-cfds-and-binary-options",
+      "note": "Hebelobergrenzen je Anlageklasse fuer Kleinanleger."
+    }
+  ],
+  "system_max_leverage": 10,
+  "system_min_leverage": 5,
+  "unknown_class_behaviour": "no_trade",
+  "classes": {
+    "fx_major": {
+      "max_leverage": 30,
+      "label": "Haupt-Waehrungspaare",
+      "examples": ["EURUSD", "USDJPY", "GBPUSD", "USDCHF", "AUDUSD", "USDCAD"]
+    },
+    "fx_minor": {
+      "max_leverage": 20,
+      "label": "Neben-Waehrungspaare",
+      "examples": ["EURNOK", "AUDNZD", "GBPCAD"]
+    },
+    "gold": {
+      "max_leverage": 20,
+      "label": "Gold",
+      "examples": ["XAUUSD"]
+    },
+    "index_major": {
+      "max_leverage": 20,
+      "label": "Hauptindizes",
+      "examples": [
+        "GER40",
+        "US500",
+        "US30",
+        "UK100",
+        "JP225",
+        "EU50",
+        "FR40",
+        "US100"
+      ]
+    },
+    "index_minor": {
+      "max_leverage": 10,
+      "label": "Nebenindizes",
+      "examples": ["AUS200", "ES35", "CH20"]
+    },
+    "commodity_non_gold": {
+      "max_leverage": 10,
+      "label": "Rohstoffe ausser Gold",
+      "examples": ["XAGUSD", "UKOIL", "USOIL", "NATGAS"]
+    },
+    "equity": {
+      "max_leverage": 5,
+      "label": "Einzelaktien",
+      "examples": ["AAPL", "SAP", "MSFT"]
+    },
+    "crypto": {
+      "max_leverage": 2,
+      "label": "Krypto",
+      "examples": ["BTCUSD", "ETHUSD"],
+      "note": "2 liegt unter system_min_leverage=5. Krypto ist damit im Betriebsbereich dieses Systems nicht handelbar; der Allokator liefert no_trade."
+    }
+  }
+}
