@@ -473,3 +473,43 @@ reale Terminal-Bindung.
 
 **Zeilenstand (gemessen):** `execution/leverage_preflight.py` neu; Paket-Quellcode
 `mt5_trading_ai/` = 3.496 Zeilen, 14 Module, 148 Testfunktionen.
+
+---
+
+## ERLEDIGT — Instrumentenkatalog (versioniert, fail-closed)
+
+**Was geschehen ist:** `mt5_trading_ai/venue/catalog.py` laedt den Instrumentenkatalog aus
+einer versionierten Datei (`config/instrument_catalog.json`, mit Quelle/Gueltigkeits-/
+Pruefdatum): je Symbol die Anlageklasse (steuert den Hebeldeckel), das Kostenmodell und die
+Handelszeiten — genau das, was MT5 nicht liefert. `CatalogEntry` wohnt jetzt hier (aus
+`venue/mt5.py` hierher verschoben; `mt5.py` importiert es und reicht es weiter). Fail-closed:
+jeder Defekt ist ein Fehler, kein Default; ein Symbol ohne Eintrag ist unbekannt.
+
+**Anschluss an die Hebelpolitik:** Ein Test prueft, dass **jede** Anlageklasse im Katalog der
+Hebelklammer bekannt ist (sonst faende sie keinen Deckel). Krypto steht im Katalog, ist aber
+nicht handelbar (Deckel 2 < Betriebsminimum 5) — der Katalog kennt es, die Klammer nicht.
+
+**Abnahme (Befehle und Ausgaben):**
+```
+$ python -m pytest -q
+215 passed
+$ python -m ruff check .
+All checks passed!
+$ python -m mypy --strict mt5_trading_ai tools
+Success: no issues found in 24 source files
+$ python tools/check_docs_claims.py
+ok - 5/12 Markdown-Dateien, keine Zusicherung ohne Beleg
+```
+
+**Fail-closed geprueft (9 Faelle):** fehlende Datei, kaputtes JSON, fehlendes Pflichtfeld,
+leere Instrumentenliste, unbekannte Anlageklasse, fehlende Kosten, Kosten ohne Waehrung,
+leere und kaputte Handelszeiten — jeder wirft `InstrumentCatalogError`.
+
+**Entscheidungen, die ich selbst getroffen habe:** Kosten und Handelszeiten in der Datei
+sind **indikative** Platzhalter, in den Quellen der Datei ausdruecklich so ausgewiesen und je
+Broker zu verifizieren; die handelsrelevante Zuordnung (Anlageklasse → Hebeldeckel) folgt der
+ESMA-Klasseneinteilung aus `config/asset_class_leverage.json`. `CatalogEntry` verschoben,
+damit die Katalog-Definition beim Katalog liegt, nicht beim Adapter.
+
+**Zeilenstand (gemessen):** `venue/catalog.py` + `config/instrument_catalog.json` neu;
+Paket-Quellcode `mt5_trading_ai/` = 3.640 Zeilen, 15 Module, 161 Testfunktionen.

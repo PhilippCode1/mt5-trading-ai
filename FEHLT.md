@@ -23,9 +23,11 @@ genau die falsche Richtung.
   einen Test. Das Live-Freigabe-Tor ist verdrahtet (eroeffnende Live-Order nur mit
   vollstaendiger Freigabe). `RealMt5Terminal` bindet MetaTrader5 (lazy), Schreibpfad
   `allow_write=False` (fail-closed).
+- **Instrumentenkatalog: ERLEDIGT** — `mt5_trading_ai/venue/catalog.py` +
+  `config/instrument_catalog.json` (versioniert, fail-closed). Kosten/Zeiten darin sind
+  indikativ und je Broker zu verifizieren; die Anlageklassen-Zuordnung steuert den Hebeldeckel.
 - **Offen:** Demo-Smoke-Test von `RealMt5Terminal` gegen ein echtes Terminal, dann bewusst
-  `allow_write=True`; Instrumentenkatalog (Klasse/Kosten/Zeiten) befuellen; private WS-Sync,
-  Order-Lebenszyklus und Reconcile (Konto ↔ Buch).
+  `allow_write=True`; private WS-Sync, Order-Lebenszyklus und Reconcile (Konto ↔ Buch).
 - **Hebelklammer-Anschluss: ERLEDIGT** — `execution/leverage_preflight.py`, in
   `Mt5Venue.submit_order` bei jeder eroeffnenden Order verdrahtet. Offen bleibt nur, den
   geklammerten Hebel am realen Terminal je Symbol zu **setzen** (MT5-Symbol-Leverage).

@@ -27,11 +27,10 @@ from typing import Any, Protocol, runtime_checkable
 
 from mt5_trading_ai.execution.leverage_preflight import evaluate_leverage_preflight
 from mt5_trading_ai.execution.release import live_release_blocks_opening_order
+from mt5_trading_ai.venue.catalog import CatalogEntry
 from mt5_trading_ai.venue.protocol import (
     AccountState,
-    AssetClass,
     Bar,
-    FeeSchedule,
     Instrument,
     OrderRejectedError,
     OrderRequest,
@@ -40,7 +39,6 @@ from mt5_trading_ai.venue.protocol import (
     Position,
     Quote,
     Timeframe,
-    TradingSession,
     TradingVenue,
     UnknownInstrumentError,
     VenueUnavailableError,
@@ -127,19 +125,6 @@ class Mt5SendResult:
     reason: str
     retryable: bool = False
     raw: dict[str, Any] = field(default_factory=dict)
-
-
-@dataclass(frozen=True)
-class CatalogEntry:
-    """Instrument-Metadaten, die MT5 nicht liefert: Klasse, Kosten, Handelszeiten.
-
-    ``asset_class`` ist Pflicht — sie steuert den gesetzlichen Hebeldeckel. Ohne
-    Katalogeintrag ist ein Symbol unbekannt (fail-closed).
-    """
-
-    asset_class: AssetClass
-    fees: FeeSchedule
-    sessions: tuple[TradingSession, ...]
 
 
 @runtime_checkable

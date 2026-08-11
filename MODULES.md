@@ -142,6 +142,15 @@ Stop-Budget je Anlageklasse — hergeleitet, nicht uebertragen (Phase 6.5).
 - `def stop_budget`
 - `def breakeven_hit_rate`
 
+## `mt5_trading_ai/venue/catalog.py`
+
+Instrumentenkatalog — die Metadaten, die MT5 nicht liefert.
+
+- `class InstrumentCatalogError`
+- `class CatalogEntry`
+- `def default_catalog_path`
+- `def load_instrument_catalog`
+
 ## `mt5_trading_ai/venue/mt5.py`
 
 MT5-Anbindung an das ``TradingVenue``-Protokoll.
@@ -152,7 +161,6 @@ MT5-Anbindung an das ``TradingVenue``-Protokoll.
 - `class Mt5Position`
 - `class Mt5Account`
 - `class Mt5SendResult`
-- `class CatalogEntry`
 - `class Mt5Terminal`
 - `class Mt5Venue`
 - `class RealMt5Terminal`
