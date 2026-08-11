@@ -115,7 +115,11 @@ class FakeMt5Terminal:
     """In-Memory-Terminal fuer den Vertragstest. Erfuellt ``Mt5Terminal``."""
 
     def __init__(
-        self, *, is_demo: bool, margin_free: Decimal = Decimal("10000")
+        self,
+        *,
+        is_demo: bool,
+        margin_free: Decimal = Decimal("10000"),
+        positions: tuple[Mt5Position, ...] = (),
     ) -> None:
         self._connected = False
         self._symbols = {"EURUSD": _eurusd_symbol(), "BTCUSD": _btcusd_symbol()}
@@ -129,7 +133,7 @@ class FakeMt5Terminal:
             is_demo=is_demo,
             ts=TS,
         )
-        self._positions: tuple[Mt5Position, ...] = ()
+        self._positions: tuple[Mt5Position, ...] = positions
         self.order_send_calls = 0
         self.cancel_calls: list[str] = []
         self.modify_calls: list[tuple[str, Decimal | None, Decimal | None]] = []
@@ -212,9 +216,15 @@ class FakeMt5Terminal:
 
 
 def _venue(
-    *, is_demo: bool, settings: object = None, margin_free: Decimal = Decimal("10000")
+    *,
+    is_demo: bool,
+    settings: object = None,
+    margin_free: Decimal = Decimal("10000"),
+    positions: tuple[Mt5Position, ...] = (),
 ) -> tuple[Mt5Venue, FakeMt5Terminal]:
-    terminal = FakeMt5Terminal(is_demo=is_demo, margin_free=margin_free)
+    terminal = FakeMt5Terminal(
+        is_demo=is_demo, margin_free=margin_free, positions=positions
+    )
     venue = Mt5Venue(
         name="mt5-demo",
         terminal=terminal,
@@ -459,3 +469,58 @@ def test_venue_opening_passes_with_default_leverage() -> None:
     result = venue.submit_order(_order(client_order_id="ok-1"))
     assert result.accepted is True
     assert terminal.order_send_calls == 1
+
+
+# --- Order-Lebenszyklus / Reconcile (Konto gegen Buch) -------------------
+
+
+def _mt5_position(symbol: str, *, is_buy: bool, volume: Decimal) -> Mt5Position:
+    return Mt5Position(
+        ticket="t1",
+        symbol=symbol,
+        is_buy=is_buy,
+        volume=volume,
+        entry_price=Decimal("1.1"),
+        stop_loss=None,
+        take_profit=None,
+        opened_at=TS,
+        unrealised_pnl=Decimal("0"),
+        swap=Decimal("0"),
+    )
+
+
+def test_reconcile_matches_when_book_and_exchange_agree() -> None:
+    venue, _ = _venue(is_demo=True)
+    result = venue.reconcile()  # Buch leer, keine Positionen
+    assert result.matched is True
+    assert result.halt is False
+    assert venue.is_halted() is False
+
+
+def test_book_updates_on_fill() -> None:
+    venue, _ = _venue(is_demo=True)
+    venue.submit_order(_order(client_order_id="b-1"))
+    assert venue.book_snapshot() == {"EURUSD": Decimal("0.10")}
+
+
+def test_reconcile_drift_halts_and_blocks_opening() -> None:
+    # Die Boerse meldet eine Position, die das Buch nicht kennt -> Drift -> Halt.
+    venue, terminal = _venue(
+        is_demo=True,
+        positions=(_mt5_position("EURUSD", is_buy=True, volume=Decimal("0.50")),),
+    )
+    result = venue.reconcile()
+    assert result.halt is True
+    assert venue.is_halted() is True
+
+    # Eroeffnung ist gesperrt, Reduce-Only nicht.
+    with pytest.raises(OrderRejectedError) as excinfo:
+        venue.submit_order(_order(client_order_id="o-1"))
+    assert excinfo.value.reason == "global_halt"
+    reduce = venue.submit_order(_order(client_order_id="r-1", reduce_only=True))
+    assert reduce.accepted is True
+
+    # Nach manueller Freigabe geht Eroeffnung wieder.
+    venue.clear_halt()
+    assert venue.is_halted() is False
+    assert venue.submit_order(_order(client_order_id="o-2")).accepted is True

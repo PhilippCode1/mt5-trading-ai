@@ -25,7 +25,7 @@ Gemessen, nicht behauptet — gegen den Code geprueft von `tests/test_readme_num
 Aendert sich der Code, ohne dass diese Zahlen nachgezogen werden, wird der Test rot.
 
 <!-- KENNZAHLEN-ANFANG (geprueft von tests/test_readme_numbers.py) -->
-- module_count: 15
-- test_function_count: 161
-- source_lines: 3640
+- module_count: 16
+- test_function_count: 172
+- source_lines: 3804
 <!-- KENNZAHLEN-ENDE -->

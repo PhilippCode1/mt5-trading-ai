@@ -29,6 +29,16 @@ Anschluss der Hebelklammer an den Order-Pfad.
 - `class LeveragePreflight`
 - `def evaluate_leverage_preflight`
 
+## `mt5_trading_ai/execution/reconcile.py`
+
+Order-Lebenszyklus und Reconcile: Konto gegen Buch.
+
+- `class PositionBook`
+- `def positions_to_net`
+- `class SymbolDrift`
+- `class ReconcileResult`
+- `def reconcile_positions`
+
 ## `mt5_trading_ai/execution/release.py`
 
 Mehrteilige Freigabe fuer Order-Submit an einen echten Markt.

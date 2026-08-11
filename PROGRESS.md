@@ -513,3 +513,52 @@ damit die Katalog-Definition beim Katalog liegt, nicht beim Adapter.
 
 **Zeilenstand (gemessen):** `venue/catalog.py` + `config/instrument_catalog.json` neu;
 Paket-Quellcode `mt5_trading_ai/` = 3.640 Zeilen, 15 Module, 161 Testfunktionen.
+
+---
+
+## ERLEDIGT — Order-Lebenszyklus und Reconcile (Konto gegen Buch)
+
+**Was geschehen ist:** `mt5_trading_ai/execution/reconcile.py` bringt ein lokales
+Nettopositions-**Buch** (`PositionBook`) und den Reconcile-Vergleich Buch gegen Meldung.
+`Mt5Venue` fuehrt das Buch aus jedem angenommenen Fill; `venue.reconcile()` vergleicht es mit
+den gemeldeten Positionen und **rastet bei Notional-Drift ueber der Grenze in einen
+Global-Halt**. Danach lehnt `submit_order` jede Eroeffnung ab (`reason="global_halt"`),
+Reduce-Only bleibt frei. Der Latch klaert nicht selbst; `clear_halt()` ist die manuelle
+Freigabe. Damit ist die in `VERLUST.md` §2b gelistete Positions-Drift-/Global-Halt-Sperre
+gebaut, und Befund 1 (frischer Risikocheck vor Eroeffnung) ist beantwortet: der Reconcile
+ist genau dieser frische Check, den das System selbst rechnet.
+
+**Fail-closed in zwei Richtungen:** Notional-Drift ueber der Grenze haelt an; eine **nicht
+bewertbare** Drift (kein Preis fuers Symbol) haelt ebenfalls an.
+
+**Abnahme (Befehle und Ausgaben):**
+```
+$ python -m pytest -q
+226 passed
+$ python -m ruff check .
+All checks passed!
+$ python -m mypy --strict mt5_trading_ai tools
+Success: no issues found in 25 source files
+```
+
+**Negativ gefahren — Halt-Tor** (`if self._halted:` → `if False:`):
+```
+FAILED tests/test_mt5_venue.py::test_reconcile_drift_halts_and_blocks_opening
+1 failed
+# Schaden zurueckgenommen:
+35 passed
+```
+
+**Entscheidungen, die ich selbst getroffen habe:** Reconcile ist eine **Methode**
+(`venue.reconcile()`), kein Automatismus je Order — der Betreiber/Scheduler ruft sie, das
+Ergebnis rastet den Latch. So bleibt der Order-Pfad billig, und der Halt ist ein bewusster,
+manuell zu loesender Zustand (wie der Drawdown-Halt in `loss_limits`). Standardgrenze
+`max_notional_drift=0` (strengstmoeglich, fail-closed); der Betreiber kann lockern.
+
+**Auffaelligkeiten, gemeldet, nicht angefasst:** Das Buch startet leer; nach einem Neustart
+muss es aus der Boerse **adoptiert** werden, sonst meldet der erste Reconcile jede bestehende
+Position als Drift (sichere Richtung, aber ein bewusster Adoptionsschritt gehoert in die
+reale Terminal-Bindung).
+
+**Zeilenstand (gemessen):** `execution/reconcile.py` neu; Paket-Quellcode `mt5_trading_ai/` =
+3.804 Zeilen, 16 Module, 172 Testfunktionen.

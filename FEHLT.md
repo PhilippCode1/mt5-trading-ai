@@ -26,8 +26,11 @@ genau die falsche Richtung.
 - **Instrumentenkatalog: ERLEDIGT** — `mt5_trading_ai/venue/catalog.py` +
   `config/instrument_catalog.json` (versioniert, fail-closed). Kosten/Zeiten darin sind
   indikativ und je Broker zu verifizieren; die Anlageklassen-Zuordnung steuert den Hebeldeckel.
+- **Order-Lebenszyklus & Reconcile: ERLEDIGT** — `mt5_trading_ai/execution/reconcile.py`
+  (Buch + Notional-Drift-Halt), in `Mt5Venue` verdrahtet (`reconcile()`, Global-Halt-Latch,
+  `clear_halt()`). Offen bleibt nur die **Adoption** des Buchs aus der Boerse beim Neustart.
 - **Offen:** Demo-Smoke-Test von `RealMt5Terminal` gegen ein echtes Terminal, dann bewusst
-  `allow_write=True`; private WS-Sync, Order-Lebenszyklus und Reconcile (Konto ↔ Buch).
+  `allow_write=True`; private WS-Sync (Order-/Positions-Ereignisse in Echtzeit statt Abruf).
 - **Hebelklammer-Anschluss: ERLEDIGT** — `execution/leverage_preflight.py`, in
   `Mt5Venue.submit_order` bei jeder eroeffnenden Order verdrahtet. Offen bleibt nur, den
   geklammerten Hebel am realen Terminal je Symbol zu **setzen** (MT5-Symbol-Leverage).

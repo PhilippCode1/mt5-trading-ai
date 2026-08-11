@@ -26,6 +26,12 @@ from decimal import Decimal
 from typing import Any, Protocol, runtime_checkable
 
 from mt5_trading_ai.execution.leverage_preflight import evaluate_leverage_preflight
+from mt5_trading_ai.execution.reconcile import (
+    PositionBook,
+    ReconcileResult,
+    positions_to_net,
+    reconcile_positions,
+)
 from mt5_trading_ai.execution.release import live_release_blocks_opening_order
 from mt5_trading_ai.venue.catalog import CatalogEntry
 from mt5_trading_ai.venue.protocol import (
@@ -174,14 +180,20 @@ class Mt5Venue(TradingVenue):
         terminal: Mt5Terminal,
         catalog: Mapping[str, CatalogEntry],
         settings: Any = None,
+        max_notional_drift: Decimal = Decimal("0"),
     ) -> None:
         self.name = name
         self._terminal = terminal
         self._catalog = dict(catalog)
         self._settings = settings
+        self._max_notional_drift = max_notional_drift
         self._connected = False
         #: Idempotenz je ``client_order_id`` — nur angenommene Orders.
         self._results: dict[str, OrderResult] = {}
+        #: Lokales Buch der Nettopositionen; Reconcile vergleicht es mit der Meldung.
+        self._book = PositionBook()
+        #: Global-Halt-Latch (Reconcile-Drift). Klaert nicht selbst, nur ``clear_halt``.
+        self._halted = False
 
     # --- Verbindung -------------------------------------------------------
     def connect(self) -> None:
@@ -306,6 +318,12 @@ class Mt5Venue(TradingVenue):
         self._validate_volume(instrument, request.volume)
 
         if not request.reduce_only:
+            if self._halted:
+                raise OrderRejectedError(
+                    "Global-Halt aktiv (Reconcile-Drift) — keine Eroeffnung",
+                    reason="global_halt",
+                    retryable=False,
+                )
             # Ohne Stop wird nicht eroeffnet (Protokoll).
             if request.stop_loss <= 0:
                 raise OrderRejectedError(
@@ -336,6 +354,7 @@ class Mt5Venue(TradingVenue):
             raw=send.raw,
         )
         self._results[request.client_order_id] = result
+        self._book.apply_fill(request.symbol, request.side, send.filled_volume)
         return result
 
     def _require_live_release_for_opening(self) -> None:
@@ -457,6 +476,44 @@ class Mt5Venue(TradingVenue):
             is_demo=acc.is_demo,
             ts=acc.ts,
         )
+
+    # --- Order-Lebenszyklus / Reconcile -----------------------------------
+    def book_snapshot(self) -> dict[str, Decimal]:
+        """Das lokale Buch der Nettopositionen je Symbol."""
+        return self._book.snapshot()
+
+    def is_halted(self) -> bool:
+        return self._halted
+
+    def clear_halt(self) -> None:
+        """Manuelle Freigabe nach aufgeloester Drift. Der Latch klaert nicht selbst."""
+        self._halted = False
+
+    def reconcile(self) -> ReconcileResult:
+        """Buch gegen Meldung; bei Drift ueber der Grenze Global-Halt setzen."""
+        self._require_healthy()
+        actual = positions_to_net(self.get_positions())
+        expected = self._book.snapshot()
+        notional_per_unit: dict[str, Decimal] = {}
+        for symbol in set(expected) | set(actual):
+            tick = self._terminal.tick(symbol)
+            if tick is None:
+                continue
+            try:
+                instrument = self.get_instrument(symbol)
+            except UnknownInstrumentError:
+                continue
+            mid = (tick.bid + tick.ask) / Decimal("2")
+            notional_per_unit[symbol] = instrument.contract_size * mid
+        result = reconcile_positions(
+            expected=expected,
+            actual=actual,
+            notional_per_unit=notional_per_unit,
+            max_notional_drift=self._max_notional_drift,
+        )
+        if result.halt:
+            self._halted = True
+        return result
 
 
 class RealMt5Terminal:
