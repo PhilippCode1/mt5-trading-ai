@@ -204,9 +204,62 @@ entsprechend, bleibt deutlich unter 6.000.
 
 ---
 
+## ERLEDIGT U4 — Doku-Tore umgezogen und erweitert
+
+**Was geschehen ist:** `check_docs_claims.py` uebernommen — es prueft bereits **jede** vom
+Git verfolgte Markdown-Datei (`git ls-files *.md`), keine Auswahl; damit ist die vom
+Auftrag verlangte Ausweitung schon erfuellt. `gen_docs.py` wurde auf das neue Paket
+umgestellt: der alte erzeugte Service-/Konfigurationsdoku aus einem Manifest und den
+Settings-Klassen (beides im Kern nicht vorhanden), der neue erzeugt `MODULES.md` aus dem
+Paket-AST, mit `--check`-Gate. Dazu ein neuer, blockierender README-Zahlentest.
+
+**Abnahme (Befehle und Ausgaben):**
+```
+$ python tools/gen_docs.py --check
+ok — MODULES.md ist aktuell (159 Zeilen).
+$ python tools/check_docs_claims.py
+ok - 3/12 Markdown-Dateien, keine Zusicherung ohne Beleg
+$ python -m ruff check .
+All checks passed!
+$ python -m mypy --strict mastertrade tools
+Success: no issues found in 21 source files
+$ python -m pytest -q
+178 passed
+```
+
+**Negativ gefahren — README-Zahlentest** (falsche Zahl eingetragen):
+```
+# module_count 12 -> 13:
+FAILED tests/test_readme_numbers.py::test_readme_module_count_matches_code
+1 failed, 2 passed
+# zurueckgenommen:
+3 passed
+```
+
+**Entscheidungen, die ich selbst getroffen habe:** `gen_docs` wurde adaptiert statt
+woertlich umgezogen — seine alten Quellen (Service-Manifest, Settings-AST, `.env*.example`)
+existieren im Kern nicht, ein Verbatim-Port waere sofort gescheitert; der Zweck (Doku aus
+Code + Gate) bleibt, der Umfang ist das neue Paket. `mypy --strict` habe ich zusaetzlich
+ueber `tools/` gefahren (ueber das Teil-8-Minimum `mypy --strict mastertrade` hinaus), um
+Teil 3 VIII fuer selbstgeschriebenen Code einzuloesen; die Tests bleiben unter `ruff` +
+`pytest`.
+
+**Eigene Fehler in diesem Paket:** Der uebernommene `check_docs_claims.py` trug 6
+E501-Zeilen und eine `mypy --strict`-Verletzung (eine Schleifenvariable war erst `Path`,
+dann `str`) — im Altbestand nie gefangen, weil dessen CI 0 Produktionsdateien lintete.
+Genau der Befund, den Teil 3 VIII beschreibt. Beim Umzug behoben: Zeilen umbrochen,
+Schleifenvariable umbenannt; Logik und Meldungen unveraendert.
+
+**Auffaelligkeiten, gemeldet, nicht angefasst:** `MAX_MARKDOWN_FILES = 12`; aktuell 3
+verfolgte Markdown-Dateien, viel Luft.
+
+**Zeilenstand:** `tools/gen_docs.py` und `tools/check_docs_claims.py` neu; `MODULES.md`
+generiert (159 Zeilen, nicht handgepflegt). Paket-Quellcode `mastertrade/` unveraendert 2.680.
+
+---
+
 ## OFFEN — als Naechstes
 
-- **U4** — Doku-Tore (`gen_docs`, `check_docs_claims` auf alle Markdown-Dateien) + README-Zahlentest.
 - **U5** — `VERLUST.md` (Faehigkeiten und Sperren des Altbestands einordnen). Vor U6 vorlegen.
 - **U6** — Altbaum archivieren, `.pth`-Leckagen pruefen (`import signal_engine` muss scheitern),
   `README.md`/`FEHLT.md` finalisieren.

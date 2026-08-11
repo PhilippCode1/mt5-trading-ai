@@ -18,3 +18,14 @@ gemessen, jede Sperre nach dem Umzug einmal absichtlich beschaedigt, damit beleg
 sie rot wird. Was noch fehlt (Anbindung, Marktdaten, Kosten, Universum, Strategie,
 Backtest-Maschine), steht in `FEHLT.md`. Was aus dem Altbestand bewusst zurueckblieb, steht
 in `VERLUST.md`.
+
+## Kennzahlen
+
+Gemessen, nicht behauptet — gegen den Code geprueft von `tests/test_readme_numbers.py`.
+Aendert sich der Code, ohne dass diese Zahlen nachgezogen werden, wird der Test rot.
+
+<!-- KENNZAHLEN-ANFANG (geprueft von tests/test_readme_numbers.py) -->
+- module_count: 12
+- test_function_count: 124
+- source_lines: 2680
+<!-- KENNZAHLEN-ENDE -->
