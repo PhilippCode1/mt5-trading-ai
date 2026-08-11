@@ -19,6 +19,7 @@ from __future__ import annotations
 import pytest
 from mt5_trading_ai.backtest.splits import (
     Range,
+    _band_for_purge_and_embargo,
     purged_kfold_embargo_indices,
     purged_walk_forward_indices,
     walk_forward_indices,
@@ -65,3 +66,36 @@ def test_no_leakage_after_the_fix(n: int, k: int) -> None:
         assert not (set(train) & set(test)), "Train und Test ueberschneiden sich"
         if train:
             assert max(train) < min(test), "Training liegt nicht vollstaendig vor dem Test"
+
+
+def test_purge_excludes_train_range_in_the_pre_test_band() -> None:
+    """Die Purge muss eine Train-Range im Sperrband VOR dem Test ausschliessen.
+
+    Ohne die Purge (``int(t0)`` statt ``int(t0) - purge_ms``) rutscht Index 2 ins
+    Training -- genau die Leckage, die die Purge verhindern soll (Audit-Fund g7).
+    """
+    ranges = [
+        Range(0, 10),
+        Range(10, 20),
+        Range(20, 30),  # endet bei 30 -> im Purge-Band [25, 50)
+        Range(50, 60),  # Testblock
+        Range(60, 70),  # Testblock
+    ]
+    splits = purged_walk_forward_indices(
+        ranges, k=1, purge_ms=25, embargo_ms=0, min_initial_train=3
+    )
+    assert len(splits) == 1
+    train, test = splits[0]
+    assert test == [3, 4]
+    assert 2 not in train, "Purge schliesst die Range im Sperrband nicht aus"
+    assert train == [0, 1]
+
+
+def test_band_covers_purge_before_and_embargo_after() -> None:
+    """Das Sperrband reicht ``purge_ms`` vor und ``embargo_ms`` hinter [t0, t1].
+
+    Faengt das Entfernen von Purge ODER Embargo direkt an der Bandmathematik.
+    """
+    band = _band_for_purge_and_embargo(1000, 2000, purge_ms=30, embargo_ms=50)
+    assert band.start == 970  # 1000 - 30 (Purge)
+    assert band.end == 2050  # 2000 + 50 (Embargo)
