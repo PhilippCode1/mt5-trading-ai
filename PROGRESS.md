@@ -849,3 +849,76 @@ Konto nachzumessen (Paket 2). Der Halal-Konflikt (S4) bleibt Philipps Entscheidu
 **Zeilenstand (gemessen):** `costs/model.py`, `tests/test_cost_model.py`,
 `RECHERCHE_KOSTEN.md` neu; Katalog auf IC-Markets-Werte. Paket-Quellcode `mt5_trading_ai/`
 = 4.386 Zeilen, 19 Module, 219 Testfunktionen; 273 Testfälle grün.
+
+---
+
+## ERLEDIGT — Paket 2 (Teil 3): Das Datenfundament
+
+**Was geschehen ist:** **Recherche R2** (`RECHERCHE_DATEN.md`): sieben Rechercheure zu
+Datenquellen (gratis/günstig/premium), Broker-vs-Referenz-Methode, Bias, Zeitzonen/DST.
+**Tor E4 → Dukascopy** (kostenlos, institutionell, keyless). `mt5_trading_ai/data/loader.py`
+(rein, getestet): Dukascopy-Candle-Dekodierung, Yahoo-Parsing, Session-Normalisierung,
+Kettung ans Qualitätstor (fail-closed), reproduzierbare CSV-Ablage + Prüfsummen.
+`tools/fetch_data.py` macht den Netzabruf (Retry/Backoff) + die Gegenprobe.
+
+**Das Abbruchkriterium (4.4) greift NICHT** — eine saubere Quelle ist beschaffbar.
+
+**Abnahme (Befehle und Ausgaben):**
+```
+$ python -m pytest -q
+290 passed
+$ python -m ruff check .            -> All checks passed!
+$ python -m mypy --strict mt5_trading_ai tools
+Success: no issues found in 33 source files
+$ python tools/gen_docs.py --check  -> ok, MODULES.md aktuell (242 Zeilen)
+$ python tools/check_docs_claims.py -> ok - 10/12
+$ python tools/check_doc_numbers.py -> ok - 20 Module, 236 Testfunktionen, 4691 Zeilen
+
+$ python tools/fetch_data.py --instrument EURUSD --from-year 2022 --to-year 2024 --out DIR
+Dukascopy EURUSD 2022-2024: 365 + 365 + 366 = 1096 Kalendertag-Bars
+-> Mo-Fr gefiltert: 782 Bars (2022-01-03 .. 2024-12-31)
+Qualitaetstor: BESTANDEN | globale Luecke 0.000 % | 0 Ausreisser | 0 OHLC-ungueltig
+Bars-Pruefsumme:     78683f92b090b99c9204ebbb0e700efd0abeebd87cf03b63e2089f7ae2cc8602
+Manifest-Pruefsumme: 0b3b8b5c2a433298e7d62aaacf58fac5f7caff3ff90671456ae08bf20c238a1c
+Gegenprobe (Dukascopy vs Yahoo, 766/782 nach Filter): Median 28,2 | Mittel 37,0 | max 209,5 bps
+```
+
+**Negativ gefahren:** (a) 20 Bars aus der echten Reihe entfernt → Tor **rot**
+(`gap_ratio_above_limit`) → zurück → grün. (b) Unit: ein Block von 4 fehlenden Tagen bei nur
+0,8 % Gesamtlücke → **rot** durch den neuen Block-Ausfall-Check.
+
+**Adversariale Review (§9, vor der Abnahme):** 15 Agenten (Angreifer/Betreiber/Datenprüfer)
++ Gegenkontrolle. Erhoben 12, **bestätigt 11, verworfen 1** — mehrere reale HIGH-Defekte,
+alle behoben.
+
+**Eigene Fehler (von der Review gefunden, alle eingearbeitet):**
+- **HIGH:** Preis-Divisor fix auf 100000 + signed struct → jedes Nicht-EURUSD-Paar (JPY)
+  still 100x falsch skaliert / hohe Kurse laufen über, alles skaleninvariant durchs Tor →
+  Instrument→Divisor-Tabelle (fail-closed bei unbekannt), **unsigned** struct.
+- **HIGH:** Lückentor misst **global statt pro Monat** (Docstring-Zusage falsch) →
+  zusammenhängende Block-Ausfälle bleiben unter 1 % → **Block-Ausfall-Check** (max.
+  zusammenhängende Lücke) im Lader; Qualitätstor-Docstring ehrlich gemacht.
+- **HIGH:** Fenster aus min/max der Daten → abgeschnittene Randjahre unsichtbar → **Jahres-
+  Abdeckungsprüfung** (< 300 Kalendertag-Bars/Jahr → Fehler).
+- **HIGH:** „0 % Lücke" ist teils Vendor-Padding-Artefakt (Dukascopy füllt jeden
+  Kalendertag) → in `RECHERCHE_DATEN.md` ehrlich eingeordnet, nicht als Vollständigkeitsbeleg.
+- **MEDIUM:** Prüfsumme band nur die Zahlen → **Manifest-Prüfsumme** (Instrument, Divisor,
+  Quelle, Session, Urteil) — eine fehl-dekodierte Reihe fällt jetzt auf.
+- **MEDIUM:** Gegenprobe verglich ungefiltertes Yahoo → Yahoo vorher auf OHLC-Gültigkeit
+  gefiltert (16 verworfen), **Median** (28,2) zusätzlich zum ausreißer-anfälligen Mittel.
+- **§5-Korrektur:** die 37 bps nicht mehr zirkulär dem Cutoff zugeschrieben (§5 an §3
+  angeglichen, kein Split ohne Messung behauptet).
+
+**Entscheidungen, die ich selbst getroffen habe:** Dukascopy-Tageskerzen (nicht Ticks) für
+den ersten Tagesbar-Test — Tick-Aggregation über 2 Jahre wären ~12k Dateien, Overkill. Yahoo
+nur als **Gegenprobe** (zu schmutzig fürs Fundament: DST-Zeitstempel, ~2,4 % OHLC-ungültig).
+Marktdaten bleiben **lokal** (nicht im Repo — Lizenz nur privat/Backtest); nur Code, Prüfsumme
+und Bericht sind öffentlich.
+
+**Auffälligkeiten, gemeldet, nicht angefasst:** S6 in `SPAETER.md` — Qualitätstor-/Session-
+Härtung (NY-17:00-Anker, Handelstagskalender, absolute Preis-Bänder, Ausreißer als Fail),
+Intraday-Vorarbeit. Der Halal-Konflikt (S4) bleibt offen.
+
+**Zeilenstand (gemessen):** `data/loader.py`, `tools/fetch_data.py`,
+`tests/test_data_loader.py`, `RECHERCHE_DATEN.md` neu. Paket-Quellcode `mt5_trading_ai/`
+= 4.691 Zeilen, 20 Module, 236 Testfunktionen; 290 Testfälle grün.

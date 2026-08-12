@@ -21,6 +21,23 @@ Kostenmodell: die realen Kosten einer Order, gemessen statt angenommen.
 - `def load_cost_fees`
 - `def hurdle_rate`
 
+## `mt5_trading_ai/data/loader.py`
+
+Lader fuer historische Bars -- an das Datenqualitaetstor gekettet.
+
+- `def dukascopy_price_divisor`
+- `class DataLoadError`
+- `class WeekdaySession`
+- `def decode_dukascopy_candles`
+- `def parse_yahoo_daily`
+- `def filter_to_weekdays`
+- `def assess_or_raise`
+- `def to_csv`
+- `def from_csv`
+- `def bars_checksum`
+- `def dataset_manifest`
+- `def manifest_checksum`
+
 ## `mt5_trading_ai/data/quality.py`
 
 Datenqualitaet als Gate (Phase 7.2).

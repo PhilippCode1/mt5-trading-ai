@@ -53,6 +53,26 @@ Nachzurüsten, sobald Einzelaktien in den Backtest sollen: ein explizites Kosten
 (fixed vs. percentage) in `FeeSchedule` + Verzweigung im Modell. Nicht der Edge-Test-Fokus
 (EURUSD), daher später.
 
+## S6 — Qualitätstor- und Session-Härtung (aus Paket-2-Review)
+
+Die §9-Review des Datenladers fand mehrere Härtungspunkte über Paket 2 hinaus, nötig für
+einen **Intraday**-Edge-Test (Paket 3/4):
+- **FX-Session am NY-17:00-Anker**, im Tor statt als Mo-Fr-UTC-Vorabfilter. Der aktuelle
+  Filter verwirft den echten Sonntagabend-Balken und lässt geglättete Feiertagsbars als
+  „present" durch; der `outside_session`-Check ist für Wochenenden dadurch wirkungslos.
+- **Lückenquote gegen einen echten Handelstags-/Feiertagskalender** (nicht rohe Kalender-
+  Wochentage) und zusätzlich pro Monat bucketen (die ursprüngliche Docstring-Zusage).
+- **Absolute Preis-Plausibilität** je Instrument (Band) + **Bar-zu-Bar-Return**-Check —
+  alle Wertprüfungen sind bisher skaleninvariant/intrabar; eine flache Bar auf falschem
+  Niveau (O=H=L=C=99 in einer ~1,1-Reihe) passiert das Tor.
+- **Ausreißer/Nullvolumen als harte Fail-Gründe** (ab Quote), nicht nur informativ.
+- **Hochpreisige Instrumente** (Index/Krypto > 2^31/Divisor) überlaufen selbst unsigned →
+  Wertebereichsprüfung beim Dekodieren.
+
+Der jetzige Block-Ausfall-Check, die Instrument→Divisor-Tabelle (fail-closed) und die
+Manifest-Prüfsumme decken die gröbsten Löcher; der Rest ist Intraday-Vorarbeit, kein
+EURUSD-Tagesbar-Blocker.
+
 ## S4 — Halal-Konformität von Krypto-/CFD-Instrumenten (aus E2)
 
 Mit E2 ist Krypto (2:1) im Katalog handelbar. CFDs allgemein und Übernacht-Swaps im

@@ -4,8 +4,10 @@ Kein Backtest und kein Betrieb auf ungeprueften Daten. Diese Datei prueft eine
 Bar-Reihe gegen vier Kriterien und liefert ein Urteil, das den Handel mit diesem
 Instrument freigibt oder nicht:
 
-1. **Lueckenquote** je Instrument und Monat, gemessen gegen die erwartete
-   Bar-Zahl innerhalb der Handelszeiten. Ueber 1 %: Instrument raus.
+1. **Lueckenquote** gegen die erwartete Bar-Zahl innerhalb der Handelszeiten,
+   global ueber die Reihe. Ueber 1 %: Instrument raus. Achtung: die globale Quote
+   verdeckt zusammenhaengende Block-Ausfaelle auf langen Reihen -- der Lader
+   (``data/loader.py``) ergaenzt dafuer einen Max-Consecutive-Gap-Check.
 2. **Zeitstempel-Konsistenz** — streng aufsteigend, auf dem Zeitrahmen-Raster,
    durchgehend UTC, keine Duplikate.
 3. **Ausreisser und Nullvolumen-Bars** werden markiert, nicht entfernt. Wer sie
