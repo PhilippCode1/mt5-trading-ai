@@ -1,0 +1,41 @@
+name: CI
+
+# Erzwingt bei jedem Push und jedem Pull Request dieselben fuenf Tore, die lokal
+# gelten. Bricht eines, wird der Lauf rot -- die Sperren sind damit nicht mehr nur
+# bei manuellem Aufruf aktiv (Audit-Fund: "keine CI erzwingt die Sperren").
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Werkzeuge (gepinnt)
+        run: pip install -r requirements-dev.txt
+
+      - name: Tests
+        run: python -m pytest -q
+
+      - name: Ruff
+        run: python -m ruff check .
+
+      - name: Mypy (strict)
+        run: python -m mypy --strict mt5_trading_ai tools
+
+      - name: MODULES.md aktuell
+        run: python tools/gen_docs.py --check
+
+      - name: Doku-Behauptungen belegt
+        run: python tools/check_docs_claims.py
