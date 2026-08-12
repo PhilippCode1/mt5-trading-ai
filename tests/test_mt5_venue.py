@@ -474,9 +474,11 @@ def test_venue_opening_passes_with_default_leverage() -> None:
 # --- Order-Lebenszyklus / Reconcile (Konto gegen Buch) -------------------
 
 
-def _mt5_position(symbol: str, *, is_buy: bool, volume: Decimal) -> Mt5Position:
+def _mt5_position(
+    symbol: str, *, is_buy: bool, volume: Decimal, ticket: str = "t1"
+) -> Mt5Position:
     return Mt5Position(
-        ticket="t1",
+        ticket=ticket,
         symbol=symbol,
         is_buy=is_buy,
         volume=volume,
@@ -567,3 +569,26 @@ def test_adopt_book_empty_clears_prior_book() -> None:
     assert venue.adopt_book() == {}
     assert venue.reconcile().matched is True
     assert venue.is_halted() is False
+
+
+def test_emergency_flatten_closes_all_and_halts() -> None:
+    venue, terminal = _venue(
+        is_demo=True,
+        positions=(
+            _mt5_position("EURUSD", is_buy=True, volume=Decimal("0.30"), ticket="p1"),
+            _mt5_position("EURUSD", is_buy=False, volume=Decimal("0.10"), ticket="p2"),
+        ),
+    )
+    results = venue.emergency_flatten()
+    assert len(results) == 2
+    assert all(r.accepted for r in results)
+    assert terminal.order_send_calls == 2  # zwei Reduce-Only-Schliessungen
+    # Not-Aus sperrt neue Eroeffnungen ...
+    assert venue.is_halted() is True
+    with pytest.raises(OrderRejectedError) as excinfo:
+        venue.submit_order(_order(client_order_id="after-flatten"))
+    assert excinfo.value.reason == "global_halt"
+    # ... Reduce-Only (weiterer Abbau) bleibt frei.
+    assert venue.submit_order(
+        _order(client_order_id="ro", reduce_only=True)
+    ).accepted is True

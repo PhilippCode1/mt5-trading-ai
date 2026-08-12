@@ -43,11 +43,13 @@ from mt5_trading_ai.venue.protocol import (
     OrderRequest,
     OrderResult,
     OrderSide,
+    OrderType,
     Position,
     Quote,
     Timeframe,
     TradingVenue,
     UnknownInstrumentError,
+    VenueError,
     VenueUnavailableError,
 )
 
@@ -551,6 +553,43 @@ class Mt5Venue(TradingVenue):
         if not healthy:
             self._halted = True
         return healthy
+
+    def emergency_flatten(self) -> tuple[OrderResult, ...]:
+        """Not-Aus: sperrt sofort neue Eroeffnungen (Global-Halt) **und** schliesst alle
+        offenen Positionen per Reduce-Only. Gibt die Schliess-Ergebnisse zurueck.
+
+        Der Halt wird **zuerst** gesetzt — scheitert eine Schliessung, bleiben neue
+        Eroeffnungen trotzdem gesperrt. Reduce-Only umgeht bewusst Freigabe- und
+        Hebel-Tore: Risikoabbau darf nie an einer Sperre haengen. Der Latch klaert nur
+        ``clear_halt()``.
+        """
+        self._require_healthy()
+        self._halted = True
+        results: list[OrderResult] = []
+        for position in self.get_positions():
+            close_side = (
+                OrderSide.SELL if position.side is OrderSide.BUY else OrderSide.BUY
+            )
+            try:
+                results.append(
+                    self.submit_order(
+                        OrderRequest(
+                            client_order_id=f"flatten-{position.venue_position_id}",
+                            symbol=position.symbol,
+                            side=close_side,
+                            order_type=OrderType.MARKET,
+                            volume=position.volume,
+                            stop_loss=Decimal("0"),
+                            reduce_only=True,
+                            comment="emergency-flatten",
+                        )
+                    )
+                )
+            except VenueError:
+                # Eine gescheiterte Schliessung darf die uebrigen nicht verhindern;
+                # der Global-Halt steht bereits.
+                continue
+        return tuple(results)
 
 
 class RealMt5Terminal:
