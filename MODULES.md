@@ -2,6 +2,23 @@
 
 # MODULES — oeffentliche API je Modul (generiert aus dem Code)
 
+## `mt5_trading_ai/backtest/engine.py`
+
+Backtest-Maschine: fuehrt Splits, Daten und Kostenmodell zusammen.
+
+- `class Signal`
+- `class LookAheadError`
+- `class MarketView`
+- `def random_signal_strategy`
+- `class MarketSpec`
+- `class TradeRecord`
+- `class BacktestReport`
+- `def run_backtest`
+- `class WalkForwardResult`
+- `def run_walk_forward`
+- `def deflated_sharpe_for_report`
+- `def run_registered_backtest`
+
 ## `mt5_trading_ai/backtest/splits.py`
 
 Zeitreihen-Splits mit Purge und Embargo — herausgeloest aus learning_engine.

@@ -73,6 +73,17 @@ Der jetzige Block-Ausfall-Check, die Instrument→Divisor-Tabelle (fail-closed) 
 Manifest-Prüfsumme decken die gröbsten Löcher; der Rest ist Intraday-Vorarbeit, kein
 EURUSD-Tagesbar-Blocker.
 
+## S7 — Walk-Forward-Trainingsschritt + volle Kriterien-Integration (aus Paket-3-Review)
+
+Der Walk-Forward-Runner nutzt `splits.py` mit pflichtigem Purge/Embargo, aber ohne einen
+Trainings-/Fit-Schritt je Fenster gaten Purge/Embargo noch nichts (sie schließen nur
+Trainingsindizes aus, die eine zustandslose Strategie nicht hat). Nachzurüsten, sobald eine
+lernende Strategie kommt (Paket 4/5): echter Fit auf `_train_idx`, Test auf `test_idx` — dann
+greifen Purge/Embargo als Leckage-Kontrolle. Ebenso: die volle `evaluate_criteria`-Auswertung
+(`BacktestEvidence` aus Report + positive_folds + deflated_sharpe + random_percentile) im
+Edge-Test verdrahten — die Deflations-Bindung (`deflated_sharpe_for_report`) steht, die
+Gesamt-Auswertung folgt in Paket 4.
+
 ## S4 — Halal-Konformität von Krypto-/CFD-Instrumenten (aus E2)
 
 Mit E2 ist Krypto (2:1) im Katalog handelbar. CFDs allgemein und Übernacht-Swaps im

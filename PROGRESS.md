@@ -922,3 +922,65 @@ Intraday-Vorarbeit. Der Halal-Konflikt (S4) bleibt offen.
 **Zeilenstand (gemessen):** `data/loader.py`, `tools/fetch_data.py`,
 `tests/test_data_loader.py`, `RECHERCHE_DATEN.md` neu. Paket-Quellcode `mt5_trading_ai/`
 = 4.691 Zeilen, 20 Module, 236 Testfunktionen; 290 Testfälle grün.
+
+---
+
+## ERLEDIGT — Paket 3 (Teil 3): Die Backtest-Maschine
+
+**Was geschehen ist:** `mt5_trading_ai/backtest/engine.py` führt die drei fertigen Teile
+zusammen (Splits + Dukascopy-Daten + Kostenmodell). `MarketView` mit harter Zukunfts-Grenze
+(Leckage-Schutz), Entscheidung bei Bar `i` / Ausführung `i+1` (shift(1)), jede Order durchs
+Kostenmodell, `run_backtest`/`run_walk_forward`/`run_registered_backtest`, Deflated-Sharpe-
+Anbindung an `gates/criteria.py`, voller Bericht (Trades, Brutto/Netto, Kosten getrennt,
+Sharpe annualisiert, MaxDD, Trefferquote, Hürde, Netto über Hürde, Seed/Prüfsumme/Commit).
+
+**Abnahme (§5.2, Befehle und Ausgaben):**
+```
+$ python -m pytest -q            -> 304 passed
+$ python -m ruff check .         -> All checks passed!
+$ python -m mypy --strict …      -> no issues in 34 source files
+$ (Zufalls-Referenzlauf, echte EURUSD-Bars, 20 Seeds)
+  Netto-Mittel -45.7 % (negativ, wie es sein muss); seed 0: 350 Trades, Netto -95.6 %,
+  Sharpe -1.01, Huerde 41 %, Kosten getrennt (Fin gezahlt 3041 vs Carry 551 USD)
+```
+- ✅ **Leckage-Test grün und negativ gefahren:** Zukunfts-Grenze aufgeweicht → Leck-Test rot
+  → zurück → grün.
+- ✅ **Zufalls-Referenzlauf negativ** um die Kostenhürde (Mittel −45,7 %) — die schärfste
+  Gegenprobe. Einzel-Seed-Varianz hoch (±100 %+) durch Hebel 5 auf Trend, ehrlich benannt.
+- ✅ **Zwei identische Läufe → bitgleicher Bericht** (`as_dict` deckungsgleich).
+- ✅ **Jeder Lauf zählt** (auch abgebrochene) — Versuchszähler **negativ gefahren** (Append
+  lahmgelegt → „10 Läufe = 10"-Test rot → zurück).
+- ✅ **Walk-Forward** über `splits.py` mit **pflichtigem** Purge/Embargo.
+
+**Adversariale Review (§9, 15 Agenten, 4 Blickwinkel): erhoben 11, bestätigt 10, verworfen 1**
+— mehrere reale HIGH-Defekte, alle behoben.
+
+**Eigene Fehler (von der Review gefunden, alle eingearbeitet):**
+- **HIGH:** Look-ahead trotz `MarketView` — `view._bars` war Live-Referenz auf die volle,
+  mutable Liste → Strategie konnte die Zukunft **lesen oder überschreiben** (Fake-Profit) →
+  `MarketView` hält jetzt nur die unveränderliche Vergangenheits-Kopie.
+- **HIGH:** Triple-Swap Off-by-one (Ankunfts- statt Startbar gezählt) → `range(start, end+1)`;
+  kontrollierter Di→Mi-/Mi→Do-Test ergänzt.
+- **HIGH:** Kostenfreier Modus über ungeprüfte `MarketSpec` möglich → `__post_init__` lehnt
+  Spread=Slippage=Kommission=0 ab.
+- **HIGH:** Positiver Carry als „negative Kosten" verrechnet (net > gross, Hürde negativ) →
+  Carry als eigener Ertrag (`carry_income`), Hürde aus Reibung (≥0), `net_over_hurdle` = gross
+  − hürde.
+- **HIGH:** `equity_base==0` (Preis/Hebel 0) → unkontrollierter `ZeroDivisionError` →
+  fail-closed `ValueError`.
+- **HIGH:** Deflated-Sharpe/Trial-Count-Anbindung fehlte (toter Gate) →
+  `deflated_sharpe_for_report` bindet Bericht + echte Versuchszahl an `criteria.py`.
+- **MEDIUM:** „Jeder Lauf zählt" nur für LookAhead/Value → breites `except` (alle Fehler);
+  Walk-Forward-Purge ohne Trainingsschritt ehrlich als Grenze benannt (**S7**).
+
+**Entscheidungen, die ich selbst getroffen habe:** Kosten-Spread aus einer dokumentierten
+`spread_pips`-Annahme (Bars haben kein Bid/Ask); per-Bar-Equity-Kurve für Sharpe/Drawdown;
+Walk-Forward mit `strategy_factory` (frischer Zufallsgenerator je Fenster).
+
+**Auffälligkeiten, gemeldet, nicht angefasst:** **S7** in `SPAETER.md` — Trainings-/Fit-
+Schritt je Fenster (damit Purge/Embargo greifen) + volle `evaluate_criteria`-Auswertung, beides
+Paket-4-Vorarbeit. Halal (S4) bleibt offen.
+
+**Zeilenstand (gemessen):** `backtest/engine.py`, `tests/test_backtest_engine.py` neu.
+Paket-Quellcode `mt5_trading_ai/` = 5.181 Zeilen, 21 Module, 250 Testfunktionen; 304
+Testfälle grün.
