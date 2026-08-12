@@ -1,0 +1,113 @@
+{
+  "schema_version": 2,
+  "meta": {
+    "date": "2026-08-11",
+    "target_tree": {
+      "path": "C:\\Users\\Acer\\mt5_trading_ai",
+      "repo": "PhilippCode1/mt5-trading-ai",
+      "commit": "8a9f19f"
+    },
+    "environment": "Windows 11, Python 3.11, pytest 8.3.4, ruff, mypy --strict",
+    "runtime_seconds": null,
+    "auditor": "bauender Agent",
+    "independent_of_builder": false,
+    "self_report": true,
+    "countercheck_done": true
+  },
+  "scores": {
+    "handelsreife": 1.1,
+    "betriebsreife": 1.7,
+    "freigabenote": 1.1,
+    "provisional": true,
+    "note": "Nach unabhaengiger Gegenpruefung korrigiert (1,0 -> 1,1): Zwischenwert Bereich 1 = 8/7 nicht runden (A.1)"
+  },
+  "ko_triggered": [
+    {"rule": "close-all-Notaus fehlt, 6.6 ungetestet", "consequence": "Gesamtnote hoechstens 3", "evidence": "HALT-Tor vorhanden+getestet (limits.py TradingState.HALTED), aber grep close_all|flatten -> leer, kein Live-Lauf"},
+    {"rule": "Kein Out-of-Sample (1.2)", "consequence": "Handelsreife hoechstens 2", "evidence": "kein Backtest/Strategie"},
+    {"rule": "Keine Live-/Demobelege", "consequence": "Bereiche 5,6,7,9 nicht bewertbar", "evidence": "keine MT5-Anbindung, kein Lauf"},
+    {"rule": "Befangener Selbst-Report", "consequence": "Freigabenote vorlaeufig", "evidence": "Erbauer == Auditor; erste maschinelle Gegenpruefung erfolgt, menschliche Bestaetigung offen"}
+  ],
+  "inventory": {
+    "production_lines": 4112,
+    "production_modules_excl_init": 18,
+    "files_tracked_py": 46,
+    "test_files": 18,
+    "test_functions": 190,
+    "test_lines": 2628,
+    "tools": 3,
+    "entry_points": 3,
+    "services": 1,
+    "subpackages": 6,
+    "init_files_incl_root": 7,
+    "decision_core_end_to_end": false,
+    "backtest_engine": false,
+    "kill_switch_in_code": true,
+    "kill_switch_note": "HALT-Tor (TradingState.HALTED) getestet, kein Selbst-Reset; ABER kein close-all/flatten-Befehl -> 6.6 ungetestet",
+    "ci_workflows": false,
+    "live_vs_dead": {"measured_by": "not_measured", "reason": "kein Entscheidungsdurchlauf vorhanden"}
+  },
+  "areas": [
+    {"id": "1", "title": "Vorteil/Strategievalidierung", "note": 1.1, "status": "measured", "reference": "8/7=1,143; 0 Trades; keine OOS", "reason_if_unrated": "K.-o. 1.2/1.4 deckelt bei 2 (greift nicht)"},
+    {"id": "3", "title": "Backtest-Maschinerie", "note": 1.0, "status": "measured", "reference": "nur splits.py", "reason_if_unrated": null},
+    {"id": "2", "title": "Daten", "note": 2.0, "status": "measured", "reference": "quality.py getestet, kein realer Strom", "reason_if_unrated": null},
+    {"id": "4", "title": "Analystenschicht (LLM)", "note": null, "status": "na_with_evidence", "reference": "kein Modell im Entscheidungspfad", "reason_if_unrated": "Gewicht entfaellt, Nenner 66->60"},
+    {"id": "5", "title": "Ausfuehrung/MT5", "note": 1.0, "status": "not_assessable", "reference": "kein Live/Demo", "reason_if_unrated": "A.2"},
+    {"id": "6", "title": "Risiko/Kapitalschutz", "note": 1.0, "status": "not_assessable", "reference": "A.2; HALT-Tor+Hebelklammer getestet, aber 6.6 ungetestet (kein close-all, kein Live)", "reason_if_unrated": "A.2 / K.-o. 6.6"},
+    {"id": "7", "title": "Betrieb", "note": 1.0, "status": "not_assessable", "reference": "kein Live/Demo", "reason_if_unrated": "A.2"},
+    {"id": "8", "title": "Code/Tests", "note": 4.0, "status": "measured", "command": "pytest -q; ruff check .; mypy --strict", "output_excerpt": "244 passed; All checks passed!; Success 28 files", "reference": "0 Fehlschlaege; ruff 46/46; mypy 28/46; Mutation 6/7"},
+    {"id": "9", "title": "Beobachtbarkeit", "note": 1.0, "status": "not_assessable", "reference": "kein Handelstagebuch", "reason_if_unrated": "A.2"},
+    {"id": "10", "title": "Recht/Steuer/Halal", "note": 2.0, "status": "measured", "reference": "ESMA-Klassen im Code; Rest nicht adressiert; keine LICENSE"},
+    {"id": "11", "title": "Doku/Uebergabe", "note": 4.0, "status": "measured", "reference": "overview 7/9 belegt; VERLUST/PROGRESS als Entscheidungsprotokoll; kein Stoerfallhandbuch"},
+    {"id": "12", "title": "Freigabeweg", "note": 1.0, "status": "measured", "reference": "Live-Freigabe da, aber keine Tore/Abschaltkriterien/Staffel"}
+  ],
+  "effectiveness_probes": [
+    {"id": "3a", "name": "Zukunftszugriff", "result": "not_assessable", "output_excerpt": "kein Entscheidungspfad", "reverted": null},
+    {"id": "3b", "name": "Doku-Sperre verletzen", "result": "caught", "output_excerpt": "check_docs_claims exit=1 bei Verstoss; keine CI-Erzwingung", "reverted": true, "revert_proof": "check_docs_claims ok nach Ruecknahme"},
+    {"id": "3c", "name": "Backtest-Determinismus", "result": "not_assessable", "output_excerpt": "keine Backtest-Maschine", "reverted": null},
+    {"id": "3d", "name": "MT5 trennen", "result": "not_assessable", "output_excerpt": "keine Anbindung", "reverted": null},
+    {"id": "3e", "name": "Tagesverlust-Abschalter", "result": "logic_only", "output_excerpt": "limits.py HALT getestet + Mutation gefangen; kein laufendes System", "reverted": null},
+    {"id": "3f", "name": "Notaus", "result": "partial_missing", "output_excerpt": "HALT-Tor sperrt neue Orders (getestet), ABER kein close-all-Befehl + kein Live-Lauf -> 6.6 ungetestet, Note 1", "reverted": null},
+    {"id": "3g", "name": "Mutationsprobe (7 Fehler)", "result": "6_of_7_caught", "output_excerpt": "6x rot; Purge-Entfernung in splits.py durchgerutscht", "reverted": true, "revert_proof": "244 passed; git checkout mt5_trading_ai/; Paket SAUBER"}
+  ],
+  "history_scan": {
+    "repos_scanned": ["mt5_trading_ai (Vollhistorie, 18 Commits)", "bitget-btc-ai (nur aktueller Stand)"],
+    "secrets_found": [
+      {"repo": "bitget-btc-ai", "location": "tests/llm_eval/test_guardrails.py", "kind": "gefaelschter Test-Schluessel (sk-...abcd)", "real": false}
+    ],
+    "note": "Zielbaum sauber; Alt-Baum-Vollhistorie wegen Groesse nicht gescannt"
+  },
+  "doc_reconciliation": {
+    "source": "docs/overview.html",
+    "claims_total": 9,
+    "supported": 7,
+    "refuted": 2,
+    "unverifiable": 0,
+    "refuted_items": ["'privat' -> tatsaechlich PUBLIC", "'17 Commits' -> tatsaechlich 18"]
+  },
+  "top_findings": [
+    {"finding": "Nie gehandelt, keine validierte Strategie", "evidence": "Bereich 1 = 1,1; 0 Trades", "consequence_if_left": "kein Ertrag bezeugbar", "effort_estimate": "gross"},
+    {"finding": "Kein close-all-Notaus (6.6 ungetestet)", "evidence": "HALT-Tor getestet, aber grep close_all|flatten leer + kein Live", "consequence_if_left": "Positionen nicht per Befehl schliessbar; K.-o.", "effort_estimate": "mittel"},
+    {"finding": "Keine Backtest-Maschine/Determinismus", "evidence": "Bereich 3 = 1,0", "consequence_if_left": "Strategiekennzahlen unbelastbar", "effort_estimate": "gross"},
+    {"finding": "Keine CI erzwingt die Sperren", "evidence": "Probe b; kein .github/workflows", "consequence_if_left": "Regression landet unbemerkt", "effort_estimate": "klein"},
+    {"finding": "Doku-Drift + ungefangene Purge-Mutation", "evidence": "privat/17; splits.py", "consequence_if_left": "Uebergabe veraltet; Leckage-Bug unbemerkt", "effort_estimate": "klein"}
+  ],
+  "countercheck": {
+    "method": "3 unabhaengige Pruefagenten + Einzel-Gegenpruefung je Diskrepanz (Workflow audit-countercheck)",
+    "raised": 7,
+    "confirmed": 3,
+    "corrections_applied": [
+      {"item": "Kill-Switch-Aussage", "direction": "factual_error", "severity": "medium", "fix": "getestetes HALT-Tor existiert; 6.6 bleibt ungetestet (kein close-all, kein Live); Note unveraendert"},
+      {"item": "Aggregation Bereich 1 / Handelsreife / Freigabenote", "direction": "deflated", "severity": "low", "fix": "1,0 -> 1,1 (8/7 nicht runden, A.1)"},
+      {"item": "Unterpakete", "direction": "inflated", "severity": "low", "fix": "7 -> 6 (Wurzelpaket abgezogen); ohne Notenwirkung"}
+    ],
+    "not_confirmed": 4,
+    "note": "Korrekturen in beide Richtungen -> kein einseitiges Schoenen"
+  },
+  "could_not_measure": [
+    {"item": "Handelsvorteil / OOS / Kostensensitivitaet", "reason": "keine Strategie/Backtest"},
+    {"item": "Live-Ausfuehrung / Slippage / Reconnect / close-all-Notaus in Aktion", "reason": "keine MT5-Anbindung"},
+    {"item": "Backtest-Determinismus (3.3)", "reason": "keine Backtest-Maschine"},
+    {"item": "Alt-Baum-Vollhistorie auf Geheimnisse", "reason": "Groesse"},
+    {"item": "Menschliche Bestaetigung des Selbst-Reports", "reason": "steht aus, ist Pflicht vor Freigabe"}
+  ]
+}
