@@ -85,7 +85,13 @@ class TradingSession:
 
 @dataclass(frozen=True)
 class FeeSchedule:
-    """Kostenmodell je Instrument. Alle Angaben je Standardlot, in Kontowaehrung."""
+    """Kostenmodell je Instrument, je Standardlot.
+
+    ``commission_per_lot_round_turn`` und die ``swap_*``-Felder stehen in Kontowaehrung
+    (``currency``); ``typical_spread_points`` ist in Points (nur indikativ -- das
+    Kostenmodell rechnet den Spread aus dem echten Bid/Ask); ``triple_swap_weekday`` ist
+    ein Wochentag (0 = Montag).
+    """
 
     commission_per_lot_round_turn: Decimal
     typical_spread_points: Decimal

@@ -11,6 +11,16 @@ Zeitreihen-Splits mit Purge und Embargo — herausgeloest aus learning_engine.
 - `def purged_kfold_embargo_indices`
 - `def walk_forward_indices`
 
+## `mt5_trading_ai/costs/model.py`
+
+Kostenmodell: die realen Kosten einer Order, gemessen statt angenommen.
+
+- `class CostModelError`
+- `class CostBreakdown`
+- `def order_roundturn_cost`
+- `def load_cost_fees`
+- `def hurdle_rate`
+
 ## `mt5_trading_ai/data/quality.py`
 
 Datenqualitaet als Gate (Phase 7.2).

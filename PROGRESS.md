@@ -774,3 +774,78 @@ LLM-Weiterarbeit. **E2** beantwortet — Betriebsminimum gestrichen (in A0.6 umg
 **Zeilenstand (gemessen):** `tools/check_doc_numbers.py` und `SPAETER.md` neu; `leverage.py`
 um die zwei Minimum-Zweige gekürzt. Paket-Quellcode `mt5_trading_ai/` = 4.129 Zeilen,
 18 Module, 193 Testfunktionen; 247 Testfälle grün.
+
+---
+
+## ERLEDIGT — Paket 1 (Teil 3): Das Kostenmodell
+
+**Was geschehen ist:** Erst **Recherche R1** (`RECHERCHE_KOSTEN.md`): neun parallele
+Web-Rechercheure + Plausibilitäts-Skeptiker zu Spread/Kommission/Swap/Slippage/A-B-Book/
+Halal bei vier EU-MT5-Brokern (IC Markets, Pepperstone, Admirals, Tickmill), jede Zahl
+measured/estimate/literature mit Quelle. **Tor E3 → IC Markets (EU)** (A-Book/ECN,
+günstigster belegter Kanal, swapfrei auch für EU). Dann `mt5_trading_ai/costs/model.py`:
+`order_roundturn_cost` (Spread aus echtem Bid/Ask · Kommission aus der Katalog-`FeeSchedule` ·
+Slippage in Pips · Finanzierung je Nacht inkl. Dreifach-Tag), `load_cost_fees` (fehlende
+Kosten → Fehler, nie Null), `hurdle_rate`. Der Katalog wurde von indikativen Platzhaltern auf
+die IC-Markets-Werte gehoben (FX/Gold Kommission 7 USD RT, Indizes 0; Swaps aus R1).
+
+**Abnahme (Befehle und Ausgaben):**
+```
+$ python -m pytest -q
+273 passed
+$ python -m ruff check .
+All checks passed!
+$ python -m mypy --strict mt5_trading_ai tools
+Success: no issues found in 31 source files
+$ python tools/gen_docs.py --check
+ok — MODULES.md ist aktuell (225 Zeilen).
+$ python tools/check_docs_claims.py
+ok - 9/12 Markdown-Dateien, keine Zusicherung ohne Beleg
+$ python tools/check_doc_numbers.py
+ok - Code: 19 Module, 219 Testfunktionen, 4386 Quellzeilen; Doku widerspruchsfrei.
+```
+
+**Negativ gefahren:** Kommission im Modell auf `Decimal("0")` gezwungen →
+`test_roundturn_cost_components` rot (`0 == 7` schlägt fehl) → zurückgenommen → grün. Das
+Kostenmodell ist damit nachweislich verdrahtet (nicht hohl).
+
+**hurdle_rate gegen Handrechnung:** 1 bp, 5 Trades/Tag, 250 Tage → Hebel 5 = 0,625 (62,5 %),
+Hebel 10 = 1,25 (125 %). Beide Zahlen im Test (`test_hurdle_rate_matches_hand_calculation`)
+und deckungsgleich mit der Vorgabe.
+
+**Adversariale Review (§9, vor der Abnahme — nicht abgekürzt):** 15 Agenten, drei
+Blickwinkel (Buchhalter/Angreifer/Betreiber) + Gegenkontrolle jedes Befunds. Erhoben 12,
+**bestätigt 10, verworfen 2**. Der Buchhalter bestätigte EURUSD-Kernpfad + `hurdle_rate` als
+korrekt. Zwei HIGH und mehrere MEDIUM waren **reale** Defekte in meinem Code — alle behoben:
+
+**Eigene Fehler (von der Review gefunden, alle eingearbeitet):**
+- **HIGH:** `quote_to_account_rate` hatte Default 1 — nicht-USD-notierte Instrumente (EURGBP
+  in GBP) wären still ~25 % zu niedrig bewertet worden. Der eigene Docstring nannte genau
+  diese stille 1 „eine versteckte Annahme". → `quote_currency` ist jetzt Pflicht; bei
+  Währungsdifferenz ohne Kurs `CostModelError`.
+- **HIGH:** Nicht-endliche Decimals (Infinity/NaN) umgingen die Guards (Infinity → still
+  `total=Infinity`; NaN → `InvalidOperation` statt `CostModelError`). → `is_finite()`-Prüfung
+  an jedem Preis/Größen/Kurs/Swap-Eingang.
+- **MEDIUM:** Slippage-Default (1 Tick = 0,2 Pip RT) war als „konservativ" deklariert, lag
+  aber unter dem ruhigen Mittel der eigenen Recherche → auf **Pips** umgestellt
+  (`slippage_pips_per_side`, Default 0,5 Pip/Seite = oberer Rand des ruhigen Bandes), das
+  behebt zugleich den Ticks-vs-Pips-10×-Footgun.
+- **MEDIUM:** Kommission 0 schlüpfte für FX/Gold durch → `load_cost_fees` lehnt FX/Gold ohne
+  Kommission jetzt fail-closed ab.
+- **MEDIUM:** Aktien-CFD (ad valorem) passt nicht in die Fixbetrag-`FeeSchedule` → im
+  Kostenpfad hart abgelehnt (S5 in `SPAETER.md`), statt still falsch zu rechnen.
+- **MEDIUM/LOW:** EURGBP-Swaps waren GBP-„Punkte", als USD gelabelt → auf USD umgerechnet
+  (approx, notiert); `FeeSchedule`-Docstring-Einheiten präzisiert.
+
+**Entscheidungen, die ich selbst getroffen habe:** Das Kostenmodell liest die Gebühren aus
+der bestehenden Katalog-`FeeSchedule` statt einer eigenen Datei (Regel 9, keine Dublette);
+`contract_size`/`pip_size` kommen aus dem `Instrument`. `hurdle_rate` als reine Funktion, in
+jedem Backtest-Bericht auszuweisen.
+
+**Auffälligkeiten, gemeldet, nicht angefasst:** S5 (Aktien-CFD-Kostenmodell) in `SPAETER.md`;
+die Stress-Spreads/Slippage sind nirgends broker-veröffentlicht (nur estimate) und am eigenen
+Konto nachzumessen (Paket 2). Der Halal-Konflikt (S4) bleibt Philipps Entscheidung + Fatwa.
+
+**Zeilenstand (gemessen):** `costs/model.py`, `tests/test_cost_model.py`,
+`RECHERCHE_KOSTEN.md` neu; Katalog auf IC-Markets-Werte. Paket-Quellcode `mt5_trading_ai/`
+= 4.386 Zeilen, 19 Module, 219 Testfunktionen; 273 Testfälle grün.

@@ -43,6 +43,16 @@ generierten `MODULES.md` steht — dieselbe Angabe an zwei Stellen. Das Zahlen-T
 fängt sie derzeit nicht (Tabellenform „Modul | Zahl |"), aber sie driftet. Entweder
 die Spalte entfernen und auf `MODULES.md` verweisen, oder aus dem Code erzeugen.
 
+## S5 — Aktien-CFD-Kostenmodell (ad valorem), aus Paket-1-Review
+
+Die `FeeSchedule` trägt fixe Beträge je Lot. Aktien-CFD-Kosten sind aber prozentual:
+Kommission ad valorem (z. B. 0,1 %/Seite) und Swap als %-p.a. des Notionals (beide
+preisabhängig). Das Kostenmodell **lehnt Aktien-CFDs derzeit fail-closed ab**
+(`load_cost_fees`), statt sie mit der falschen Fixbetrag-Formel still falsch zu bepreisen.
+Nachzurüsten, sobald Einzelaktien in den Backtest sollen: ein explizites Kostenmodell
+(fixed vs. percentage) in `FeeSchedule` + Verzweigung im Modell. Nicht der Edge-Test-Fokus
+(EURUSD), daher später.
+
 ## S4 — Halal-Konformität von Krypto-/CFD-Instrumenten (aus E2)
 
 Mit E2 ist Krypto (2:1) im Katalog handelbar. CFDs allgemein und Übernacht-Swaps im

@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "catalog_id": "mt5-default-catalog",
-  "catalog_version": "2026-08-11",
+  "catalog_version": "2026-08-12",
   "valid_from": "2026-08-11",
   "valid_until": null,
-  "verified_on": "2026-08-11",
+  "verified_on": "2026-08-12",
   "sources": [
     {
       "title": "Anlageklassen-Zuordnung nach ESMA-Klasseneinteilung",
@@ -13,10 +13,10 @@
       "note": "Die asset_class je Symbol folgt der Klasseneinteilung, die den Hebeldeckel steuert."
     },
     {
-      "title": "Kosten und Handelszeiten: indikativ",
-      "reference": "brokerspezifisch",
-      "date": "2026-08-11",
-      "note": "Kommission, Spread, Swap und Handelszeiten sind indikative Platzhalter und je Broker/Konto zu verifizieren, bevor gehandelt wird. Die Anlageklasse steuert den Hebeldeckel und ist der handelsrelevante Teil dieses Katalogs."
+      "title": "Kosten: IC Markets (EU) Raw, aus R1 (RECHERCHE_KOSTEN.md, Tor E3)",
+      "reference": "icmarkets.eu Preis-/Swap-Seiten; Abruf 2026-08-12",
+      "date": "2026-08-12",
+      "note": "Kommission je Lot Roundturn: FX und Gold 7 USD (IC Markets Raw, measured), Indizes 0 (nur-Spread). Swaps fuer EURUSD/EURGBP/XAUUSD/US500 aus R1 (floaten taeglich, gerundet/konservativ); EURGBP-Swaps von GBP-Punkten auf USD umgerechnet (Kurs ~1,27, approx); GBPUSD/USDJPY/BTCUSD-Swaps bleiben indikativ. typical_spread_points ist ein indikativer Referenzwert -- das Kostenmodell rechnet den Spread aus dem echten Bid/Ask, nicht aus diesem Feld. Handelszeiten vereinfacht. Vor Live-Handel je Konto verifizieren."
     }
   ],
   "_fx_sessions": "Mo-Fr 00:00-21:00 UTC (vereinfacht)",
@@ -24,10 +24,10 @@
     "EURUSD": {
       "asset_class": "fx_major",
       "fees": {
-        "commission_per_lot_round_turn": "0",
+        "commission_per_lot_round_turn": "7",
         "typical_spread_points": "6",
-        "swap_long_per_lot_per_night": "-2.1",
-        "swap_short_per_lot_per_night": "-0.9",
+        "swap_long_per_lot_per_night": "-8.24",
+        "swap_short_per_lot_per_night": "1.51",
         "triple_swap_weekday": 2,
         "currency": "USD"
       },
@@ -42,7 +42,7 @@
     "GBPUSD": {
       "asset_class": "fx_major",
       "fees": {
-        "commission_per_lot_round_turn": "0",
+        "commission_per_lot_round_turn": "7",
         "typical_spread_points": "9",
         "swap_long_per_lot_per_night": "-3.4",
         "swap_short_per_lot_per_night": "-0.6",
@@ -60,7 +60,7 @@
     "USDJPY": {
       "asset_class": "fx_major",
       "fees": {
-        "commission_per_lot_round_turn": "0",
+        "commission_per_lot_round_turn": "7",
         "typical_spread_points": "7",
         "swap_long_per_lot_per_night": "1.2",
         "swap_short_per_lot_per_night": "-4.1",
@@ -78,10 +78,10 @@
     "EURGBP": {
       "asset_class": "fx_minor",
       "fees": {
-        "commission_per_lot_round_turn": "0",
+        "commission_per_lot_round_turn": "7",
         "typical_spread_points": "11",
-        "swap_long_per_lot_per_night": "-1.8",
-        "swap_short_per_lot_per_night": "-1.1",
+        "swap_long_per_lot_per_night": "-8.48",
+        "swap_short_per_lot_per_night": "1.07",
         "triple_swap_weekday": 2,
         "currency": "USD"
       },
@@ -96,10 +96,10 @@
     "XAUUSD": {
       "asset_class": "gold",
       "fees": {
-        "commission_per_lot_round_turn": "0",
+        "commission_per_lot_round_turn": "7",
         "typical_spread_points": "25",
-        "swap_long_per_lot_per_night": "-6.5",
-        "swap_short_per_lot_per_night": "-2.0",
+        "swap_long_per_lot_per_night": "-60.0",
+        "swap_short_per_lot_per_night": "-20.0",
         "triple_swap_weekday": 2,
         "currency": "USD"
       },
@@ -116,8 +116,8 @@
       "fees": {
         "commission_per_lot_round_turn": "0",
         "typical_spread_points": "40",
-        "swap_long_per_lot_per_night": "-3.0",
-        "swap_short_per_lot_per_night": "-1.5",
+        "swap_long_per_lot_per_night": "-1.78",
+        "swap_short_per_lot_per_night": "-0.09",
         "triple_swap_weekday": 4,
         "currency": "USD"
       },
