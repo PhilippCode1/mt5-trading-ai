@@ -13,7 +13,6 @@ import pytest
 from mt5_trading_ai.risk.leverage import (
     DEFAULT_LEVERAGE,
     SYSTEM_MAX_LEVERAGE,
-    SYSTEM_MIN_LEVERAGE,
     LeveragePolicyError,
     clamp_leverage,
     get_policy,
@@ -29,7 +28,7 @@ CLASSES = [
     ("index_minor", 10, 10, 10),
     ("commodity_non_gold", 10, 10, 10),
     ("equity", 5, 5, 5),
-    ("crypto", 2, None, None),
+    ("crypto", 2, 2, 2),
 ]
 
 
@@ -56,11 +55,12 @@ def test_no_class_can_exceed_system_cap(
         assert decision.leverage is None or decision.leverage <= SYSTEM_MAX_LEVERAGE
 
 
-def test_crypto_is_not_tradeable() -> None:
-    """2:1 liegt unter dem Betriebsminimum. Kein Handel, kein Default."""
+def test_crypto_is_tradeable_at_class_cap() -> None:
+    """2:1 ist der legale Deckel — es gibt kein Betriebsminimum mehr (E2)."""
     decision = clamp_leverage(requested=5, asset_class="crypto")
-    assert decision.no_trade
-    assert decision.reason == "class_cap_below_system_minimum"
+    assert not decision.no_trade
+    assert decision.leverage == 2
+    assert decision.binding == "class_cap"
 
 
 def test_unknown_class_is_no_trade_not_default() -> None:
@@ -70,16 +70,19 @@ def test_unknown_class_is_no_trade_not_default() -> None:
         assert decision.reason == "unknown_asset_class"
 
 
-def test_missing_request_falls_back_to_minimum_not_maximum() -> None:
+def test_missing_request_falls_back_to_default_not_maximum() -> None:
     """Ein vergessener Parameter darf nie den gefaehrlichsten Wert waehlen."""
     decision = clamp_leverage(requested=None, asset_class="fx_major")
-    assert decision.leverage == DEFAULT_LEVERAGE == SYSTEM_MIN_LEVERAGE
+    assert decision.leverage == DEFAULT_LEVERAGE
+    assert DEFAULT_LEVERAGE < SYSTEM_MAX_LEVERAGE
 
 
-def test_request_below_minimum_is_no_trade() -> None:
+def test_request_below_old_minimum_is_now_clamped_and_tradeable() -> None:
+    """Ohne Mindesthebel wird ein niedriger Wunsch geklammert, nicht abgelehnt (E2)."""
     decision = clamp_leverage(requested=3, asset_class="fx_major")
-    assert decision.no_trade
-    assert decision.reason == "requested_below_system_minimum"
+    assert not decision.no_trade
+    assert decision.leverage == 3
+    assert decision.binding == "requested"
 
 
 def test_policy_file_cannot_raise_the_system_cap(tmp_path: Path) -> None:

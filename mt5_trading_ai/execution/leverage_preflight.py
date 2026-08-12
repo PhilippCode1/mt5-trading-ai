@@ -1,14 +1,15 @@
 """Anschluss der Hebelklammer an den Order-Pfad.
 
 ``risk/leverage.py`` klammert den Hebel je Anlageklasse (``min(want, 10, Deckel)``;
-eine unbekannte Klasse oder ein Deckel unter dem Betriebsminimum fuehrt zu
-``no_trade``). Dieses Modul verbindet die Klammer mit einem konkreten Instrument, Konto
-und Auftrag: es entscheidet, ob eine **eroeffnende** Order zulaessig ist, mit welchem
-effektiven Hebel, und ob die dafuer noetige Marge frei ist.
+eine unbekannte Anlageklasse fuehrt zu ``no_trade``, jeder legale Deckel ist
+handelbar — es gibt kein Betriebsminimum, E2). Dieses Modul verbindet die Klammer
+mit einem konkreten Instrument, Konto und Auftrag: es entscheidet, ob eine
+**eroeffnende** Order zulaessig ist, mit welchem effektiven Hebel, und ob die
+dafuer noetige Marge frei ist.
 
-Fail-closed: was nicht sicher zulaessig ist, wird nicht freigegeben. ``no_trade`` der
-Klammer (unbekannte Klasse, Deckel unter Betriebsminimum, Wunsch unter Betriebsminimum)
-oder eine nicht ausreichende freie Marge fuehren zu ``approved=False`` — ohne Default.
+Fail-closed: was nicht sicher zulaessig ist, wird nicht freigegeben. ``no_trade``
+der Klammer (unbekannte Anlageklasse) oder eine nicht ausreichende freie Marge
+fuehren zu ``approved=False`` — ohne Default.
 """
 
 from __future__ import annotations
@@ -47,8 +48,8 @@ def evaluate_leverage_preflight(
 ) -> LeveragePreflight:
     """Klammere den Hebel und pruefe die Marge fuer eine eroeffnende Order.
 
-    ``requested_leverage`` ist der Strategiewunsch; fehlt er, waehlt die Klammer ihren
-    Default (das Betriebsminimum), nie den gefaehrlichsten Wert. ``price`` ist der
+    ``requested_leverage`` ist der Strategiewunsch; fehlt er, waehlt die Klammer
+    ihren konservativen Default, nie den gefaehrlichsten Wert. ``price`` ist der
     Preis, gegen den die Marge gerechnet wird (in Kontowaehrung je Kontrakt).
     """
     decision = clamp_leverage(

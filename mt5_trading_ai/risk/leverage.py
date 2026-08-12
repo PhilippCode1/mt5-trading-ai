@@ -24,9 +24,10 @@ from typing import Any
 
 #: Harte Obergrenze des Systems. Nicht konfigurierbar.
 SYSTEM_MAX_LEVERAGE = 10
-#: Untergrenze des Betriebsbereichs. Darunter wird nicht gehandelt.
-SYSTEM_MIN_LEVERAGE = 5
-#: Default, wenn eine Strategie keinen Hebel nennt: der kleinste zulaessige.
+#: Default, wenn eine Strategie keinen Hebel nennt: ein bewusst niedriger,
+#: konservativer Wert. Es gibt KEINEN Mindesthebel (Entscheidung E2, Teil 3):
+#: ein Minimum ist keine Sicherheitssperre, sondern verhindert vorsichtigeres
+#: Handeln und sperrt Klassen mit niedrigem Deckel (Krypto 2:1) grundlos aus.
 DEFAULT_LEVERAGE = 5
 
 ASSET_CLASS_LEVERAGE_POLICY_MODULE_VERSION = "asset-class-leverage-v1"
@@ -191,11 +192,11 @@ def clamp_leverage(
 ) -> LeverageDecision:
     """Effektiver Hebel = ``min(requested, SYSTEM_MAX_LEVERAGE, klassendeckel)``.
 
-    ``no_trade`` in drei Faellen: unbekannte Anlageklasse, Klassendeckel unter
-    ``SYSTEM_MIN_LEVERAGE``, oder ein angefragter Hebel unter
-    ``SYSTEM_MIN_LEVERAGE``. Ein zu hoher Wunsch wird nicht abgelehnt, sondern
-    heruntergeklammert — Ablehnen und Klammern sind beide sicher, Klammern ist
-    das nuetzlichere Verhalten und laesst die Sperre trotzdem greifen.
+    ``no_trade`` nur bei unbekannter Anlageklasse. Es gibt keinen Mindesthebel
+    (E2): jeder legale Klassendeckel ist handelbar, Krypto (2:1) eingeschlossen.
+    Ein zu hoher Wunsch wird nicht abgelehnt, sondern heruntergeklammert —
+    Ablehnen und Klammern sind beide sicher, Klammern ist das nuetzlichere
+    Verhalten und laesst den Deckel trotzdem greifen.
     """
     active = policy if policy is not None else get_policy()
     normalised_class = str(asset_class).strip().lower() if asset_class else None
@@ -218,30 +219,6 @@ def clamp_leverage(
         want = DEFAULT_LEVERAGE
 
     allowed = min(want, SYSTEM_MAX_LEVERAGE, cap.max_leverage)
-
-    if cap.max_leverage < SYSTEM_MIN_LEVERAGE:
-        return LeverageDecision(
-            leverage=None,
-            asset_class=normalised_class,
-            requested=want,
-            class_cap=cap.max_leverage,
-            system_cap=SYSTEM_MAX_LEVERAGE,
-            binding="class_cap",
-            reason="class_cap_below_system_minimum",
-            policy_version=active.policy_version,
-        )
-
-    if allowed < SYSTEM_MIN_LEVERAGE:
-        return LeverageDecision(
-            leverage=None,
-            asset_class=normalised_class,
-            requested=want,
-            class_cap=cap.max_leverage,
-            system_cap=SYSTEM_MAX_LEVERAGE,
-            binding="requested",
-            reason="requested_below_system_minimum",
-            policy_version=active.policy_version,
-        )
 
     class_is_binding = (
         allowed == cap.max_leverage

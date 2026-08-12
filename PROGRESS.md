@@ -696,3 +696,81 @@ Nachtrag ein.
 
 **Zeilenstand (gemessen):** `execution/private_sync.py` neu; Paket-Quellcode `mt5_trading_ai/`
 = 4.112 Zeilen, 18 Module, 190 Testfunktionen.
+
+---
+
+## ERLEDIGT — Paket 0 (Teil 3): Bereinigung und Wahrheitsprüfung
+
+**Was geschehen ist:** Die sechs Aufträge aus Paket 0 des Edge-Masterprompts.
+- **A0.1** Sichtbarkeit/Historie: Repo ist öffentlich (Beleg `gh repo view … visibility`
+  = PUBLIC). Historien-Scan über alle Refs: keine Zugangsdaten/Server/Kennungen committet
+  (einzige „password"-Treffer sind der `password:`-Parameter und CLI-Argumente, kein Wert).
+- **A0.2** Order-Pfad-Wahrheit: `submit_order` Zeile für Zeile gelesen. Ergebnis-Tabelle:
+  `risk/limits.py`, `risk/sizing.py`, `risk/stop_budget.py`, `gates/evaluation.py` werden
+  **nicht** im Order-Pfad aufgerufen (0 Treffer, kein Import). Getestete, aber verwaiste
+  Inseln — dieselbe Fehlerklasse wie die alte Hebelklammer. Als **S1** in `SPAETER.md`.
+- **A0.3** Befund 1: kein Frische-Mechanismus am Halt-Latch (`reconcile` ist betreiber-
+  gerufen, kein Zeitstempel/Maximalalter). Befund bleibt **offen**; die frühere
+  „beantwortet"-Behauptung ist hiermit als Nachtrag korrigiert. Als **S2** in `SPAETER.md`.
+- **A0.4** Doku-Drift + Ursache: sieben Drift-Punkte behoben (Commit-Zahl, Test-Fallzahlen,
+  `protocol.py`-Test, `docs/` im Baum, U5-Kästchen, Review-Zählung, Fix-2-Status). Ursache
+  behoben durch neues Tor `tools/check_doc_numbers.py`: Live-Kennzahlen leben nur im
+  README-Block, andere Live-Docs verweisen; „N Fälle je Testdatei" wird gegen die Ist-Zahl
+  geprüft; harte Commit-Zahlen sind verboten; `PROGRESS.md` und `docs/audit/` sind als
+  historische Belege ausgenommen (Rule 22).
+- **A0.5** CI: das neue Tor als sechster Schritt in `.github/workflows/ci.yml`.
+- **A0.6** E2 umgesetzt: Betriebsminimum Hebel gestrichen. `SYSTEM_MIN_LEVERAGE` und die
+  zwei „unter-Minimum → no_trade"-Zweige entfernt; ESMA-Deckel je Klasse bleibt hart.
+  Krypto handelt jetzt bei 2:1, niedrige Wunschhebel werden geklammert statt abgelehnt.
+
+**Abnahme (Befehle und Ausgaben):**
+```
+$ python -m pytest -q
+247 passed
+$ python -m ruff check .
+All checks passed!
+$ python -m mypy --strict mt5_trading_ai tools
+Success: no issues found in 29 source files
+$ python tools/gen_docs.py --check
+ok — MODULES.md ist aktuell (215 Zeilen).
+$ python tools/check_docs_claims.py
+ok - 8/12 Markdown-Dateien, keine Zusicherung ohne Beleg
+$ python tools/check_doc_numbers.py
+ok - Code: 18 Module, 193 Testfunktionen, 4129 Quellzeilen; Doku widerspruchsfrei.
+```
+
+**Negativ gefahren (das neue Zahlen-Tor, zwei Facetten):**
+- README-Block: `source_lines` 4129 → 4128 → Tor **rot** („4128 im Block, Code sagt 4129")
+  → zurückgenommen.
+- Testfall-je-Datei: `FEHLT.md` `test_mt5_venue.py` 31 → 30 → Tor **rot** („30 behauptet,
+  tatsächlich 31") → zurückgenommen → grün.
+
+**Entscheidungen, die ich selbst getroffen habe:**
+- Das Zahlen-Tor unterscheidet **Live**- von **historischen** Docs. `PROGRESS.md`
+  (anhängendes Logbuch) und `docs/audit/` (datierter Snapshot) gegen den heutigen Code zu
+  prüfen wäre Geschichtsfälschung (Rule 22) — sie sind ausgenommen. Live-Kennzahlen leben an
+  **einer** Stelle (README-Block, Rule 9), MASTERBERICHT verweist nur noch.
+- A0.6 „streichen" heißt: `DEFAULT_LEVERAGE` bleibt als konservativer Default bei fehlendem
+  Wunsch; nur der **Boden** (Ablehnung unter Minimum) entfällt. Der Deckel bleibt unberührt.
+- Die vier verwaisten Risikomodule (A0.2) habe ich **nicht** verdrahtet: Paket 0 baut keine
+  Infrastruktur, und Venue-Schicht vs. Risiko-Manager-Schicht ist eine offene Designfrage
+  (S1). „Mitgekommen und getestet" bleibt getrennt von „verdrahtet" benannt.
+
+**Eigene Fehler:**
+- Das Fallzahl-Muster `F[aä]lle` traf „Faelle" (ae-Schreibung, wie in `FEHLT.md`) nicht →
+  auf `F(?:ä|ae)lle` erweitert.
+- Die Windows-Konsole (cp1252) stürzte an einem `·` im Zitat ab → `stdout.reconfigure(utf-8)`.
+- Der Zeilen-basierte Fallzahl-Check paarte in einem umgebrochenen Satz die falsche Datei mit
+  der falschen Zahl (`test_mt5_smoke.py` mit 13 statt 5) → MASTERBERICHT §3.4 auf **eine**
+  Datei+Zahl je Zeile umgestellt, damit die Paarung eindeutig ist.
+
+**Auffälligkeiten, gemeldet, nicht angefasst:** S1–S4 in `SPAETER.md` — die vier verwaisten
+Risikomodule (S1), der fehlende Frische-Latch (S2), die Modul-Zeilenzahl-Doppelung in
+MASTERBERICHT §3 (S3, Rule 9), die Halal-Frage für Krypto-CFDs nach E2 (S4).
+
+**Entscheidungstore an Philipp:** **E1** beantwortet — öffentlich lassen, gut lesbar für
+LLM-Weiterarbeit. **E2** beantwortet — Betriebsminimum gestrichen (in A0.6 umgesetzt).
+
+**Zeilenstand (gemessen):** `tools/check_doc_numbers.py` und `SPAETER.md` neu; `leverage.py`
+um die zwei Minimum-Zweige gekürzt. Paket-Quellcode `mt5_trading_ai/` = 4.129 Zeilen,
+18 Module, 193 Testfunktionen; 247 Testfälle grün.

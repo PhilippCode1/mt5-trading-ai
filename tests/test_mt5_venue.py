@@ -420,7 +420,7 @@ def test_leverage_preflight_clamps_and_checks_margin() -> None:
     assert pre.effective_leverage == 10  # min(50, 10, 30)
 
 
-def test_leverage_preflight_crypto_is_no_trade() -> None:
+def test_leverage_preflight_crypto_clamps_to_class_cap() -> None:
     venue, _ = _venue(is_demo=True)
     pre = evaluate_leverage_preflight(
         instrument=venue.get_instrument("BTCUSD"),
@@ -429,8 +429,10 @@ def test_leverage_preflight_crypto_is_no_trade() -> None:
         price=Decimal("60000"),
         requested_leverage=50,
     )
-    assert pre.approved is False
-    assert pre.reason == "class_cap_below_system_minimum"
+    # E2: kein Betriebsminimum — Krypto klammert auf den ESMA-Deckel 2:1.
+    assert pre.leverage.leverage == 2
+    assert pre.approved is True
+    assert pre.effective_leverage == 2
 
 
 def test_leverage_preflight_insufficient_margin() -> None:
@@ -446,12 +448,12 @@ def test_leverage_preflight_insufficient_margin() -> None:
     assert pre.reason == "insufficient_margin"
 
 
-def test_venue_opening_blocks_untradeable_crypto() -> None:
+def test_venue_opening_allows_crypto_at_class_cap() -> None:
+    # E2: Krypto ist handelbar (2:1). Marge reicht -> die Eroeffnung geht durch.
     venue, terminal = _venue(is_demo=True)
-    with pytest.raises(OrderRejectedError) as excinfo:
-        venue.submit_order(_order(client_order_id="btc-1", symbol="BTCUSD"))
-    assert excinfo.value.reason == "class_cap_below_system_minimum"
-    assert terminal.order_send_calls == 0
+    result = venue.submit_order(_order(client_order_id="btc-1", symbol="BTCUSD"))
+    assert result.accepted is True
+    assert terminal.order_send_calls == 1
 
 
 def test_venue_opening_blocks_on_insufficient_margin() -> None:

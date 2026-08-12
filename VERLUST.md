@@ -28,7 +28,7 @@ und `config/`). Anker stehen als `pfad:zeile`. Gemessen, nicht angenommen.
 | Versuchsregister `TRIALS.jsonl` (anhaengend) | `mt5_trading_ai/gates/trials.py` | `test_trials_ledger.py` |
 | Lernphase: Rangliste, Schwaechenbefunde, Grenzen | `mt5_trading_ai/gates/learning_phase.py` | `test_learning_phase.py` |
 | Datenqualitaet: Lueckenquote, Zeitstempel, Ausreisser, Handelszeiten | `mt5_trading_ai/data/quality.py` | `test_data_quality.py` |
-| `TradingVenue`-Protokoll | `mt5_trading_ai/venue/protocol.py` | **kein Test** (gab es im Altbestand nicht) |
+| `TradingVenue`-Protokoll | `mt5_trading_ai/venue/protocol.py` | Vertragstest inzwischen vorhanden (`tests/test_mt5_venue.py`: der Adapter erfüllt das Protokoll, statisch + gegen ein Fake-Terminal geprüft) |
 | Zeitreihen-Splits mit Purge/Embargo, Walk-Forward bis Datenende | `mt5_trading_ai/backtest/splits.py` | `test_splits.py` (Fold-Fix rot-geprueft) |
 
 ### 1b. Neu zu schreiben (wird gebraucht → `FEHLT.md`)
@@ -150,5 +150,5 @@ schreiben. → `FEHLT.md`.
 - [x] Faehigkeiten vollstaendig eingeordnet (mitgekommen / neu / entfallen), aus dem Code enumeriert.
 - [x] Jede Sperre einzeln, mit Anker und Einordnung; bei „entfallen" begruendet.
 - [x] Die zwei Pflicht-Befunde uebernommen; Befund 2 gegen die Messung korrigiert.
-- [ ] **Philipp vorgelegt, bevor U6 beginnt** — Entscheidung offen: kommt etwas aus 2b/2c
-  nachtraeglich mit, oder bleibt es fuer den naechsten Auftrag in `FEHLT.md`?
+- [x] **Philipp vorgelegt, bevor U6 beginnt** — entschieden und in `PROGRESS.md` (U6)
+  protokolliert: 2b/2c bleiben fuer den naechsten Auftrag in `FEHLT.md`.

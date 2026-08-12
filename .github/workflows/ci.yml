@@ -1,6 +1,6 @@
 name: CI
 
-# Erzwingt bei jedem Push und jedem Pull Request dieselben fuenf Tore, die lokal
+# Erzwingt bei jedem Push und jedem Pull Request dieselben sechs Tore, die lokal
 # gelten. Bricht eines, wird der Lauf rot -- die Sperren sind damit nicht mehr nur
 # bei manuellem Aufruf aktiv (Audit-Fund: "keine CI erzwingt die Sperren").
 
@@ -39,3 +39,6 @@ jobs:
 
       - name: Doku-Behauptungen belegt
         run: python tools/check_docs_claims.py
+
+      - name: Doku-Zahlen = Code
+        run: python tools/check_doc_numbers.py

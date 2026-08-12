@@ -74,11 +74,13 @@ def test_catalog_classes_are_covered_by_leverage_policy() -> None:
         assert decision.reason != "unknown_asset_class", symbol
 
 
-def test_crypto_is_in_catalog_but_untradeable() -> None:
+def test_crypto_is_in_catalog_and_tradeable_at_cap() -> None:
     catalog = load_instrument_catalog()
     assert catalog["BTCUSD"].asset_class is AssetClass.CRYPTO
-    # Katalog kennt es, die Hebelklammer handelt es nicht (Deckel 2 < Minimum 5).
-    assert clamp_leverage(requested=10, asset_class="crypto").no_trade
+    # Kein Betriebsminimum mehr (E2): der ESMA-Deckel 2:1 ist handelbar.
+    decision = clamp_leverage(requested=10, asset_class="crypto")
+    assert not decision.no_trade
+    assert decision.leverage == 2
 
 
 # --- Fail-closed ----------------------------------------------------------

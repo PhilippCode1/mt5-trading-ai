@@ -17,11 +17,11 @@ das sichere Fundament, hinter dem ein Handel erst durch eine mehrteilige menschl
 möglich wird.
 
 - **Ort:** `C:\Users\Acer\mt5_trading_ai`
-- **GitHub:** `PhilippCode1/mt5-trading-ai` (privat), Branch `master`, 16 Commits
-- **Umfang:** 18 Module / 4.112 Zeilen Kerncode · 190 Testfunktionen / 2.628 Zeilen Tests ·
-  3 Werkzeuge / 276 Zeilen
-- **Prüfstand:** 244 Tests grün · `ruff` sauber · `mypy --strict` sauber (28 Quelldateien) ·
-  zwei Doku-Tore grün
+- **GitHub:** `PhilippCode1/mt5-trading-ai` (öffentlich), Branch `master`
+- **Umfang:** siehe die geprüften README-Kennzahlen (Modulzahl, Testfunktionen,
+  Quellzeilen) — von `tools/check_doc_numbers.py` gegen den Code gesperrt.
+- **Prüfstand:** `pytest -q` grün · `ruff` sauber · `mypy --strict` sauber · drei
+  Doku-Tore grün (`gen_docs --check`, `check_docs_claims`, `check_doc_numbers`)
 
 ---
 
@@ -66,7 +66,10 @@ mt5_trading_ai/
 │   ├── asset_class_leverage.json     ESMA-Hebeldeckel je Anlageklasse
 │   └── instrument_catalog.json       versionierter Instrumentenkatalog
 │
-├── mt5_trading_ai/        DAS PAKET (18 Module)
+├── .github/workflows/    CI (pytest, ruff, mypy, Doku-Tore) bei jedem Push
+├── docs/                 HTML-Übersicht + datierter Audit-Snapshot (Bericht/JSON)
+│
+├── mt5_trading_ai/        DAS PAKET (Module: siehe README-Kennzahlen)
 │   ├── risk/       Hebelklammer, Verlustgrenzen, Positionsgröße, Stop-Budget
 │   ├── gates/      Bewertungstor, Kriterien+Deflated Sharpe, Versuchsregister, Lernphase
 │   ├── data/       Datenqualitäts-Tor
@@ -74,8 +77,8 @@ mt5_trading_ai/
 │   ├── execution/  Live-Freigabe, Hebel-Preflight, Reconcile, Private-Sync
 │   └── venue/      TradingVenue-Protokoll, MT5-Adapter, Katalog-Lader, Demo-Smoke
 │
-├── tests/          18 Testdateien, 190 Testfunktionen
-└── tools/          Doku-Generator, Doku-Tor, Demo-Smoke-CLI
+├── tests/          Tests (Anzahl: siehe README-Kennzahlen)
+└── tools/          Doku-Generator, zwei Doku-Tore, Demo-Smoke-CLI
 ```
 
 ---
@@ -86,7 +89,7 @@ mt5_trading_ai/
 
 | Modul | Zeilen | Aufgabe |
 | --- | --- | --- |
-| `risk/leverage.py` | 276 | **Hebelklammer**: `min(Wunsch, 10, Klassendeckel)`; unbekannte Klasse oder Deckel unter Betriebsminimum → `no_trade`. Nicht über 10 konfigurierbar. |
+| `risk/leverage.py` | 253 | **Hebelklammer**: `min(Wunsch, 10, Klassendeckel)`; unbekannte Anlageklasse → `no_trade`. Kein Betriebsminimum (E2): jeder legale Deckel ist handelbar, Krypto 2:1 eingeschlossen. Nicht über 10 konfigurierbar. |
 | `risk/limits.py` | 145 | **Verlustgrenzen**: Tagesverlust, Drawdown-Halt (kein Selbst-Reset), Positionsdeckel. |
 | `risk/sizing.py` | 220 | Positionsgröße aus Risikoanteil und Stop-Abstand; Stop-Floor. |
 | `risk/stop_budget.py` | 160 | Stop-Budget je Anlageklasse. |
@@ -126,8 +129,10 @@ negativ gefahren).
 | `venue/catalog.py` | 159 | **Instrumentenkatalog-Lader**: Anlageklasse, Kosten, Handelszeiten aus versionierter Datei; jeder Defekt ist ein Fehler, kein Default. |
 | `venue/smoke.py` | 162 | **Demo-Smoke-Orchestrierung** (`run_smoke`): feste Prüffolge gegen einen Venue, harter Demo-Abbruch, optionale abgesicherte Schreib-Probe. |
 
-Belegt durch `test_mt5_venue.py` (30 Fälle — der Vertragstest), `test_instrument_catalog.py`
-(13 Fälle, davon 9 Fail-closed), `test_mt5_smoke.py` (5 Fälle).
+Belegt durch drei Testdateien (je eine Fallzahl pro Zeile, vom Zahlen-Tor geprüft):
+`test_mt5_venue.py` mit 31 Fällen (der Vertragstest);
+`test_instrument_catalog.py` mit 13 Fällen (davon 9 Fail-closed);
+`test_mt5_smoke.py` mit 5 Fällen.
 
 ### 3.5 `execution/` — die Tore am Order-Pfad
 
@@ -182,10 +187,13 @@ Der Kern lebt von einer bewussten Prüfkultur, nicht von Zusicherungen:
 3. **Doku-Tore.** `MODULES.md` wird **aus dem Code** erzeugt und per `--check` geprüft; ein
    Zahlen-Test hält die README-Kennzahlen ehrlich; ein Claims-Tor blockiert
    Reifegrad-Phrasen ohne ausführbaren Beleg und begrenzt die Doku-Menge.
-4. **Adversariale Review.** Für drei sicherheitsnahe Bausteine (Buch-Adoption, Demo-Smoke,
-   Private-Sync) lief eine mehrperspektivische Prüfung mit Gegenkontrolle jedes Befunds. Zwei
-   davon fanden **reale** Fehler im untestbaren Schreibpfad (ein Stop neben dem Tick-Raster;
-   ein Reduce-Only-Close ohne Positions-Ticket) — beide sind eingearbeitet und getestet.
+4. **Adversariale Review.** Für zwei sicherheitsnahe Bausteine (Buch-Adoption, Demo-Smoke)
+   lief eine vollständige mehrperspektivische Prüfung mit Gegenkontrolle jedes Befunds; beide
+   fanden **reale** Fehler im untestbaren Schreibpfad (ein Stop neben dem Tick-Raster; ein
+   Reduce-Only-Close ohne Positions-Ticket). Der Stop-Fix ist eingearbeitet und getestet; der
+   Reduce-Only-Fix ist codiert und unit-getestet, aber am **echten** Terminal noch
+   unbestätigt. Die Review des Private-Sync wurde beim Fertigstellen abgebrochen und steht als
+   offener Punkt in `PROGRESS.md`.
 
 ---
 
@@ -193,15 +201,13 @@ Der Kern lebt von einer bewussten Prüfkultur, nicht von Zusicherungen:
 
 | Kennzahl | Wert |
 | --- | --- |
-| Kernmodule (ohne `__init__`) | 18 |
-| Kerncode (Zeilen `.py`) | 4.112 |
-| Testfunktionen | 190 (in 18 Dateien) |
-| Testfälle (parametrisiert) | 244 grün |
+| Modulzahl · Testfunktionen · Quellzeilen | siehe README-KENNZAHLEN (Zahlen-Tor) |
+| `pytest -q` | grün |
 | `ruff check .` | keine Beanstandung |
-| `mypy --strict mt5_trading_ai tools` | keine Beanstandung (28 Quelldateien) |
+| `mypy --strict mt5_trading_ai tools` | keine Beanstandung |
 | `gen_docs.py --check` | `MODULES.md` aktuell |
 | `check_docs_claims.py` | keine Zusicherung ohne Beleg |
-| Commits | 16 (privat auf GitHub) |
+| `check_doc_numbers.py` | Doku-Zahlen = Code, keine Drift |
 
 **Was heute nachweislich funktioniert:** die gesamte Risiko-/Sperr-/Validierungsschicht; das
 `TradingVenue`-Protokoll mit einem MT5-Adapter, dessen Marktdaten-, Konto-, Positions-,
@@ -233,8 +239,9 @@ die menschlichen Tore stehen.**
    Global-Halt-Latch, Runtime-Safety-Oracle, Exchange-Readiness (`WRITE_ORDER_ALLOWED_DEFAULT
    =False`), VPIN-Halt, Liquiditäts-Guard, Positions-Drift-Halt.
 5. **Zwei konkrete offene Befunde** aus `VERLUST.md`: der frühere `portfolio_risk_check_fresh`
-   (ein frischer Risikocheck, den heute der Reconcile beantwortet, sobald ein Portfolio-
-   Risikozustand existiert) und das Setzen des geklammerten Hebels am Terminal je Symbol.
+   (der Reconcile deckt den Inhalt ab, ist aber betreiber-gerufen und erzwingt keine Frische je
+   Order — ein Frische-/Alters-Mechanismus am Halt-Latch fehlt, der Befund bleibt **offen**) und
+   das Setzen des geklammerten Hebels am Terminal je Symbol.
 
 ---
 
