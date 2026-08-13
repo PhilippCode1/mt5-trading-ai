@@ -19,7 +19,7 @@ genau die falsche Richtung.
 ## 1. Anbindung (venue)
 
 - **ERLEDIGT:** `mt5_trading_ai/venue/mt5.py` implementiert `TradingVenue` (`Mt5Venue`) mit
-  Vertragstest (`tests/test_mt5_venue.py`, 35 Faelle) — das Protokoll hat damit erstmals
+  Vertragstest (`tests/test_mt5_venue.py`, 43 Faelle) — das Protokoll hat damit erstmals
   einen Test. Das Live-Freigabe-Tor ist verdrahtet (eroeffnende Live-Order nur mit
   vollstaendiger Freigabe). `RealMt5Terminal` bindet MetaTrader5 (lazy), Schreibpfad
   `allow_write=False` (fail-closed).

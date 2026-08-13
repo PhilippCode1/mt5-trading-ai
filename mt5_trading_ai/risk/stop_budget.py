@@ -38,6 +38,9 @@ Liquidationsangst.
 
 Ist die Untergrenze groesser als die Obergrenze, ist die Kombination aus Klasse
 und Hebel nicht handelbar: ``no_trade``, keine Aufweichung.
+
+**Aufrufer (Paket 4):** ``execution/risk_manager.py`` fahrt ``stop_budget`` fuer jede
+eroeffnende Live-Order; ein untradeables Budget lehnt die Order fail-closed ab.
 """
 
 from __future__ import annotations

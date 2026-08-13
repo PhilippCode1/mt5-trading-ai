@@ -17,6 +17,11 @@ Fuenf Mechanismen, alle unabhaengig voneinander:
 Jede unterdrueckte Bewertung wird mit Begruendung zurueckgegeben und persistiert
 (``decision='suppressed'``). Der Anteil der Bewertungen, die zu einem Trade
 fuehren, ist damit messbar statt geschaetzt.
+
+**Aufrufer (Paket 4):** ``execution/risk_manager.py`` fahrt ``select_one`` je
+eroeffnende Live-Order (Einzelkandidat) als Drossel -- Cooldown, Mindesthaltedauer,
+Tageskappen und Positionsdeckel greifen. Die Auswahl aus mehreren Kandidaten wird erst
+mit einer echten Bewertungsschleife wirksam (siehe ``SPAETER.md`` S12).
 """
 
 from __future__ import annotations

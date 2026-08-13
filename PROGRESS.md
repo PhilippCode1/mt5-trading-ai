@@ -1471,3 +1471,89 @@ und das Tor vertraut den Broker-Metadaten (`currency_profit`, Kommission), die e
 **Zeilenstand (gemessen, 2026-08-13):** 6.167 Zeilen, 28 Module, 329 Testfunktionen, 383
 Testfälle grün; `ruff` und `mypy --strict` sauber. SPAETER **S5** bestätigt, **S10** und **S11**
 neu eröffnet.
+
+---
+
+## ERLEDIGT — Abnahme-Paket 4 (Risikoschicht in den Order-Pfad verdrahten — S1)
+
+Viertes Paket des `ABNAHME_PLAN.md` und der große Block. Kernbefund der Bewertung war die
+gefährlichste offene Fehlerklasse des Systems: **vier getestete, aber verwaiste Risikomodule**
+(`risk/limits.py`, `risk/sizing.py`, `risk/stop_budget.py`, `gates/evaluation.py`) hatten keinen
+Aufrufer — dieselbe Klasse wie die alte Hebelklammer (getestet, am Live-Pfad nie aufgerufen).
+
+**Was gebaut wurde:**
+- **`RiskManager`** (`execution/risk_manager.py`, neu): führt die vier Module zu **einem** Aufrufer
+  am Order-Pfad zusammen und fährt sie in der vorgeschriebenen, nicht verhandelbaren Reihenfolge:
+  (1) **`evaluate_limits`** (Kill-Switch: Tagesverlust → Ablehnung, Drawdown → `_halted`-Latch,
+  Positionsdeckel, Gap-Sperre); (2) **`select_one`** (Drossel: Cooldown, Mindesthaltedauer,
+  Tageskappen, Positionsdeckel); (3) **`stop_budget`** + **`executable_stop_floor`** (Floor >
+  Budget → `no_trade`); (4) **`size_position`** (angefordertes Volumen > Budget-Volumen →
+  Ablehnung). Der Manager trägt den Zustand, den die Venue nicht hat: Equity-Verlauf (Tagesstart,
+  rollierender Fenster-Hoechststand), Handelsfrequenz und offene Positionen mit Eröffnungszeit.
+- **Verdrahtet in `submit_order`** (`venue/mt5.py`): `_enforce_risk` läuft für eröffnende Orders
+  nach Hebel-Preflight und Kostentor. **Demo-frei / Live-Pflicht** (wie das Kostentor: fehlt der
+  Manager auf Live → fail-closed `risk_unconfigured`). Ein Drawdown-Halt setzt `_halted`.
+  `_enforce_leverage` gibt jetzt den effektiven Hebel zurück (die Budget-Obergrenze hängt am
+  Hebel). Akzeptierte Eröffnungen werden dem Manager gemeldet (`record_open_fill`).
+- **Docstrings angeglichen**: die vier Module tragen jetzt einen „Aufrufer (Paket 4)"-Vermerk;
+  SPAETER **S1** als erledigt markiert, die bewussten Vereinfachungen in **S12** vermerkt.
+
+**§9-Review (vier Blickwinkel, 11 Agenten) fand sechs bestätigte Befunde — alle behoben, dann per
+Fix-Re-Check gegengeprüft:**
+- **HOCH / fail-OPEN #1 — klebrige Drawdown-Freigabe:** `_manual_release_id` wurde nie gelöscht →
+  eine einzige manuelle Freigabe entwaffnete den Drawdown-Kill-Switch **dauerhaft** für alle
+  späteren Episoden (der Kill-Switch, den `limits.py` ausdrücklich als „löst sich nicht von selbst"
+  beschreibt, löste sich nach der ersten Freigabe selbst). **Fix:** die Freigabe gilt nur für die
+  **aktuelle** Halt-Episode — vor `evaluate_limits` wird sie verworfen, sobald der Drawdown sich
+  unter die Grenze erholt (re-arm) **oder** sich über das freigegebene Niveau vertieft (neuer
+  Halt); `_release_ceiling` hält das Niveau. Zwei Regressionstests.
+- **MITTEL / Schein-Gate #2 — `stop_budget.lower_bps` nie erzwungen:** nur die Obergrenze wurde
+  geprüft; `budget.allows()`/die Kosten-Untergrenze war am Order-Pfad toter Code → ein zu enger
+  Stop (unter dem Kosten-Floor, rechnerisch unhandelbar) passierte. Genau die zu eliminierende
+  Klasse. **Fix:** `effective_stop < budget.lower_bps` → `stop_budget_below_cost_floor` (die
+  Obergrenze bleibt präzise bei `size_position`). Test fx_minor 25 bps < Floor 40.
+- **#4 (fail-closed) — Frequenz-Tageszähler resetten nur beim Fill:** nach einer ausgeschöpften
+  Tageskappe hätte die erste Order des Folgetags stale weitergeblockt. **Fix:** Tages-Rollover in
+  einen Helper gezogen und auch auf dem Lesepfad (`authorize_opening`) gerufen.
+- **#5 (fail-closed) — `record_close` ohne Order-Pfad-Aufrufer:** der Positionsdeckel hätte
+  Lifetime-Eröffnungen statt offener Positionen gezählt. **Fix:** in `submit_order` ruft ein
+  glattstellender reduce_only-Fill (`book.net==0`) jetzt `record_close`.
+- **#6 (fail-closed, niedrig) — Deckel zählte Fills statt Netto-Symbole:** **Fix:**
+  `record_open_fill` dedupt je Symbol (spiegelt `record_close`).
+- **Fix-Re-Check-Nachzug zu #5:** Ein Adversarial-Durchlauf auf die Fixe fand, dass die erste
+  Fassung von #5 nur im **Nicht-Strom**-Modus trug — mit `PrivateSync` läuft das lokale Buch dem
+  asynchronen Ereignisstrom nach, sodass `book.net==0` zum falschen Zeitpunkt prüfte. **Fix:** das
+  Glattstellen wird jetzt aus `pre_net + Fill` bestimmt (Buch **vor** der Mutation erfasst),
+  stromunabhängig korrekt — mit einem Strom-Modus-Test belegt, der mit der alten Fassung rot wäre.
+  Die verbleibende seltene Strom-Latenz-Kante (Open + sofortiger Close innerhalb der Ereignis-
+  Latenz) ist fail-**closed** und in SPAETER **S12** vermerkt. #1/#2/#4/#6 wurden vom Re-Check als
+  korrekt bestätigt.
+
+**Negativ gefahren / nachgewiesen (Order-Pfad, `tests/test_mt5_venue.py`):** (a) 0,10 Lot (~1 %
+Risiko) gegen 0,25 % Budget → `volume_exceeds_risk_budget`, kein Send; (b) `safety=100` drückt das
+Budget unter den Tiefe-Floor → `risk_sizing_stop_floor_exceeds_budget`; (c) Fenster-Hoechststand
+12k / Equity 10k → Drawdown 16,7 % → `_halted` gesetzt, die nächste Eröffnung fällt am Global-Halt;
+(d) zweiter Trade sofort → `throttle_*`, nur der erste ging raus. Plus 18 reine `RiskManager`-
+Einheitstests (`tests/test_risk_manager.py`): Budget, Stop-Floor, untradeable-Budget, Drawdown-Halt
++ manuelle Freigabe, Tagesverlust ohne Latch, Cooldown, Positionsdeckel, `record_close` gibt Platz
+frei, Gap-Sperre, Tagesgrenzen-Reset, strengere Limits — und die fünf §9-Regressionen
+(Freigabe-Re-Arm, Freigabe-Vertiefung, Stop unter Kosten-Floor, Tageskappen-Reset, Symbol-Dedup).
+
+**Entscheidungen, die ich selbst getroffen habe:** die Risikoschicht in die **Venue-Schicht** zu
+legen (letzte Verteidigungslinie je Order, per Plan), realisiert als injizierte `RiskManager`-
+Komponente (wie das Kostentor) statt als Manager-Schicht über dem Venue — der Venue ist der
+erzwingende Punkt, der Manager trägt den Zustand; das Tor **Demo-frei / Live-Pflicht** zu bauen
+(ein Live-Sicherheitstor, konsistent mit Live-Freigabe und Kostentor); ein über dem Budget
+liegendes Volumen zu **verwerfen** statt still zu verkleinern (ein verkleinerter Trade ist ein
+anderer als der bewertete).
+
+**Auffälligkeiten, gemeldet, nicht angefasst (ehrlich, SPAETER S12):** die Volatilität steht am
+Order-Pfad nicht je Bar bereit → im Stop-Floor mit 0 angesetzt (Broker-Abstand, Tiefe, Spread
+binden weiter); der Ranglisten-/Ein-Gewinner-Teil der Drossel wird per Order mit einem
+Einzelkandidaten gefahren und wird erst mit einer echten Bewertungsschleife wirksam; der
+Positions-Lebenszyklus (`record_open_fill`/`record_close`) ist gegenüber dem Netto-Buch
+vereinfacht (kein Teil-Fill-Tracking); der Manager-Zustand ist In-Memory (kein Neustart-Persist).
+
+**Zeilenstand (gemessen, 2026-08-13):** 6.641 Zeilen, 29 Module, 355 Testfunktionen, 409 Testfälle
+grün; `ruff`, `mypy --strict`, `gen_docs --check`, `check_doc_numbers` sauber. SPAETER **S1**
+erledigt, **S12** neu.

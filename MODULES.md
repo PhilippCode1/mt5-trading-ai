@@ -145,6 +145,14 @@ Mehrteilige Freigabe fuer Order-Submit an einen echten Markt.
 - `def evaluate_live_release`
 - `def live_release_blocks_opening_order`
 
+## `mt5_trading_ai/execution/risk_manager.py`
+
+Risikoschicht am Order-Pfad: die vier Grenzen als letzte Verteidigungslinie.
+
+- `class RiskPolicy`
+- `class RiskAuthorization`
+- `class RiskManager`
+
 ## `mt5_trading_ai/gates/criteria.py`
 
 Vorregistrierte Kriterien und ihre Auswertung (Phase 9.3).

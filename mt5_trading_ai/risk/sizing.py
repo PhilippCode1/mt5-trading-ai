@@ -16,6 +16,10 @@ Abrunden statt Aufrunden ist Absicht: Aufrunden auf den naechsten Volumenschritt
 erhoeht das Risiko ueber das Budget hinaus. Wenn die abgerundete Groesse unter
 dem Mindestvolumen liegt, ist das ``no_trade`` und kein Anlass, das Budget zu
 dehnen.
+
+**Aufrufer (Paket 4):** ``execution/risk_manager.py`` fahrt ``executable_stop_floor``
+und ``size_position`` fuer jede eroeffnende Live-Order; ein angefordertes Volumen ueber
+dem Budget-Volumen wird am Order-Pfad abgelehnt.
 """
 
 from __future__ import annotations

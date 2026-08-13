@@ -7,26 +7,39 @@ und wird bewusst später entschieden. Diese Liste ist kein Rückstand, den man
 
 ---
 
-## S1 — Vier Risikomodule liegen NICHT im Order-Pfad (aus A0.2)
+## S1 — Vier Risikomodule NICHT im Order-Pfad — ERLEDIGT (Abnahme-Paket 4)
 
-`Mt5Venue.submit_order` ruft in Folge: Idempotenz → Global-Halt → Stop-Pflicht
-(nackter `stop_loss<=0`) → Live-Freigabe → Hebel-Preflight → Terminal. **Nicht**
-aufgerufen werden:
+**Erledigt:** Die vier bis dahin verwaisten Module sind jetzt über den neuen
+`execution/risk_manager.py` (`RiskManager`) an den Order-Pfad verdrahtet und werden in
+`Mt5Venue.submit_order` für jede **eröffnende Live-Order** gefahren (Demo-frei / Live-
+Pflicht wie das Kostentor; fehlt der Manager auf Live → fail-closed `risk_unconfigured`).
+Reihenfolge und Aufrufer:
 
-- `risk/limits.py` — Tagesverlust, Drawdown-Halt, Positionsdeckel
-- `risk/sizing.py` — Positionsgröße, Stop-Floor
-- `risk/stop_budget.py` — Stop-Budget je Klasse
-- `gates/evaluation.py` — Bewertungstor
+- `risk/limits.py` (`evaluate_limits`) — Kill-Switch: Tagesverlust → Ablehnung,
+  Drawdown → **`_halted`-Latch** gesetzt, Positionsdeckel, Gap-Sperre.
+- `gates/evaluation.py` (`select_one`) — Drossel: Cooldown, Mindesthaltedauer,
+  Tageskappen, gleichzeitige Positionen (der zweite zu schnelle Trade fällt).
+- `risk/stop_budget.py` (`stop_budget`) + `risk/sizing.py` (`executable_stop_floor`) —
+  Stop-Floor gegen Budget je Klasse/Hebel; Floor > Budget → `no_trade`.
+- `risk/sizing.py` (`size_position`) — angefordertes Volumen > Budget-Volumen → Ablehnung.
 
-Sie sind getestet, aber **verwaiste Inseln**: es gibt keinen Aufrufer, weil noch keine
-Codezeile eine Handelsentscheidung trifft. Das ist dieselbe Fehlerklasse wie die alte
-Hebelklammer (getestet, aber am Live-Pfad nie aufgerufen).
+Nachgewiesen am Order-Pfad (`tests/test_mt5_venue.py`): (a) Volumen über Budget →
+Ablehnung; (b) Stop-Floor > Budget → `no_trade`; (c) Drawdown-Limit setzt `_halted` und
+die nächste Eröffnung fällt am Global-Halt; (d) zu schneller zweiter Trade → Drossel.
+Plus reine `RiskManager`-Einheitstests (`tests/test_risk_manager.py`).
 
-**Zu entscheiden (nicht jetzt):** Gehören diese Prüfungen in die Venue-Schicht (letzte
-Verteidigungslinie je Order) oder in eine Risiko-Manager-Schicht **über** dem Venue
-(die entscheidet, ob und mit welcher Größe überhaupt eingereicht wird)? Erst wenn ein
-Aufrufer existiert (Signal-/Risiko-Schicht), wird die Verdrahtung sinnvoll. Bis dahin
-darf niemand behaupten, diese Grenzen seien „am Order-Pfad aktiv".
+**Entscheidung getroffen:** Die Prüfungen sitzen in der **Venue-Schicht** (letzte
+Verteidigungslinie je Order), nicht in einer Manager-Schicht über dem Venue — der
+`RiskManager` ist eine vom Venue gehaltene, injizierte Komponente (wie das Kostentor),
+die den Zustand trägt, den das Venue nicht hat (Equity-Verlauf, Handelsfrequenz, offene
+Positionen).
+
+**Bewusst offen (in S12 vermerkt):** (i) Der Score-/Ein-Gewinner-Teil der Drossel
+(`select_one` aus vielen Kandidaten) wird per Order mit einem Einzelkandidaten gefahren;
+die Auswahl aus mehreren wird erst mit einer echten Bewertungsschleife wirksam. (ii) Die
+Volatilität steht am Order-Pfad nicht je Bar bereit → im Stop-Floor mit 0 angesetzt
+(Broker-Abstand, Tiefe, Spread binden weiter). (iii) Der Positions-Lebenszyklus ist netto je
+Symbol geführt (kein lot-genaues Teil-Fill-Buch je Ticket).
 
 ## S2 — Kein Frische-Mechanismus am Halt-Latch (Befund 1, aus A0.3)
 
@@ -178,3 +191,35 @@ Defekt der neuen Kostentor-Logik, aber ehrlich zu vermerken:
   direkten Venue-Katalogzugriff aber nicht erneut geprüft wird) kann das Tor nicht abfangen. **Zu
   entscheiden:** ob der Venue-Pfad dieselbe `load_cost_fees`-Sanität (Kommission-0 = Datenlücke)
   erzwingen soll, bevor eine Order gegen diese Gebühren bepreist wird.
+
+## S12 — Risikoschicht: bewusst vereinfachte Teile (aus Paket-4-Verdrahtung)
+
+Die Risikoschicht (S1) ist am Order-Pfad wirksam; drei Teile sind bewusst vereinfacht und
+warten auf spätere Ausbaustufen — jeder eine eigene Entscheidung:
+
+- **Drossel-Auswahl aus mehreren Kandidaten:** `gates/evaluation.py` `select_one` wählt aus
+  einer Kandidatenmenge **einen** Trade. Am Venue-Order-Pfad existiert je Order genau **ein**
+  Kandidat (der Auftrag), also greifen nur die Frequenz-Guards (Cooldown, Mindesthaltedauer,
+  Tageskappen, Positionsdeckel). Der Ranglisten-/Ein-Gewinner-Teil wird erst wirksam, wenn eine
+  echte **Bewertungsschleife** mehrere Kandidaten je Takt liefert (S2-nah). Bis dahin ist das
+  „Bewerten ≠ Handeln" per Order-Frequenz durchgesetzt, nicht per Batch-Auswahl.
+- **Volatilität im Stop-Floor:** `executable_stop_floor` nimmt eine `volatility_bps`. Am
+  Order-Pfad steht die Bar-Volatilität je Order nicht bereit → mit 0 angesetzt; der Floor nimmt
+  das Maximum, sodass Broker-Mindestabstand, Tiefe (unbekannt → 15 bps) und Spread weiter binden.
+  Nachzurüsten: eine Volatilitätsquelle (z. B. ATR aus jüngsten Bars) an die Risikoschicht reichen.
+- **Positions-Lebenszyklus:** `RiskManager.record_open_fill`/`record_close` schreiben offene
+  Positionen mit Eröffnungszeit für Mindesthaltedauer/Deckel fort — **netto je Symbol** (Dedup
+  beim Öffnen, `record_close` am Venue verdrahtet, wenn ein reduce_only-Fill das Symbol
+  glattstellt; beide im §9-Review von Paket 4 nachgezogen). Das Glattstellen wird aus
+  `pre_net + Fill` bestimmt (stromunabhängig, in Nicht-Strom- **und** Strom-Modus per Test belegt).
+  Was bewusst **offen** bleibt: (a) ein **lot-genaues, teil-fill-fähiges** Positionsbuch je Ticket
+  (das Netto-je-Symbol-Modell reicht für die Frequenz-/Deckel-Guards); (b) eine seltene
+  **Strom-Latenz-Kante** — solange ein soeben abgesetzter Fill noch nicht in den privaten Strom
+  gebucht ist, ist `pre_net` veraltet. Das kann **in beide Richtungen** kippen (ehrlich, aus dem
+  Fix-Re-Check): meist **fail-closed** (ein Close, dessen Gegen-Eröffnung noch nicht gebucht ist,
+  stellt scheinbar nicht glatt → Symbol bleibt im Deckel), im Pyramiding-Fall aber auch
+  **fail-open** (gebuchte Position + noch ungebuchte Aufstockung, dann ein reduce_only, dessen
+  `filled_volume` genau das bereits gebuchte Netto trifft → `record_close` entfernt das Symbol,
+  obwohl real noch +Δ offen ist → Deckel **unterzählt**). Beide sind auf die Ereignis-Latenz
+  begrenzt; ein Ticket-genaues, **stromgetriebenes** Positionsbuch behebt beide Richtungen —
+  später zu entscheiden.

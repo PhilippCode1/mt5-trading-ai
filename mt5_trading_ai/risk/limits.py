@@ -11,6 +11,9 @@ Vier unabhaengige Grenzen. Jede greift fuer sich; keine hebt eine andere auf.
 Der Unterschied zwischen den ersten beiden ist wesentlich: das Tageslimit setzt
 sich mit dem naechsten Handelstag zurueck, der Drawdown-Halt nicht. Ein System,
 das sich nach einem Drawdown-Halt selbst wieder freischaltet, hat keinen Halt.
+
+**Aufrufer (Paket 4):** ``execution/risk_manager.py`` fahrt ``evaluate_limits`` fuer
+jede eroeffnende Live-Order; ein Drawdown-Halt setzt den ``_halted``-Latch des Venue.
 """
 
 from __future__ import annotations

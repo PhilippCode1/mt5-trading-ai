@@ -9,13 +9,15 @@ Es laeuft ohne echtes MT5-Terminal: das Fake-Terminal unten liefert die Rohwerte
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
 
 import pytest
 from mt5_trading_ai.execution.cost_gate import CostGate
 from mt5_trading_ai.execution.leverage_preflight import evaluate_leverage_preflight
+from mt5_trading_ai.execution.private_sync import PrivateSync
+from mt5_trading_ai.execution.risk_manager import RiskManager, RiskPolicy
 from mt5_trading_ai.venue.mt5 import (
     CatalogEntry,
     Mt5Account,
@@ -220,6 +222,12 @@ class FakeMt5Terminal:
 _LENIENT_COST_GATE = CostGate(max_roundturn_cost_fraction=Decimal("0.0005"))
 
 
+def _fresh_risk() -> RiskManager:
+    """Ein RiskManager mit Standard-Politik -- laesst eine budget-treue Order (0,01 Lot,
+    10k Equity, ~91 bps Stop -> Budget 0,02 Lot) durch."""
+    return RiskManager()
+
+
 def _venue(
     *,
     is_demo: bool,
@@ -227,6 +235,8 @@ def _venue(
     margin_free: Decimal = Decimal("10000"),
     positions: tuple[Mt5Position, ...] = (),
     cost_gate: CostGate | None = None,
+    risk_manager: RiskManager | None = None,
+    sync: PrivateSync | None = None,
 ) -> tuple[Mt5Venue, FakeMt5Terminal]:
     terminal = FakeMt5Terminal(
         is_demo=is_demo, margin_free=margin_free, positions=positions
@@ -237,6 +247,8 @@ def _venue(
         catalog=_catalog(),
         settings=settings,
         cost_gate=cost_gate,
+        risk_manager=risk_manager,
+        sync=sync,
     )
     venue.connect()
     return venue, terminal
@@ -346,9 +358,10 @@ def test_live_opening_order_blocked_without_release() -> None:
 
 def test_live_opening_order_allowed_with_full_release() -> None:
     venue, terminal = _venue(
-        is_demo=False, settings=_released_settings(), cost_gate=_LENIENT_COST_GATE
+        is_demo=False, settings=_released_settings(),
+        cost_gate=_LENIENT_COST_GATE, risk_manager=_fresh_risk(),
     )
-    result = venue.submit_order(_order())
+    result = venue.submit_order(_order(volume=Decimal("0.01")))
     assert result.accepted is True
     assert terminal.order_send_calls == 1
 
@@ -375,11 +388,13 @@ def test_live_opening_rejected_when_cost_exceeds_threshold() -> None:
 
 
 def test_live_opening_allowed_when_cost_within_threshold() -> None:
-    # Schwelle 50 bp deckt die realen ~24,5 bp -> Order laeuft durch.
+    # Schwelle 50 bp deckt die realen ~24,5 bp -> Order laeuft durch (Kostenquote ist
+    # volumenunabhaengig, 0,01 Lot passt zusaetzlich ins Risikobudget).
     venue, terminal = _venue(
-        is_demo=False, settings=_released_settings(), cost_gate=_LENIENT_COST_GATE
+        is_demo=False, settings=_released_settings(),
+        cost_gate=_LENIENT_COST_GATE, risk_manager=_fresh_risk(),
     )
-    result = venue.submit_order(_order())
+    result = venue.submit_order(_order(volume=Decimal("0.01")))
     assert result.accepted is True
     assert terminal.order_send_calls == 1
 
@@ -390,6 +405,125 @@ def test_demo_opening_skips_cost_gate() -> None:
     result = venue.submit_order(_order())
     assert result.accepted is True
     assert terminal.order_send_calls == 1
+
+
+# --- Risikoschicht am Order-Pfad (Paket 4) -------------------------------
+
+
+def _live_risk_venue(risk_manager: RiskManager) -> tuple[Mt5Venue, FakeMt5Terminal]:
+    return _venue(
+        is_demo=False,
+        settings=_released_settings(),
+        cost_gate=_LENIENT_COST_GATE,
+        risk_manager=risk_manager,
+    )
+
+
+def _risk_order(**over: object) -> OrderRequest:
+    # Hebel fest auf 5 -> deterministische Budget-Obergrenze fuer die Tests.
+    base: dict[str, object] = {
+        "volume": Decimal("0.01"),
+        "meta": {"requested_leverage": 5},
+    }
+    base.update(over)
+    return _order(**base)
+
+
+def test_live_opening_rejected_when_volume_over_risk_budget() -> None:
+    # (a) 0,10 Lot riskiert ~1 % >> 0,25 % Budget -> Ablehnung vor dem Send.
+    venue, terminal = _live_risk_venue(_fresh_risk())
+    with pytest.raises(OrderRejectedError) as ex:
+        venue.submit_order(_risk_order(volume=Decimal("0.10")))
+    assert ex.value.reason == "volume_exceeds_risk_budget"
+    assert terminal.order_send_calls == 0
+
+
+def test_live_opening_rejected_when_stop_floor_exceeds_budget() -> None:
+    # (b) safety=100 -> Budget-Obergrenze ~10 bps < Tiefe-Floor 15 bps -> no_trade.
+    venue, terminal = _live_risk_venue(RiskManager(RiskPolicy(safety=Decimal("100"))))
+    with pytest.raises(OrderRejectedError) as ex:
+        venue.submit_order(_risk_order())
+    assert ex.value.reason == "risk_sizing_stop_floor_exceeds_budget"
+    assert terminal.order_send_calls == 0
+
+
+def test_drawdown_limit_latches_halt_and_blocks_further_opening() -> None:
+    # (c) Fenster-Hoechststand 12k, Equity 10k -> Drawdown 16,7 % -> HALT-Latch.
+    rm = _fresh_risk()
+    rm.observe_equity(TS - timedelta(hours=1), Decimal("12000"))
+    venue, terminal = _live_risk_venue(rm)
+    with pytest.raises(OrderRejectedError) as ex:
+        venue.submit_order(_risk_order(client_order_id="dd-1"))
+    assert ex.value.reason == "risk_drawdown_limit_reached"
+    assert terminal.order_send_calls == 0
+    # Der Latch haelt: die naechste Eroeffnung faellt am Global-Halt.
+    with pytest.raises(OrderRejectedError) as ex2:
+        venue.submit_order(_risk_order(client_order_id="dd-2"))
+    assert ex2.value.reason == "global_halt"
+
+
+def test_throttle_blocks_too_fast_second_trade() -> None:
+    # (d) Nach einem akzeptierten Fill sperrt Cooldown/Mindesthaltedauer den zweiten.
+    venue, terminal = _live_risk_venue(_fresh_risk())
+    first = venue.submit_order(_risk_order(client_order_id="t-1"))
+    assert first.accepted is True
+    with pytest.raises(OrderRejectedError) as ex:
+        venue.submit_order(_risk_order(client_order_id="t-2"))
+    assert ex.value.reason.startswith("throttle_")
+    assert terminal.order_send_calls == 1  # nur der erste ging raus
+
+
+def test_demo_opening_skips_risk_gate() -> None:
+    # Demo: keine Live-Risikopruefung -> 0,10 Lot ohne Risk-Manager angenommen.
+    venue, terminal = _venue(is_demo=True)
+    result = venue.submit_order(_order())
+    assert result.accepted is True
+
+
+def test_reduce_only_close_records_close_at_risk_manager() -> None:
+    # §9 #5: ein reduce_only-Fill, der das Symbol netto glattstellt, gibt den
+    # Positionsdeckel am RiskManager frei (record_close verdrahtet).
+    rm = _fresh_risk()
+    venue, terminal = _live_risk_venue(rm)
+    venue.submit_order(_risk_order(client_order_id="open-1"))
+    assert rm.open_position_count == 1
+    # Gegenorder (SELL, reduce_only) stellt das Buch netto auf 0 -> record_close.
+    venue.submit_order(_order(
+        client_order_id="close-1", side=OrderSide.SELL,
+        reduce_only=True, volume=Decimal("0.01"),
+    ))
+    assert rm.open_position_count == 0
+
+
+def test_reduce_only_close_records_close_in_sync_mode() -> None:
+    # §9-Fix-Re-Check: mit PrivateSync mutiert submit_order das Buch NICHT (der Strom
+    # bucht nachlaufend). record_close darf trotzdem korrekt feuern -- der resultierende
+    # Netto-Stand wird aus pre_net + diesem Fill gerechnet, nicht aus dem lahmen Buch.
+    rm = _fresh_risk()
+    sync = PrivateSync()
+    sync.book.apply_fill("EURUSD", OrderSide.BUY, Decimal("0.10"))  # gestreamte Eroeffnung
+    rm.record_open_fill("EURUSD", TS)
+    venue, terminal = _venue(
+        is_demo=False, settings=_released_settings(),
+        cost_gate=_LENIENT_COST_GATE, risk_manager=rm, sync=sync,
+    )
+    assert rm.open_position_count == 1
+    venue.submit_order(_order(
+        client_order_id="close-sync", side=OrderSide.SELL,
+        reduce_only=True, volume=Decimal("0.01"),
+    ))
+    assert rm.open_position_count == 0  # record_close feuerte trotz nachlaufendem Buch
+
+
+def test_live_opening_rejected_when_risk_unconfigured() -> None:
+    # Live ohne Risiko-Manager -> fail-closed (auch wenn das Kostentor sitzt).
+    venue, terminal = _venue(
+        is_demo=False, settings=_released_settings(), cost_gate=_LENIENT_COST_GATE
+    )
+    with pytest.raises(OrderRejectedError) as ex:
+        venue.submit_order(_order(volume=Decimal("0.01")))
+    assert ex.value.reason == "risk_unconfigured"
+    assert terminal.order_send_calls == 0
 
 
 def test_live_reduce_only_passes_without_release() -> None:

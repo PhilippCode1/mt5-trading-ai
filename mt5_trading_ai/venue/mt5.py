@@ -35,6 +35,7 @@ from mt5_trading_ai.execution.reconcile import (
     reconcile_positions,
 )
 from mt5_trading_ai.execution.release import live_release_blocks_opening_order
+from mt5_trading_ai.execution.risk_manager import RiskManager
 from mt5_trading_ai.venue.catalog import CatalogEntry
 from mt5_trading_ai.venue.protocol import (
     AccountState,
@@ -180,6 +181,11 @@ class Mt5Venue(TradingVenue):
     (``execution/cost_gate.py``). Auf einem **Live**-Konto ist es fuer eroeffnende
     Orders Pflicht: fehlt es, wird fail-closed abgelehnt (kein ungeprueftes Live-Kosten-
     risiko). Auf Demo ist es unerheblich (kein Echtgeld) -- wie die Live-Freigabe.
+
+    ``risk_manager`` traegt die Risikoschicht (``execution/risk_manager.py``):
+    Kill-Switch (Tagesverlust/Drawdown/Deckel/Gap), Drossel, Stop-Budget und
+    Positionsgroesse. Wie das Kostentor: auf **Live** fuer eroeffnende Orders Pflicht
+    (fehlt es -> fail-closed), auf Demo unerheblich. Drawdown-Halt setzt ``_halted``.
     """
 
     def __init__(
@@ -192,6 +198,7 @@ class Mt5Venue(TradingVenue):
         max_notional_drift: Decimal = Decimal("0"),
         sync: PrivateSync | None = None,
         cost_gate: CostGate | None = None,
+        risk_manager: RiskManager | None = None,
     ) -> None:
         self.name = name
         self._terminal = terminal
@@ -199,6 +206,7 @@ class Mt5Venue(TradingVenue):
         self._settings = settings
         self._max_notional_drift = max_notional_drift
         self._cost_gate = cost_gate
+        self._risk_manager = risk_manager
         self._connected = False
         #: Idempotenz je ``client_order_id`` — nur angenommene Orders.
         self._results: dict[str, OrderResult] = {}
@@ -348,9 +356,11 @@ class Mt5Venue(TradingVenue):
             # Live-Freigabe-Tor: nur eroeffnende Orders an einem Live-Konto.
             self._require_live_release_for_opening()
             # Hebelklammer am Order-Pfad: handelbar, geklammert, Marge frei?
-            self._enforce_leverage(instrument, request)
+            effective_leverage = self._enforce_leverage(instrument, request)
             # Pre-Trade-Kostentor: reale Roundturn-Kosten unter der Backtest-Schwelle?
             self._enforce_cost_gate(instrument, request)
+            # Risikoschicht: Kill-Switch, Drossel, Stop-Budget, Positionsgroesse.
+            self._enforce_risk(instrument, request, effective_leverage)
 
         send = self._terminal.order_send(self._to_terminal_request(request))
         if not send.accepted:
@@ -370,9 +380,28 @@ class Mt5Venue(TradingVenue):
             raw=send.raw,
         )
         self._results[request.client_order_id] = result
+        # Netto-Stand VOR der Buchung erfassen: das lokale Buch wird nur ohne Strom hier
+        # mutiert; mit Strom bucht der (nachlaufende) private Fill. Aus pre_net + diesem
+        # Fill folgt der resultierende Netto-Stand in BEIDEN Modi konsistent.
+        pre_net = self._book.net(request.symbol)
         if self._sync is None:
             # Ohne Strom optimistisch buchen; mit Strom bucht der autoritative Fill.
             self._book.apply_fill(request.symbol, request.side, send.filled_volume)
+        # Akzeptierten Fill an die Risikoschicht melden (Live, mit Manager).
+        if self._risk_manager is not None and not self._terminal.account().is_demo:
+            if not request.reduce_only:
+                # Eroeffnung: Frequenz-Zaehler + offene Position fortschreiben.
+                self._risk_manager.record_open_fill(request.symbol, send.ts)
+            else:
+                signed = (
+                    send.filled_volume
+                    if request.side is OrderSide.BUY
+                    else -send.filled_volume
+                )
+                if pre_net + signed == 0:
+                    # Schliessung, die das Symbol netto glattstellt -> Deckel frei.
+                    # pre_net + signed statt book.net(): stromunabhaengig korrekt.
+                    self._risk_manager.record_close(request.symbol)
         return result
 
     def _require_live_release_for_opening(self) -> None:
@@ -387,7 +416,9 @@ class Mt5Venue(TradingVenue):
                 retryable=False,
             )
 
-    def _enforce_leverage(self, instrument: Instrument, request: OrderRequest) -> None:
+    def _enforce_leverage(self, instrument: Instrument, request: OrderRequest) -> int:
+        """Hebelklammer am Order-Pfad. Gibt den effektiven Hebel zurueck (fuer die
+        Risikoschicht, die das Stop-Budget je Hebel berechnet)."""
         raw_tick = self._terminal.tick(request.symbol)
         if raw_tick is None:
             raise OrderRejectedError(
@@ -401,12 +432,13 @@ class Mt5Venue(TradingVenue):
             price=price,
             requested_leverage=request.meta.get("requested_leverage"),
         )
-        if not preflight.approved:
+        if not preflight.approved or preflight.effective_leverage is None:
             raise OrderRejectedError(
                 f"Hebel-Anschluss abgelehnt: {preflight.reason}",
                 reason=preflight.reason or "leverage_rejected",
                 retryable=False,
             )
+        return preflight.effective_leverage
 
     def _enforce_cost_gate(
         self, instrument: Instrument, request: OrderRequest
@@ -445,6 +477,55 @@ class Mt5Venue(TradingVenue):
             raise OrderRejectedError(
                 f"Kostentor abgelehnt: {decision.reason}{suffix}",
                 reason=decision.reason or "cost_gate",
+                retryable=False,
+            )
+
+    def _enforce_risk(
+        self, instrument: Instrument, request: OrderRequest, leverage: int
+    ) -> None:
+        """Risikoschicht fuer eine eroeffnende Order (Live-Pflicht, Demo-frei).
+
+        Auf Demo entfaellt sie (kein Echtgeld) -- wie die Live-Freigabe. Auf Live ohne
+        konfigurierten Risiko-Manager wird fail-closed abgelehnt. Ein Drawdown-Halt aus
+        ``evaluate_limits`` setzt den ``_halted``-Latch (loest sich nicht von selbst).
+        """
+        account = self._terminal.account()
+        if account.is_demo:
+            return  # Demokonto: keine Live-Risikopruefung noetig.
+        if self._risk_manager is None:
+            raise OrderRejectedError(
+                "Kein Risiko-Manager konfiguriert -- Live-Eroeffnung blockiert",
+                reason="risk_unconfigured",
+                retryable=False,
+            )
+        raw_tick = self._terminal.tick(request.symbol)
+        if raw_tick is None:
+            raise OrderRejectedError(
+                "Kein Preis fuer die Risikopruefung", reason="no_tick", retryable=True
+            )
+        price = raw_tick.ask if request.side is OrderSide.BUY else raw_tick.bid
+        mid = (raw_tick.ask + raw_tick.bid) / Decimal("2")
+        spread_bps = (
+            (raw_tick.ask - raw_tick.bid) / mid * Decimal("10000")
+            if mid > 0
+            else Decimal("0")
+        )
+        auth = self._risk_manager.authorize_opening(
+            instrument=instrument,
+            request=request,
+            account=self.get_account(),
+            price=price,
+            spread_bps=spread_bps,
+            leverage=leverage,
+            now=account.ts,
+        )
+        if not auth.approved:
+            if auth.latch_halt:
+                # Drawdown-Halt: Latch setzen. Loest nur ``clear_halt`` + Freigabe.
+                self._halted = True
+            raise OrderRejectedError(
+                f"Risiko-Tor abgelehnt: {auth.reason}",
+                reason=auth.reason or "risk_rejected",
                 retryable=False,
             )
 
