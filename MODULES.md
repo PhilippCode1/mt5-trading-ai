@@ -29,6 +29,14 @@ Backtest-Maschine: fuehrt Splits, Daten und Kostenmodell zusammen.
 - `def deflated_sharpe_for_report`
 - `def run_registered_backtest`
 
+## `mt5_trading_ai/backtest/llm_compare.py`
+
+Paket 5: das Tor fuer ein LLM im Entscheidungspfad (§8.2-8.4).
+
+- `class LlmGateInputs`
+- `class LlmGateDecision`
+- `def evaluate_llm_gate`
+
 ## `mt5_trading_ai/backtest/splits.py`
 
 Zeitreihen-Splits mit Purge und Embargo — herausgeloest aus learning_engine.
@@ -230,6 +238,16 @@ Instrumentenkatalog — die Metadaten, die MT5 nicht liefert.
 - `class CatalogEntry`
 - `def default_catalog_path`
 - `def load_instrument_catalog`
+
+## `mt5_trading_ai/venue/demo_run.py`
+
+Paket 5: Registrierung und Fortschritts-Tor des Demo-Betriebs (§8.5).
+
+- `class DemoGateError`
+- `class DemoRegistration`
+- `def register_for_demo`
+- `class DemoReadiness`
+- `def evaluate_demo_progress`
 
 ## `mt5_trading_ai/venue/mt5.py`
 

@@ -311,3 +311,50 @@ geprüfte Sicherheits-, Kosten-, Daten- und Backtest-Apparat bleibt bestehen und
 künftigen, ehrlich registrierten Versuch bereit. Größter offener Block bleibt **S4 (Halal)** —
 der riba-Carry im zweiten Versuch hat konkret gezeigt, warum: ohne swapfreien Pfad ist weitere
 Arbeit auf gehebelten CFDs fraglich.
+
+---
+
+## 11. Paket 5 — auf ausdrückliche Anweisung, unter Vorbehalt (Nachtrag)
+
+**Vorab und ehrlich:** Nach dem Abschluss unter §10 („beenden") hat Philipp sich **ausdrücklich
+umentschieden** und angewiesen, **Paket 5 dennoch zu bauen**. Das ist ein bewusstes
+**Übersteuern** des harten Tors §7.3/§8 („Paket 5 nur bei bestandenem Edge-Test") — auf seine
+ausdrückliche Anweisung, hier klar als solche gekennzeichnet (Kernregel 6: eigene bzw. fremde
+Entscheidungen benennen). Die harten Sicherheitsregeln bleiben **unberührt**: kein Echtgeld,
+`allow_write` auf dem Live-Pfad geschlossen, ESMA-Hebel (konservativ 5:1), kein LLM im
+Entscheidungspfad ohne Beleg, Halal benannt.
+
+Gebaut wurde die **Infrastruktur**, die §8 beschreibt — und ihre eigenen Tore bestätigen die
+Integrität, indem sie (korrekt) **nichts** durchlassen, solange kein Edge existiert:
+
+- **§8.1 Multi-Instrument** (`tools/multi_instrument_edge.py`): prüft die beste Strategie
+  (Mittelwertrückkehr) einzeln je Instrument gegen dasselbe Sechs-Bedingungen-Tor, Hebel
+  konservativ 5:1. Ergebnis auf EURUSD + GBPUSD: **0 von 2 Instrumenten mit Edge** (EURUSD
+  +3,22 %, GBPUSD +7,18 % — beide wieder knapp positiv, dieselbe Mittelwertrückkehr-Tendenz,
+  aber beide verfehlen dieselben drei Bedingungen: Sharpe, Deflation, Trade-Zahl; GBPUSD-Daten
+  mit einer Vendor-Lücke im Dez 2022, im In-Sample) → kein Ausbau (§8.1: „ein Instrument, das
+  durchfällt, kommt nicht mit").
+- **§8.2–8.4 LLM-Tor** (`backtest/llm_compare.py`): fail-closed. Ein LLM kommt nur in den
+  Entscheidungspfad, wenn die LLM-Variante die Nicht-LLM-Variante gegen dieselben sechs
+  Bedingungen **schlägt**, nur auf Daten **nach** dem Trainingsstichtag (Leckage), mit
+  protokollierter Modellversion (Drift). Das Modul ruft **kein** LLM und trifft keine
+  Entscheidung — es ist nur das Tor davor (Kernregel 17). Ohne bestandene Baseline bleibt es zu.
+- **§8.5 Demo-Betrieb** (`venue/demo_run.py`): fail-closed. Eine Strategie kommt nur in den
+  ≥ 6-monatigen Demo-Betrieb, wenn sie den Edge-Test **bestanden** hat. Gegen das echte
+  Mittelwertrückkehr-Urteil (bester der drei, `passed=False`) verweigert das Tor die
+  Registrierung — nachgewiesen. Echtgeld bleibt hinter der unberührten vierteiligen
+  Live-Freigabe.
+
+**Eigener Fehler, von der §9-Gegenprobe gefunden und behoben:** im ersten Wurf des
+Multi-Instrument-Harness war Bedingung 6 (Leckage/Zufall) fest auf „wahr" verdrahtet — **exakt
+die Schwäche, die ich in Paket 4b kritisiert und dort behoben hatte**, hier wiederholt. Jetzt
+wird sie je Instrument wirklich gefahren (Zufalls-Referenz < 0, Leckage-Schutz fängt eine
+Zukunfts-Strategie). Das Ergebnis (0 von 2) ändert sich dadurch nicht — beide Instrumente
+scheitern ohnehin an den Bedingungen 1–3 —, aber die Zahl steht jetzt auf ehrlicher Messung.
+
+**Fazit Paket 5:** Die Infrastruktur steht, geprüft und negativ gefahren (jedes Tor absichtlich
+gebrochen → rot → zurückgenommen). Aber sie lässt — ihrer eigenen Integrität folgend — **kein
+aktuelles Vorhaben durch**, weil kein Edge existiert. Paket 5 ist damit gebaut, aber **leer**:
+es wartet auf eine Strategie, die das Tor aus §2 zuerst besteht. Das ist die ehrlichste Form, in
+der dieses Paket unter der gegebenen Faktenlage existieren kann — es widerspricht dem Urteil
+„kein Edge" nicht, es macht es baubar sichtbar.

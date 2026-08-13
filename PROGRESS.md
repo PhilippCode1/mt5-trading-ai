@@ -1172,3 +1172,41 @@ für einen künftigen echten Edge bereit. Kohärenter Kern-Befund: **EURUSD H1 k
 Mittel zurück, als dass es trendet oder ausbricht — aber der Effekt schlägt die Kosten nicht.**
 Größter offener Block bleibt **S4 (Halal):** der riba-Carry hat konkret gezeigt, dass gehebelte
 CFDs mit Overnight-Swaps ohne swapfreien Pfad fraglich sind.
+
+## ERLEDIGT — Paket 5 (Teil 3): Auf ausdrückliche Anweisung gebaut, unter Vorbehalt
+
+**Ausgangslage ehrlich:** Der Edge-Test ist nach drei Versuchen **nicht** bestanden (§2 des
+Berichts). Bei E5 hatte Philipp „beenden" gewählt; danach hat er sich **ausdrücklich
+umentschieden** und Paket 5 angewiesen („Doch Paket 5"). Das ist ein bewusstes **Übersteuern**
+des harten Tors §7.3/§8 (Paket 5 nur bei bestandenem Edge-Test) — hier klar als seine Anweisung
+gekennzeichnet, nicht als meine Ableitung. **Harte Sicherheitsregeln unberührt:** kein Echtgeld,
+`allow_write` auf dem Live-Pfad geschlossen, ESMA-Hebel (konservativ 5:1), kein LLM im
+Entscheidungspfad ohne Beleg, Halal benannt.
+
+**Was gebaut wurde (die §8-Infrastruktur):**
+- `backtest/llm_compare.py` (§8.2–8.4): fail-closed **LLM-Entscheidungspfad-Tor**. Lässt ein LLM
+  nur zu, wenn die LLM-Variante die Nicht-LLM-Variante gegen dieselben sechs Bedingungen
+  **schlägt**, nur auf Daten **nach** dem Trainingsstichtag (Leckage), mit Modellversion (Drift).
+  Ruft **kein** LLM, trifft keine Entscheidung — nur das Tor davor (Kernregel 17). 5 Tests.
+- `venue/demo_run.py` (§8.5): fail-closed **Demo-Betrieb-Tor**. Registriert nur eine Strategie
+  mit **bestandenem** Edge-Test; Live-Frage erst nach ≥ 6 Monaten Demo und weiter bestandenen
+  Bedingungen. 6 Tests.
+- `tools/multi_instrument_edge.py` (§8.1): **Multi-Instrument-Harness**. Prüft die beste
+  Strategie (Mittelwertrückkehr) einzeln je Instrument gegen dasselbe Tor, Hebel 5:1. Register
+  geteilt, Deflation kampagnenweit. **Gefahren auf EURUSD + GBPUSD (GBPUSD neu geladen, 18.187
+  Bars, Prüfsumme `c7d55735`, Vendor-Lücke Dez 2022): 0 von 2 mit Edge** (EURUSD +3,22 %,
+  GBPUSD +7,18 % — beide knapp positiv, aber Sharpe/Deflation/Trade-Zahl verfehlt) → kein Ausbau.
+
+**Negativ gefahren / nachgewiesen, dass die Tore greifen:** gegen das echte Mittelwertrückkehr-
+Urteil (bester der drei, `passed=False`) **verweigert das Demo-Tor die Registrierung**
+(fail-closed, „Strategie hat den Edge-Test nicht bestanden"); das LLM-Tor lässt ohne bestandene
+LLM-Variante nichts durch. Die Infrastruktur lässt also — ihrer eigenen Integrität folgend —
+**kein aktuelles Vorhaben durch**, weil kein Edge existiert.
+
+**Entscheidungen, die ich selbst getroffen habe:** die §8-Infrastruktur als fail-closed Tore
+gebaut, die ihre Vorbedingung (bestandener Edge-Test) selbst erzwingen — so ist Paket 5 gebaut,
+ohne das „kein Edge"-Urteil zu untergraben; GBPUSD als zweites Instrument neu geladen; Hebel
+durchgängig konservativ 5:1 (unter jeder ESMA-Klassengrenze).
+
+**Auffälligkeiten:** Paket 5 ist gebaut, aber **leer** — es wartet auf eine Strategie, die das
+Sechs-Bedingungen-Tor zuerst besteht. Halal (S4), S6, S8 unverändert offen.
