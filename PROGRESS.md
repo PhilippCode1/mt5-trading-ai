@@ -1155,3 +1155,20 @@ Deflation auf Trade-Sharpe (**S8**) offen. S1/S2/S7 unverändert.
 
 **Ergebnis der Kampagne: KEIN EDGE auf EURUSD nach DREI ehrlichen Versuchen** (Trend −18,85 %,
 Ausbruch −56,4 %, Reversion +2,48 % aber statistisch null). E5 erneut an Philipp (§10).
+
+## ABGESCHLOSSEN — TEIL 3 (Edge-Nachweis): Tor E5 = beenden
+
+Nach **drei** ehrlichen, vorab registrierten Versuchen (Trendfolge −18,85 %, Mittelwertrückkehr
++3,22 % aber statistisch null, Volatilitäts-Ausbruch −56,4 % auf frischem OoS 2025–26) hat
+Philipp am Entscheidungstor **E5** entschieden: **Auftrag beenden.** Die eine Frage —
+„Existiert auf EURUSD ein Edge nach realistischen Kosten?" — ist mit einem sauber belegten,
+dreifach gegengeprüften **Nein** beantwortet. Das ist der auftragsgemäße Ausgang, kein
+Scheitern.
+
+Weitere Hypothesen zu testen wäre Data-Mining (die Deflation bestraft es bereits: N=18,
+Reversion-DSR auf 0,045 gefallen). Paket 5 (Ausbau/LLM/Demo) entfällt — es läuft nur bei
+bestandenem Edge-Test. Der geprüfte Sicherheits-, Kosten-, Daten- und Backtest-Apparat bleibt
+für einen künftigen echten Edge bereit. Kohärenter Kern-Befund: **EURUSD H1 kehrt eher zum
+Mittel zurück, als dass es trendet oder ausbricht — aber der Effekt schlägt die Kosten nicht.**
+Größter offener Block bleibt **S4 (Halal):** der riba-Carry hat konkret gezeigt, dass gehebelte
+CFDs mit Overnight-Swaps ohne swapfreien Pfad fraglich sind.

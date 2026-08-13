@@ -299,8 +299,15 @@ drei tun es nicht.
 Der Masterprompt verlangt E5 in **jedem** Fall nach dem Edge-Test. Dreimal lautete Philipps
 E5-Entscheid „weiterbauen": aus dem ersten Nein (Trendfolge) wurde Versuch 2 (Mittelwertrückkehr,
 auf demselben OoS), aus dessen Nein Versuch 3 (Volatilitäts-Ausbruch, auf **frischem** OoS
-2025–26) — alle drei ohne Edge, mit wachsender Multiple-Testing-Last (N = 18). E5 liegt erneut
-vor: eine **vierte** Hypothese testen (mit weiterhin frischem OoS, im Wissen, dass jeder weitere
-Versuch die Deflationsschwelle für alle vorherigen anhebt) — oder den Auftrag **beenden**, weil
-die eine Frage nach drei ehrlichen Versuchen sauber beantwortet ist. Paket 5 (Ausbau, LLM,
-Demo-Betrieb) bleibt gesperrt, solange kein Test alle sechs Bedingungen besteht (§7.3, §8).
+2025–26) — alle drei ohne Edge, mit wachsender Multiple-Testing-Last (N = 18).
+
+**Ausgang: Philipp hat entschieden — beenden.** Nach drei distinkten, kohärenten No-Edge-
+Ergebnissen ist die eine Frage so belastbar beantwortet, wie dieser Datensatz es zulässt.
+Weitere Hypothesen auf demselben Instrument zu testen wäre Data-Mining, das die Deflation
+bereits sichtbar bestraft (der Mittelwertrückkehr-DSR fiel allein durch die dritte Hypothese
+von 0,066 auf 0,045). **TEIL 3 ist damit abgeschlossen.** Paket 5 (Ausbau, LLM, Demo-Betrieb)
+bleibt gesperrt — es gibt keinen bestandenen Test, auf dem es aufsetzen könnte (§7.3, §8). Der
+geprüfte Sicherheits-, Kosten-, Daten- und Backtest-Apparat bleibt bestehen und ist für einen
+künftigen, ehrlich registrierten Versuch bereit. Größter offener Block bleibt **S4 (Halal)** —
+der riba-Carry im zweiten Versuch hat konkret gezeigt, warum: ohne swapfreien Pfad ist weitere
+Arbeit auf gehebelten CFDs fraglich.
