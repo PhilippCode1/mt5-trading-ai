@@ -128,9 +128,10 @@ def order_roundturn_cost(
 
     # Waehrung: keine stille 1 bei Nichtuebereinstimmung.
     if quote_currency == fees.currency:
-        rate = (
-            Decimal("1") if quote_to_account_rate is None else quote_to_account_rate
-        )
+        # Gleiche Waehrung -> der Umrechnungskurs ist definitionsgemaess 1. Ein
+        # uebergebener Kurs waere sinnlos (er verzerrte Spread/Slippage) und wird
+        # bewusst ignoriert -- verhindert stille Fehlbepreisung same-currency (§9).
+        rate = Decimal("1")
     elif quote_to_account_rate is None:
         raise CostModelError(
             f"Notierungswaehrung {quote_currency} != Kontowaehrung "
@@ -234,28 +235,3 @@ def load_cost_fees(
             f"{symbol}: {entry.asset_class.value} mit Kommission 0 -- Datenluecke"
         )
     return entry.fees
-
-
-def hurdle_rate(
-    *,
-    trades_per_day: Decimal,
-    trading_days: Decimal,
-    leverage: Decimal,
-    cost_bp: Decimal,
-) -> Decimal:
-    """Bruttorendite p. a. (Anteil des Eigenkapitals), die nach Kosten bei null landet.
-
-    ``hurdle = trades_pro_tag * handelstage * (kosten_bp / 10_000) * hebel``.
-    Herleitung: n Roundturns/Jahr kosten je ``kosten_bp`` bp des Notionals; das Notional
-    ist ``hebel * eigenkapital``. Jahreskosten / Eigenkapital = n * bp/10_000 * hebel.
-
-    Kontrolle: 5 Trades/Tag, 250 Tage, 1 bp: Hebel 5 -> 0.625; Hebel 10 -> 1.25.
-    Diese Zahl steht in jedem Backtest-Bericht: wie viel eine Strategie brutto verdienen
-    muss, nur um die Kosten zu bezahlen.
-    """
-    _require_positive("trades_per_day", trades_per_day)
-    _require_positive("trading_days", trading_days)
-    _require_positive("leverage", leverage)
-    if not cost_bp.is_finite() or cost_bp < 0:
-        raise CostModelError("cost_bp muss endlich und nicht-negativ sein")
-    return trades_per_day * trading_days * (cost_bp / Decimal("10000")) * leverage

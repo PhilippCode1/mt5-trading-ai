@@ -1382,3 +1382,92 @@ SPAETER **S7** dokumentiert. Der cost_stress skaliert nur Transaktionskosten (SP
 **Zeilenstand (gemessen, 2026-08-13):** 6.009 Zeilen, 27 Module, 319 Testfunktionen, 373 Testfälle
 grün; `ruff` und `mypy --strict` sauber. SPAETER **S7** und **S8** als erledigt markiert, **S9**
 neu eröffnet.
+
+---
+
+## ERLEDIGT — Abnahme-Paket 3 (Pre-Trade-Kostentor am Order-Pfad + hurdle_rate bereinigen)
+
+Drittes Paket des `ABNAHME_PLAN.md`. Kernbefund der Bewertung war: kein Live-Trade wurde je
+gegen die im Backtest vorausgesetzten Kosten gegengeprüft (das Kostenmodell lief nur im
+Backtest, nie am Order-Pfad), und es standen zwei parallele Hürdenformeln im Repo —
+`hurdle_rate()` (p. a., ohne Produktions-Aufrufer, mit falscher Docstring-Zusage) neben der
+inline im Backtest-Bericht genutzten Gesamtperioden-Formel.
+
+**Was gebaut wurde:**
+- **Pre-Trade-Kostentor** (`execution/cost_gate.py`, neu): reine `evaluate_cost_gate(...)`
+  rechnet die realen Roundturn-**Transaktionskosten** (Spread + Kommission + Slippage) einer
+  eröffnenden Order aus dem echten Bid/Ask + der versionierten `FeeSchedule` und vergleicht sie
+  als Anteil des Notionals gegen die im Backtest vorausgesetzte Obergrenze `CostGate`. Spiegelt
+  das `leverage_preflight`-Muster (reine Funktion + Venue-Wiring).
+- **Verdrahtet in `submit_order`** (`venue/mt5.py`): `_enforce_cost_gate` läuft für eröffnende
+  Orders nach der Hebelklammer, vor dem Terminal-Send. **Demo-frei** (kein Echtgeld, wie die
+  Live-Freigabe); auf **Live ohne konfiguriertes Tor → fail-closed** (`cost_gate_unconfigured`);
+  Kosten nicht bestimmbar (Währungsdifferenz ohne Kurs, verschränkte Notierung) → fail-closed
+  (`cost_unverifiable`); Kosten über Schwelle → `cost_gate`.
+- **`hurdle_rate()` entfernt** (`costs/model.py`): toter Code, null Produktions-Aufrufer, und der
+  Docstring behauptete fälschlich „steht in jedem Backtest-Bericht" (der Bericht nutzt die
+  Inline-Gesamtperioden-Formel). Die inline-Formel in `run_backtest` ist jetzt als **einzige**
+  Hürdenquelle gekennzeichnet. Doppelte Formel und widersprüchlicher Docstring beseitigt.
+- **S5 bestätigt** (bewusste Nicht-Verdrahtung): `config/instrument_catalog.json` enthält kein
+  EQUITY; `load_cost_fees` weist EQUITY fail-closed ab (getestet `test_equity_is_rejected`); das
+  ad-valorem-Kostenmodell wird erst bei Einzelaktien nötig (SPAETER S5, nicht in diesem Plan).
+
+**§9-Review (vier Blickwinkel, 15 Agenten) fand vor der Abnahme einen bestätigten HOCH-Blocker
+— behoben, dann per Fix-Re-Check gegengeprüft:**
+- **HOCH / fail-OPEN — Währungs-Einheitenfehler im Kostentor:** `evaluate_cost_gate` teilte
+  `friction` (in **Kontowährung**, aus `order_roundturn_cost`) durch `notional` (aus dem rohen
+  Preis, in **Notierungswährung**). Bei kreuznotiertem Instrument (z. B. USDJPY auf USD-Konto,
+  rate≈1/150) war `fraction = wahr × rate` → das Tor unterschätzte die Kosten um ~150× und ließ
+  eine zu teure Order **fälschlich zu** (fail-open) — genau die Schein-Gate-Klasse, die dieses
+  Paket eliminieren soll. Verschärfend: ein einzelner `quote_to_account_rate`-Skalar am Konto-
+  Venue kann nicht zugleich für USD- und JPY-notierte Paare stimmen, und `order_roundturn_cost`
+  wandte einen übergebenen Kurs sogar bei Währungsgleichheit an (verfälschte damit auch USD-Paare).
+  Mein eigener Test prüfte nur `approved is True`, nie die **Größe** — so blieb der Bug grün.
+  **Fix:** `quote_to_account_rate` aus `CostGate` entfernt; das Tor prüft nur **gleich notierte**
+  Instrumente (rate=1, `friction`/`notional` in einer Währung → korrekt), kreuznotierte werden
+  **fail-closed** abgewiesen (`cost_unverifiable`, statt mit einem Skalar falsch zu rechnen);
+  `order_roundturn_cost` erzwingt bei Währungsgleichheit hart rate=1; der neue
+  `test_fraction_matches_hand_calculation` **pinnt die Kostenquote als Zahl** (2,70/11.000). Die
+  Kreuzwährungs-Abdeckung (instrumentspezifischer Live-FX-Kurs) ist als **SPAETER S10** vermerkt.
+- **Rest-fail-open, vom Fix-Re-Check gefunden — ebenfalls behoben:** Ein zweiter, unabhängiger
+  Adversarial-Durchlauf auf den Fix fand einen verbliebenen Pfad: `instrument.quote_currency or
+  fees.currency` setzte bei **unbekannter** Notierungswährung (`None`, live real, wenn der Broker
+  `currency_profit` leer meldet) still die Kontowährung ein → ein tatsächlich kreuznotiertes
+  Instrument wäre als gleich notiert (rate=1) durchgelaufen. Genau die „stille Annahme", gegen die
+  das Kostenmodell gebaut ist. **Fix:** `quote_currency is None` → `cost_unverifiable` fail-closed,
+  kein Default; Test `test_unknown_quote_currency_is_fail_closed`. Ein abschließender dritter,
+  unabhängiger Re-Check (zwei Blickwinkel) verifizierte algebraisch, dass `friction` und `notional`
+  jetzt garantiert dieselbe Währung tragen und alle numerischen Sonden (inkl. NaN-Schwelle)
+  fail-closed landen — **kein** verbliebenes fail-open/Währungs-Loch (`problem_count: 0`).
+
+**Negativ gefahren / nachgewiesen:** `test_live_opening_rejected_when_cost_exceeds_threshold`
+(reale ~24,5 bp gegen 10-bp-Schwelle → `cost_gate`, kein Send), `..._unconfigured` (Live ohne Tor
+→ fail-closed), `test_demo_opening_skips_cost_gate` (Demo ohne Tor → angenommen),
+`..._allowed_when_cost_within_threshold` (50-bp-Schwelle deckt die realen Kosten → Send). Die
+reine `evaluate_cost_gate` deckt die **Größe** der Kostenquote (2,70/11.000 exakt), Kreuzwährung
+fail-closed, unbekannte Notierungswährung fail-closed, verschränkte Notierung und negative
+Schwelle ab (`tests/test_cost_gate.py`, 7 Fälle); `test_same_currency_ignores_supplied_rate`
+sichert das harte rate=1 in `order_roundturn_cost`.
+
+**Entscheidungen, die ich selbst getroffen habe:** das Tor als **Live-Pflicht/Demo-frei** zu
+bauen (spiegelt die Live-Freigabe; Demo hat kein Echtgeld-Risiko) statt opt-in (ein opt-in-Tor
+wäre still abschaltbar — genau die Schein-Gate-Klasse); nur die **Transaktionskosten** zu prüfen
+(Spread/Kommission/Slippage), nicht die haltedauerabhängige Finanzierung, die beim Eröffnen
+unbekannt ist; `hurdle_rate` zu **löschen** statt zu verdrahten (die Einheiten p. a. vs.
+Gesamtperiode unterscheiden sich — Verdrahtung hätte die Tor-Semantik `net_over_hurdle` verändert,
+keine Bereinigung).
+
+**Auffälligkeiten, gemeldet, nicht angefasst (ehrlich):** (1) Das Kostentor deckt **nur gleich
+notierte** Instrumente ab (EURUSD/GBPUSD/XAUUSD/BTCUSD auf USD-Konto — der gesamte Edge-Test-
+Fokus). Kreuznotierte Paare (USDJPY, EURGBP) werden bewusst fail-closed abgewiesen, bis ein
+instrumentspezifischer Live-FX-Kurs nachgerüstet ist (SPAETER **S10**). Das ist die sichere
+Richtung (nicht handeln statt falsch bepreisen), keine stille Lücke. (2) Zwei vorbestehende
+Vertrauensgrenzen, vom Re-Check genannt, **kein** Paket-3-Defekt: `reduce_only`-Orders umgehen
+alle Eröffnungs-Tore (Kostentor, Hebel, Live-Freigabe) — bewusster Carve-out für Risikoabbau, aber
+ein `reduce_only`-Missbrauch auf einer *eröffnenden* Order läge außerhalb der Tore (SPAETER **S11**);
+und das Tor vertraut den Broker-Metadaten (`currency_profit`, Kommission), die es nicht gegen
+`load_cost_fees` gegenprüft (Daten-, keine Torlogik-Frage, in **S11** vermerkt).
+
+**Zeilenstand (gemessen, 2026-08-13):** 6.167 Zeilen, 28 Module, 329 Testfunktionen, 383
+Testfälle grün; `ruff` und `mypy --strict` sauber. SPAETER **S5** bestätigt, **S10** und **S11**
+neu eröffnet.

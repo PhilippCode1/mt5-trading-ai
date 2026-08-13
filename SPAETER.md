@@ -53,6 +53,15 @@ Nachzurüsten, sobald Einzelaktien in den Backtest sollen: ein explizites Kosten
 (fixed vs. percentage) in `FeeSchedule` + Verzweigung im Modell. Nicht der Edge-Test-Fokus
 (EURUSD), daher später.
 
+**Bestätigt in Abnahme-Paket 3 (bewusste, begründete Nicht-Verdrahtung):** Der
+`config/instrument_catalog.json` enthält **kein** EQUITY-Instrument (nur fx_major, fx_minor,
+gold, crypto, index_major); die `load_cost_fees`-Ablehnung ist damit ein Wächter für eine
+Klasse, die (noch) nicht gehandelt wird, kein aktiver Blocker. Der Wächter ist per Test
+gesichert (`test_equity_is_rejected`). Das Pre-Trade-Kostentor am Order-Pfad (Paket 3) erbt
+diese Sperre: eine EQUITY-Order käme gar nicht bis zur Kostenrechnung, weil `load_cost_fees`
+sie vorher fail-closed abweist. Das ad-valorem-Modell wird erst bei Einzelaktien im Backtest
+nötig — in diesem Plan bewusst nicht gebaut.
+
 ## S6 — Qualitätstor- und Session-Härtung (aus Paket-2-Review)
 
 Die §9-Review des Datenladers fand mehrere Härtungspunkte über Paket 2 hinaus, nötig für
@@ -131,3 +140,41 @@ aktuellen, **nicht** carry-tragenden Strategien (Intraday-MA/Mean-Reversion, mei
 Nacht) ist das folgenlos. **Zu entscheiden, sobald eine über Nacht getragene / carry-abhängige
 Strategie in den Test soll:** ein eigenes Finanzierungs-Stressszenario (z. B. Swap-Satz-Aufschlag
 oder adverse Roll), getrennt vom Transaktionskosten-Multiplikator.
+
+## S10 — Pre-Trade-Kostentor nur gleich notiert; Kreuzwährung braucht Live-FX-Kurs (aus Paket-3-Review)
+
+Das Pre-Trade-Kostentor (`execution/cost_gate.py`, Paket 3) prüft die reale Roundturn-Kostenquote
+`friction/notional` **nur für gleich notierte Instrumente** (Notierungs- = Kontowährung, z. B.
+EURUSD/GBPUSD/XAUUSD/BTCUSD auf USD-Konto → Umrechnungskurs 1). Grund (§9-Review): `friction` kommt
+aus `order_roundturn_cost` in **Kontowährung** (Kommission nativ, Spread/Slippage per Kurs
+umgerechnet), das `notional` bildet sich aus dem rohen Preis in **Notierungswährung**; nur bei
+gleicher Währung stehen Zähler und Nenner in derselben Einheit und die Quote ist korrekt. Ein
+kreuznotiertes Instrument (USDJPY→JPY, EURGBP→GBP auf USD-Konto) wird **fail-closed** abgewiesen
+(`cost_unverifiable`), statt mit einem einzelnen Venue-Skalar-Kurs falsch gerechnet zu werden — ein
+Skalar am Konto-Venue kann nicht gleichzeitig für USD- und JPY-notierte Paare stimmen.
+
+**Nachzurüsten, sobald ein kreuznotiertes Instrument live gehandelt werden soll:** ein
+**instrumentspezifischer** Umrechnungskurs Notierungs-→Kontowährung, live aus dem Terminal je
+Symbol abgeleitet (nicht als statischer Skalar), an `evaluate_cost_gate` gereicht, mit dem das
+**notional ebenfalls** in Kontowährung geführt wird. Bis dahin gilt: kreuznotiert = kein Live-Trade
+durchs Kostentor. EURUSD (Edge-Test-Fokus) ist gleich notiert und voll abgedeckt.
+
+## S11 — reduce_only umgeht alle Eröffnungs-Tore; Kostentor vertraut Broker-Daten (aus Paket-3-Review)
+
+Zwei vorbestehende Vertrauensgrenzen, die der §9-Fix-Re-Check von Paket 3 benannte — **kein**
+Defekt der neuen Kostentor-Logik, aber ehrlich zu vermerken:
+
+- **`reduce_only`-Carve-out:** `Mt5Venue.submit_order` überspringt für `reduce_only=True` **alle**
+  Eröffnungs-Tore (Global-Halt, Stop-Pflicht, Live-Freigabe, Hebel-Preflight, **Kostentor**) —
+  bewusst, weil Risikoabbau (Schließen) nicht an denselben Eröffnungs-Schranken hängen darf. Rand:
+  `RealMt5Terminal.order_send` setzt bei `reduce_only` **ohne** passende Gegenposition kein
+  `position`-Ticket und sendet dann einen normalen Deal — ein `reduce_only`-Missbrauch auf einer
+  faktisch **eröffnenden** Order läge damit außerhalb aller Tore. **Zu entscheiden (nicht jetzt):**
+  eine Vorbedingung, die `reduce_only` an eine real existierende Gegenposition bindet (Buch-/
+  Positions-Check), bevor die Tore übersprungen werden.
+- **Broker-Datenintegrität:** Das Kostentor liest `entry.fees` direkt aus dem Katalog und vertraut
+  der vom Terminal gemeldeten `currency_profit` (= Notierungswährung). Ein falsch gemeldetes
+  `currency_profit` oder eine 0-Kommission-Datenlücke (die `load_cost_fees` ablehnen würde, im
+  direkten Venue-Katalogzugriff aber nicht erneut geprüft wird) kann das Tor nicht abfangen. **Zu
+  entscheiden:** ob der Venue-Pfad dieselbe `load_cost_fees`-Sanität (Kommission-0 = Datenlücke)
+  erzwingen soll, bevor eine Order gegen diese Gebühren bepreist wird.

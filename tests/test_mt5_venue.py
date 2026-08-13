@@ -14,6 +14,7 @@ from decimal import Decimal
 from types import SimpleNamespace
 
 import pytest
+from mt5_trading_ai.execution.cost_gate import CostGate
 from mt5_trading_ai.execution.leverage_preflight import evaluate_leverage_preflight
 from mt5_trading_ai.venue.mt5 import (
     CatalogEntry,
@@ -215,12 +216,17 @@ class FakeMt5Terminal:
         return self._account
 
 
+#: Grosszuegige Kostenschwelle (50 bp), die die reale Testorder (~24,5 bp) durchlaesst.
+_LENIENT_COST_GATE = CostGate(max_roundturn_cost_fraction=Decimal("0.0005"))
+
+
 def _venue(
     *,
     is_demo: bool,
     settings: object = None,
     margin_free: Decimal = Decimal("10000"),
     positions: tuple[Mt5Position, ...] = (),
+    cost_gate: CostGate | None = None,
 ) -> tuple[Mt5Venue, FakeMt5Terminal]:
     terminal = FakeMt5Terminal(
         is_demo=is_demo, margin_free=margin_free, positions=positions
@@ -230,6 +236,7 @@ def _venue(
         terminal=terminal,
         catalog=_catalog(),
         settings=settings,
+        cost_gate=cost_gate,
     )
     venue.connect()
     return venue, terminal
@@ -338,7 +345,48 @@ def test_live_opening_order_blocked_without_release() -> None:
 
 
 def test_live_opening_order_allowed_with_full_release() -> None:
+    venue, terminal = _venue(
+        is_demo=False, settings=_released_settings(), cost_gate=_LENIENT_COST_GATE
+    )
+    result = venue.submit_order(_order())
+    assert result.accepted is True
+    assert terminal.order_send_calls == 1
+
+
+def test_live_opening_rejected_when_cost_gate_unconfigured() -> None:
+    # Kein Kostentor auf einem Live-Konto -> fail-closed, keine Order gesendet.
     venue, terminal = _venue(is_demo=False, settings=_released_settings())
+    with pytest.raises(OrderRejectedError) as excinfo:
+        venue.submit_order(_order())
+    assert excinfo.value.reason == "cost_gate_unconfigured"
+    assert terminal.order_send_calls == 0
+
+
+def test_live_opening_rejected_when_cost_exceeds_threshold() -> None:
+    # Reale Roundturn-Kosten ~24,5 bp; Schwelle 10 bp -> Ablehnung vor dem Send.
+    tight = CostGate(max_roundturn_cost_fraction=Decimal("0.0001"))
+    venue, terminal = _venue(
+        is_demo=False, settings=_released_settings(), cost_gate=tight
+    )
+    with pytest.raises(OrderRejectedError) as excinfo:
+        venue.submit_order(_order())
+    assert excinfo.value.reason == "cost_gate"
+    assert terminal.order_send_calls == 0
+
+
+def test_live_opening_allowed_when_cost_within_threshold() -> None:
+    # Schwelle 50 bp deckt die realen ~24,5 bp -> Order laeuft durch.
+    venue, terminal = _venue(
+        is_demo=False, settings=_released_settings(), cost_gate=_LENIENT_COST_GATE
+    )
+    result = venue.submit_order(_order())
+    assert result.accepted is True
+    assert terminal.order_send_calls == 1
+
+
+def test_demo_opening_skips_cost_gate() -> None:
+    # Demo braucht kein Kostentor (kein Echtgeld): ohne Gate trotzdem angenommen.
+    venue, terminal = _venue(is_demo=True)
     result = venue.submit_order(_order())
     assert result.accepted is True
     assert terminal.order_send_calls == 1

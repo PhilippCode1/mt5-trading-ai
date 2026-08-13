@@ -20,7 +20,8 @@ der CI grün:
   getestet" ist nicht „verdrahtet".
 - **Paket 1 — Kostenmodell:** R1-Recherche → `RECHERCHE_KOSTEN.md`; **E3 → IC Markets**;
   `costs/model.py` (Spread aus echtem Bid/Ask, Kommission, Slippage, Finanzierung inkl.
-  Dreifach-Tag), `hurdle_rate` gegen Handrechnung (62,5 % / 125 %).
+  Dreifach-Tag). (Die separate `hurdle_rate`-Funktion wurde in **Abnahme-Paket 3** als toter
+  Code entfernt — die einzige, genutzte Hürdenformel steht im Backtest-Bericht selbst.)
 - **Paket 2 — Datenfundament:** R2 → `RECHERCHE_DATEN.md`; **E4 → Dukascopy**;
   `data/loader.py` (fail-closed ans Qualitätstor), Prüfsumme + Manifest. Das Abbruchkriterium
   griff nicht — saubere Daten sind beschaffbar.

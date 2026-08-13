@@ -25,6 +25,7 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any, Protocol, runtime_checkable
 
+from mt5_trading_ai.execution.cost_gate import CostGate, evaluate_cost_gate
 from mt5_trading_ai.execution.leverage_preflight import evaluate_leverage_preflight
 from mt5_trading_ai.execution.private_sync import PrivateEvent, PrivateSync
 from mt5_trading_ai.execution.reconcile import (
@@ -174,6 +175,11 @@ class Mt5Venue(TradingVenue):
 
     ``settings`` traegt die Live-Freigabe-Schalter (siehe ``execution/release.py``);
     fuer Demo/Reduce-Only ist es unerheblich und darf ``None`` sein.
+
+    ``cost_gate`` traegt die im Backtest vorausgesetzte Kostenobergrenze
+    (``execution/cost_gate.py``). Auf einem **Live**-Konto ist es fuer eroeffnende
+    Orders Pflicht: fehlt es, wird fail-closed abgelehnt (kein ungeprueftes Live-Kosten-
+    risiko). Auf Demo ist es unerheblich (kein Echtgeld) -- wie die Live-Freigabe.
     """
 
     def __init__(
@@ -185,12 +191,14 @@ class Mt5Venue(TradingVenue):
         settings: Any = None,
         max_notional_drift: Decimal = Decimal("0"),
         sync: PrivateSync | None = None,
+        cost_gate: CostGate | None = None,
     ) -> None:
         self.name = name
         self._terminal = terminal
         self._catalog = dict(catalog)
         self._settings = settings
         self._max_notional_drift = max_notional_drift
+        self._cost_gate = cost_gate
         self._connected = False
         #: Idempotenz je ``client_order_id`` — nur angenommene Orders.
         self._results: dict[str, OrderResult] = {}
@@ -341,6 +349,8 @@ class Mt5Venue(TradingVenue):
             self._require_live_release_for_opening()
             # Hebelklammer am Order-Pfad: handelbar, geklammert, Marge frei?
             self._enforce_leverage(instrument, request)
+            # Pre-Trade-Kostentor: reale Roundturn-Kosten unter der Backtest-Schwelle?
+            self._enforce_cost_gate(instrument, request)
 
         send = self._terminal.order_send(self._to_terminal_request(request))
         if not send.accepted:
@@ -395,6 +405,46 @@ class Mt5Venue(TradingVenue):
             raise OrderRejectedError(
                 f"Hebel-Anschluss abgelehnt: {preflight.reason}",
                 reason=preflight.reason or "leverage_rejected",
+                retryable=False,
+            )
+
+    def _enforce_cost_gate(
+        self, instrument: Instrument, request: OrderRequest
+    ) -> None:
+        """Pre-Trade-Kostentor fuer eine eroeffnende Order (Live-Pflicht, Demo-frei).
+
+        Auf Demo entfaellt es (kein Echtgeld) -- wie die Live-Freigabe. Auf Live ohne
+        konfiguriertes Tor wird fail-closed abgelehnt: eine Order, deren Kosten nie
+        gegen die Backtest-Annahme geprueft wurden, darf nicht eroeffnen.
+        """
+        if self._terminal.account().is_demo:
+            return  # Demokonto: keine Live-Kostenpruefung noetig.
+        if self._cost_gate is None:
+            raise OrderRejectedError(
+                "Kein Pre-Trade-Kostentor konfiguriert -- Live-Eroeffnung blockiert",
+                reason="cost_gate_unconfigured",
+                retryable=False,
+            )
+        raw_tick = self._terminal.tick(request.symbol)
+        if raw_tick is None:
+            raise OrderRejectedError(
+                "Kein Preis fuer das Kostentor", reason="no_tick", retryable=True
+            )
+        entry = self._catalog[request.symbol]  # in get_instrument bereits validiert
+        decision = evaluate_cost_gate(
+            gate=self._cost_gate,
+            instrument=instrument,
+            fees=entry.fees,
+            side=request.side,
+            volume=request.volume,
+            bid=raw_tick.bid,
+            ask=raw_tick.ask,
+        )
+        if not decision.approved:
+            suffix = f" ({decision.detail})" if decision.detail else ""
+            raise OrderRejectedError(
+                f"Kostentor abgelehnt: {decision.reason}{suffix}",
+                reason=decision.reason or "cost_gate",
                 retryable=False,
             )
 

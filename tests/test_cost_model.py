@@ -18,7 +18,6 @@ from mt5_trading_ai.costs.model import (
     DEFAULT_SLIPPAGE_PIPS_PER_SIDE,
     CostBreakdown,
     CostModelError,
-    hurdle_rate,
     load_cost_fees,
     order_roundturn_cost,
 )
@@ -96,20 +95,6 @@ def test_default_slippage_is_conservative_nonzero() -> None:
     assert _cost(slippage_pips_per_side=Decimal("0")).slippage == Decimal("0")
 
 
-def test_hurdle_rate_matches_hand_calculation() -> None:
-    # 5 Trades/Tag * 250 Tage * 1 bp / 10000 * Hebel
-    at5 = hurdle_rate(
-        trades_per_day=Decimal("5"), trading_days=Decimal("250"),
-        leverage=Decimal("5"), cost_bp=Decimal("1"),
-    )
-    at10 = hurdle_rate(
-        trades_per_day=Decimal("5"), trading_days=Decimal("250"),
-        leverage=Decimal("10"), cost_bp=Decimal("1"),
-    )
-    assert at5 == Decimal("0.625")   # 62,5 % des Eigenkapitals p. a.
-    assert at10 == Decimal("1.25")   # 125 %
-
-
 # --- Waehrung: keine stille Annahme --------------------------------------
 
 
@@ -125,20 +110,18 @@ def test_mismatched_currency_with_rate_scales_quote_costs() -> None:
     assert c.commission == Decimal("7")    # Kommission ist bereits Kontowaehrung
 
 
+def test_same_currency_ignores_supplied_rate() -> None:
+    # §9-Haertung: bei gleicher Waehrung ist der Umrechnungskurs definitionsgemaess 1.
+    # Ein (sinnloser) uebergebener Kurs darf die Kosten NICHT skalieren -- sonst
+    # verfaelschte ein Konto-Skalar still jedes gleich notierte Paar (Fail-open).
+    plain = _cost(quote_currency="USD")
+    with_bad_rate = _cost(quote_currency="USD", quote_to_account_rate=Decimal("0.0065"))
+    assert with_bad_rate.spread == plain.spread
+    assert with_bad_rate.slippage == plain.slippage
+    assert with_bad_rate.total == plain.total
+
+
 # --- Fail-closed ----------------------------------------------------------
-
-
-def test_hurdle_rate_rejects_nonpositive() -> None:
-    with pytest.raises(CostModelError):
-        hurdle_rate(
-            trades_per_day=Decimal("0"), trading_days=Decimal("250"),
-            leverage=Decimal("5"), cost_bp=Decimal("1"),
-        )
-    with pytest.raises(CostModelError):
-        hurdle_rate(
-            trades_per_day=Decimal("5"), trading_days=Decimal("250"),
-            leverage=Decimal("-1"), cost_bp=Decimal("1"),
-        )
 
 
 def test_negative_volume_is_error() -> None:

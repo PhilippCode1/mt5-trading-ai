@@ -72,7 +72,6 @@ Kostenmodell: die realen Kosten einer Order, gemessen statt angenommen.
 - `class CostBreakdown`
 - `def order_roundturn_cost`
 - `def load_cost_fees`
-- `def hurdle_rate`
 
 ## `mt5_trading_ai/data/loader.py`
 
@@ -104,6 +103,14 @@ Datenqualitaet als Gate (Phase 7.2).
 - `class SessionPredicate`
 - `def assess_bars`
 - `def render_markdown`
+
+## `mt5_trading_ai/execution/cost_gate.py`
+
+Pre-Trade-Kostentor am Order-Pfad.
+
+- `class CostGate`
+- `class CostGateDecision`
+- `def evaluate_cost_gate`
 
 ## `mt5_trading_ai/execution/leverage_preflight.py`
 

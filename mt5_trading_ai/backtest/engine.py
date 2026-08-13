@@ -360,6 +360,8 @@ def run_backtest(
 
     # Huerde = Gesamtperioden-Reibung als Anteil des Eigenkapitals (NICHT p. a.):
     # trades_pro_bar * bars kuerzt sich zu Trades, also hurdle = Reibung / equity_base.
+    # EINZIGE Huerdenformel im System (die p.-a.-Variante hurdle_rate() war toter Code,
+    # in Abnahme-Paket 3 entfernt) -- hier gemessen aus der realen Reibung dieses Laufs.
     n_bars = len(bars)
     trades_per_bar = len(trade_log) / n_bars if n_bars else 0.0
     notional = cs * vol * bars[0].close
