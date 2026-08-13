@@ -9,6 +9,12 @@ Dieser Lader liest historische Bars aus einer externen Quelle, **normalisiert** 
 Reihe das Tor nicht, bricht der Lader ab -- ein Backtest auf schmutzigen Daten ist
 schlimmer als keiner, weil er Vertrauen erzeugt, das nicht gedeckt ist.
 
+``load_verified_csv`` ist der **erzwungene Tor-Punkt am Backtest-Rand** (Paket 1) mit
+zwei Sicherungen: (1) **Herkunft** gegen ein Manifest ODER eine Erwartungs-Pruefsumme --
+fehlen beide, faellt es fail-closed durch; (2) das **strukturelle** Qualitaetstor
+(Luecken, Zeitstempel, Session, OHLC-Ordnung). Sicherung 1 faengt inhaltliche Faelschung
+innerhalb gueltiger OHLC-Grenzen, die (2) allein nicht sieht.
+
 Reproduzierbarkeit: dieselbe Bar-Reihe ergibt dieselbe Pruefsumme (``bars_checksum``).
 Die Pruefsumme steht in jedem Backtest-Bericht; ein neuer Datenstand faellt sofort auf.
 
@@ -23,8 +29,10 @@ import hashlib
 import json
 import lzma
 import struct
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
+from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from mt5_trading_ai.data.quality import (
     TIMEFRAME_SECONDS,
@@ -68,11 +76,61 @@ class DataLoadError(ValueError):
     """Daten fehlen, sind unlesbar oder bestehen das Tor nicht. Fail-closed."""
 
 
+def _fx_holidays(years: range) -> frozenset[date]:
+    """Volle FX-Marktschliessungen je Jahr: Neujahr + Weihnachten."""
+    days: set[date] = set()
+    for year in years:
+        days.add(date(year, 1, 1))    # Neujahr
+        days.add(date(year, 12, 25))  # Weihnachten
+    return frozenset(days)
+
+
+#: Volle FX-Schliessungen (Neujahr/Weihnachten) 2018-2035. Andere Feiertage sind nur
+#: teil-illiquide, keine vollen Schliessungen -- bewusst konservativ, erweiterbar (S6).
+DEFAULT_FX_HOLIDAYS: frozenset[date] = _fx_holidays(range(2018, 2036))
+
+
 class WeekdaySession(SessionPredicate):
-    """FX-Session als Handelstag Mo-Fr (UTC). Wochenend-Bars sind keine Session."""
+    """FX-Session als Handelstag Mo-Fr (UTC). Wochenend-Bars sind keine Session.
+
+    Fuer **Tagesbars**. Feiertage werden hier NICHT geflaggt (ein duenn gehandelter
+    Feiertag ist kein Datenfehler) -- sie senken stattdessen die *erwartete* Bar-Zahl
+    (``assess_bars(holidays=...)``, S6), damit eine ausgelassene Feiertags-Bar keine
+    Scheinluecke erzeugt.
+    """
 
     def __call__(self, ts: datetime) -> bool:
         return ts.weekday() < 5
+
+
+#: Boersen-Zeitzone der FX-Woche (Oeffnung/Schluss 17:00 Ortszeit New York).
+FX_MARKET_TZ = ZoneInfo("America/New_York")
+
+
+class FxSession(SessionPredicate):
+    """FX-Handelswoche fuer **Intraday**, verankert an **New York 17:00** (DST-korrekt).
+
+    FX oeffnet Sonntag 17:00 und schliesst Freitag 17:00 NY-Ortszeit; Mo-Do laeuft es
+    durch. ``WeekdaySession`` wuerde gueltige Sonntagsbars als ausserhalb der Session
+    flaggen (S6). Ein FESTES UTC-Fenster (21/22) zaehlte im Winter die 21-Uhr-Kante als
+    erwartet (Phantom-Luecke); der NY-Anker verschiebt die Grenze mit der Sommerzeit
+    (So 21:00 UTC Sommer == So 22:00 UTC Winter == So 17:00 NY). Feiertage werden NICHT
+    geflaggt; sie senken separat die erwartete Zahl (``assess_bars(holidays=...)``).
+    """
+
+    def __init__(self, open_close_hour: int = 17) -> None:
+        self._hour = open_close_hour
+
+    def __call__(self, ts: datetime) -> bool:
+        local = ts.astimezone(FX_MARKET_TZ)
+        weekday = local.weekday()  # Mo=0 .. So=6 (New Yorker Ortszeit)
+        if weekday == 5:                        # Samstag: nie
+            return False
+        if weekday == 6:                        # Sonntag: ab 17:00 NY
+            return local.hour >= self._hour
+        if weekday == 4:                        # Freitag: bis 17:00 NY
+            return local.hour < self._hour
+        return True                             # Mo-Do durchgehend
 
 
 def decode_dukascopy_candles(
@@ -163,14 +221,19 @@ def _max_consecutive_gap(
     seconds: int,
     start: datetime,
     end: datetime,
+    holidays: frozenset[date] = frozenset(),
 ) -> int:
-    """Laengster Lauf aufeinanderfolgender fehlender Session-Slots im Fenster."""
+    """Laengster Lauf aufeinanderfolgender fehlender Session-Slots im Fenster.
+
+    Feiertags-Slots (S6) werden uebersprungen -- ein duenn gehandelter oder fehlender
+    Feiertag ist kein Block-Ausfall.
+    """
     present = {b.ts for b in bars}
     step = timedelta(seconds=seconds)
     run = worst = 0
     cursor = start
     while cursor < end:
-        if session_predicate(cursor):
+        if session_predicate(cursor) and cursor.date() not in holidays:
             run = 0 if cursor in present else run + 1
             worst = max(worst, run)
         cursor += step
@@ -183,11 +246,13 @@ def assess_or_raise(
     instrument: str,
     timeframe: str,
     session_predicate: SessionPredicate,
+    holidays: frozenset[date] = DEFAULT_FX_HOLIDAYS,
 ) -> QualityReport:
     """Pruefe die Bars gegen das Qualitaetstor; bei Nichtbestehen ``DataLoadError``.
 
     ``start``/``end`` werden aus der Reihe abgeleitet (erste Bar bis eine Stufe nach der
-    letzten). Eine leere Reihe besteht nicht.
+    letzten). Eine leere Reihe besteht nicht. ``holidays`` senken die erwartete Bar-Zahl
+    (S6), damit ausgelassene Feiertage keine Scheinluecke erzeugen.
     """
     if not bars:
         raise DataLoadError("Keine Bars geladen")
@@ -203,6 +268,7 @@ def assess_or_raise(
         start=start,
         end=end,
         session_predicate=session_predicate,
+        holidays=holidays,
     )
     if not report.passed:
         raise DataLoadError(
@@ -210,7 +276,8 @@ def assess_or_raise(
             f"{', '.join(report.reasons)}"
         )
     worst = _max_consecutive_gap(
-        bars, session_predicate=session_predicate, seconds=seconds, start=start, end=end
+        bars, session_predicate=session_predicate, seconds=seconds,
+        start=start, end=end, holidays=holidays,
     )
     if worst > MAX_CONSECUTIVE_GAP:
         raise DataLoadError(
@@ -263,6 +330,88 @@ def from_csv(text: str) -> list[BarRow]:
 def bars_checksum(bars: list[BarRow]) -> str:
     """SHA-256 der kanonischen CSV-Form. Gleiche Bars -> gleiche Pruefsumme."""
     return hashlib.sha256(to_csv(bars).encode("utf-8")).hexdigest()
+
+
+def manifest_path_for(csv_path: Path) -> Path:
+    """Manifest-Pfad neben einer CSV: ``X.csv`` -> ``X.manifest.json``."""
+    return csv_path.with_suffix(".manifest.json")
+
+
+#: Mindestlaenge einer Erwartungs-Pruefsumme in Hex-Zeichen (>= 64 Bit). Kuerzere
+#: Praefixe kollidieren trivial (``"c"`` deckt viele Datenstaende) und wuerden den
+#: falschen Datenstand zertifizieren -- deshalb fail-closed statt schwach akzeptiert.
+MIN_CHECKSUM_PREFIX = 16
+
+
+def load_verified_csv(
+    csv_path: Path,
+    *,
+    instrument: str,
+    timeframe: str,
+    session_predicate: SessionPredicate,
+    holidays: frozenset[date] = DEFAULT_FX_HOLIDAYS,
+    expected_checksum: str | None = None,
+    require_provenance: bool = True,
+) -> tuple[list[BarRow], str]:
+    """Lade Bars aus einer CSV **am Backtest-Rand** -- fail-closed.
+
+    Zwei getrennte Sicherungen, beide hier erzwungen:
+
+    1. **Herkunft** -- gegen ``expected_checksum`` (mind. ``MIN_CHECKSUM_PREFIX`` Hex)
+       ODER ein ``manifest.json`` neben der CSV. Fehlen beide, ist Echtheit nicht
+       pruefbar: dann ``DataLoadError`` (``require_provenance``), kein stiller Pass. So
+       faellt eine hand-editierte CSV wirklich durch. (Das Manifest muss zur Fetch-Zeit
+       aus vertrauenswuerdiger Quelle stammen -- ein nachtraeglich neben die geaenderte
+       CSV gelegtes Manifest segnet die Manipulation ab.)
+    2. **Struktur** -- das Qualitaetstor (``assess_or_raise``): Luecken, Zeitstempel,
+       Session, OHLC-Ordnung. Es faengt KEINE inhaltliche Faelschung innerhalb gueltiger
+       OHLC-Grenzen (dafuer ist Sicherung 1 da).
+
+    Gibt (Bars, Bars-Pruefsumme) zurueck.
+    """
+    try:
+        text = csv_path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
+        raise DataLoadError(f"CSV nicht lesbar ({csv_path}): {exc}") from exc
+    bars = from_csv(text)
+    checksum = bars_checksum(bars)
+
+    manifest_file = manifest_path_for(csv_path)
+    have_manifest = manifest_file.exists()
+
+    if expected_checksum is not None:
+        if len(expected_checksum) < MIN_CHECKSUM_PREFIX:
+            raise DataLoadError(
+                f"expected_checksum zu kurz ({len(expected_checksum)} < "
+                f"{MIN_CHECKSUM_PREFIX} Hex) -- fail-closed"
+            )
+        if not checksum.startswith(expected_checksum):
+            raise DataLoadError(
+                f"Pruefsumme weicht ab: erwartet {expected_checksum[:16]}..., geladen "
+                f"{checksum[:16]}... -- Daten veraendert (fail-closed)"
+            )
+    elif not have_manifest and require_provenance:
+        raise DataLoadError(
+            "Keine Herkunft: Manifest neben der CSV oder expected_checksum noetig "
+            "-- fail-closed (kein Backtest auf unbelegten Daten)"
+        )
+
+    if have_manifest:
+        try:
+            manifest = json.loads(manifest_file.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise DataLoadError(f"Manifest unlesbar: {exc}") from exc
+        if manifest.get("bars_checksum") != checksum:
+            raise DataLoadError(
+                "Manifest-Pruefsumme deckt die CSV nicht: nach dem Manifest "
+                "veraendert (fail-closed)"
+            )
+
+    assess_or_raise(
+        bars, instrument=instrument, timeframe=timeframe,
+        session_predicate=session_predicate, holidays=holidays,
+    )
+    return bars, checksum
 
 
 def dataset_manifest(

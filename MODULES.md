@@ -18,6 +18,7 @@ Backtest-Maschine: fuehrt Splits, Daten und Kostenmodell zusammen.
 
 - `class Signal`
 - `class LookAheadError`
+- `class DataProvenanceError`
 - `class MarketView`
 - `def random_signal_strategy`
 - `class MarketSpec`
@@ -78,6 +79,7 @@ Lader fuer historische Bars -- an das Datenqualitaetstor gekettet.
 - `def dukascopy_price_divisor`
 - `class DataLoadError`
 - `class WeekdaySession`
+- `class FxSession`
 - `def decode_dukascopy_candles`
 - `def parse_yahoo_daily`
 - `def filter_to_weekdays`
@@ -85,6 +87,8 @@ Lader fuer historische Bars -- an das Datenqualitaetstor gekettet.
 - `def to_csv`
 - `def from_csv`
 - `def bars_checksum`
+- `def manifest_path_for`
+- `def load_verified_csv`
 - `def dataset_manifest`
 - `def manifest_checksum`
 

@@ -42,7 +42,7 @@ from mt5_trading_ai.backtest.strategies import (  # noqa: E402
 )
 from mt5_trading_ai.costs.halal import HalalFinancingPolicy  # noqa: E402
 from mt5_trading_ai.costs.model import load_cost_fees  # noqa: E402
-from mt5_trading_ai.data.loader import from_csv  # noqa: E402
+from mt5_trading_ai.data.loader import FxSession, load_verified_csv  # noqa: E402
 
 VERSION = "v1"
 OOS_FRACTION = 0.30    # letzter Teil = Out-of-Sample, je Strategie einmal angefasst
@@ -94,7 +94,11 @@ def main() -> int:
     args = ap.parse_args()
 
     strategy_id, factory, label = _strategy(args.strategy)
-    bars = from_csv(args.csv.read_text(encoding="utf-8"))
+    # Tor am Backtest-Rand (Paket 1): Qualitaetstor + Provenienz, fail-closed.
+    bars, _chk = load_verified_csv(
+        args.csv, instrument="EURUSD", timeframe="H1", session_predicate=FxSession(),
+        expected_checksum=args.data_checksum or None,
+    )
     span_years = max(1e-9, (bars[-1].ts - bars[0].ts).days / 365.25)
     obs_per_year = len(bars) / span_years
     fees = load_cost_fees("EURUSD")
@@ -116,7 +120,10 @@ def main() -> int:
         # OoS = die neue Periode. Das ist der ehrliche Weg fuer einen dritten Versuch --
         # der bisherige 30-%-Block ist durch zwei Strategien belastet.
         in_sample = bars
-        oos = from_csv(args.oos_csv.read_text(encoding="utf-8"))
+        oos, _oos_chk = load_verified_csv(
+            args.oos_csv, instrument="EURUSD", timeframe="H1",
+            session_predicate=FxSession(),
+        )
         print(
             f"In-Sample {len(in_sample)} (ganzes --csv) | FRISCHES OoS {len(oos)} Bars "
             f"{oos[0].ts.date()}..{oos[-1].ts.date()} -- unberuehrt, einmal angefasst"
@@ -135,7 +142,7 @@ def main() -> int:
     wf = run_walk_forward(
         in_sample, factory, spec, 5,
         purge_ms=3_600_000, embargo_ms=3_600_000, strategy_id=strategy_id, seed=100,
-        version=VERSION, data_checksum=args.data_checksum, code_commit=args.code_commit,
+        version=VERSION, data_checksum="", code_commit=args.code_commit,
         ledger_path=ledger,
     )
     fold_returns = [f.net_return for f in wf.folds]
@@ -143,7 +150,7 @@ def main() -> int:
     oos_report = run_registered_backtest(  # der OoS-Abschlusslauf, genau einmal
         oos, factory(), spec,
         strategy_id=strategy_id, version=VERSION, seed=0,
-        data_checksum=args.data_checksum, code_commit=args.code_commit,
+        data_checksum="", code_commit=args.code_commit,
         ledger_path=ledger,
     )
     # Deflation gegen das GESAMTE Register (count_scope="total"): bei einer Kampagne mit

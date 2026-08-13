@@ -36,6 +36,7 @@ from mt5_trading_ai.costs.model import (
     DEFAULT_SLIPPAGE_PIPS_PER_SIDE,
     order_roundturn_cost,
 )
+from mt5_trading_ai.data.loader import MIN_CHECKSUM_PREFIX, bars_checksum
 from mt5_trading_ai.data.quality import BarRow
 from mt5_trading_ai.gates import trials
 from mt5_trading_ai.gates.criteria import deflated_sharpe_ratio
@@ -54,6 +55,10 @@ class Signal(IntEnum):
 
 class LookAheadError(RuntimeError):
     """Eine Strategie hat auf die Zukunft zugegriffen. Der Lauf ist ungueltig."""
+
+
+class DataProvenanceError(ValueError):
+    """Die tatsaechlichen Bars decken die erwartete Pruefsumme nicht. Fail-closed."""
 
 
 class MarketView:
@@ -233,6 +238,22 @@ def run_backtest(
     if len(bars) < 3:
         raise ValueError("Zu wenige Bars fuer einen Backtest")
 
+    # Provenienz: die berichtete Pruefsumme wird aus den TATSAECHLICH gefahrenen Bars
+    # abgeleitet, nicht vom Aufrufer geglaubt. Ist ``data_checksum`` gesetzt, wird es
+    # als Erwartung geprueft (Praefix erlaubt); Abweichung -> fail-closed.
+    derived_checksum = bars_checksum(list(bars))
+    if data_checksum:
+        if len(data_checksum) < MIN_CHECKSUM_PREFIX:
+            raise DataProvenanceError(
+                f"Erwartete Pruefsumme zu kurz ({len(data_checksum)} < "
+                f"{MIN_CHECKSUM_PREFIX} Hex) -- fail-closed"
+            )
+        if not derived_checksum.startswith(data_checksum):
+            raise DataProvenanceError(
+                f"Erwartete Pruefsumme {data_checksum!r} deckt die Bars nicht "
+                f"({derived_checksum[:16]}...) -- Datenstand weicht ab"
+            )
+
     cs = float(spec.contract_size)
     vol = float(spec.volume)
     lev = float(spec.leverage)
@@ -368,7 +389,7 @@ def run_backtest(
         hurdle_pct=hurdle,
         net_over_hurdle=(gross_return - hurdle),
         seed=seed,
-        data_checksum=data_checksum,
+        data_checksum=derived_checksum,
         code_commit=code_commit,
         obs_per_year=spec.obs_per_year,
         trade_log=tuple(trade_log),
@@ -421,6 +442,17 @@ def run_walk_forward(
     Strategie-Bau, damit ein zustandsbehafteter Generator nicht ueber Fenster leckt.
     ``positive_folds`` geht in die Kriterien: ein Ein-Fenster-Edge ist keiner.
     """
+    # Erwartung gilt fuer das GANZE Fenster; die Folds sind Sub-Slices und leiten ihre
+    # eigene Pruefsumme ab (kein Praefix-Match des vollen Datensatzes je Fold).
+    if data_checksum:
+        if len(data_checksum) < MIN_CHECKSUM_PREFIX:
+            raise DataProvenanceError(
+                f"Erwartete Pruefsumme zu kurz (< {MIN_CHECKSUM_PREFIX} Hex)"
+            )
+        if not bars_checksum(list(bars)).startswith(data_checksum):
+            raise DataProvenanceError(
+                f"Erwartete Pruefsumme {data_checksum!r} deckt das WF-Fenster nicht"
+            )
     folds = purged_walk_forward_indices(
         _bar_ranges(bars), k, purge_ms=purge_ms, embargo_ms=embargo_ms
     )
@@ -432,7 +464,7 @@ def run_walk_forward(
         report = run_backtest(
             window, strategy_factory(), spec,
             strategy_id=f"{strategy_id}#fold{fold_index}", seed=seed + fold_index,
-            data_checksum=data_checksum, code_commit=code_commit,
+            data_checksum="", code_commit=code_commit,
         )
         reports.append(report)
         if ledger_path is not None:

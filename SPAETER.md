@@ -56,22 +56,24 @@ Nachzurüsten, sobald Einzelaktien in den Backtest sollen: ein explizites Kosten
 ## S6 — Qualitätstor- und Session-Härtung (aus Paket-2-Review)
 
 Die §9-Review des Datenladers fand mehrere Härtungspunkte über Paket 2 hinaus, nötig für
-einen **Intraday**-Edge-Test (Paket 3/4):
-- **FX-Session am NY-17:00-Anker**, im Tor statt als Mo-Fr-UTC-Vorabfilter. Der aktuelle
-  Filter verwirft den echten Sonntagabend-Balken und lässt geglättete Feiertagsbars als
-  „present" durch; der `outside_session`-Check ist für Wochenenden dadurch wirkungslos.
-- **Lückenquote gegen einen echten Handelstags-/Feiertagskalender** (nicht rohe Kalender-
-  Wochentage) und zusätzlich pro Monat bucketen (die ursprüngliche Docstring-Zusage).
+einen **Intraday**-Edge-Test:
+
+**ERLEDIGT (Abnahme-Paket 1, Kalender):**
+- **FX-Session für Intraday** (`FxSession`): Sonntagabend-Öffnung (DST-tolerant 21:00) bis
+  Freitagabend, statt des Mo-Fr-Vorabfilters. Gültige Sonntagsbars werden nicht mehr als
+  `outside_session` verworfen; die echte EURUSD-H1-Reihe besteht das Tor jetzt.
+- **Feiertagskalender** (`DEFAULT_FX_HOLIDAYS`, Neujahr/Weihnachten): Feiertage senken die
+  *erwartete* Bar-Zahl (`assess_bars(holidays=...)`, `_max_consecutive_gap`), damit eine
+  ausgelassene Feiertags-Bar keine Scheinlücke/Block-Ausfall erzeugt — ohne dünne, echte
+  Feiertagsbars als Fehler zu flaggen. Getestet in `tests/test_data_calendar.py`.
+
+**OFFEN (Intraday-Vorarbeit, kein EURUSD-Blocker):**
 - **Absolute Preis-Plausibilität** je Instrument (Band) + **Bar-zu-Bar-Return**-Check —
   alle Wertprüfungen sind bisher skaleninvariant/intrabar; eine flache Bar auf falschem
   Niveau (O=H=L=C=99 in einer ~1,1-Reihe) passiert das Tor.
 - **Ausreißer/Nullvolumen als harte Fail-Gründe** (ab Quote), nicht nur informativ.
 - **Hochpreisige Instrumente** (Index/Krypto > 2^31/Divisor) überlaufen selbst unsigned →
   Wertebereichsprüfung beim Dekodieren.
-
-Der jetzige Block-Ausfall-Check, die Instrument→Divisor-Tabelle (fail-closed) und die
-Manifest-Prüfsumme decken die gröbsten Löcher; der Rest ist Intraday-Vorarbeit, kein
-EURUSD-Tagesbar-Blocker.
 
 ## S7 — Walk-Forward-Trainingsschritt + volle Kriterien-Integration (aus Paket-3-Review)
 

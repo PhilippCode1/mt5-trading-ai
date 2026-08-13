@@ -14,6 +14,7 @@ from decimal import Decimal
 
 import pytest
 from mt5_trading_ai.backtest.engine import (
+    DataProvenanceError,
     LookAheadError,
     MarketSpec,
     MarketView,
@@ -24,6 +25,7 @@ from mt5_trading_ai.backtest.engine import (
     run_registered_backtest,
     run_walk_forward,
 )
+from mt5_trading_ai.data.loader import bars_checksum
 from mt5_trading_ai.data.quality import BarRow
 from mt5_trading_ai.gates.trials import append, new_trial, total_trials
 from mt5_trading_ai.venue.protocol import FeeSchedule
@@ -64,7 +66,7 @@ def _spec() -> MarketSpec:
 def _run(strategy: object, bars: list[BarRow] | None = None) -> object:
     return run_backtest(
         bars if bars is not None else _bars(300), strategy, _spec(),  # type: ignore[arg-type]
-        strategy_id="t", seed=0, data_checksum="chk", code_commit="deadbeef",
+        strategy_id="t", seed=0, data_checksum="", code_commit="deadbeef",
     )
 
 
@@ -104,9 +106,9 @@ def test_every_trade_pays_friction() -> None:
 def test_triple_swap_charged_on_start_bar_not_arrival() -> None:
     bars = _bars(5)  # Mo Di Mi Do Fr (2022-01-03 ff.); triple_weekday=2=Mi
     tue = run_backtest(bars, lambda v: Signal.LONG if v.index == 1 else Signal.FLAT,
-                       _spec(), strategy_id="t", seed=0, data_checksum="c", code_commit="h")
+                       _spec(), strategy_id="t", seed=0, data_checksum="", code_commit="h")
     wed = run_backtest(bars, lambda v: Signal.LONG if v.index == 2 else Signal.FLAT,
-                       _spec(), strategy_id="t", seed=0, data_checksum="c", code_commit="h")
+                       _spec(), strategy_id="t", seed=0, data_checksum="", code_commit="h")
     # Nacht Di->Mi ist KEINE Triple; Nacht Mi->Do IST Triple -> dreifache Finanzierung.
     assert wed.cost_financing == 3 * tue.cost_financing
 
@@ -114,7 +116,7 @@ def test_triple_swap_charged_on_start_bar_not_arrival() -> None:
 def test_weekend_hold_counts_three_nights() -> None:
     bars = _bars(6)  # Mo Di Mi Do Fr Mo(+3 Tage ueber das Wochenende)
     r = run_backtest(bars, lambda v: Signal.LONG if v.index == 4 else Signal.FLAT,
-                     _spec(), strategy_id="w", seed=0, data_checksum="c", code_commit="h")
+                     _spec(), strategy_id="w", seed=0, data_checksum="", code_commit="h")
     assert r.trade_log[0].nights == 3   # Fr->Sa->So->Mo = 3 Naechte, nicht 1 Bar
     assert r.cost_financing == 24.0     # swap_long=-8 * 3 Naechte gezahlt
 
@@ -128,7 +130,7 @@ def test_intraday_same_day_hold_pays_no_swap() -> None:
         BarRow(ts=base.replace(hour=18), open=1.101, high=1.11, low=1.09, close=1.102, volume=1.0),
     ]
     r = run_backtest(bars, lambda v: Signal.LONG, _spec(), strategy_id="i", seed=0,
-                     data_checksum="c", code_commit="h")
+                     data_checksum="", code_commit="h")
     assert r.cost_financing == 0.0      # kein Mitternachts-Rollover gekreuzt
 
 
@@ -152,7 +154,7 @@ def test_zero_price_is_rejected() -> None:
     bad += bars[1:]
     with pytest.raises(ValueError):
         run_backtest(bad, lambda v: Signal.LONG, _spec(), strategy_id="z", seed=0,
-                     data_checksum="c", code_commit="h")
+                     data_checksum="", code_commit="h")
 
 
 # --- Zufalls-Referenzlauf: muss nach Kosten verlieren --------------------
@@ -164,7 +166,7 @@ def test_random_strategy_loses_to_costs() -> None:
     for seed in range(20):
         r = run_backtest(
             bars, random_signal_strategy(seed), _spec(),
-            strategy_id="rand", seed=seed, data_checksum="chk", code_commit="x",
+            strategy_id="rand", seed=seed, data_checksum="", code_commit="x",
         )
         nets.append(r.net_return)
         assert r.net_return <= r.gross_return   # Kosten ziehen immer ab
@@ -181,9 +183,9 @@ def statistics_mean(xs: list[float]) -> float:
 def test_two_identical_runs_produce_identical_report() -> None:
     bars = _bars(300)
     a = run_backtest(bars, random_signal_strategy(42), _spec(),
-                     strategy_id="r", seed=42, data_checksum="c", code_commit="h")
+                     strategy_id="r", seed=42, data_checksum="", code_commit="h")
     b = run_backtest(bars, random_signal_strategy(42), _spec(),
-                     strategy_id="r", seed=42, data_checksum="c", code_commit="h")
+                     strategy_id="r", seed=42, data_checksum="", code_commit="h")
     assert a.as_dict() == b.as_dict()
 
 
@@ -197,7 +199,7 @@ def test_registered_run_counts_every_run(tmp_path: object) -> None:
         run_registered_backtest(
             bars, random_signal_strategy(i), _spec(),
             strategy_id="reg", version="v1", seed=i,
-            data_checksum="c", code_commit="h", ledger_path=ledger,
+            data_checksum="", code_commit="h", ledger_path=ledger,
         )
     assert total_trials(ledger) == 10
 
@@ -207,7 +209,7 @@ def test_walk_forward_uses_splits_and_counts_folds() -> None:
     res = run_walk_forward(
         bars, lambda: random_signal_strategy(1), _spec(), 5,
         purge_ms=0, embargo_ms=0, strategy_id="wf", seed=0,
-        data_checksum="c", code_commit="h",
+        data_checksum="", code_commit="h",
     )
     assert res.total_folds >= 3                       # mehrere Test-Fenster
     assert 0 <= res.positive_folds <= res.total_folds
@@ -224,7 +226,7 @@ def test_leaky_registered_run_still_counts(tmp_path: object) -> None:
     with pytest.raises(LookAheadError):
         run_registered_backtest(
             _bars(120), leaky, _spec(), strategy_id="leak", version="v1", seed=0,
-            data_checksum="c", code_commit="h", ledger_path=ledger,
+            data_checksum="", code_commit="h", ledger_path=ledger,
         )
     assert total_trials(ledger) == 1  # auch der abgebrochene Lauf zaehlt
 
@@ -238,7 +240,7 @@ def test_unexpected_error_still_registered(tmp_path: object) -> None:
     with pytest.raises(KeyError):
         run_registered_backtest(
             _bars(120), boom, _spec(), strategy_id="boom", version="v1", seed=0,
-            data_checksum="c", code_commit="h", ledger_path=ledger,
+            data_checksum="", code_commit="h", ledger_path=ledger,
         )
     assert total_trials(ledger) == 1  # auch ein UNERWARTETER Fehler zaehlt
 
@@ -267,6 +269,36 @@ def test_walk_forward_with_nonzero_purge_still_runs() -> None:
     res = run_walk_forward(
         _bars(300), lambda: random_signal_strategy(1), _spec(), 5,
         purge_ms=86_400_000, embargo_ms=86_400_000, strategy_id="wf", seed=0,
-        data_checksum="c", code_commit="h",
+        data_checksum="", code_commit="h",
     )
     assert res.total_folds >= 3
+
+
+# --- Provenienz: Pruefsumme aus den tatsaechlichen Bars (Paket 1) ---------
+
+
+def test_report_checksum_is_derived_from_actual_bars() -> None:
+    bars = _bars(300)
+    report = _run(lambda v: Signal.FLAT, bars)
+    assert report.data_checksum == bars_checksum(bars)   # abgeleitet, nicht geglaubt
+
+
+def test_wrong_expected_checksum_is_fail_closed() -> None:
+    with pytest.raises(DataProvenanceError, match="weicht ab|deckt"):
+        run_backtest(_bars(300), lambda v: Signal.FLAT, _spec(), strategy_id="p",
+                     seed=0, data_checksum="deadbeefdeadbeef99", code_commit="h")
+
+
+def test_matching_expected_checksum_prefix_passes() -> None:
+    bars = _bars(300)
+    prefix = bars_checksum(bars)[:16]   # >= MIN_CHECKSUM_PREFIX
+    report = run_backtest(bars, lambda v: Signal.FLAT, _spec(), strategy_id="p",
+                          seed=0, data_checksum=prefix, code_commit="h")
+    assert report.data_checksum.startswith(prefix)
+
+
+def test_short_expected_checksum_is_rejected() -> None:
+    bars = _bars(300)
+    with pytest.raises(DataProvenanceError):
+        run_backtest(bars, lambda v: Signal.FLAT, _spec(), strategy_id="p",
+                     seed=0, data_checksum="deadbeef", code_commit="h")   # 8 < 16

@@ -35,7 +35,7 @@ from mt5_trading_ai.backtest.engine import (  # noqa: E402
 )
 from mt5_trading_ai.backtest.strategies import mean_reversion_zscore  # noqa: E402
 from mt5_trading_ai.costs.model import load_cost_fees  # noqa: E402
-from mt5_trading_ai.data.loader import from_csv  # noqa: E402
+from mt5_trading_ai.data.loader import FxSession, load_verified_csv  # noqa: E402
 
 VERSION = "v1"
 OOS_FRACTION = 0.30
@@ -50,7 +50,11 @@ def _run_one(
     symbol: str, csv_path: Path, ledger: str, checksum: str, commit: str
 ) -> tuple[EdgeVerdict, int, float, float]:
     """Ein Instrument durchs Tor. -> (Urteil, Trades, Netto, DSR)."""
-    bars = from_csv(csv_path.read_text(encoding="utf-8"))
+    # Qualitaetstor + Provenienz am Backtest-Rand (Paket 1), fail-closed je Instrument.
+    bars, _chk = load_verified_csv(
+        csv_path, instrument=symbol, timeframe="H1", session_predicate=FxSession(),
+        expected_checksum=checksum or None,
+    )
     span_years = max(1e-9, (bars[-1].ts - bars[0].ts).days / 365.25)
     spec = MarketSpec(
         symbol=symbol, contract_size=Decimal("100000"), pip_size=_pip_size(symbol),
@@ -68,11 +72,11 @@ def _run_one(
     wf = run_walk_forward(
         in_sample, factory, spec, 5, purge_ms=3_600_000, embargo_ms=3_600_000,
         strategy_id=strategy_id, seed=100, version=VERSION,
-        data_checksum=checksum, code_commit=commit, ledger_path=ledger,
+        data_checksum="", code_commit=commit, ledger_path=ledger,
     )
     oos_report = run_registered_backtest(
         oos, mean_reversion_zscore(48, 2.0, 0.5), spec, strategy_id=strategy_id,
-        version=VERSION, seed=0, data_checksum=checksum, code_commit=commit,
+        version=VERSION, seed=0, data_checksum="", code_commit=commit,
         ledger_path=ledger,
     )
     dsr = deflated_sharpe_for_report(

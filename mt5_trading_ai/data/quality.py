@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import statistics
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 DATA_QUALITY_VERSION = "data-quality-v1"
 
@@ -79,11 +79,14 @@ def expected_bar_count(
     end: datetime,
     timeframe: str,
     session_predicate: SessionPredicate | None,
+    holidays: frozenset[date] = frozenset(),
 ) -> int:
-    """Erwartete Bar-Zahl **innerhalb der Handelszeiten**.
+    """Erwartete Bar-Zahl **innerhalb der Handelszeiten**, ohne Feiertage.
 
     Ohne ``session_predicate`` ist die Zahl nicht bestimmbar; die Funktion gibt
-    dann ``0`` zurueck und der Aufrufer wertet das als nicht bestanden.
+    dann ``0`` zurueck und der Aufrufer wertet das als nicht bestanden. Feiertage
+    (S6) zaehlen nicht als erwartete Slots -- eine ausgelassene Feiertags-Bar ist
+    keine Luecke.
     """
     if session_predicate is None:
         return 0
@@ -94,7 +97,7 @@ def expected_bar_count(
     count = 0
     cursor = start
     while cursor < end:
-        if session_predicate(cursor):
+        if session_predicate(cursor) and cursor.date() not in holidays:
             count += 1
         cursor += step
     return count
@@ -118,6 +121,7 @@ def assess_bars(
     start: datetime,
     end: datetime,
     session_predicate: SessionPredicate | None = None,
+    holidays: frozenset[date] = frozenset(),
     max_gap_ratio: float = MAX_GAP_RATIO,
 ) -> QualityReport:
     reasons: list[str] = []
@@ -166,7 +170,8 @@ def assess_bars(
                     outliers.append(row.ts)
 
     expected = expected_bar_count(
-        start=start, end=end, timeframe=timeframe, session_predicate=session_predicate
+        start=start, end=end, timeframe=timeframe,
+        session_predicate=session_predicate, holidays=holidays,
     )
     present = len(seen)
     if expected <= 0:

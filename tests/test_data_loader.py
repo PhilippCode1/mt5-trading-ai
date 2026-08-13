@@ -7,9 +7,11 @@ die Pruefsumme ist reproduzierbar.
 
 from __future__ import annotations
 
+import json
 import lzma
 import struct
 from datetime import UTC, datetime, time, timedelta
+from pathlib import Path
 
 import pytest
 from mt5_trading_ai.data.loader import (
@@ -22,7 +24,9 @@ from mt5_trading_ai.data.loader import (
     dukascopy_price_divisor,
     filter_to_weekdays,
     from_csv,
+    load_verified_csv,
     manifest_checksum,
+    manifest_path_for,
     parse_yahoo_daily,
     to_csv,
 )
@@ -222,3 +226,105 @@ def test_manifest_checksum_binds_provenance_not_just_numbers() -> None:
     a, b = _manifest(100000.0, bars), _manifest(1000.0, bars)
     assert a["bars_checksum"] == b["bars_checksum"]
     assert manifest_checksum(a) != manifest_checksum(b)
+
+
+# --- Verifizierter Loader am Backtest-Rand (Paket 1, fail-closed) ---------
+
+
+def test_load_verified_csv_passes_clean(tmp_path: Path) -> None:
+    bars = _clean_weekday_bars(20)
+    csv = tmp_path / "EURUSD_D1.csv"
+    csv.write_text(to_csv(bars), encoding="utf-8")
+    loaded, chk = load_verified_csv(
+        csv, instrument="EURUSD", timeframe="D1", session_predicate=WeekdaySession(),
+        expected_checksum=bars_checksum(bars),   # Herkunft belegt
+    )
+    assert loaded == bars
+    assert chk == bars_checksum(bars)
+
+
+def test_load_verified_csv_requires_provenance(tmp_path: Path) -> None:
+    # Kern-Abnahme: ohne Manifest UND ohne Erwartungs-Pruefsumme -> fail-closed.
+    bars = _clean_weekday_bars(20)
+    csv = tmp_path / "EURUSD_D1.csv"
+    csv.write_text(to_csv(bars), encoding="utf-8")
+    with pytest.raises(DataLoadError, match="Herkunft"):
+        load_verified_csv(
+            csv, instrument="EURUSD", timeframe="D1", session_predicate=WeekdaySession()
+        )
+
+
+def test_load_verified_csv_catches_content_edit_against_pinned_checksum(
+    tmp_path: Path,
+) -> None:
+    # Der Kern-Angriff: OHLC-gueltiger Inhalts-Edit, den das Qualitaetstor ALLEIN nicht
+    # saehe -- faellt gegen die gepinnte Pruefsumme durch.
+    bars = _clean_weekday_bars(20)
+    csv = tmp_path / "EURUSD_D1.csv"
+    csv.write_text(to_csv(bars), encoding="utf-8")
+    pinned = bars_checksum(bars)
+    edited = list(bars)
+    edited[5] = BarRow(ts=edited[5].ts, open=1.15, high=1.16, low=1.14,
+                       close=1.155, volume=1000.0)   # gueltiges OHLC, anderer Inhalt
+    csv.write_text(to_csv(edited), encoding="utf-8")
+    with pytest.raises(DataLoadError, match="weicht ab"):
+        load_verified_csv(
+            csv, instrument="EURUSD", timeframe="D1",
+            session_predicate=WeekdaySession(), expected_checksum=pinned,
+        )
+
+
+def test_load_verified_csv_rejects_short_checksum(tmp_path: Path) -> None:
+    bars = _clean_weekday_bars(20)
+    csv = tmp_path / "EURUSD_D1.csv"
+    csv.write_text(to_csv(bars), encoding="utf-8")
+    with pytest.raises(DataLoadError, match="zu kurz"):
+        load_verified_csv(
+            csv, instrument="EURUSD", timeframe="D1",
+            session_predicate=WeekdaySession(), expected_checksum="abcd1234",  # 8 < 16
+        )
+
+
+def test_load_verified_csv_rejects_bad_data(tmp_path: Path) -> None:
+    # Block-Ausfall -> das Qualitaetstor greift (Provenienz hier abgeschaltet zur Isolation).
+    bars = _clean_weekday_bars(500)
+    del bars[100:110]  # 10 aufeinanderfolgende fehlend (> MAX_CONSECUTIVE_GAP)
+    csv = tmp_path / "EURUSD_D1.csv"
+    csv.write_text(to_csv(bars), encoding="utf-8")
+    with pytest.raises(DataLoadError):
+        load_verified_csv(
+            csv, instrument="EURUSD", timeframe="D1", session_predicate=WeekdaySession(),
+            require_provenance=False,
+        )
+
+
+def test_load_verified_csv_catches_manifest_mismatch(tmp_path: Path) -> None:
+    bars = _clean_weekday_bars(20)
+    csv = tmp_path / "EURUSD_D1.csv"
+    csv.write_text(to_csv(bars), encoding="utf-8")
+    manifest = dataset_manifest(
+        instrument="EURUSD", timeframe="D1", source="test", price_divisor=100000.0,
+        session="weekday-utc", bars=bars, quality_reasons=(),
+    )
+    manifest_path_for(csv).write_text(json.dumps(manifest), encoding="utf-8")
+    # CSV nach dem Manifest veraendern -> Manifest deckt die Datei nicht mehr.
+    altered = _clean_weekday_bars(20)
+    altered[0] = BarRow(ts=altered[0].ts, open=1.20, high=1.21, low=1.19,
+                        close=1.205, volume=1000.0)
+    csv.write_text(to_csv(altered), encoding="utf-8")
+    with pytest.raises(DataLoadError, match="Manifest"):
+        load_verified_csv(
+            csv, instrument="EURUSD", timeframe="D1", session_predicate=WeekdaySession()
+        )
+
+
+def test_load_verified_csv_expected_checksum_mismatch(tmp_path: Path) -> None:
+    bars = _clean_weekday_bars(20)
+    csv = tmp_path / "EURUSD_D1.csv"
+    csv.write_text(to_csv(bars), encoding="utf-8")
+    with pytest.raises(DataLoadError, match="weicht ab"):
+        load_verified_csv(
+            csv, instrument="EURUSD", timeframe="D1",
+            session_predicate=WeekdaySession(),
+            expected_checksum="deadbeefdeadbeef00",   # >= 16 Hex, aber falsch
+        )

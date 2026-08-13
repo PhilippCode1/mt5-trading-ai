@@ -1249,3 +1249,64 @@ Gebühr 5 USD/Lot/Nacht als dokumentierte Schätzung (Broker-Bestätigung nötig
 **Ehrliche Grenze / offen:** erledigt ist die **mechanische** Riba-Vermeidung. **Offen bleibt
 die fiqh-Grundentscheidung** (sind gehebelte CFDs für Philipp überhaupt zulässig — gharar) —
 keine Codefrage, braucht Gelehrten + Philipp. S6, S8 unverändert offen.
+
+## ERLEDIGT — Abnahme-Paket 1 (Datenfundament fail-closed schliessen + Kalender-Härtung)
+
+Erstes Paket des `ABNAHME_PLAN.md`. Kernbefund der Bewertung war: das Qualitätstor lief **nicht**
+am Backtest-Rand (Treiber luden per `from_csv` direkt in den Lauf), die berichtete `data_checksum`
+war nicht an die echten Bars gebunden, und der Session-Filter (`WeekdaySession`) war für Intraday
+falsch (verwarf Sonntagsbars, zählte Feiertage als erwartet).
+
+**Was gebaut wurde:**
+- **S6-Kalender** (`data/loader.py`): `FxSession` bildet die FX-Woche **an New York 17:00
+  verankert** ab (DST-korrekt: So-Öffnung 22:00 UTC im Winter = 21:00 UTC im Sommer = 17:00 NY);
+  `DEFAULT_FX_HOLIDAYS` (Neujahr/Weihnachten) senken die **erwartete** Bar-Zahl in
+  `expected_bar_count`/`_max_consecutive_gap`, ohne dünne echte Feiertagsbars als Fehler zu
+  flaggen. Wirkung gemessen: EURUSD-H1 gap_ratio **0,70 % → 0,000 %** (Phantom-DST-Lücken weg),
+  besteht das Tor; GBPUSD (echte Dez-2022-Monatslücke) wird zu Recht abgewiesen.
+- **Verifizierter Loader** `load_verified_csv` (der erzwungene Tor-Punkt): zwei Sicherungen —
+  (1) **Herkunft** gegen ein Manifest ODER eine Erwartungs-Pruefsumme (≥ 16 Hex); fehlen beide
+  → **fail-closed** (`require_provenance`); (2) das strukturelle Qualitätstor. Read-Fehler in
+  `DataLoadError` gekapselt.
+- **Engine-Provenienz** (`backtest/engine.py`): `run_backtest` leitet `bars_checksum` aus den
+  **tatsächlich gefahrenen** Bars ab und speichert es (statt dem Aufrufer-Wert);
+  `DataProvenanceError` bei Erwartungs-Mismatch; `run_walk_forward` prüft das ganze Fenster einmal
+  und gibt `""` an die Fold-Sub-Slices.
+- **Treiber verdrahtet**: `edge_test`/`multi_instrument_edge` nutzen `load_verified_csv(FxSession)`;
+  Manifeste für die H1-Datensätze zur Fetch-Zeit erzeugt → Provenienz trägt ohne CLI-Zwang. Der
+  Edge-Test liefert unverändert +3,22 % (Tor transparent für gute Daten).
+
+**§9-Review (25 Agenten, vier Blickwinkel) fand vor der Abnahme drei bestätigte Blocker — alle
+behoben:**
+- **HOCH:** Provenienz war per Default **fail-OPEN** (ohne Manifest und ohne `expected_checksum`
+  lief ein OHLC-gültiger Inhalts-Edit klaglos durch) → `require_provenance` (fail-closed, wenn
+  keine Herkunft belegbar) + Manifeste ausgeliefert.
+- **HOCH:** Docstrings **überversprachen** unbedingtes fail-closed → ehrlich umformuliert (Herkunft
+  nur via Manifest/Checksum; das Qualitätstor sieht keine inhaltliche Fälschung in gültigen
+  OHLC-Grenzen).
+- **MITTEL/Blocker:** `startswith`-Präfix ohne Mindestlänge (`expected="c"` kollidiert) → **≥ 16
+  Hex** erzwungen (Loader + Engine), kürzere Erwartungen fail-closed.
+- **Nicht-Blocker behoben:** DST-Phantom-Lücken (NY-Anker, s.o.); Read-Fehler gekapselt.
+
+**Negativ gefahren / nachgewiesen:** neue Tests belegen — eine CSV ohne Herkunft fällt fail-closed
+(`test_load_verified_csv_requires_provenance`); ein OHLC-gültiger Inhalts-Edit fällt gegen die
+gepinnte Pruefsumme (`..._catches_content_edit_against_pinned_checksum`); zu kurze Pruefsumme wird
+abgewiesen; `report.data_checksum == bars_checksum(bars)`; ein falscher `--data-checksum` bricht den
+Edge-Test fail-closed ab.
+
+**Entscheidungen, die ich selbst getroffen habe:** die FX-Woche an NY 17:00 statt an feste
+UTC-Stunden zu ankern (der Review-Vorschlag; DST-korrekt statt Phantom-Lücken); Herkunft via
+**Manifest ODER Checksum** (fail-closed ohne beides) statt --data-checksum zur Pflicht zu machen;
+Feiertage als Erwartungs-Reduktion statt als Session-Ausschluss (dünne echte Feiertagsbars sind
+kein Fehler).
+
+**Auffälligkeiten, gemeldet, nicht angefasst (ehrlich):** Der Gate steckt in `load_verified_csv`
+am **Treiber**-Rand, nicht in der Engine-API — `run_backtest` nimmt weiter beliebige Bars; ein
+künftiger Treiber, der `from_csv`→`run_backtest` ruft, umginge das Tor (MITTEL; der ABNAHME_PLAN
+bot Treiber-Gating als zulässige Option an). Nachhaltiger Fix (VerifiedBars-Typ als einziger
+Engine-Eingang) gehört in die Integration (Paket 7). `gap_ratio` nutzt `len(seen)` inkl.
+feiertagsverschobener Bars (NIEDRIG, mit dem NY-Anker praktisch 0). Restliche S6-Punkte
+(Preis-Plausibilität, Ausreißer als harte Fail-Gründe, Overflow) bleiben offen (in `SPAETER.md`).
+
+**Zeilenstand (gemessen):** 5.919 Zeilen, 27 Module, 311 Testfunktionen, 365 Testfälle grün. SPAETER
+**S6 (Kalender-Teil)** als erledigt markiert.
