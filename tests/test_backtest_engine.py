@@ -111,6 +111,27 @@ def test_triple_swap_charged_on_start_bar_not_arrival() -> None:
     assert wed.cost_financing == 3 * tue.cost_financing
 
 
+def test_weekend_hold_counts_three_nights() -> None:
+    bars = _bars(6)  # Mo Di Mi Do Fr Mo(+3 Tage ueber das Wochenende)
+    r = run_backtest(bars, lambda v: Signal.LONG if v.index == 4 else Signal.FLAT,
+                     _spec(), strategy_id="w", seed=0, data_checksum="c", code_commit="h")
+    assert r.trade_log[0].nights == 3   # Fr->Sa->So->Mo = 3 Naechte, nicht 1 Bar
+    assert r.cost_financing == 24.0     # swap_long=-8 * 3 Naechte gezahlt
+
+
+def test_intraday_same_day_hold_pays_no_swap() -> None:
+    # Zwei Bars am selben Kalendertag -> 0 Naechte -> keine Finanzierung.
+    base = datetime(2022, 1, 3, 10, 0, tzinfo=UTC)  # Montag 10:00 und 14:00
+    bars = [
+        BarRow(ts=base, open=1.10, high=1.11, low=1.09, close=1.10, volume=1.0),
+        BarRow(ts=base.replace(hour=14), open=1.10, high=1.11, low=1.09, close=1.101, volume=1.0),
+        BarRow(ts=base.replace(hour=18), open=1.101, high=1.11, low=1.09, close=1.102, volume=1.0),
+    ]
+    r = run_backtest(bars, lambda v: Signal.LONG, _spec(), strategy_id="i", seed=0,
+                     data_checksum="c", code_commit="h")
+    assert r.cost_financing == 0.0      # kein Mitternachts-Rollover gekreuzt
+
+
 def test_cost_free_spec_is_rejected() -> None:
     fees0 = FeeSchedule(
         commission_per_lot_round_turn=Decimal("0"), typical_spread_points=Decimal("1"),

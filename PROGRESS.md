@@ -984,3 +984,67 @@ Paket-4-Vorarbeit. Halal (S4) bleibt offen.
 **Zeilenstand (gemessen):** `backtest/engine.py`, `tests/test_backtest_engine.py` neu.
 Paket-Quellcode `mt5_trading_ai/` = 5.181 Zeilen, 21 Module, 250 Testfunktionen; 304
 Testfälle grün.
+
+## ERLEDIGT — Paket 4 (Teil 3): Der Edge-Test — die eine Frage, beantwortet
+
+**Die Frage:** Existiert auf EURUSD ein Edge nach realistischen Kosten? **Die Antwort ist
+Nein — und ein sauberes Nein ist der auftragsgemäße Ausgang, kein Scheitern.** 74–89 % der
+Retail-Konten verlieren (ESMA), unter 1 % sind nach Kosten dauerhaft profitabel. Das negative
+Ergebnis ist das statistisch erwartete; es hier **belegt** zu haben ist der Wert des Pakets.
+
+**Was gebaut wurde:**
+- `backtest/edge.py` — das **Sechs-Bedingungen-Tor** (§7.2), vorab gesetzt und unveränderlich:
+  OoS-Sharpe ≥ 1,0 · Deflated Sharpe > 0,95 · ≥ 2.000 Trades · ≥ 3 positive WF-Fenster am
+  Stück · `net_over_hurdle > 0` · Leckage grün + Zufalls-Referenz negativ. **Alle sechs**
+  müssen erfüllt sein; ein einziges Nein genügt zum Gesamt-Nein.
+- `backtest/strategies.py` — MA-Kreuzung (24/120 H1 = 1 Tag vs. 1 Woche), **nicht optimiert**,
+  bewusst die einfachste ernsthafte Signallogik.
+- `tools/edge_test.py` — der Runner; Walk-Forward **nur auf In-Sample**, OoS-Block genau einmal
+  angefasst, jeder Lauf ins Versuchsregister.
+- `BERICHT_TEIL3.md` — der Abschlussbericht (§13) mit Abnahme-Matrix und offenen Schwächen.
+
+**Das gemessene Ergebnis (H1 2022–2024, 18.715 Bars, Hebel 5, Kosten aus dem Katalog):**
+- OoS (letzte 30 %, ab 2024-02-07): **59 Trades, Netto −18,85 %, Trade-Sharpe −0,79,
+  Bar-Sharpe −0,68, MaxDD 33,8 %, `net_over_hurdle` −20,4 %**.
+- Deflated Sharpe (6 Versuche registriert): **0,026**. WF In-Sample je Fenster:
+  [+0,03 · +0,34 · −0,38 · −0,07 · −0,25] → 2 positiv am Stück.
+- Zufalls-Referenz (5 Seeds, **gefahren**): Mittel −218 % → negativ. Leckage-Schutz fängt eine
+  Zukunfts-Strategie (`LookAheadError`) → grün.
+- **Fünf von sechs nicht erfüllt → KEIN EDGE.** Negativ getrieben: die einzige erfüllte
+  Bedingung (Leckage/Zufall) habe ich absichtlich gebrochen (Leckage-Strategie ohne Schutz →
+  Fake-Profit; Zufall mit Kosten=0 → positiv) und den Rot-Nachweis rückgängig gemacht.
+
+**Eigene Fehler (von der §9-Review vor der Abnahme gefunden, alle eingearbeitet):**
+- **HIGH:** OoS überlappte den Walk-Forward — „genau einmal angefasst" war unwahr →
+  Walk-Forward läuft jetzt **nur auf `bars[:split]`**, der OoS-Block bleibt bis zum Abschluss
+  unberührt.
+- **HIGH:** Deflated-Sharpe-Tor wirkungslos, weil nur 1 Versuch registriert war (erwartetes
+  Maximum ≈ 0) → jede WF-Fenster-Auswertung geht unter der Basis-`strategy_id` ins Register;
+  die Deflation kennt jetzt die wahre Versuchszahl (DSR fiel dadurch 0,26 → **0,026**).
+- **HIGH:** Bedingungen 6 (Leckage/Zufall) waren fest auf `True` verdrahtet statt gefahren →
+  echter Zufalls-Referenzlauf (5 Seeds, Netto < 0) + echter Leckage-Lauf (`LookAheadError`
+  gefangen) ersetzen die Behauptung.
+- **MEDIUM:** Bar-Sharpe ist bei seltenem Handel autokorreliert (überschätzt) →
+  **Trade-Level-Sharpe** ergänzt (eine Beobachtung je Trade), Bedingung 1 prüft ihn.
+- **MEDIUM:** Hürde als „p.a." fehlbeschriftet, obwohl Ganzzeitraum-Reibung → `n_bars`
+  umbenannt, Kommentar korrigiert.
+- **MEDIUM:** `net_above_hurdle` zählte die Kosten doppelt → Bedingung 5 nutzt
+  `net_over_hurdle > 0` (gross − hürde), keine Doppelzählung.
+- **LOW (ehrlich benannt, Schwelle NICHT gesenkt):** 2.000-Trades-Schwelle ist für eine
+  MA-Kreuzung auf H1 in diesem Zeitraum unerreichbar (59 Trades) — die Schwelle ist
+  masterprompt-gesetzt und bleibt; das Instrument/die Frequenz wären zu ändern, nicht das Tor.
+- **LOW:** DSR-Versuchszahl kann bei identischen Wiederholungen inflationieren (kein Dedup) —
+  als Grenze notiert.
+
+**Entscheidungen, die ich selbst getroffen habe:** MA(24,120) per Konvention statt Optimierung
+(Optimierung würde das Tor verwässern); OoS-Anteil 30 %; Trade-Level-Sharpe als ehrlichere
+Kennzahl neben der Bar-Sharpe ausgewiesen, nicht ersetzt.
+
+**Auffälligkeiten, gemeldet, nicht angefasst:** Halal (**S4**) bleibt offen — CFDs sind
+mehrheitlich haram; ein Halal-Pfad wäre eigener Auftrag. **S1/S2** (Risiko-Module unverdrahtet,
+kein Freshness-Latch), **S7** (Fit-Schritt je WF-Fenster) unverändert offen.
+
+**Zeilenstand (gemessen):** `backtest/edge.py`, `backtest/strategies.py`,
+`tools/edge_test.py`, `tests/test_edge.py`, `BERICHT_TEIL3.md` neu; `backtest/engine.py`
+erweitert (date-basierte Nächte, Trade-Sharpe, Register-Anbindung). Paket-Quellcode
+`mt5_trading_ai/` = 5.368 Zeilen, 23 Module, 259 Testfunktionen; 312 Testfälle grün.

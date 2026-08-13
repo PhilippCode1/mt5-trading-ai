@@ -2,6 +2,16 @@
 
 # MODULES — oeffentliche API je Modul (generiert aus dem Code)
 
+## `mt5_trading_ai/backtest/edge.py`
+
+Das Sechs-Bedingungen-Tor des Edge-Tests (Paket 4, §7.2).
+
+- `class EdgeThresholds`
+- `class EdgeCheck`
+- `class EdgeVerdict`
+- `def max_consecutive_positive`
+- `def evaluate_edge`
+
 ## `mt5_trading_ai/backtest/engine.py`
 
 Backtest-Maschine: fuehrt Splits, Daten und Kostenmodell zusammen.
@@ -27,6 +37,12 @@ Zeitreihen-Splits mit Purge und Embargo — herausgeloest aus learning_engine.
 - `def purged_walk_forward_indices`
 - `def purged_kfold_embargo_indices`
 - `def walk_forward_indices`
+
+## `mt5_trading_ai/backtest/strategies.py`
+
+Einfache, ernsthafte Signallogiken fuer den Edge-Test -- ohne Optimierung.
+
+- `def moving_average_crossover`
 
 ## `mt5_trading_ai/costs/model.py`
 

@@ -25,7 +25,7 @@ import random
 import statistics
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from enum import IntEnum
 from typing import Any
@@ -164,7 +164,8 @@ class BacktestReport:
     cost_financing: float  # nur gezahlte Finanzierung (>= 0)
     carry_income: float    # empfangener Positiv-Swap (>= 0), separater Ertrag
     net_return: float
-    annualised_sharpe: float
+    annualised_sharpe: float       # Bar-Level (obs = Bars); fuer Daueranlagen ueblich
+    trade_sharpe: float    # Trade-Level (obs=Trades); ehrlich bei seltenem Handel
     annualisation: str
     max_drawdown: float
     hit_rate: float
@@ -248,16 +249,20 @@ def run_backtest(
     for start, end, side in _runs(positions):
         entry_price = bars[start].close
         exit_price = bars[end + 1].close
-        nights = end - start + 1
+        # Naechte = ueberquerte Mitternachts-Rollover (nach Kalendertag), nicht Bars.
+        # Korrekt fuer Tages- UND Stundenbars: ein Intraday-Halt kreuzt 0 Naechte, ein
+        # Fr->Mo-Halt 3 (Fr->Sa->So->Mo). Triple = Rollover, dessen Start-Tag der
+        # Dreifach-Wochentag ist (man haelt VOM Triple-Tag in den Folgetag).
+        entry_date = bars[start].ts.date()
+        exit_date = bars[end + 1].ts.date()
+        nights = (exit_date - entry_date).days
         triple = 0
         if tri_weekday is not None:
-            # Eine Nacht gehoert dem STARTBAR (Rollover k->k+1); triple, wenn bars[k]
-            # der Dreifach-Wochentag ist. Startbars der Naechte: [start .. end].
-            triple = sum(
-                1
-                for k in range(start, end + 1)
-                if bars[k].ts.weekday() == tri_weekday
-            )
+            cursor = entry_date
+            while cursor < exit_date:
+                if cursor.weekday() == tri_weekday:
+                    triple += 1
+                cursor += timedelta(days=1)
         price = Decimal(str(entry_price))
         breakdown = order_roundturn_cost(
             fees=spec.fees,
@@ -314,15 +319,29 @@ def run_backtest(
     gross_return = sum(t.gross for t in trade_log) / equity_base
     net_return = sum(nets) / equity_base
 
-    # Huerde: Bruttorendite p. a., um die Kosten zu decken (aus den echten Zahlen).
-    trading_days = len(bars)
-    trades_per_day = len(trade_log) / trading_days if trading_days else 0.0
+    # Trade-Sharpe: eine Beobachtung je Trade (nicht je Bar). Ehrlich bei seltenem
+    # Handel -- waehrend eines Halts sind Bar-Renditen autokorreliert, die Bar-Sharpe
+    # ueberschaetzt die effektive Stichprobe.
+    trade_returns = [x / equity_base for x in nets]
+    trade_per_obs = 0.0
+    if len(trade_returns) >= 2:
+        tstd = statistics.pstdev(trade_returns)
+        if tstd > 0:
+            trade_per_obs = statistics.fmean(trade_returns) / tstd
+    span_days = (bars[-1].ts - bars[0].ts).days
+    span_years = span_days / 365.25 if span_days > 0 else 1.0 / 365.25
+    trade_sharpe = trade_per_obs * math.sqrt(len(trade_log) / span_years)
+
+    # Huerde = Gesamtperioden-Reibung als Anteil des Eigenkapitals (NICHT p. a.):
+    # trades_pro_bar * bars kuerzt sich zu Trades, also hurdle = Reibung / equity_base.
+    n_bars = len(bars)
+    trades_per_bar = len(trade_log) / n_bars if n_bars else 0.0
     notional = cs * vol * bars[0].close
     total_friction = c_spread + c_comm + c_slip + c_fin_paid  # immer >= 0
     cost_bp = (
         (total_friction / len(trade_log) / notional * 10000.0) if trade_log else 0.0
     )
-    hurdle = trades_per_day * trading_days * (cost_bp / 10000.0) * lev
+    hurdle = trades_per_bar * n_bars * (cost_bp / 10000.0) * lev
 
     return BacktestReport(
         strategy_id=strategy_id,
@@ -336,7 +355,8 @@ def run_backtest(
         carry_income=carry_income,
         net_return=net_return,
         annualised_sharpe=annualised,
-        annualisation=f"per-obs * sqrt({spec.obs_per_year}) Handelstage/Jahr",
+        trade_sharpe=trade_sharpe,
+        annualisation=f"Bar: sqrt({spec.obs_per_year:.0f}); Trade: sqrt(Trades/Jahr)",
         max_drawdown=_drawdown(equity),
         hit_rate=(len(wins) / len(nets)) if nets else 0.0,
         mean_win=statistics.fmean(wins) if wins else 0.0,
@@ -385,6 +405,8 @@ def run_walk_forward(
     seed: int,
     data_checksum: str,
     code_commit: str,
+    version: str = "v1",
+    ledger_path: str | None = None,
 ) -> WalkForwardResult:
     """Fahre die Strategie ueber ``k`` Walk-Forward-Test-Fenster (``splits.py``).
 
@@ -403,13 +425,27 @@ def run_walk_forward(
         if len(test_idx) < 3:
             continue
         window = [bars[j] for j in test_idx]
-        reports.append(
-            run_backtest(
-                window, strategy_factory(), spec,
-                strategy_id=f"{strategy_id}#fold{fold_index}", seed=seed + fold_index,
-                data_checksum=data_checksum, code_commit=code_commit,
-            )
+        report = run_backtest(
+            window, strategy_factory(), spec,
+            strategy_id=f"{strategy_id}#fold{fold_index}", seed=seed + fold_index,
+            data_checksum=data_checksum, code_commit=code_commit,
         )
+        reports.append(report)
+        if ledger_path is not None:
+            # Jeder Lauf zaehlt (Kernregel 6.1): die Folds gehen unter dem BASIS-
+            # ``strategy_id`` ins Register, damit die Deflation ihre wahre Zahl kennt.
+            trials.append(
+                trials.new_trial(
+                    strategy_id=strategy_id, version=version,
+                    instruments=(spec.symbol,),
+                    period_start=window[0].ts, period_end=window[-1].ts,
+                    leverage=int(spec.leverage),
+                    parameters={"fold": fold_index, "seed": seed + fold_index},
+                    outcome="completed", sharpe=report.annualised_sharpe,
+                    net_expectancy=report.net_return, trades=report.trades,
+                ),
+                ledger_path,
+            )
     positive = sum(1 for report in reports if report.net_return > 0)
     return WalkForwardResult(
         folds=tuple(reports), positive_folds=positive, total_folds=len(reports)
