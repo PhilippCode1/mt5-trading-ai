@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from collections.abc import Callable
 from decimal import Decimal
 from pathlib import Path
 
@@ -27,20 +28,39 @@ from mt5_trading_ai.backtest.engine import (  # noqa: E402
     MarketSpec,
     MarketView,
     Signal,
+    Strategy,
     deflated_sharpe_for_report,
     random_signal_strategy,
     run_backtest,
     run_registered_backtest,
     run_walk_forward,
 )
-from mt5_trading_ai.backtest.strategies import moving_average_crossover  # noqa: E402
+from mt5_trading_ai.backtest.strategies import (  # noqa: E402
+    mean_reversion_zscore,
+    moving_average_crossover,
+)
 from mt5_trading_ai.costs.model import load_cost_fees  # noqa: E402
 from mt5_trading_ai.data.loader import from_csv  # noqa: E402
 
-STRATEGY_ID = "ma_crossover_eurusd_h1"
 VERSION = "v1"
-FAST, SLOW = 24, 120   # 1 Tag vs. 1 Woche (stuendlich); per Konvention, NICHT optimiert
-OOS_FRACTION = 0.30    # letzter Teil = Out-of-Sample, genau einmal angefasst
+OOS_FRACTION = 0.30    # letzter Teil = Out-of-Sample, je Strategie einmal angefasst
+
+
+def _strategy(name: str) -> tuple[str, Callable[[], Strategy], str]:
+    """Vorab registrierte Hypothesen. Parameter per Konvention, NICHT optimiert."""
+    if name == "ma_crossover":
+        return (
+            "ma_crossover_eurusd_h1",
+            lambda: moving_average_crossover(24, 120),  # 1 Tag vs. 1 Woche
+            "MA(24,120), Trendfolge",
+        )
+    if name == "mean_reversion":
+        return (
+            "mean_reversion_eurusd_h1",
+            lambda: mean_reversion_zscore(48, 2.0, 0.5),  # 2 Tage, ein 2.0 / aus 0.5
+            "z-Score(48, ein 2.0/aus 0.5), Mittelwertrueckkehr",
+        )
+    raise SystemExit(f"unbekannte Strategie: {name}")
 
 
 def main() -> int:
@@ -49,10 +69,15 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Edge-Test EURUSD (Sechs-Bedingungen-Tor)")
     ap.add_argument("--csv", type=Path, required=True)
     ap.add_argument("--ledger", type=Path, required=True)
+    ap.add_argument(
+        "--strategy", choices=["ma_crossover", "mean_reversion"],
+        default="ma_crossover",
+    )
     ap.add_argument("--data-checksum", default="")
     ap.add_argument("--code-commit", default="")
     args = ap.parse_args()
 
+    strategy_id, factory, label = _strategy(args.strategy)
     bars = from_csv(args.csv.read_text(encoding="utf-8"))
     span_years = max(1e-9, (bars[-1].ts - bars[0].ts).days / 365.25)
     obs_per_year = len(bars) / span_years
@@ -64,7 +89,7 @@ def main() -> int:
     )
     print(
         f"Daten: {len(bars)} H1-Bars {bars[0].ts.date()}..{bars[-1].ts.date()} "
-        f"| obs/Jahr ~ {obs_per_year:.0f} | MA({FAST},{SLOW}), nicht optimiert"
+        f"| obs/Jahr ~ {obs_per_year:.0f} | {label}, nicht optimiert"
     )
 
     split = int(len(bars) * (1.0 - OOS_FRACTION))
@@ -78,21 +103,25 @@ def main() -> int:
     # Walk-Forward NUR auf dem In-Sample-Teil -- der OoS-Block bleibt bis zum Abschluss
     # unberuehrt; die Fenster registrieren (Deflation kennt die wahre Versuchszahl).
     wf = run_walk_forward(
-        in_sample, lambda: moving_average_crossover(FAST, SLOW), spec, 5,
-        purge_ms=3_600_000, embargo_ms=3_600_000, strategy_id=STRATEGY_ID, seed=100,
+        in_sample, factory, spec, 5,
+        purge_ms=3_600_000, embargo_ms=3_600_000, strategy_id=strategy_id, seed=100,
         version=VERSION, data_checksum=args.data_checksum, code_commit=args.code_commit,
         ledger_path=ledger,
     )
     fold_returns = [f.net_return for f in wf.folds]
 
     oos_report = run_registered_backtest(  # der OoS-Abschlusslauf, genau einmal
-        oos, moving_average_crossover(FAST, SLOW), spec,
-        strategy_id=STRATEGY_ID, version=VERSION, seed=0,
+        oos, factory(), spec,
+        strategy_id=strategy_id, version=VERSION, seed=0,
         data_checksum=args.data_checksum, code_commit=args.code_commit,
         ledger_path=ledger,
     )
+    # Deflation gegen das GESAMTE Register (count_scope="total"): bei einer Kampagne mit
+    # mehreren Strategien gegen dieselben OoS-Daten ist die ehrliche Multiple-Testing-
+    # Zahl die Summe aller Versuche, nicht nur die dieser einen Strategie.
     dsr = deflated_sharpe_for_report(
-        oos_report, strategy_id=STRATEGY_ID, version=VERSION, ledger_path=ledger
+        oos_report, strategy_id=strategy_id, version=VERSION, ledger_path=ledger,
+        count_scope="total",
     )
 
     # Bedingung 6 wird GEFAHREN, nicht behauptet: Zufalls-Referenzlauf < 0 nach Kosten,

@@ -9,6 +9,8 @@ getunte Variante.
 
 from __future__ import annotations
 
+import math
+
 from mt5_trading_ai.backtest.engine import MarketView, Signal, Strategy
 
 
@@ -34,5 +36,53 @@ def moving_average_crossover(fast: int, slow: int) -> Strategy:
         if fast_ma < slow_ma:
             return Signal.SHORT
         return Signal.FLAT
+
+    return strategy
+
+
+def mean_reversion_zscore(lookback: int, entry_z: float, exit_z: float) -> Strategy:
+    """Mittelwertrueckkehr: gegen extreme Ausschlaege wetten, bis der Kurs zurueckkehrt.
+
+    Hypothese (ernsthaft und **verschieden** von der Trendfolge): EURUSD schwankt
+    intraday um einen gleitenden Mittelwert. Ein Kurs ``entry_z`` Standardabweichungen
+    darunter kehrt eher zurueck als weiter zu fallen (LONG); ``entry_z`` darueber ->
+    SHORT. Gehalten wird, bis der z-Wert wieder innerhalb von ``exit_z`` liegt (FLAT).
+
+    Zustandsbehaftet: die aktuelle Richtung wird ueber die Bars gehalten (eine echte
+    Mittelwertrueckkehr steigt nicht bei jedem Bar neu ein). Das ist kein Look-ahead --
+    ``MarketView`` gibt weiterhin nur die Vergangenheit frei; der Zustand ist allein die
+    zuletzt gewaehlte Richtung. Die Engine ruft die Strategie streng in Bar-Reihenfolge
+    auf, der Lauf bleibt reproduzierbar. Parameter per Konvention, **nicht** optimiert.
+    """
+    if lookback < 2:
+        raise ValueError("lookback >= 2 noetig")
+    if not entry_z > exit_z >= 0:
+        raise ValueError("entry_z > exit_z >= 0 noetig")
+
+    pos = Signal.FLAT
+
+    def strategy(view: MarketView) -> Signal:
+        nonlocal pos
+        history = view.history()
+        if len(history) < lookback:
+            pos = Signal.FLAT
+            return pos
+        window = [bar.close for bar in history[-lookback:]]
+        mean = sum(window) / lookback
+        var = sum((x - mean) ** 2 for x in window) / (lookback - 1)
+        if var <= 0.0:
+            pos = Signal.FLAT
+            return pos
+        z = (window[-1] - mean) / math.sqrt(var)
+        if pos is Signal.FLAT:
+            if z <= -entry_z:
+                pos = Signal.LONG
+            elif z >= entry_z:
+                pos = Signal.SHORT
+        elif pos is Signal.LONG and z >= -exit_z:
+            pos = Signal.FLAT
+        elif pos is Signal.SHORT and z <= exit_z:
+            pos = Signal.FLAT
+        return pos
 
     return strategy

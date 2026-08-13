@@ -1048,3 +1048,62 @@ kein Freshness-Latch), **S7** (Fit-Schritt je WF-Fenster) unverändert offen.
 `tools/edge_test.py`, `tests/test_edge.py`, `BERICHT_TEIL3.md` neu; `backtest/engine.py`
 erweitert (date-basierte Nächte, Trade-Sharpe, Register-Anbindung). Paket-Quellcode
 `mt5_trading_ai/` = 5.368 Zeilen, 23 Module, 259 Testfunktionen; 312 Testfälle grün.
+
+## ERLEDIGT — Paket 4b (Teil 3): Zweiter Edge-Versuch — Mittelwertrückkehr (E5 = weiterbauen)
+
+**E5-Entscheid nach dem ersten Nein:** Philipp wählte **weiterbauen mit einer anderen
+Hypothese** — den regelkonformen Weg (§7.3 erlaubt keinen Ausbau ohne bestandenen Test, aber E5
+lässt einen neuen, ehrlich registrierten Versuch zu). Ausdrücklich **nicht** Paket 5: das bleibt
+am bestandenen Edge-Test verriegelt. Bevor ich baute, habe ich den Konflikt „Paket 5 vs.
+§7.3/§8" offengelegt und E5 erneut vorgelegt — Antwort: neuer ehrlicher Versuch zuerst.
+
+**Was gebaut wurde:**
+- `backtest/strategies.py` → `mean_reversion_zscore(lookback, entry_z, exit_z)`: zustandsbehaftete
+  z-Score-Mittelwertrückkehr (Ein bei |z|≥2, Aus bei |z|≤0,5), **nicht** optimiert. Die
+  Hysterese hält die Rückkehr über viele Bars — bewusst verschieden von der Trendfolge.
+- `backtest/engine.py` → `deflated_sharpe_for_report(count_scope=...)`: additiv; "total" zählt
+  das **gesamte** Register (ehrliche Multiple-Testing-Zahl bei mehreren Strategien gegen
+  denselben OoS-Block), "strategy" bleibt Paket-4-Default.
+- `tools/edge_test.py`: `--strategy {ma_crossover, mean_reversion}`, geteiltes Kampagnen-Register,
+  Deflation mit `count_scope="total"`.
+- `tests/test_edge.py`: fünf Tests der Mittelwertrückkehr (FLAT vor Historie, LONG/SHORT bei
+  Ausschlag, Halten-dann-Aussteigen, Parametervalidierung).
+
+**Gemessen (EURUSD H1, OoS letzte 30 %, Hebel 5, Katalog-Kosten, Register-Kampagne N = 12):**
+123 Trades, Netto **+3,22 %**, Trade-Sharpe **+0,185**, Bar-Sharpe +0,167, MaxDD 15,4 %,
+`net_over_hurdle` **+2,48 %**, Deflated Sharpe **0,066** (N = 12). WF In-Sample:
+[−0,22, +0,07, +0,35, +0,07, −0,03]. **Drei von sechs Bedingungen erfüllt → aber KEIN EDGE**
+(Sharpe 0,185 ≪ 1,0; Deflation 0,066 ≪ 0,95; 123 ≪ 2.000 Trades).
+
+**§1.13 (unerwartet gut = Bug-Verdacht) — Multi-Agenten-§9-Review (22 Agenten) + eigene
+Gegenproben:**
+- **Kein Bug:** Reproduzierbar bitgleich; kein Look-ahead (`MarketView` blockt Zukunftsbar,
+  OoS nutzt frische `factory()`-Instanz); Kosten alle angewandt (14,8 % Reibung, $26/Trade),
+  Trade 1 von Hand bestätigt (gross 226 − cost 16,49 = net 209,51).
+- **Das Positive ist teils Artefakt, nicht Edge:** (a) **Selektionsbias** — +3,22 % ist der
+  Bessere aus zwei Hypothesen auf demselben OoS-Block (offengelegt; Deflation N = 12 trägt es);
+  (b) **0,74 pp sind riba-Carry** (Short-EUR-Overnight-Swap), kein Alpha — carry-frei bleiben
+  +2,48 %; (c) **statistisch null:** MinTRL ≈ 79–97 Jahre bei 0,9 Jahren OoS; (d) Bedingung 4
+  (3 positive Fenster) liegt im Zufallsbereich (P ≈ 25 %).
+- **Review-Einwand gegengeprüft und verworfen:** Der Prüf-Agent vermutete, die Zahl hänge an der
+  optimistischen Füllung zur Signal-Kerze (an einer synthetischen Reihe halbierte sich das
+  Brutto). **An den echten Daten hält das nicht** — Füllung eine Kerze später: Brutto
+  +17,31 % → +17,94 % (praktisch gleich), erste Kerze nach Einstieg trägt −4 %. Grund: die
+  Hysterese, nicht der Snap-back. Begründet verworfen statt blind übernommen (§9.2).
+
+**Entscheidungen, die ich selbst getroffen habe:** z-Score-Mittelwertrückkehr als zweite,
+literaturgestützte Hypothese (Intraday-FX kehrt zurück); Parameter 48/2,0/0,5 per Konvention;
+Deflation kampagnenweit (N = 12) statt per Strategie (N = 6), weil zwei Hypothesen gegen
+denselben OoS-Block selektiert wurden; Füllzeitpunkt-Sensitivität selbst gemessen statt den
+Review-Befund zu übernehmen.
+
+**Eigene Fehler (§9-Review, benannt):** OoS-Block zweimal angefasst (Selektionsbias, offengelegt
+statt kaschiert); `deflated_sharpe_for_report` deflationiert die Bar- statt der Trade-Sharpe
+(hier folgenlos, beide 0,066 — als **S8** notiert).
+
+**Auffälligkeiten, gemeldet, nicht angefasst:** Halal (**S4**) — der +0,74-pp-Carry ist riba und
+auf einem swapfreien Konto nicht vorhanden; das unterstreicht S4. **S8** neu. S1/S2/S7 offen.
+
+**Zeilenstand (gemessen):** `strategies.py`/`engine.py`/`edge_test.py`/`test_edge.py` erweitert.
+Ergebnis der Kampagne: **KEIN EDGE** auf EURUSD nach zwei ehrlichen Versuchen. E5 erneut an
+Philipp (§10 des Berichts).

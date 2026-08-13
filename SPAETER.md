@@ -91,3 +91,13 @@ Besonderen berühren die Zins-/Riba-Frage (Kernregel 16). Bevor Krypto tatsächl
 gehandelt wird, braucht es eine Halal-Entscheidung (swapfreie Kontoform? Instrument
 grundsätzlich zulässig?). Gehört inhaltlich zur Kostenrecherche R1.6 (Paket 1) und
 ist dort mitzuentscheiden, nicht stillschweigend.
+
+## S8 — Deflation auf die Trade-Level-Sharpe umstellen (aus Paket-4b-Review)
+
+`deflated_sharpe_for_report` deflationiert die **Bar**-Sharpe (`report.annualised_sharpe`,
+Beobachtungen = Bars − 1), während das Sechs-Bedingungen-Tor (Bedingung 1) bewusst die
+**Trade**-Sharpe prüft (ehrlich bei seltenem Handel). Im Mean-Reversion-Lauf folgenlos — beide
+ergeben denselben Deflated Sharpe 0,066 —, aber bei einem größeren Signal würde die Bar-Sharpe
+mit ihrer viel höheren Beobachtungszahl die Deflation überzeichnen. Nachzurüsten: die
+Trade-Level-Sharpe mit Trade-Anzahl als Beobachtungen deflationieren, damit gemessene und
+deflationierte Größe dieselbe sind.

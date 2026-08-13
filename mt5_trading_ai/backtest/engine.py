@@ -458,17 +458,28 @@ def deflated_sharpe_for_report(
     strategy_id: str,
     version: str | None = None,
     ledger_path: str | None = None,
+    count_scope: str = "strategy",
 ) -> float:
     """Deflationiere die Berichts-Sharpe gegen die WAHRE Versuchszahl aus dem Register.
 
-    Bindet den Bericht an ``gates/criteria.py`` mit dem echten ``trial_count`` -- ohne
+    Bindet den Bericht an ``gates/criteria.py`` mit dem echten Versuchszaehler -- ohne
     diese Anbindung waere die Deflation ein toter Gate. Rueckgabe: Wahrscheinlichkeit
     (Bailey/Lopez de Prado), dass die Sharpe echt ist und kein Zufallsfund unter vielen
     Versuchen. Je mehr Versuche im Register, desto strenger.
+
+    ``count_scope`` = "strategy" zaehlt nur diese ``strategy_id`` (ein Hypothesen-Lauf
+    mit Parametervarianten); "total" zaehlt das GESAMTE Register -- die ehrliche
+    Multiple-Testing-Zahl, wenn mehrere verschiedene Strategien gegen dieselben
+    OoS-Daten selektiert werden (eine Kampagne). Bei einer Strategie sind beide gleich.
     """
-    n_trials = max(
-        1, trials.trial_count(strategy_id, version=version, path=ledger_path)
-    )
+    if count_scope == "total":
+        n_trials = max(1, trials.total_trials(path=ledger_path))
+    elif count_scope == "strategy":
+        n_trials = max(
+            1, trials.trial_count(strategy_id, version=version, path=ledger_path)
+        )
+    else:
+        raise ValueError("count_scope muss 'strategy' oder 'total' sein")
     observations = max(2, report.bars - 1)
     per_obs = report.annualised_sharpe / math.sqrt(report.obs_per_year)
     return deflated_sharpe_ratio(

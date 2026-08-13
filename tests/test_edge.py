@@ -10,18 +10,31 @@ from mt5_trading_ai.backtest.edge import (
     evaluate_edge,
     max_consecutive_positive,
 )
-from mt5_trading_ai.backtest.engine import MarketView, Signal
-from mt5_trading_ai.backtest.strategies import moving_average_crossover
+from mt5_trading_ai.backtest.engine import MarketView, Signal, Strategy
+from mt5_trading_ai.backtest.strategies import (
+    mean_reversion_zscore,
+    moving_average_crossover,
+)
 from mt5_trading_ai.data.quality import BarRow
 
 
-def _view(closes: list[float]) -> MarketView:
+def _bars(closes: list[float]) -> list[BarRow]:
     base = datetime(2022, 1, 3, tzinfo=UTC)
-    bars = [
+    return [
         BarRow(ts=base + timedelta(hours=i), open=c, high=c, low=c, close=c, volume=1.0)
         for i, c in enumerate(closes)
     ]
+
+
+def _view(closes: list[float]) -> MarketView:
+    bars = _bars(closes)
     return MarketView(bars, len(bars) - 1)
+
+
+def _positions(strat: Strategy, closes: list[float]) -> list[Signal]:
+    """Wie die Engine: Strategie streng in Bar-Reihenfolge (haelt Zustand)."""
+    bars = _bars(closes)
+    return [strat(MarketView(bars, i)) for i in range(len(bars))]
 
 
 # --- MA-Kreuzung ----------------------------------------------------------
@@ -45,6 +58,39 @@ def test_ma_crossover_short_in_downtrend() -> None:
 def test_ma_crossover_rejects_bad_params() -> None:
     with pytest.raises(ValueError):
         moving_average_crossover(10, 5)  # slow <= fast
+
+
+# --- Mittelwertrueckkehr --------------------------------------------------
+
+
+def test_mean_reversion_flat_before_enough_history() -> None:
+    strat = mean_reversion_zscore(20, 2.0, 0.5)
+    assert strat(_view([1.10] * 10)) is Signal.FLAT  # weniger als lookback Bars
+
+
+def test_mean_reversion_long_on_deep_dip() -> None:
+    strat = mean_reversion_zscore(20, 2.0, 0.5)
+    assert strat(_view([1.10] * 19 + [1.05])) is Signal.LONG  # weit unter dem Mittel
+
+
+def test_mean_reversion_short_on_spike() -> None:
+    strat = mean_reversion_zscore(20, 2.0, 0.5)
+    assert strat(_view([1.10] * 19 + [1.15])) is Signal.SHORT  # weit ueber dem Mittel
+
+
+def test_mean_reversion_holds_then_exits() -> None:
+    strat = mean_reversion_zscore(20, 2.0, 0.5)
+    pos = _positions(strat, [1.10] * 19 + [1.05, 1.08, 1.10])
+    assert pos[19] is Signal.LONG   # tiefer Ausschlag -> Einstieg
+    assert pos[20] is Signal.LONG   # z noch jenseits exit_z -> gehalten
+    assert pos[21] is Signal.FLAT   # zurueck am Mittel -> Ausstieg
+
+
+def test_mean_reversion_rejects_bad_params() -> None:
+    with pytest.raises(ValueError):
+        mean_reversion_zscore(1, 2.0, 0.5)    # lookback < 2
+    with pytest.raises(ValueError):
+        mean_reversion_zscore(20, 0.5, 2.0)   # entry_z <= exit_z
 
 
 # --- Sechs-Bedingungen-Tor ------------------------------------------------

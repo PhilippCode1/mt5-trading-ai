@@ -43,6 +43,7 @@ Zeitreihen-Splits mit Purge und Embargo — herausgeloest aus learning_engine.
 Einfache, ernsthafte Signallogiken fuer den Edge-Test -- ohne Optimierung.
 
 - `def moving_average_crossover`
+- `def mean_reversion_zscore`
 
 ## `mt5_trading_ai/costs/model.py`
 
