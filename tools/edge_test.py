@@ -40,6 +40,7 @@ from mt5_trading_ai.backtest.strategies import (  # noqa: E402
     moving_average_crossover,
     volatility_breakout,
 )
+from mt5_trading_ai.costs.halal import HalalFinancingPolicy  # noqa: E402
 from mt5_trading_ai.costs.model import load_cost_fees  # noqa: E402
 from mt5_trading_ai.data.loader import from_csv  # noqa: E402
 
@@ -84,6 +85,10 @@ def main() -> int:
         "--oos-csv", type=Path, default=None,
         help="frischer OoS-Block (eigene Datei); sonst letzte 30 % von --csv",
     )
+    ap.add_argument(
+        "--halal", action="store_true",
+        help="swapfreie (Halal) Finanzierung statt Zins-Swap -- kein riba-Carry",
+    )
     ap.add_argument("--data-checksum", default="")
     ap.add_argument("--code-commit", default="")
     args = ap.parse_args()
@@ -93,14 +98,17 @@ def main() -> int:
     span_years = max(1e-9, (bars[-1].ts - bars[0].ts).days / 365.25)
     obs_per_year = len(bars) / span_years
     fees = load_cost_fees("EURUSD")
+    halal_policy = HalalFinancingPolicy() if args.halal else None
     spec = MarketSpec(
         symbol="EURUSD", contract_size=Decimal("100000"), pip_size=Decimal("0.0001"),
         quote_currency="USD", fees=fees, spread_pips=Decimal("0.1"),
         leverage=Decimal("5"), obs_per_year=obs_per_year,
+        financing_policy=halal_policy,
     )
+    kosten = "swapfrei (Halal)" if args.halal else "konventionell (Swap)"
     print(
         f"Daten: {len(bars)} H1-Bars {bars[0].ts.date()}..{bars[-1].ts.date()} "
-        f"| obs/Jahr ~ {obs_per_year:.0f} | {label}, nicht optimiert"
+        f"| obs/Jahr ~ {obs_per_year:.0f} | {label} | Finanzierung: {kosten}"
     )
 
     if args.oos_csv is not None:

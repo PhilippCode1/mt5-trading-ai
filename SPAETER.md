@@ -84,13 +84,20 @@ greifen Purge/Embargo als Leckage-Kontrolle. Ebenso: die volle `evaluate_criteri
 Edge-Test verdrahten — die Deflations-Bindung (`deflated_sharpe_for_report`) steht, die
 Gesamt-Auswertung folgt in Paket 4.
 
-## S4 — Halal-Konformität von Krypto-/CFD-Instrumenten (aus E2)
+## S4 — Halal-Konformität: mechanisch erledigt, fiqh-Grundfrage offen
 
-Mit E2 ist Krypto (2:1) im Katalog handelbar. CFDs allgemein und Übernacht-Swaps im
-Besonderen berühren die Zins-/Riba-Frage (Kernregel 16). Bevor Krypto tatsächlich
-gehandelt wird, braucht es eine Halal-Entscheidung (swapfreie Kontoform? Instrument
-grundsätzlich zulässig?). Gehört inhaltlich zur Kostenrecherche R1.6 (Paket 1) und
-ist dort mitzuentscheiden, nicht stillschweigend.
+**Mechanischer Teil erledigt** (BERICHT §12, `costs/halal.py` + `venue/halal.py`): swapfreie
+Finanzierung ohne Zins (nie riba-Gutschrift, per Test gesichert) + Halal-Screen (fail-closed,
+prüft swapfreies Konto / zinsfreie Margin / Instrument-Screen). Nachgewiesen: unter der
+swapfreien Politik fällt die riba-Carry-Gutschrift von 160,06 auf 0,00 USD; Ergebnis am
+Sechs-Bedingungen-Tor bleibt „kein Edge".
+
+**Offen bleibt die fiqh-Grundentscheidung:** ob ein gehebelter CFD überhaupt zulässig ist
+(gharar, fehlendes Eigentum, Termincharakter). Das entscheidet der Code bewusst **nicht** --
+`screen_halal` setzt `requires_scholar_review` immer auf wahr (Kernregel 16, „nicht allein
+entscheiden"). Braucht einen Gelehrten + Philipps Entscheidung, keine Codeänderung. Ebenso
+offen: der swapfreie Admin-Gebühr-Satz ist eine Schätzung (Broker-Bestätigung), und die
+Krypto-/Aktien-Geschäftsfeldprüfung ist markiert, aber nicht mit einer AAOIFI-Liste hinterlegt.
 
 ## S8 — Deflation auf die Trade-Level-Sharpe umstellen (aus Paket-4b-Review)
 

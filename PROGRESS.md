@@ -1210,3 +1210,42 @@ durchgängig konservativ 5:1 (unter jeder ESMA-Klassengrenze).
 
 **Auffälligkeiten:** Paket 5 ist gebaut, aber **leer** — es wartet auf eine Strategie, die das
 Sechs-Bedingungen-Tor zuerst besteht. Halal (S4), S6, S8 unverändert offen.
+
+## ERLEDIGT — Halal-Pfad (S4): das mechanisch Erzwingbare, die fiqh-Grenze benannt
+
+**Auf Nutzeranweisung** den größten offenen Block (S4) gebaut. Der konkrete Konflikt war im
+zweiten Edge-Versuch sichtbar geworden: +0,74 pp des Netto waren reiner Overnight-Swap-Carry —
+Zins (riba). Der Swap ist an beiden Enden Zins: gezahlt (negativer Swap) und, bei positivem
+Swap, als Gutschrift **erhalten**.
+
+**Was gebaut wurde:**
+- `costs/halal.py` → `HalalFinancingPolicy` + `halal_financing`: swapfreie Finanzierung **ohne
+  Zins** (weder gezahlt noch erhalten), stattdessen pauschale Verwaltungsgebühr je Nacht
+  (Dienstleistung, nicht zinsbasiert), kein Dreifach-Tag. **Invariante per Test: Finanzierung
+  nie negativ → nie Gutschrift → nie riba-Ertrag.**
+- `costs/model.py` → `order_roundturn_cost(financing_policy=...)`: additiv; gesetzt = swapfrei,
+  sonst konventioneller Swap (Altpfad unverändert, alle bestehenden Tests grün).
+- `backtest/engine.py` → `MarketSpec.financing_policy` durchgereicht; `edge_test.py --halal`.
+- `venue/halal.py` → `screen_halal` / `HalalVerdict`: prüft fail-closed nur das **mechanisch**
+  Prüfbare (swapfreies Konto, zinsfreie Margin, Instrument nicht verboten), zertifiziert nie
+  „halal"; `requires_scholar_review` ist **immer** wahr (die fiqh-Grundfrage entscheidet der
+  Code nicht — Kernregel 16). 12 Tests, negativ gefahren.
+
+**Gemessen (Mittelwertrückkehr EURUSD OoS, konventionell vs. swapfrei):** Carry-Gutschrift
+(riba) **160,06 → 0,00 USD** — die riba ist eliminiert. Netto 3,22 % → 3,15 % (kaum Änderung,
+weil die Gebühr-Schätzung 5 USD/Lot/Nacht zufällig nahe an der konventionellen Netto-Finanzierung
+820,50 liegt); die exakte Zahl hängt an der Schätzung, das qualitative Ergebnis nicht:
+**auch auf dem Halal-Pfad KEIN EDGE** (dieselben drei Bedingungen verfehlt).
+
+**§9 proportional (Cost-Model-nah, aber contained):** riba nachweislich weg (Gutschrift 0,
+Invariante getestet); **kein Fake-Edge** — Netto sinkt (3,22 → 3,15), Urteil unverändert;
+fail-closed (negative Gebühr/Karenz/Nächte abgelehnt); Altpfad intakt (343 Tests grün).
+
+**Entscheidungen, die ich selbst getroffen habe:** die swapfreie Politik als fixe
+Dienstleistungsgebühr modelliert (kein Zins); den Screen so gebaut, dass er **nie** „halal"
+zertifiziert, sondern die fiqh-Grundfrage bei jedem Aufruf zur Gelehrten-Prüfung markiert;
+Gebühr 5 USD/Lot/Nacht als dokumentierte Schätzung (Broker-Bestätigung nötig).
+
+**Ehrliche Grenze / offen:** erledigt ist die **mechanische** Riba-Vermeidung. **Offen bleibt
+die fiqh-Grundentscheidung** (sind gehebelte CFDs für Philipp überhaupt zulässig — gharar) —
+keine Codefrage, braucht Gelehrten + Philipp. S6, S8 unverändert offen.

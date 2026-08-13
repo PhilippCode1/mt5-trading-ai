@@ -42,6 +42,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from decimal import Decimal
 
+from mt5_trading_ai.costs.halal import HalalFinancingPolicy, halal_financing
 from mt5_trading_ai.venue.catalog import (
     CatalogEntry,
     InstrumentCatalogError,
@@ -106,6 +107,7 @@ def order_roundturn_cost(
     triple_swap_nights: int = 0,
     slippage_pips_per_side: Decimal = DEFAULT_SLIPPAGE_PIPS_PER_SIDE,
     quote_to_account_rate: Decimal | None = None,
+    financing_policy: HalalFinancingPolicy | None = None,
 ) -> CostBreakdown:
     """Roundturn-Kosten (eroeffnen + schliessen) einer Order. Fail-closed bei Unfug.
 
@@ -166,15 +168,23 @@ def order_roundturn_cost(
         * rate
     )
 
-    # Finanzierung: Swap je Nacht, Dreifach-Naechte dreifach. Negativer Swap = Kosten.
-    swap_per_night = (
-        fees.swap_long_per_lot_per_night
-        if side is OrderSide.BUY
-        else fees.swap_short_per_lot_per_night
-    )
-    _require_finite("swap", swap_per_night)
-    swap_units = Decimal(holding_nights) + Decimal("2") * Decimal(triple_swap_nights)
-    financing = -(swap_per_night * volume * swap_units)
+    # Finanzierung. Halal-Pfad: swapfrei -- kein Zins (weder gezahlt noch erhalten),
+    # stattdessen eine pauschale Verwaltungsgebuehr, immer >= 0, kein Dreifach-Tag.
+    if financing_policy is not None:
+        financing = halal_financing(financing_policy, volume, holding_nights)
+    else:
+        # Konventionell: Swap je Nacht (Dreifach dreifach). Negativer Swap = Kosten,
+        # positiver Swap = Zins-Gutschrift (riba) -- genau das vermeidet der Halal-Pfad.
+        swap_per_night = (
+            fees.swap_long_per_lot_per_night
+            if side is OrderSide.BUY
+            else fees.swap_short_per_lot_per_night
+        )
+        _require_finite("swap", swap_per_night)
+        swap_units = (
+            Decimal(holding_nights) + Decimal("2") * Decimal(triple_swap_nights)
+        )
+        financing = -(swap_per_night * volume * swap_units)
 
     total = spread + commission + slippage + financing
     return CostBreakdown(

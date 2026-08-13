@@ -31,6 +31,7 @@ from enum import IntEnum
 from typing import Any
 
 from mt5_trading_ai.backtest.splits import Range, purged_walk_forward_indices
+from mt5_trading_ai.costs.halal import HalalFinancingPolicy
 from mt5_trading_ai.costs.model import (
     DEFAULT_SLIPPAGE_PIPS_PER_SIDE,
     order_roundturn_cost,
@@ -122,6 +123,8 @@ class MarketSpec:
     leverage: Decimal = Decimal("5")
     slippage_pips_per_side: Decimal = DEFAULT_SLIPPAGE_PIPS_PER_SIDE
     obs_per_year: float = 252.0
+    # Halal-Pfad: gesetzt -> swapfreie Finanzierung (kein Zins), sonst Swap.
+    financing_policy: HalalFinancingPolicy | None = None
 
     def __post_init__(self) -> None:
         if self.contract_size <= 0 or self.pip_size <= 0 or self.volume <= 0:
@@ -276,6 +279,7 @@ def run_backtest(
             holding_nights=nights,
             triple_swap_nights=triple,
             slippage_pips_per_side=spec.slippage_pips_per_side,
+            financing_policy=spec.financing_policy,
         )
         signed_total = float(breakdown.total)
         fin = float(breakdown.financing)  # + = gezahlt (Kosten), - = Carry-Gutschrift

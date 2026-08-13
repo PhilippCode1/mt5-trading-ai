@@ -2,9 +2,10 @@
 
 *Der Abschlussbericht des Edge-Nachweis-Auftrags. Jede Zahl ist gemessen. Die eine Frage
 war: existiert auf EURUSD nach realistischen Kosten ein Edge? Getestet wurden nacheinander
-**zwei** vorab festgeschriebene Hypothesen (Trendfolge, dann — nach E5 = weiterbauen —
-Mittelwertrückkehr). **Die Antwort ist Nein** — und ein sauber belegtes Nein ist der
-auftragsgemäße Ausgang, kein Scheitern.*
+**drei** vorab festgeschriebene Hypothesen (Trendfolge, Mittelwertrückkehr, Volatilitäts-
+Ausbruch — jeweils nach E5 = weiterbauen). **Die Antwort ist Nein** — und ein sauber belegtes
+Nein ist der auftragsgemäße Ausgang, kein Scheitern. §11 dokumentiert das spätere Paket 5 auf
+ausdrückliche Anweisung, §12 den Halal-Pfad.*
 
 ---
 
@@ -358,3 +359,47 @@ aktuelles Vorhaben durch**, weil kein Edge existiert. Paket 5 ist damit gebaut, 
 es wartet auf eine Strategie, die das Tor aus §2 zuerst besteht. Das ist die ehrlichste Form, in
 der dieses Paket unter der gegebenen Faktenlage existieren kann — es widerspricht dem Urteil
 „kein Edge" nicht, es macht es baubar sichtbar.
+
+---
+
+## 12. Der Halal-Pfad (S4) — das mechanisch Erzwingbare, und die fiqh-Grenze
+
+Halal-Konformität war von Anfang an Anforderung, nicht Präferenz (Kernregel 16), und der größte
+offene Block des Auftrags. Der konkrete Konflikt zeigte sich im zweiten Edge-Versuch: **+0,74
+Prozentpunkte des Netto waren reiner Overnight-Swap-Carry** — Zins (riba), den die short-lastige
+Strategie kassierte. Der Swap ist an **beiden** Enden Zins: gezahlt (negativer Swap) und, bei
+positivem Swap, als Gutschrift erhalten. Auf Nutzeranweisung wurde der Halal-Pfad gebaut.
+
+**Was gebaut wurde — und was der Code bewusst NICHT tut:**
+
+- **Swapfreie Finanzierung** (`costs/halal.py`): eine Politik ganz **ohne Zins** — weder gezahlt
+  noch erhalten —, stattdessen eine pauschale Verwaltungsgebühr je gehaltener Nacht (eine
+  Dienstleistungsgebühr, nicht zinsbasiert), kein Dreifach-Tag. Invariante, per Test gesichert:
+  die Finanzierung ist **nie negativ** → nie eine Gutschrift → nie riba-Ertrag. Ins Kostenmodell
+  additiv verdrahtet (`financing_policy`); der konventionelle Pfad bleibt unverändert (alle
+  bestehenden Tests grün).
+- **Halal-Screen** (`venue/halal.py`): prüft fail-closed nur das **mechanisch** Prüfbare —
+  swapfreies Konto, zinsfreie Margin, Instrument nicht offensichtlich verboten — und
+  zertifiziert **niemals** „halal". `requires_scholar_review` ist **immer** wahr: die
+  grundsätzliche fiqh-Frage (ob ein gehebelter CFD überhaupt zulässig ist — gharar, fehlendes
+  Eigentum, Termincharakter) entscheidet der Code nicht (Kernregel 16, „nicht allein").
+
+**Gemessen (Mittelwertrückkehr, EURUSD OoS, konventionell vs. swapfrei):**
+
+| Größe | Konventionell | Swapfrei (Halal) |
+|---|---|---|
+| Carry-Gutschrift (riba) | **160,06 USD** | **0,00 USD** |
+| Netto | +3,22 % | +3,15 % |
+| Ergebnis am Sechs-Bedingungen-Tor | KEIN EDGE | **KEIN EDGE** |
+
+Die **riba ist eliminiert** (Gutschrift 0). Das Netto ändert sich kaum, weil die pauschale
+Gebühr (Schätzung: 5 USD/Lot/Nacht, Broker-Bestätigung nötig) zufällig nahe an der
+konventionellen Netto-Finanzierung liegt; die exakte Zahl hängt an dieser Schätzung, das
+**qualitative** Ergebnis nicht: **auf dem Halal-Pfad existiert genauso wenig ein Edge.** Der
+Halal-Pfad rettet nichts — er entfernt den Zins, mehr nicht.
+
+**Ehrliche Grenze:** Erledigt ist die mechanische Riba-Vermeidung (swapfreie Finanzierung +
+Screen). **Offen bleibt die fiqh-Grundentscheidung** — ob gehebelte CFDs für Philipp überhaupt
+zulässig sind. Das ist keine Codefrage; sie braucht einen Gelehrten und Philipps Entscheidung.
+Der Code erzwingt das Prüfbare und markiert diese Grenze bei jedem Screen, statt sie zu
+verwischen.

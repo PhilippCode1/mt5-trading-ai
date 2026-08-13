@@ -54,6 +54,13 @@ Einfache, ernsthafte Signallogiken fuer den Edge-Test -- ohne Optimierung.
 - `def mean_reversion_zscore`
 - `def volatility_breakout`
 
+## `mt5_trading_ai/costs/halal.py`
+
+Der Halal-Pfad: swapfreie Finanzierung ohne Zins (S4, Kernregel 16).
+
+- `class HalalFinancingPolicy`
+- `def halal_financing`
+
 ## `mt5_trading_ai/costs/model.py`
 
 Kostenmodell: die realen Kosten einer Order, gemessen statt angenommen.
@@ -248,6 +255,13 @@ Paket 5: Registrierung und Fortschritts-Tor des Demo-Betriebs (§8.5).
 - `def register_for_demo`
 - `class DemoReadiness`
 - `def evaluate_demo_progress`
+
+## `mt5_trading_ai/venue/halal.py`
+
+Der Halal-Screen: das mechanisch Pruefbare erzwingen, die fiqh-Grenze benennen (S4).
+
+- `class HalalVerdict`
+- `def screen_halal`
 
 ## `mt5_trading_ai/venue/mt5.py`
 
