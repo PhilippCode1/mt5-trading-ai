@@ -232,10 +232,14 @@ gewichtigsten:
   durch die kampagnenweite Deflation (N = 12) getragen. Ein Review-Einwand (die Zahl hänge an
   der Füllung zur Signal-Kerze) war an einer synthetischen Reihe real, an den echten Daten
   jedoch nicht — **gegengeprüft und begründet verworfen**, nicht blind übernommen.
-- **Latente Inkonsistenz (niedrig, hier folgenlos):** `deflated_sharpe_for_report`
-  deflationiert die **Bar**-Sharpe (Beobachtungen = Bars), während Bedingung 1 bewusst die
-  **Trade**-Sharpe prüft. Hier unschädlich (beide ergeben 0,066), bei größerem Signal aber eine
-  Überzeichnung — als Grenze in `SPAETER.md` (S8) notiert, nicht stillschweigend gelassen.
+- **Latente Inkonsistenz (niedrig, hier folgenlos — inzwischen behoben):**
+  `deflated_sharpe_for_report` deflationierte im Teil-3-Lauf die **Bar**-Sharpe (Beobachtungen =
+  Bars), während Bedingung 1 bewusst die **Trade**-Sharpe prüft. Hier unschädlich (beide ~0,066),
+  aber eine Inkonsistenz zwischen gemessener und deflationierter Kennzahl (Richtung der Verzerrung
+  datenabhängig, nicht generell eine Überzeichnung); als S8 notiert und in **Abnahme-Paket 2**
+  behoben (die Deflation nutzt jetzt die Trade-Sharpe je Trade, konsistent zum Tor). Die oben
+  genannten DSR-Werte stammen aus dem Teil-3-Lauf mit der alten Methode; das Urteil (≪ 0,95) ist
+  unberührt.
 - **Dritter Versuch, Datenqualität ehrlich benannt:** der frische OoS-Block 2025–26 ist
   strukturell sauber (0 Duplikate/nicht-monotone/ungültige OHLC), das Qualitätstor meldet aber
   formal `passed=False`, weil es ohne Session-/Feiertagskalender die erwartete Barzahl nicht

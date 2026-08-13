@@ -70,7 +70,8 @@ def _run_one(
         return mean_reversion_zscore(48, 2.0, 0.5)
 
     wf = run_walk_forward(
-        in_sample, factory, spec, 5, purge_ms=3_600_000, embargo_ms=3_600_000,
+        in_sample, lambda _train: factory(), spec, 5,   # Fixparameter -> Fit No-op
+        purge_ms=3_600_000, embargo_ms=3_600_000,
         strategy_id=strategy_id, seed=100, version=VERSION,
         data_checksum="", code_commit=commit, ledger_path=ledger,
     )

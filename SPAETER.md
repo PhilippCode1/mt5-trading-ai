@@ -75,16 +75,24 @@ einen **Intraday**-Edge-Test:
 - **Hochpreisige Instrumente** (Index/Krypto > 2^31/Divisor) überlaufen selbst unsigned →
   Wertebereichsprüfung beim Dekodieren.
 
-## S7 — Walk-Forward-Trainingsschritt + volle Kriterien-Integration (aus Paket-3-Review)
+## S7 — Walk-Forward-Trainingsschritt + volle Kriterien-Integration — ERLEDIGT (Abnahme-Paket 2)
 
-Der Walk-Forward-Runner nutzt `splits.py` mit pflichtigem Purge/Embargo, aber ohne einen
-Trainings-/Fit-Schritt je Fenster gaten Purge/Embargo noch nichts (sie schließen nur
-Trainingsindizes aus, die eine zustandslose Strategie nicht hat). Nachzurüsten, sobald eine
-lernende Strategie kommt (Paket 4/5): echter Fit auf `_train_idx`, Test auf `test_idx` — dann
-greifen Purge/Embargo als Leckage-Kontrolle. Ebenso: die volle `evaluate_criteria`-Auswertung
-(`BacktestEvidence` aus Report + positive_folds + deflated_sharpe + random_percentile) im
-Edge-Test verdrahten — die Deflations-Bindung (`deflated_sharpe_for_report`) steht, die
-Gesamt-Auswertung folgt in Paket 4.
+`run_walk_forward` nimmt jetzt einen **Fitter** `Callable[[Sequence[BarRow]], Strategy]`, der die
+Trainings-Bars (expandierendes Fenster, `exclude_prior_test=False`, ohne Purge/Embargo-Band)
+bekommt und die darauf bestimmte Strategie auf `test_idx` testet.
+
+**Ehrlich zum Purge/Embargo (aus dem §9-Review dieses Pakets):** Nur der **Purge** (linke
+Bandkante) greift im strikten Walk-Forward faktisch — er entfernt die testnahen Trainings-Bars,
+gemessen als Schrumpfung des Trainingsfensters (`test_purge_shrinks_the_training_window`). Das
+**Embargo** (rechte Bandkante, hinter dem Testblock) trifft hier per Konstruktion **keinen**
+Trainings-Bar, weil Training nur Vergangenheit ist; es ist ein No-op, mit eigenem Test belegt
+(`test_embargo_alone_does_not_change_the_training_window`) statt in einem gemeinsamen Test
+maskiert. Die Leckfreiheit über die Fenstergrenze folgt aus Vergangenheits-Konstruktion + Purge,
+**nicht** aus dem Embargo (das erst in `purged_kfold_embargo_indices` gatet). Fold 0 ohne
+Training handelt nicht. Eine Fixparameter-Strategie ignoriert die Trainings-Bars (Fit = No-op,
+korrekt für den nicht-optimierten Edge-Test). Ebenfalls erledigt: die volle
+`evaluate_criteria`-Auswertung ist über `criteria_evidence(...)` an den Lauf gebunden und läuft
+im Edge-Test als Zusatz-Report neben dem Sechs-Bedingungen-Tor.
 
 ## S4 — Halal-Konformität: mechanisch erledigt, fiqh-Grundfrage offen
 
@@ -101,12 +109,25 @@ entscheiden"). Braucht einen Gelehrten + Philipps Entscheidung, keine Codeänder
 offen: der swapfreie Admin-Gebühr-Satz ist eine Schätzung (Broker-Bestätigung), und die
 Krypto-/Aktien-Geschäftsfeldprüfung ist markiert, aber nicht mit einer AAOIFI-Liste hinterlegt.
 
-## S8 — Deflation auf die Trade-Level-Sharpe umstellen (aus Paket-4b-Review)
+## S8 — Deflation auf die Trade-Level-Sharpe umstellen — ERLEDIGT (Abnahme-Paket 2)
 
-`deflated_sharpe_for_report` deflationiert die **Bar**-Sharpe (`report.annualised_sharpe`,
-Beobachtungen = Bars − 1), während das Sechs-Bedingungen-Tor (Bedingung 1) bewusst die
-**Trade**-Sharpe prüft (ehrlich bei seltenem Handel). Im Mean-Reversion-Lauf folgenlos — beide
-ergeben denselben Deflated Sharpe 0,066 —, aber bei einem größeren Signal würde die Bar-Sharpe
-mit ihrer viel höheren Beobachtungszahl die Deflation überzeichnen. Nachzurüsten: die
-Trade-Level-Sharpe mit Trade-Anzahl als Beobachtungen deflationieren, damit gemessene und
-deflationierte Größe dieselbe sind.
+`deflated_sharpe_for_report` deflationiert jetzt die **Trade**-Sharpe je Beobachtung
+(`report.trade_sharpe_per_obs`, Beobachtungen = Trade-Anzahl) statt der Bar-Sharpe — dieselbe
+Kennzahl, die das Sechs-Bedingungen-Tor (Bedingung 1) prüft. Unter 2 Trades ist keine Deflation
+bestimmbar (Rückgabe 0). Damit sind gemessene und deflationierte Größe **konsistent** —
+dieselbe Kennzahl wird bewertet und deflationiert. **Ehrlich (aus dem §9-Review):** ob die Zahl
+dadurch strenger oder lockerer wird als bei der Bar-Sharpe, ist datenabhängig, nicht generell
+strenger (im Teil-3-Lauf lag die Trade-Level-DSR sogar leicht über der Bar-Level-DSR). Der Gewinn
+ist die Konsistenz, nicht garantierte Strenge. **Hinweis:** die in `BERICHT_TEIL3.md` genannten
+Deflated-Sharpe-Werte (0,066 usw.) stammen aus dem Teil-3-Lauf mit der alten Bar-Level-Methode;
+das Urteil (≪ 0,95, kein Edge) ist von der Umstellung unberührt.
+
+## S9 — cost_stress skaliert keine Finanzierung/Swap (aus Paket-2-Review)
+
+`stressed_spec` multipliziert nur die **Transaktionskosten** (Spread/Slippage/Kommission), nicht
+die Finanzierung (Swap). Bewusst: Swap ist ein Zinssatz (kann als Carry Ertrag sein), kein
+Ausführungs-Friction, und uniform × Faktor zu skalieren wäre kein sinnvoller Stress. Für die
+aktuellen, **nicht** carry-tragenden Strategien (Intraday-MA/Mean-Reversion, meist flat über
+Nacht) ist das folgenlos. **Zu entscheiden, sobald eine über Nacht getragene / carry-abhängige
+Strategie in den Test soll:** ein eigenes Finanzierungs-Stressszenario (z. B. Swap-Satz-Aufschlag
+oder adverse Roll), getrennt vom Transaktionskosten-Multiplikator.

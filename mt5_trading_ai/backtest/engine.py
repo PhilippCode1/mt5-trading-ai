@@ -24,7 +24,7 @@ import math
 import random
 import statistics
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from enum import IntEnum
@@ -39,7 +39,7 @@ from mt5_trading_ai.costs.model import (
 from mt5_trading_ai.data.loader import MIN_CHECKSUM_PREFIX, bars_checksum
 from mt5_trading_ai.data.quality import BarRow
 from mt5_trading_ai.gates import trials
-from mt5_trading_ai.gates.criteria import deflated_sharpe_ratio
+from mt5_trading_ai.gates.criteria import BacktestEvidence, deflated_sharpe_ratio
 from mt5_trading_ai.venue.protocol import FeeSchedule, OrderSide
 
 BACKTEST_ENGINE_VERSION = "backtest-engine-v1"
@@ -174,6 +174,7 @@ class BacktestReport:
     net_return: float
     annualised_sharpe: float       # Bar-Level (obs = Bars); fuer Daueranlagen ueblich
     trade_sharpe: float    # Trade-Level (obs=Trades); ehrlich bei seltenem Handel
+    trade_sharpe_per_obs: float    # nicht annualisiert (je Trade) -- Deflations-Input
     annualisation: str
     max_drawdown: float
     hit_rate: float
@@ -381,6 +382,7 @@ def run_backtest(
         net_return=net_return,
         annualised_sharpe=annualised,
         trade_sharpe=trade_sharpe,
+        trade_sharpe_per_obs=trade_per_obs,
         annualisation=f"Bar: sqrt({spec.obs_per_year:.0f}); Trade: sqrt(Trades/Jahr)",
         max_drawdown=_drawdown(equity),
         hit_rate=(len(wins) / len(nets)) if nets else 0.0,
@@ -420,7 +422,7 @@ def _bar_ranges(bars: Sequence[BarRow]) -> list[Range]:
 
 def run_walk_forward(
     bars: Sequence[BarRow],
-    strategy_factory: Callable[[], Strategy],
+    strategy_fitter: Callable[[Sequence[BarRow]], Strategy],
     spec: MarketSpec,
     k: int,
     *,
@@ -435,12 +437,19 @@ def run_walk_forward(
 ) -> WalkForwardResult:
     """Fahre die Strategie ueber ``k`` Walk-Forward-Test-Fenster (``splits.py``).
 
-    Purge und Embargo sind pflichtig (kein stiller Default). **Ehrliche Grenze:** ohne
-    einen Trainings-/Fit-Schritt je Fenster gaten Purge/Embargo hier noch NICHTS -- sie
-    schliessen nur Trainingsindizes aus, die eine zustandslose Strategie nicht hat.
-    Pflichtig fuer den spaeteren Fit-Schritt (S7 in SPAETER.md). Je Fenster ein frischer
-    Strategie-Bau, damit ein zustandsbehafteter Generator nicht ueber Fenster leckt.
-    ``positive_folds`` geht in die Kriterien: ein Ein-Fenster-Edge ist keiner.
+    **Fit-Schritt je Fenster (S7):** ``strategy_fitter`` bekommt die **Trainings**-Bars
+    (chronologisch vor dem Test, ohne das testnahe Purge-Band) und liefert die auf ihnen
+    bestimmte Strategie, die dann auf ``test_idx`` getestet wird. Dadurch wird der
+    **Purge** wirksam: er entfernt die testnahen Trainings-Bars (linke Bandkante), die
+    Strategie sieht sie nicht. Das **Embargo** (rechte Bandkante, hinter dem Testblock)
+    trifft im strikten Walk-Forward per Konstruktion keinen Trainings-Bar -- Training
+    ist nur Vergangenheit (``j < test_lo``) -- und gatet erst in
+    ``purged_kfold_embargo_indices``, wo Post-Test-Bars ins Training kaemen. Leckage
+    ueber die Fenstergrenze ist so ausgeschlossen (Vergangenheits-Konstruktion + Purge),
+    NICHT durch das Embargo. Eine Fixparameter-Strategie ignoriert die Trainings-Bars
+    (Fit = No-op, korrekt fuer den nicht-optimierten Edge-Test). Je Fenster ein frischer
+    Bau, damit ein zustandsbehafteter Generator nicht ueber Fenster leckt.
+    ``positive_folds`` geht in die Kriterien.
     """
     # Erwartung gilt fuer das GANZE Fenster; die Folds sind Sub-Slices und leiten ihre
     # eigene Pruefsumme ab (kein Praefix-Match des vollen Datensatzes je Fold).
@@ -453,16 +462,25 @@ def run_walk_forward(
             raise DataProvenanceError(
                 f"Erwartete Pruefsumme {data_checksum!r} deckt das WF-Fenster nicht"
             )
+    # exclude_prior_test=False -> expandierendes Trainingsfenster (Bars vor dem Test
+    # minus dem testnahen Purge-Band; das Embargo hinter dem Test trifft hier nichts).
+    # Der Default True wuerde bei Walk-Forward JEDES fruehere Bar als "frueheren Test"
+    # ausschliessen und das Training leer lassen -- dann waere der Fit-Schritt (S7)
+    # wirkungslos.
     folds = purged_walk_forward_indices(
-        _bar_ranges(bars), k, purge_ms=purge_ms, embargo_ms=embargo_ms
+        _bar_ranges(bars), k, purge_ms=purge_ms, embargo_ms=embargo_ms,
+        exclude_prior_test=False,
     )
     reports: list[BacktestReport] = []
-    for fold_index, (_train_idx, test_idx) in enumerate(folds):
+    for fold_index, (train_idx, test_idx) in enumerate(folds):
         if len(test_idx) < 3:
             continue
+        # S7: Strategie auf den Trainings-Bars (ohne Purge/Embargo-Band) bestimmen,
+        # dann auf dem Test-Fenster testen -- so gaten Purge/Embargo wirklich.
+        train_bars = [bars[j] for j in train_idx]
         window = [bars[j] for j in test_idx]
         report = run_backtest(
-            window, strategy_factory(), spec,
+            window, strategy_fitter(train_bars), spec,
             strategy_id=f"{strategy_id}#fold{fold_index}", seed=seed + fold_index,
             data_checksum="", code_commit=code_commit,
         )
@@ -516,10 +534,71 @@ def deflated_sharpe_for_report(
         )
     else:
         raise ValueError("count_scope muss 'strategy' oder 'total' sein")
-    observations = max(2, report.bars - 1)
-    per_obs = report.annualised_sharpe / math.sqrt(report.obs_per_year)
+    # S8: gegen die TRADE-Level-Sharpe deflationieren -- dieselbe Kennzahl, die das Tor
+    # (Bedingung 1) prueft, statt der Bar-Sharpe. Das macht Gemessenes und
+    # Deflationiertes KONSISTENT; ob die Zahl dadurch strenger oder lockerer wird, ist
+    # datenabhaengig (nicht generell strenger). Unter 2 Trades keine Deflation -> 0.
+    if report.trades < 2:
+        return 0.0
     return deflated_sharpe_ratio(
-        observed_sharpe=per_obs, observations=observations, trials=n_trials
+        observed_sharpe=report.trade_sharpe_per_obs,
+        observations=report.trades,
+        trials=n_trials,
+    )
+
+
+def stressed_spec(spec: MarketSpec, multiplier: float) -> MarketSpec:
+    """Kopie der Spec mit erhoehter **Transaktionskosten**-Annahme (x mult).
+
+    Skaliert die Broker-Reibung, die sich in schlechten Marktphasen weitet: Spread,
+    Slippage und Kommission. Die **Finanzierung** (Swap) ist bewusst NICHT skaliert --
+    sie ist ein Zinssatz, kein Ausfuehrungs-Friction, und kann als Carry sogar negativ
+    (Ertrag) sein; sie uniform zu skalieren waere kein sinnvoller Stress. Fuer das
+    cost_stress-
+    Kriterium (§9.3): haelt die Strategie ihren Ertrag auch bei konservativerer
+    Kostenschaetzung? Der Multiplikator ist ``Preregistration.cost_stress_multiplier``.
+    """
+    factor = Decimal(str(multiplier))
+    stressed_fees = replace(
+        spec.fees,
+        commission_per_lot_round_turn=spec.fees.commission_per_lot_round_turn * factor,
+    )
+    return replace(
+        spec,
+        spread_pips=spec.spread_pips * factor,
+        slippage_pips_per_side=spec.slippage_pips_per_side * factor,
+        fees=stressed_fees,
+    )
+
+
+def criteria_evidence(
+    oos_report: BacktestReport,
+    *,
+    positive_folds: int,
+    deflated_sharpe: float,
+    trial_count: int,
+    net_expectancy_at_stressed_cost: float | None = None,
+    random_percentile: float | None = None,
+    positive_instruments: int | None = None,
+) -> BacktestEvidence:
+    """Fuelle die ``BacktestEvidence`` fuer ``gates/criteria.py`` aus einem realen Lauf.
+
+    Bindet die vollere 10-Kriterien-Auswertung an die Backtest-Ausgabe -- neben dem
+    Sechs-Bedingungen-Edge-Tor als Zusatz-Report. ``net_expectancy`` ist der carry-freie
+    Ertrag ueber der Kostenhuerde; ``annualised_sharpe`` die Trade-Sharpe (dieselbe
+    Kennzahl, die das Tor prueft, S8).
+    """
+    return BacktestEvidence(
+        net_expectancy=oos_report.net_over_hurdle,
+        annualised_sharpe=oos_report.trade_sharpe,
+        deflated_sharpe=deflated_sharpe,
+        positive_folds=positive_folds,
+        positive_instruments=positive_instruments,
+        random_percentile=random_percentile,
+        max_drawdown=oos_report.max_drawdown,
+        trades=oos_report.trades,
+        net_expectancy_at_stressed_cost=net_expectancy_at_stressed_cost,
+        trial_count=trial_count,
     )
 
 

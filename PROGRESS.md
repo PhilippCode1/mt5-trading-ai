@@ -1316,3 +1316,69 @@ außer dem bewusst nach Paket 7 verschobenen Engine-API-Gate.
 
 **Zeilenstand (gemessen):** 5.930 Zeilen, 27 Module, 312 Testfunktionen, 366 Testfälle grün. SPAETER
 **S6 (Kalender-Teil)** als erledigt markiert.
+
+---
+
+## ERLEDIGT — Abnahme-Paket 2 (Backtest-Integrität scharf stellen: Leckage, Kriterien, Deflation)
+
+Zweites Paket des `ABNAHME_PLAN.md`. Kernbefund der Bewertung war: der Walk-Forward hatte
+**keinen Fit-Schritt** (Purge/Embargo waren dekorativ, weil dieselbe Fixstrategie über alle
+Fenster lief), die Deflated Sharpe wurde gegen die **Bar**-Sharpe gerechnet (nicht die Kennzahl,
+die das Tor prüft), und die vollere 10-Kriterien-Auswertung (`evaluate_criteria`, inkl.
+`cost_stress`) war nicht an einen echten Lauf gebunden.
+
+**Was gebaut wurde:**
+- **S7 — echter Fit-Schritt** (`run_walk_forward`): nimmt jetzt einen `strategy_fitter:
+  Callable[[Sequence[BarRow]], Strategy]`, der die **Trainings-Bars** (expandierendes Fenster,
+  `exclude_prior_test=False`) bekommt und die darauf bestimmte Strategie auf `test_idx` testet.
+  Damit greift der **Purge** faktisch — gemessen als Schrumpfung des Trainingsfensters.
+- **S8 — Deflation auf Trade-Level** (`deflated_sharpe_for_report`): deflationiert
+  `report.trade_sharpe_per_obs` (Beobachtungen = Trade-Anzahl) statt der Bar-Sharpe — dieselbe
+  Kennzahl, die Bedingung 1 des Tores prüft. Unter 2 Trades keine Deflation (0). Neues Feld
+  `trade_sharpe_per_obs` in `BacktestReport`.
+- **Volle Kriterien verdrahtet** (`criteria_evidence`, `stressed_spec`): die
+  `evaluate_criteria`-Auswertung ist über `criteria_evidence(...)` an den OoS-Lauf gebunden;
+  `stressed_spec(spec, mult)` skaliert die Transaktionskosten für das `cost_stress`-Kriterium.
+  Beide Treiber (`edge_test`, `multi_instrument_edge`) drucken den Zusatz-Report.
+- **Edge-Urteil stabil:** KEIN EDGE, cost_stress bei 1,5× Kosten −2,66 % net_over_hurdle
+  (unverändert zur Bewertung; die Verdrahtung bricht nichts).
+
+**§9-Review (vier Blickwinkel: Angreifer/Statistiker/Betreiber/Buchhalter) fand vor der Abnahme
+einen bestätigten Blocker — behoben:**
+- **MITTEL/Blocker — Embargo-Fassade:** Docstring und der gemeinsame Abnahme-Test behaupteten
+  „Purge UND Embargo wirksam". Reproduziert: im strikten Walk-Forward ist das **Embargo ein
+  No-op** (die rechte Bandkante hinter dem Testblock trifft keinen Trainings-Bar, weil Training
+  nur Vergangenheit ist). Kein Look-Ahead-Leck, aber genau das falsche Grün, das dieses Paket
+  eliminieren soll. **Fix:** Docstring/Kommentar ehrlich („Leckfreiheit aus
+  Vergangenheits-Konstruktion + Purge, NICHT aus dem Embargo"); der Test aufgeteilt statt
+  maskiert — `test_purge_shrinks_the_training_window` (Purge schrumpft) +
+  `test_embargo_alone_does_not_change_the_training_window` (Embargo unverändert, als No-op
+  belegt).
+- **Nicht-Blocker präzisiert (nicht als Fix ausgegeben):** (i) S8 „Bar-Sharpe überzeichnet die
+  Deflation" ist datenabhängig, nicht monoton (im Teil-3-Lauf lag Trade-Level-DSR sogar leicht
+  über Bar-Level) → Kommentar/SPAETER sagen jetzt „Gewinn ist Konsistenz, nicht garantierte
+  Strenge"; (ii) `stressed_spec` stresst keine Finanzierung/Swap → Docstring begründet das (Swap
+  ist Zinssatz/Carry, kein Ausführungs-Friction), neuer SPAETER-Eintrag **S9** für ein eigenes
+  Finanzierungs-Stressszenario, sobald eine carry-abhängige Strategie in den Test soll.
+
+**Negativ gefahren / nachgewiesen:** `test_purge_shrinks_the_training_window` (Purge schrumpft
+das Fenster messbar), `test_embargo_alone_does_not_change_the_training_window` (Embargo lässt es
+exakt gleich — der No-op ist belegt, nicht behauptet), `test_walk_forward_fit_uses_training_window`
+(der Fitter sieht nur Vergangenheit), Cost-Stress-Tests (`test_stressed_spec_raises_costs`,
+`test_cost_stress_criterion_is_evaluable_from_a_run`), Deflation reproduziert (DSR 0,1303 bei 123
+Trades / 6 Versuchen).
+
+**Entscheidungen, die ich selbst getroffen habe:** `exclude_prior_test=False` (expandierendes
+Trainingsfenster — im Walk-Forward IST jeder frühere Bar ein „prior test"; der Default hätte
+alle Trainings-Bars entfernt); das Embargo ehrlich als No-op ausweisen statt einen grünen
+Sammeltest stehen zu lassen; den Swap bewusst NICHT mitstressen (kein sinnvoller Uniform-Stress
+für einen Zinssatz).
+
+**Auffälligkeiten, gemeldet, nicht angefasst (ehrlich):** das Embargo bleibt strukturell
+folgenlos, solange der Walk-Forward strikt (nur Vergangenheit) fittet — es gatet erst in
+`purged_kfold_embargo_indices` (K-Fold mit Zukunfts-Bars im Training); das ist korrekt so und in
+SPAETER **S7** dokumentiert. Der cost_stress skaliert nur Transaktionskosten (SPAETER **S9**).
+
+**Zeilenstand (gemessen, 2026-08-13):** 6.009 Zeilen, 27 Module, 319 Testfunktionen, 373 Testfälle
+grün; `ruff` und `mypy --strict` sauber. SPAETER **S7** und **S8** als erledigt markiert, **S9**
+neu eröffnet.

@@ -28,6 +28,8 @@ Backtest-Maschine: fuehrt Splits, Daten und Kostenmodell zusammen.
 - `class WalkForwardResult`
 - `def run_walk_forward`
 - `def deflated_sharpe_for_report`
+- `def stressed_spec`
+- `def criteria_evidence`
 - `def run_registered_backtest`
 
 ## `mt5_trading_ai/backtest/llm_compare.py`

@@ -19,14 +19,17 @@ from mt5_trading_ai.backtest.engine import (
     MarketSpec,
     MarketView,
     Signal,
+    criteria_evidence,
     deflated_sharpe_for_report,
     random_signal_strategy,
     run_backtest,
     run_registered_backtest,
     run_walk_forward,
+    stressed_spec,
 )
 from mt5_trading_ai.data.loader import bars_checksum
 from mt5_trading_ai.data.quality import BarRow
+from mt5_trading_ai.gates.criteria import Preregistration, evaluate_criteria
 from mt5_trading_ai.gates.trials import append, new_trial, total_trials
 from mt5_trading_ai.venue.protocol import FeeSchedule
 
@@ -207,7 +210,7 @@ def test_registered_run_counts_every_run(tmp_path: object) -> None:
 def test_walk_forward_uses_splits_and_counts_folds() -> None:
     bars = _bars(300)
     res = run_walk_forward(
-        bars, lambda: random_signal_strategy(1), _spec(), 5,
+        bars, lambda _train: random_signal_strategy(1), _spec(), 5,
         purge_ms=0, embargo_ms=0, strategy_id="wf", seed=0,
         data_checksum="", code_commit="h",
     )
@@ -265,13 +268,98 @@ def test_deflated_sharpe_binds_true_trial_count(tmp_path: object) -> None:
     assert 0.0 <= many <= few <= 1.0  # mehr Versuche -> strengere (kleinere) DSR
 
 
+def test_deflated_sharpe_count_scope_total_counts_all_strategies(
+    tmp_path: object,
+) -> None:
+    ledger = str(tmp_path / "TRIALS.jsonl")  # type: ignore[operator]
+    report = _run(random_signal_strategy(3))
+
+    def _add(strategy_id: str) -> None:
+        append(new_trial(
+            strategy_id=strategy_id, version="v", instruments=("EURUSD",),
+            period_start=datetime(2022, 1, 1, tzinfo=UTC),
+            period_end=datetime(2022, 1, 2, tzinfo=UTC),
+            leverage=5, parameters={}, outcome="completed",
+        ), ledger)
+
+    for _ in range(3):
+        _add("a")
+    for _ in range(5):
+        _add("b")   # andere Strategie im selben Register
+    per_strategy = deflated_sharpe_for_report(
+        report, strategy_id="a", ledger_path=ledger, count_scope="strategy"
+    )
+    campaign = deflated_sharpe_for_report(
+        report, strategy_id="a", ledger_path=ledger, count_scope="total"
+    )
+    # "total" zaehlt 8 Versuche (3+5), "strategy" nur 3 -> strengere (kleinere) DSR.
+    assert campaign <= per_strategy
+
+
+def test_deflated_sharpe_invalid_count_scope_raises() -> None:
+    report = _run(random_signal_strategy(3))
+    with pytest.raises(ValueError):
+        deflated_sharpe_for_report(report, strategy_id="s", count_scope="bogus")
+
+
 def test_walk_forward_with_nonzero_purge_still_runs() -> None:
     res = run_walk_forward(
-        _bars(300), lambda: random_signal_strategy(1), _spec(), 5,
+        _bars(300), lambda _train: random_signal_strategy(1), _spec(), 5,
         purge_ms=86_400_000, embargo_ms=86_400_000, strategy_id="wf", seed=0,
         data_checksum="", code_commit="h",
     )
     assert res.total_folds >= 3
+
+
+# --- S7: Fit-Schritt macht Purge/Embargo wirksam --------------------------
+
+
+def test_walk_forward_fit_uses_training_window() -> None:
+    # Fitter, der nur MIT Trainingsdaten handelt. Fold 0 hat kein Training (kein j<0),
+    # spaetere Folds schon -> das Trainingsfenster bestimmt das Fold-Ergebnis.
+    def fitter(train_bars: object) -> object:
+        if not train_bars:                        # type: ignore[arg-type]
+            return lambda v: Signal.FLAT          # ohne Training: kein Handel
+        return lambda v: Signal.LONG              # mit Training: handeln
+
+    res = run_walk_forward(
+        _bars(300), fitter, _spec(), 5,  # type: ignore[arg-type]
+        purge_ms=0, embargo_ms=0, strategy_id="fit", seed=0,
+        data_checksum="", code_commit="h",
+    )
+    trades = [r.trades for r in res.folds]
+    assert trades[0] == 0                          # kein Training -> kein Handel
+    assert any(t > 0 for t in trades[1:])          # mit Training -> Handel
+
+
+def _train_sizes(purge_ms: int, embargo_ms: int) -> int:
+    """Summe der Trainings-Fenstergroessen ueber alle Folds bei gegebenem Band."""
+    seen: list[int] = []
+
+    def fitter(train_bars: object) -> object:
+        seen.append(len(train_bars))              # type: ignore[arg-type]
+        return lambda v: Signal.FLAT
+
+    run_walk_forward(
+        _bars(300), fitter, _spec(), 5,  # type: ignore[arg-type]
+        purge_ms=purge_ms, embargo_ms=embargo_ms, strategy_id="p", seed=0,
+        data_checksum="", code_commit="h",
+    )
+    return sum(seen)
+
+
+def test_purge_shrinks_the_training_window() -> None:
+    # Der PURGE (linke Bandkante) entfernt die testnahen Trainings-Bars -> kleiner.
+    base = _train_sizes(0, 0)
+    assert _train_sizes(5 * 86_400_000, 0) < base
+
+
+def test_embargo_alone_does_not_change_the_training_window() -> None:
+    # Ehrlich: das EMBARGO (rechte Bandkante, hinter dem Test) trifft im strikten
+    # Walk-Forward keinen Trainings-Bar (Training ist nur Vergangenheit) -> No-op.
+    # Die Leckfreiheit folgt aus Vergangenheits-Konstruktion + Purge, nicht aus Embargo.
+    base = _train_sizes(0, 0)
+    assert _train_sizes(0, 5 * 86_400_000) == base
 
 
 # --- Provenienz: Pruefsumme aus den tatsaechlichen Bars (Paket 1) ---------
@@ -302,3 +390,31 @@ def test_short_expected_checksum_is_rejected() -> None:
     with pytest.raises(DataProvenanceError):
         run_backtest(bars, lambda v: Signal.FLAT, _spec(), strategy_id="p",
                      seed=0, data_checksum="deadbeef", code_commit="h")   # 8 < 16
+
+
+# --- Stress-Kosten + volle Kriterien (Paket 2) ----------------------------
+
+
+def test_stressed_spec_raises_costs() -> None:
+    bars = _bars(300)
+    strat = lambda v: Signal.LONG if v.index % 2 == 0 else Signal.SHORT  # noqa: E731
+    base = run_backtest(bars, strat, _spec(), strategy_id="b", seed=0,
+                        data_checksum="", code_commit="h")
+    stressed = run_backtest(bars, strat, stressed_spec(_spec(), 1.5), strategy_id="s",
+                            seed=0, data_checksum="", code_commit="h")
+    friction = lambda r: r.cost_spread + r.cost_commission + r.cost_slippage  # noqa: E731
+    assert friction(stressed) > friction(base)      # hoehere Kostenannahme
+    assert stressed.net_return < base.net_return     # frisst Ertrag
+
+
+def test_cost_stress_criterion_is_evaluable_from_a_run() -> None:
+    # Kern von Paket 2: cost_stress liefert erfuellt/nicht-erfuellt statt not_evaluable.
+    report = _run(lambda v: Signal.LONG)
+    evidence = criteria_evidence(
+        report, positive_folds=5, deflated_sharpe=0.5, trial_count=1,
+        net_expectancy_at_stressed_cost=-0.1,   # unter 0 -> nicht erfuellt, aber BEWERTBAR
+    )
+    verdict = evaluate_criteria(evidence, Preregistration())
+    cost = next(r for r in verdict.results if r.name == "cost_stress")
+    assert cost.reason != "not_evaluable"   # jetzt bewertbar
+    assert cost.met is False                # -0,1 < 0

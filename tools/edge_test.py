@@ -29,11 +29,13 @@ from mt5_trading_ai.backtest.engine import (  # noqa: E402
     MarketView,
     Signal,
     Strategy,
+    criteria_evidence,
     deflated_sharpe_for_report,
     random_signal_strategy,
     run_backtest,
     run_registered_backtest,
     run_walk_forward,
+    stressed_spec,
 )
 from mt5_trading_ai.backtest.strategies import (  # noqa: E402
     mean_reversion_zscore,
@@ -43,6 +45,12 @@ from mt5_trading_ai.backtest.strategies import (  # noqa: E402
 from mt5_trading_ai.costs.halal import HalalFinancingPolicy  # noqa: E402
 from mt5_trading_ai.costs.model import load_cost_fees  # noqa: E402
 from mt5_trading_ai.data.loader import FxSession, load_verified_csv  # noqa: E402
+from mt5_trading_ai.gates.criteria import (  # noqa: E402
+    Preregistration,
+    evaluate_criteria,
+    percentile_against_random,
+)
+from mt5_trading_ai.gates.trials import total_trials  # noqa: E402
 
 VERSION = "v1"
 OOS_FRACTION = 0.30    # letzter Teil = Out-of-Sample, je Strategie einmal angefasst
@@ -140,7 +148,7 @@ def main() -> int:
     # Walk-Forward NUR auf dem In-Sample-Teil -- der OoS-Block bleibt bis zum Abschluss
     # unberuehrt; die Fenster registrieren (Deflation kennt die wahre Versuchszahl).
     wf = run_walk_forward(
-        in_sample, factory, spec, 5,
+        in_sample, lambda _train: factory(), spec, 5,   # Fixparameter -> Fit ist No-op
         purge_ms=3_600_000, embargo_ms=3_600_000, strategy_id=strategy_id, seed=100,
         version=VERSION, data_checksum="", code_commit=args.code_commit,
         ledger_path=ledger,
@@ -211,6 +219,29 @@ def main() -> int:
         print(f"  [{mark}] {check.name}: {check.observed} (verlangt {check.required})")
     print(f"\nERGEBNIS: {'EDGE BELEGT' if verdict.passed else 'KEIN EDGE'} "
           f"(nicht erfuellt: {', '.join(verdict.unmet) or 'keine'})")
+
+    # --- Zusatz: die vollere 10-Kriterien-Auswertung (§9.3) mit Stress-Kosten ---
+    prereg = Preregistration()
+    stressed = run_backtest(
+        oos, factory(), stressed_spec(spec, prereg.cost_stress_multiplier),
+        strategy_id="stress", seed=0, data_checksum="", code_commit="",
+    )
+    evidence = criteria_evidence(
+        oos_report, positive_folds=wf.positive_folds, deflated_sharpe=dsr,
+        trial_count=total_trials(path=ledger),
+        net_expectancy_at_stressed_cost=stressed.net_over_hurdle,
+        random_percentile=percentile_against_random(oos_report.net_return, rnd),
+    )
+    crit = evaluate_criteria(evidence, prereg)
+    print("\n=== VOLLE KRITERIEN (Zusatz, §9.3) ===")
+    for r in crit.results:
+        mark = ("ERFUELLT" if r.met else
+                "NICHT BEWERTBAR" if r.reason == "not_evaluable" else "NICHT ERFUELLT")
+        print(f"  [{mark}] {r.name}: {r.observed}")
+    print(
+        f"cost_stress bei {prereg.cost_stress_multiplier}x Kosten: "
+        f"net_over_hurdle {stressed.net_over_hurdle * 100:.2f} %"
+    )
     return 0
 
 
