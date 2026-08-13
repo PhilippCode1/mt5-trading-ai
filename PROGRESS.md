@@ -1107,3 +1107,51 @@ auf einem swapfreien Konto nicht vorhanden; das unterstreicht S4. **S8** neu. S1
 **Zeilenstand (gemessen):** `strategies.py`/`engine.py`/`edge_test.py`/`test_edge.py` erweitert.
 Ergebnis der Kampagne: **KEIN EDGE** auf EURUSD nach zwei ehrlichen Versuchen. E5 erneut an
 Philipp (§10 des Berichts).
+
+## ERLEDIGT — Paket 4c (Teil 3): Dritter Edge-Versuch — Volatilitäts-Ausbruch, FRISCHES OoS
+
+**E5-Entscheid nach dem zweiten Nein:** wieder **weiterbauen** — aber diesmal mit einem
+**frisch abgetrennten** OoS-Block, weil der bisherige (letzte 30 % von 2022–2024) durch zwei
+Strategien belastet ist (Selektionsbias). Dazu echte EURUSD-H1-Daten **2025-01 bis 2026-07**
+neu von Dukascopy geladen (9.850 Handels-Stundenbars, Prüfsumme `08a6e4c9…`) — unberührtes
+Out-of-Sample, das keine der ersten zwei Strategien je gesehen hat.
+
+**Was gebaut wurde:**
+- `strategies.py` → `volatility_breakout(lookback)`: Donchian-Kanal-Ausbruch (LONG bei neuem
+  Hoch, SHORT bei neuem Tief, sonst halten), zustandsbehaftet, **nicht** optimiert. Dritte,
+  von Trend-MA und Reversion verschiedene Hypothese.
+- `edge_test.py` → `--strategy breakout` + `--oos-csv` (frischer Held-out-Block aus eigener
+  Datei; In-Sample = ganzes `--csv`, OoS = neue Periode, einmal angefasst).
+- `tests/test_edge.py` → fünf Breakout-Tests (FLAT vor Historie, LONG/SHORT bei Ausbruch,
+  Halten zwischen Ausbrüchen, Parametervalidierung).
+
+**Gemessen (Walk-Forward In-Sample 2022–2024, Abschlusstest frisches OoS 2025–26, N=18):**
+101 Trades, Netto **−56,42 %**, Trade-Sharpe **−1,005**, Bar-Sharpe −0,882, MaxDD 65,1 %,
+`net_over_hurdle` −59,1 %, Deflated Sharpe **0,0015**. Walk-Forward-Fenster **alle fünf negativ**
+→ 0 positiv am Stück. **Fünf von sechs nicht erfüllt → KEIN EDGE** (der klarste der drei).
+
+**§9 proportional (Verlust = kein Fake-Edge-Risiko; Motor in 4b von 22 Agenten geprüft):**
+- **Verlust ist echt, kein Artefakt:** Brutto schon −35,9 % (vor Kosten), Netto −56,4 %.
+- **Reproduzierbar bitgleich;** Trade von Hand: net −1.064,48 = gross −1.030,00 − Kosten 34,48.
+- **Frische Daten strukturell sauber:** 0 Duplikate, 0 nicht-monotone, 0 ungültige OHLC. Das
+  Qualitätstor meldet formal `passed=False` nur wegen `expected_bar_count_unknown` (fehlender
+  Session-/Feiertagskalender, **S6**) — kein Integritätsdefekt, ehrlich benannt.
+- **Kohärenter Quer-Check:** Breakout (Trendfortsetzung) verliert hart, Mittelwertrückkehr
+  (Fade) war knapp positiv — beide zeigen dieselbe Richtung (EURUSD H1 kehrt zurück, bricht
+  nicht aus). Die drei Versuche ergeben ein widerspruchsfreies Bild.
+
+**Entscheidungen, die ich selbst getroffen habe:** Donchian-Ausbruch als dritte, distinkte
+Hypothese; frisches OoS aus echten 2025–26-Daten statt den belasteten Block wiederzuverwenden
+(heilt den Selektionsbias); proportionale §9 statt vollem Agentenschwarm, weil ein Verlust
+keinen Edge vortäuschen kann und der Motor bereits erschöpfend geprüft war.
+
+**Eigene Fehler / Grenzen:** das Qualitätstor kann den frischen Block ohne Session-Kalender
+nicht formal zertifizieren (**S6**) — benannt, nicht übergangen. Mit N=18 sinkt auch der
+Mittelwertrückkehr-DSR von 0,066 (N=12) auf 0,045 — jede weitere Hypothese verschärft die
+Schwelle rückwirkend; im Bericht offengelegt.
+
+**Auffälligkeiten, gemeldet, nicht angefasst:** Halal (**S4**), Session-Härtung (**S6**),
+Deflation auf Trade-Sharpe (**S8**) offen. S1/S2/S7 unverändert.
+
+**Ergebnis der Kampagne: KEIN EDGE auf EURUSD nach DREI ehrlichen Versuchen** (Trend −18,85 %,
+Ausbruch −56,4 %, Reversion +2,48 % aber statistisch null). E5 erneut an Philipp (§10).

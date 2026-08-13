@@ -38,6 +38,7 @@ from mt5_trading_ai.backtest.engine import (  # noqa: E402
 from mt5_trading_ai.backtest.strategies import (  # noqa: E402
     mean_reversion_zscore,
     moving_average_crossover,
+    volatility_breakout,
 )
 from mt5_trading_ai.costs.model import load_cost_fees  # noqa: E402
 from mt5_trading_ai.data.loader import from_csv  # noqa: E402
@@ -60,6 +61,12 @@ def _strategy(name: str) -> tuple[str, Callable[[], Strategy], str]:
             lambda: mean_reversion_zscore(48, 2.0, 0.5),  # 2 Tage, ein 2.0 / aus 0.5
             "z-Score(48, ein 2.0/aus 0.5), Mittelwertrueckkehr",
         )
+    if name == "breakout":
+        return (
+            "breakout_eurusd_h1",
+            lambda: volatility_breakout(48),  # Donchian, 2 Handelstage
+            "Donchian(48), Volatilitaets-Ausbruch",
+        )
     raise SystemExit(f"unbekannte Strategie: {name}")
 
 
@@ -70,8 +77,12 @@ def main() -> int:
     ap.add_argument("--csv", type=Path, required=True)
     ap.add_argument("--ledger", type=Path, required=True)
     ap.add_argument(
-        "--strategy", choices=["ma_crossover", "mean_reversion"],
+        "--strategy", choices=["ma_crossover", "mean_reversion", "breakout"],
         default="ma_crossover",
+    )
+    ap.add_argument(
+        "--oos-csv", type=Path, default=None,
+        help="frischer OoS-Block (eigene Datei); sonst letzte 30 % von --csv",
     )
     ap.add_argument("--data-checksum", default="")
     ap.add_argument("--code-commit", default="")
@@ -92,12 +103,23 @@ def main() -> int:
         f"| obs/Jahr ~ {obs_per_year:.0f} | {label}, nicht optimiert"
     )
 
-    split = int(len(bars) * (1.0 - OOS_FRACTION))
-    in_sample, oos = bars[:split], bars[split:]
-    print(
-        f"In-Sample {len(in_sample)} | OoS ({OOS_FRACTION:.0%}) {len(oos)} "
-        f"Bars ab {oos[0].ts.date()} -- genau einmal angefasst"
-    )
+    if args.oos_csv is not None:
+        # Frischer, unberuehrter OoS-Block aus eigener Datei: In-Sample = ganzes --csv,
+        # OoS = die neue Periode. Das ist der ehrliche Weg fuer einen dritten Versuch --
+        # der bisherige 30-%-Block ist durch zwei Strategien belastet.
+        in_sample = bars
+        oos = from_csv(args.oos_csv.read_text(encoding="utf-8"))
+        print(
+            f"In-Sample {len(in_sample)} (ganzes --csv) | FRISCHES OoS {len(oos)} Bars "
+            f"{oos[0].ts.date()}..{oos[-1].ts.date()} -- unberuehrt, einmal angefasst"
+        )
+    else:
+        split = int(len(bars) * (1.0 - OOS_FRACTION))
+        in_sample, oos = bars[:split], bars[split:]
+        print(
+            f"In-Sample {len(in_sample)} | OoS ({OOS_FRACTION:.0%}) {len(oos)} "
+            f"Bars ab {oos[0].ts.date()} -- je Strategie einmal angefasst"
+        )
     ledger = str(args.ledger)
 
     # Walk-Forward NUR auf dem In-Sample-Teil -- der OoS-Block bleibt bis zum Abschluss

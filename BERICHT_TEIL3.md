@@ -26,20 +26,24 @@ der CI grün:
 - **Paket 3 — Backtest-Maschine:** `backtest/engine.py` — Leckage-Schutz (`MarketView`),
   shift(1), jede Order durchs Kostenmodell, Walk-Forward mit Purge/Embargo, Versuchsregister,
   Deflated-Sharpe-Anbindung. Zufalls-Referenzlauf negativ (−45,7 %).
-- **Paket 4 — Edge-Test:** zwei einfachste ernsthafte Signallogiken (**nicht** optimiert) auf
-  **EURUSD-Stundenbars** (18.715 Bars, 2022–2024, Dukascopy; Prüfsumme `8cdebf05…`) gegen das
-  harte Sechs-Bedingungen-Tor: Trendfolge (MA-Kreuzung 24/120) und, nach Philipps E5-Entscheid
-  „weiterbauen", Mittelwertrückkehr (z-Score 48, ein 2,0 / aus 0,5).
+- **Paket 4 — Edge-Test:** drei einfachste ernsthafte Signallogiken (**nicht** optimiert) auf
+  **EURUSD-Stundenbars** gegen das harte Sechs-Bedingungen-Tor: Trendfolge (MA-Kreuzung 24/120),
+  Mittelwertrückkehr (z-Score 48) und Volatilitäts-Ausbruch (Donchian 48) — jeweils nach
+  Philipps E5-Entscheid „weiterbauen". In-Sample 2022–2024 (18.715 Bars, Prüfsumme `8cdebf05…`);
+  Versuch 3 auf frischem OoS 2025–26 (9.850 Bars, `08a6e4c9…`).
 
 ---
 
 ## 2. Die Antwort auf die Edge-Frage — zwei Hypothesen durch dasselbe Tor
 
-Getestet wurden **zwei** vorab festgeschriebene, nicht optimierte Hypothesen auf demselben
-Instrument (EURUSD H1). Nach dem ersten Nein legte ich E5 vor; Philipps Entscheidung war
-**weiterbauen mit einer anderen Hypothese**. Beide Läufe zählen ins selbe Register (12
-Versuche). Der Out-of-Sample-Block (letzte 30 %, ab 2024-02-07, 5.615 Stundenbars) wurde **je
-Strategie einmal** angefasst — insgesamt also zweimal; das ist ein Selektionsbias (§7).
+Getestet wurden **drei** vorab festgeschriebene, nicht optimierte Hypothesen auf demselben
+Instrument (EURUSD H1). Nach jedem Nein legte ich E5 vor; Philipps Entscheidung war jeweils
+**weiterbauen mit einer anderen Hypothese**. Alle Läufe zählen ins selbe Register (18 Versuche,
+je Strategie 6). Versuch 1 und 2 teilten sich einen Out-of-Sample-Block (letzte 30 % von
+2022–2024, ab 2024-02-07) — je Strategie einmal angefasst, insgesamt zweimal (Selektionsbias,
+§7). **Versuch 3 bekam einen frisch geladenen, unberührten OoS-Block: EURUSD H1 2025-01 bis
+2026-07 (9.850 Stundenbars, Prüfsumme `08a6e4c9…`)** — Daten, die keine der ersten zwei
+Strategien je gesehen hat.
 
 ### 2.1 Erster Versuch — Trendfolge (MA-Kreuzung 24/120)
 
@@ -107,11 +111,40 @@ habe ich es mit vier §9-Blickwinkeln und eigenen Gegenproben zerlegt:
 
 *¹ Erfüllt, aber im Zufallsbereich (P ≈ 25 %) — trägt keine Aussage.*
 
-**Fazit beider Versuche:** Trendfolge verliert deutlich; Mittelwertrückkehr liegt knapp über
-Kosten, ist aber statistisch nicht von null unterscheidbar und teils Zins statt Alpha. Die
-**Richtung** (Rückkehr schlägt Trend) passt zur Literatur über Intraday-FX — der Effekt ist
-aber zu klein und zu unsicher, um ausbeutbar zu sein. **Auf EURUSD existiert nach realistischen
-Kosten kein belegbarer Edge.**
+### 2.3 Dritter Versuch — Volatilitäts-Ausbruch (Donchian 48), **frisches** OoS 2025–26
+
+Um den Selektionsbias zu heilen, bekam der dritte Versuch einen **neu geladenen, nie berührten**
+OoS-Block (2025-01 bis 2026-07, 9.850 Stundenbars). Walk-Forward lief auf ganz 2022–2024,
+der Abschlusstest genau einmal auf 2025–26.
+
+| # | Bedingung (§7.2) | Verlangt | Gemessen | Erfüllt |
+|---|---|---|---|---|
+| 1 | OoS-Sharpe nach Kosten (Trade-Level, annualisiert) | ≥ 1,0 | **−1,005** | **Nein** |
+| 2 | Deflated Sharpe über der Schwelle (18 Versuche) | > 0,95 | **0,0015** | **Nein** |
+| 3 | Trades im Auswertungszeitraum | ≥ 2.000 | **101** | **Nein** |
+| 4 | ≥ 3 aufeinanderfolgende positive WF-Fenster (In-Sample) | ≥ 3 | **0** | **Nein** |
+| 5 | Ertrag deckt die Kostenhürde (`net_over_hurdle > 0`) | > 0 | **−59,1 %** | **Nein** |
+| 6 | Leckage-Test grün + Zufalls-Referenz negativ (beide gefahren) | beide | gefangen / **−400 %** | **Ja** |
+
+**Fünf von sechs nicht erfüllt — der klarste Verlust der drei.** Netto **−56,4 %**, Trade-Sharpe
+−1,005; die fünf In-Sample-Fenster sind **allesamt negativ**. Der Verlust steckt schon im Brutto
+(−35,9 % vor Kosten), ist also kein Kostenartefakt. Proportionale Gegenprobe (ein Verlust kann
+keinen Edge vortäuschen, der Motor wurde in Versuch 2 von 22 Agenten geprüft): reproduzierbar
+bitgleich, Kosten korrekt (Trade von Hand: net −1.064,48 = gross −1.030,00 − Kosten 34,48), und
+die frischen Daten sind strukturell sauber (0 Duplikate, 0 nicht-monotone, 0 ungültige OHLC).
+Das Qualitätstor meldet formal `passed=False`, aber nur wegen `expected_bar_count_unknown`
+(fehlender Session-/Feiertagskalender, **S6**) — kein Integritätsdefekt.
+
+**Wichtiger Quer-Check:** Breakout (Trendfortsetzung) verliert hart, während Mittelwertrückkehr
+(Fade) knapp positiv war. Beide zeigen **dieselbe Richtung** — EURUSD H1 kehrt eher zum Mittel
+zurück, als dass es ausbricht. Die drei Versuche widersprechen sich nicht, sie ergeben ein
+kohärentes Bild.
+
+**Fazit aller drei Versuche:** Trendfolge verliert (−18,85 %), Ausbruch verliert deutlich
+(−56,4 %), Mittelwertrückkehr liegt knapp über Kosten (+2,48 % carry-frei), ist aber statistisch
+nicht von null unterscheidbar und teils Zins statt Alpha. Die **Richtung** (Rückkehr schlägt
+Trend) passt zur Literatur über Intraday-FX — der Effekt ist zu klein und zu unsicher, um
+ausbeutbar zu sein. **Auf EURUSD existiert nach realistischen Kosten kein belegbarer Edge.**
 
 **Damit greift das harte Abbruchkriterium (§7.3):** kein weiterer Ausbau, kein Ensemble, kein
 Schwarm, keine LLM-Anbindung, kein Demo-Betrieb ohne bestandenen Test. Der Auftrag endet mit
@@ -123,7 +156,7 @@ diesem Bericht (Tor E5, §10).
 
 | # | Dimension | Gew. | Ist | Ziel | Erreicht | Begründung |
 |---|---|---:|---:|---:|---:|---|
-| 1 | Alpha-Substanz | 22 % | 0 | 7 | **1** | **zwei** Edge-Tests gefahren, **kein Edge** belegt |
+| 1 | Alpha-Substanz | 22 % | 0 | 7 | **1** | **drei** Edge-Tests gefahren (inkl. frischem OoS), **kein Edge** belegt |
 | 2 | Validierungsdisziplin | 12 % | 7 | 10 | 8 | Vorregistrierung, OoS-Block, negativ gefahren, kampagnenweite Deflation (N = 12); Selektionsbias offengelegt (§7) |
 | 3 | Risikoinfrastruktur | 10 % | 8 | 10 | 8 | A0.2-Tabelle da, vier Module aber unverdrahtet (S1) |
 | 4 | Datenfundament | 12 % | 1 | 9 | 8 | Externe Quelle, Qualitätstor, Prüfsumme; Session-Härtung offen (S6) |
@@ -145,15 +178,16 @@ was durch ihn hindurch Geld verdient.
 
 ## 4. Wahre Versuchszahl und deflationierte Schwelle
 
-**Registrierte Versuche der Kampagne: 12** — je Strategie 5 Walk-Forward-Fenster + 1
-OoS-Abschlusslauf, für beide Hypothesen (6 + 6). Jeder Lauf zählt (§6), auch die verlierende
-Trendfolge. Die Deflation des positiven Mittelwertrückkehr-Ergebnisses läuft gegen diese
-**kampagnenweite** Zahl (`count_scope="total"`), nicht gegen die 6 der einen Strategie — das ist
-die ehrliche Multiple-Testing-Zahl, wenn zwei Hypothesen gegen denselben OoS-Block selektiert
-werden. Wirkung, gemessen: der Deflated Sharpe der Mittelwertrückkehr fällt von **0,127** (bei
-N = 6) auf **0,066** (bei N = 12) — die kampagnenweite Zählung halbiert ihn nahezu. Beide Werte
-liegen weit unter der Schwelle 0,95. Zur Einordnung: bei 100 Versuchen läge die allein durch
-Zufall erwartete Maximal-Sharpe grob bei 2,5 Standardeinheiten, bei 1.000 bei ≈ 3,3.
+**Registrierte Versuche der Kampagne: 18** — je Strategie 5 Walk-Forward-Fenster + 1
+OoS-Abschlusslauf, für drei Hypothesen (6 + 6 + 6). Jeder Lauf zählt (§6), auch die beiden
+verlierenden. Die Deflation läuft gegen diese **kampagnenweite** Zahl (`count_scope="total"`),
+nicht gegen die 6 der einzelnen Strategie — das ist die ehrliche Multiple-Testing-Zahl, wenn
+mehrere Hypothesen selektiert werden. Wirkung, gemessen: der Deflated Sharpe der
+Mittelwertrückkehr fällt mit wachsender Versuchszahl **0,127 (N = 6) → 0,066 (N = 12) → 0,045
+(N = 18)** — jede weitere getestete Hypothese verschärft die Schwelle rückwirkend auch für die
+positive. Der Breakout liegt bei **0,0015 (N = 18)**. Alle Werte weit unter 0,95. Zur
+Einordnung: bei 100 Versuchen läge die allein durch Zufall erwartete Maximal-Sharpe grob bei 2,5
+Standardeinheiten, bei 1.000 bei ≈ 3,3.
 
 ---
 
@@ -162,8 +196,8 @@ Zufall erwartete Maximal-Sharpe grob bei 2,5 Standardeinheiten, bei 1.000 bei �
 Die Minimum Track Record Length sagt, wie lange eine Historie sein müsste, um mit 95 %
 Konfidenz zu behaupten, der wahre Sharpe liege über null.
 
-- **Trendfolge:** Sharpe negativ (−0,68) — die MinTRL ist nicht definiert; kein Track Record,
-  egal wie lang, belegt einen Edge, weil keiner da ist.
+- **Trendfolge und Ausbruch:** Sharpe negativ (−0,68 bzw. −0,88) — die MinTRL ist nicht
+  definiert; kein Track Record, egal wie lang, belegt einen Edge, weil keiner da ist.
 - **Mittelwertrückkehr:** Sharpe positiv, aber winzig. Die Formel (Bailey/López de Prado) ist
   gegen die Referenzwerte des Auftrags kalibriert und reproduziert sie exakt (Sharpe 1,0 → 2,7
   Jahre, 0,5 → 10,8 Jahre). Für den Bar-Sharpe 0,167 ergibt sie eine **MinTRL von ≈ 97 Jahren**,
@@ -201,6 +235,13 @@ gewichtigsten:
   deflationiert die **Bar**-Sharpe (Beobachtungen = Bars), während Bedingung 1 bewusst die
   **Trade**-Sharpe prüft. Hier unschädlich (beide ergeben 0,066), bei größerem Signal aber eine
   Überzeichnung — als Grenze in `SPAETER.md` (S8) notiert, nicht stillschweigend gelassen.
+- **Dritter Versuch, Datenqualität ehrlich benannt:** der frische OoS-Block 2025–26 ist
+  strukturell sauber (0 Duplikate/nicht-monotone/ungültige OHLC), das Qualitätstor meldet aber
+  formal `passed=False`, weil es ohne Session-/Feiertagskalender die erwartete Barzahl nicht
+  kennt (**S6**). Da Versuch 3 ein klarer Verlust ist, erzeugt diese Grenze kein Fehlurteil —
+  aber sie ist benannt, nicht übergangen. Die §9-Review war hier proportional (Vier-Lens-
+  Gegenprobe statt voller Agentenschwarm): ein Verlust kann keinen Edge vortäuschen, und der
+  Motor war in Versuch 2 bereits von 22 Agenten geprüft.
 
 ---
 
@@ -238,26 +279,28 @@ Korrekturen erreichbar.
 ## 9. Fazit
 
 Das Kostbarste an diesem Auftrag ist nicht der Code, sondern **eine Zahl, der man trauen kann.**
-Zwei ernsthafte, vorab festgeschriebene Hypothesen liefen durch dasselbe harte Tor: Trendfolge
-**verliert** (−18,85 %, Trade-Sharpe −0,79); Mittelwertrückkehr liegt **knapp über Kosten**
-(+2,48 % carry-frei), ist aber statistisch nicht von null zu unterscheiden (MinTRL ≈ 79–97
-Jahre) und teils Zins statt Alpha. Die Richtung — Rückkehr schlägt Trend — passt zur Literatur
-über Intraday-FX, der Effekt ist aber zu klein und zu unsicher, um ausbeutbar zu sein. **Auf
-EURUSD existiert nach realistischen Kosten kein belegbarer Edge.**
+Drei ernsthafte, vorab festgeschriebene Hypothesen liefen durch dasselbe harte Tor: Trendfolge
+**verliert** (−18,85 %), Volatilitäts-Ausbruch **verliert deutlich** (−56,4 % auf frischem OoS),
+Mittelwertrückkehr liegt **knapp über Kosten** (+2,48 % carry-frei), ist aber statistisch nicht
+von null zu unterscheiden (MinTRL ≈ 79–97 Jahre) und teils Zins statt Alpha. Alle drei zeigen
+dieselbe Richtung — **Rückkehr schlägt Trend**, passend zur Literatur über Intraday-FX —, doch
+der Effekt ist zu klein und zu unsicher, um ausbeutbar zu sein. **Auf EURUSD existiert nach
+realistischen Kosten kein belegbarer Edge.**
 
 Das billig und früh zu wissen — nach Tagen statt nach Monaten verbrannten Kapitals — ist der
 Wert des Auftrags. Der Sicherheits-, Kosten-, Daten- und Prüfapparat steht geprüft bereit;
 sollte je eine Strategie einen echten Edge zeigen, kann sie gefahrlos darauf iterieren. Diese
-beiden tun es nicht.
+drei tun es nicht.
 
 ---
 
 ## 10. Entscheidungstor E5 — an Philipp
 
-Der Masterprompt verlangt E5 in **jedem** Fall nach dem Edge-Test. Nach dem ersten Nein
-(Trendfolge) lautete Philipps E5-Entscheid „weiterbauen" — daraus wurde der zweite Versuch
-(Mittelwertrückkehr), ebenfalls ohne Edge. E5 liegt damit erneut vor: eine **dritte**,
-vorab festzuschreibende Hypothese testen (dann mit **frisch abzutrennendem** OoS-Block, weil der
-bisherige durch zwei Strategien belastet ist) — oder den Auftrag **beenden**, weil die eine
-Frage sauber beantwortet ist. Paket 5 (Ausbau, LLM, Demo-Betrieb) bleibt gesperrt, solange kein
-Test alle sechs Bedingungen besteht (§7.3, §8).
+Der Masterprompt verlangt E5 in **jedem** Fall nach dem Edge-Test. Dreimal lautete Philipps
+E5-Entscheid „weiterbauen": aus dem ersten Nein (Trendfolge) wurde Versuch 2 (Mittelwertrückkehr,
+auf demselben OoS), aus dessen Nein Versuch 3 (Volatilitäts-Ausbruch, auf **frischem** OoS
+2025–26) — alle drei ohne Edge, mit wachsender Multiple-Testing-Last (N = 18). E5 liegt erneut
+vor: eine **vierte** Hypothese testen (mit weiterhin frischem OoS, im Wissen, dass jeder weitere
+Versuch die Deflationsschwelle für alle vorherigen anhebt) — oder den Auftrag **beenden**, weil
+die eine Frage nach drei ehrlichen Versuchen sauber beantwortet ist. Paket 5 (Ausbau, LLM,
+Demo-Betrieb) bleibt gesperrt, solange kein Test alle sechs Bedingungen besteht (§7.3, §8).

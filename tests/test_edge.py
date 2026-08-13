@@ -14,6 +14,7 @@ from mt5_trading_ai.backtest.engine import MarketView, Signal, Strategy
 from mt5_trading_ai.backtest.strategies import (
     mean_reversion_zscore,
     moving_average_crossover,
+    volatility_breakout,
 )
 from mt5_trading_ai.data.quality import BarRow
 
@@ -91,6 +92,37 @@ def test_mean_reversion_rejects_bad_params() -> None:
         mean_reversion_zscore(1, 2.0, 0.5)    # lookback < 2
     with pytest.raises(ValueError):
         mean_reversion_zscore(20, 0.5, 2.0)   # entry_z <= exit_z
+
+
+# --- Volatilitaets-Ausbruch (Donchian) ------------------------------------
+
+
+def test_breakout_flat_before_enough_history() -> None:
+    strat = volatility_breakout(10)
+    assert strat(_view([1.10] * 10)) is Signal.FLAT  # weniger als lookback+1 Bars
+
+
+def test_breakout_long_on_new_high() -> None:
+    strat = volatility_breakout(10)
+    assert strat(_view([1.10] * 11 + [1.11])) is Signal.LONG  # Ausbruch nach oben
+
+
+def test_breakout_short_on_new_low() -> None:
+    strat = volatility_breakout(10)
+    assert strat(_view([1.10] * 11 + [1.09])) is Signal.SHORT  # Ausbruch nach unten
+
+
+def test_breakout_holds_between_breakouts() -> None:
+    strat = volatility_breakout(10)
+    pos = _positions(strat, [1.10] * 11 + [1.12, 1.11, 1.08])
+    assert pos[11] is Signal.LONG    # neues Hoch -> LONG
+    assert pos[12] is Signal.LONG    # innerhalb der Spanne -> gehalten
+    assert pos[13] is Signal.SHORT   # neues Tief -> SHORT
+
+
+def test_breakout_rejects_bad_params() -> None:
+    with pytest.raises(ValueError):
+        volatility_breakout(1)  # lookback < 2
 
 
 # --- Sechs-Bedingungen-Tor ------------------------------------------------

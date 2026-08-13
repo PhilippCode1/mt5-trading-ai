@@ -86,3 +86,38 @@ def mean_reversion_zscore(lookback: int, entry_z: float, exit_z: float) -> Strat
         return pos
 
     return strategy
+
+
+def volatility_breakout(lookback: int) -> Strategy:
+    """Donchian-Kanal-Ausbruch: LONG bei neuem Hoch, SHORT bei neuem Tief, sonst halten.
+
+    Dritte ernsthafte Hypothese, verschieden von Trendfolge (MA) und Mittelwertrückkehr:
+    der Markt bricht aus einer Spanne aus und laeuft weiter. Bricht der Schlusskurs
+    ueber das hoechste Hoch der letzten ``lookback`` Bars -> LONG; unter das tiefste
+    Tief -> SHORT; dazwischen wird die letzte Richtung gehalten (Turtle-Stil,
+    zustandsbehaftet). Die Vergangenheit kommt allein aus ``MarketView``; der Zustand
+    ist nur die letzte Richtung. Die Engine ruft streng in Bar-Reihenfolge auf, der
+    Lauf bleibt reproduzierbar. ``lookback`` per Konvention (48), **nicht** optimiert.
+    """
+    if lookback < 2:
+        raise ValueError("lookback >= 2 noetig")
+
+    pos = Signal.FLAT
+
+    def strategy(view: MarketView) -> Signal:
+        nonlocal pos
+        history = view.history()
+        if len(history) < lookback + 1:
+            pos = Signal.FLAT
+            return pos
+        prior = history[-lookback - 1:-1]  # die lookback Bars VOR dem aktuellen
+        upper = max(bar.high for bar in prior)
+        lower = min(bar.low for bar in prior)
+        close = history[-1].close
+        if close > upper:
+            pos = Signal.LONG
+        elif close < lower:
+            pos = Signal.SHORT
+        return pos  # dazwischen: letzte Richtung halten
+
+    return strategy
