@@ -70,6 +70,20 @@ def test_weekday_holiday_not_counted_as_expected() -> None:
     assert "gap_ratio_above_limit" not in mit.reasons
 
 
+def test_holiday_bar_does_not_mask_a_real_gap() -> None:
+    # Konservativ (S6): eine vorhandene Feiertagsbar darf eine echte Luecke auf einem
+    # ERWARTETEN Slot nicht verdecken -- die Lueckenquote zaehlt nur erwartete Slots.
+    bars = _daily([22, 23, 24, 25, 26, 29, 30])   # 25.12. (Feiertag) da, 31.12. FEHLT
+    report = assess_bars(
+        bars, instrument="EURUSD", timeframe="D1",
+        start=datetime(2025, 12, 22, tzinfo=UTC), end=datetime(2026, 1, 1, tzinfo=UTC),
+        session_predicate=WeekdaySession(), holidays=frozenset({date(2025, 12, 25)}),
+    )
+    # 7 erwartet (8 Wochentage - Feiertag), 6 auf erwarteten Slots (25. zaehlt nicht) ->
+    # die fehlende 31. wird sichtbar, nicht von der Feiertagsbar kaschiert.
+    assert "gap_ratio_above_limit" in report.reasons
+
+
 # --- Intraday-Sonntagsbars sind kein Session-Fehler (S6) ------------------
 
 

@@ -174,11 +174,22 @@ def assess_bars(
         session_predicate=session_predicate, holidays=holidays,
     )
     present = len(seen)
+    # Fuer die Lueckenquote nur Bars zaehlen, die auf einem ERWARTETEN Slot liegen (in
+    # Session, nicht Feiertag). Eine feiertagsverschobene oder ausser-Session-Bar wuerde
+    # ``present`` sonst aufblaehen und echte Luecken untertreiben (konservativ, S6).
+    present_expected = len(
+        {
+            row.ts for row in rows
+            if session_predicate is not None
+            and session_predicate(row.ts)
+            and row.ts.date() not in holidays
+        }
+    )
     if expected <= 0:
         gap_ratio = 1.0
         reasons.append("expected_bar_count_unknown")
     else:
-        gap_ratio = max(0.0, (expected - present) / expected)
+        gap_ratio = max(0.0, (expected - present_expected) / expected)
 
     if gap_ratio > max_gap_ratio:
         reasons.append("gap_ratio_above_limit")

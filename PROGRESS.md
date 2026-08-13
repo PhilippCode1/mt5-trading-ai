@@ -1304,9 +1304,15 @@ kein Fehler).
 am **Treiber**-Rand, nicht in der Engine-API — `run_backtest` nimmt weiter beliebige Bars; ein
 künftiger Treiber, der `from_csv`→`run_backtest` ruft, umginge das Tor (MITTEL; der ABNAHME_PLAN
 bot Treiber-Gating als zulässige Option an). Nachhaltiger Fix (VerifiedBars-Typ als einziger
-Engine-Eingang) gehört in die Integration (Paket 7). `gap_ratio` nutzt `len(seen)` inkl.
-feiertagsverschobener Bars (NIEDRIG, mit dem NY-Anker praktisch 0). Restliche S6-Punkte
-(Preis-Plausibilität, Ausreißer als harte Fail-Gründe, Overflow) bleiben offen (in `SPAETER.md`).
+Engine-Eingang) gehört in die Integration (Paket 7). Restliche S6-Punkte (Preis-Plausibilität,
+Ausreißer als harte Fail-Gründe, Overflow) bleiben offen (in `SPAETER.md`).
 
-**Zeilenstand (gemessen):** 5.919 Zeilen, 27 Module, 311 Testfunktionen, 365 Testfälle grün. SPAETER
+**Nachtrag (letzter §9-Nebenbefund geschlossen):** die `gap_ratio` zählt jetzt nur Bars auf
+**erwarteten** Slots (in Session, nicht Feiertag) statt `len(seen)` — eine Feiertags-/Ausser-
+Session-Bar kann eine echte Lücke nicht mehr maskieren (konservativ). Wirkung: EURUSD-H1 ehrlich
+**0,016 %** (vorher 0 % maskiert), weiter deutlich unter 1 %. Test
+`test_holiday_bar_does_not_mask_a_real_gap`. Damit sind alle bestätigten §9-Befunde geschlossen
+außer dem bewusst nach Paket 7 verschobenen Engine-API-Gate.
+
+**Zeilenstand (gemessen):** 5.930 Zeilen, 27 Module, 312 Testfunktionen, 366 Testfälle grün. SPAETER
 **S6 (Kalender-Teil)** als erledigt markiert.
