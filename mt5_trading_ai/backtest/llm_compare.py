@@ -8,6 +8,12 @@ Modellversion (Drift, §8.4). Fehlt der Beleg, kommt kein Modell in den Pfad.
 Dieses Modul trifft **keine** Handelsentscheidung und ruft **kein** LLM -- es ist
 nur das Tor davor (Kernregel 17: kein Modell fuehrt ungeprueften Code aus; §12.3:
 kein LLM im Entscheidungspfad ohne den belegten Vergleich).
+
+**Status (Paket 5):** Der Entscheidungspfad ist heute **LLM-frei** (regelbasierte
+Strategien) -- per Regressionstest verankert (``test_decision_path_is_llm_free`` scannt
+JEDE Modul-Datei des Pakets auf statische LLM-Bibliotheks-Importe, nicht nur eine
+Auswahl). ``evaluate_llm_gate`` ist damit die einzige Zulassungsstelle: kaeme je ein
+Modell in den Pfad, muss es zuvor diesen fail-closed-Vergleich bestehen.
 """
 
 from __future__ import annotations

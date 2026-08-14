@@ -18,7 +18,7 @@ from mt5_trading_ai.execution.private_sync import (
 from mt5_trading_ai.venue.mt5 import Mt5Venue
 from mt5_trading_ai.venue.protocol import OrderRejectedError, OrderSide
 
-from test_mt5_venue import FakeMt5Terminal, _catalog, _order
+from test_mt5_venue import FakeMt5Terminal, _catalog, _mt5_position, _order
 
 TS = datetime(2026, 8, 11, 12, 0, tzinfo=UTC)
 
@@ -94,10 +94,13 @@ def test_sync_staleness_and_health() -> None:
 # --- Venue-Integration ----------------------------------------------------
 
 
-def _synced_venue() -> tuple[Mt5Venue, PrivateSync]:
+def _synced_venue(
+    positions: tuple[object, ...] = (),
+) -> tuple[Mt5Venue, PrivateSync]:
     sync = PrivateSync()
     venue = Mt5Venue(
-        name="mt5", terminal=FakeMt5Terminal(is_demo=True),
+        name="mt5",
+        terminal=FakeMt5Terminal(is_demo=True, positions=positions),  # type: ignore[arg-type]
         catalog=_catalog(), sync=sync,
     )
     venue.connect()
@@ -114,15 +117,22 @@ def test_synced_venue_stream_books_not_submit() -> None:
 
 
 def test_synced_venue_gap_halts_and_blocks_opening() -> None:
-    venue, sync = _synced_venue()
-    venue.apply_private_event(_heartbeat(1))
-    venue.apply_private_event(_heartbeat(3))  # Luecke
+    # Bei Desync ist das Strom-Buch nicht mehr vertrauenswuerdig; das Terminal meldet die
+    # Long-Position autoritativ, sodass ein echter reduce_only-Abbau weiter passiert.
+    venue, sync = _synced_venue(
+        positions=(_mt5_position("EURUSD", is_buy=True, volume=Decimal("0.10")),)
+    )
+    venue.apply_private_event(_fill(1, "EURUSD", OrderSide.BUY, Decimal("0.10")))
+    venue.apply_private_event(_heartbeat(3))  # Luecke (seq 2 fehlt)
     assert sync.desync is True
     assert venue.is_halted() is True
     with pytest.raises(OrderRejectedError) as excinfo:
         venue.submit_order(_order(client_order_id="g-1"))
     assert excinfo.value.reason == "global_halt"
-    assert venue.submit_order(_order(client_order_id="r-1", reduce_only=True)).accepted
+    # Reduce-Only (echter Abbau der Long, autoritativ vom Terminal) passiert trotz Halt.
+    assert venue.submit_order(
+        _order(client_order_id="r-1", side=OrderSide.SELL, reduce_only=True)
+    ).accepted
     # Freigabe resynchronisiert den Strom und gibt Eroeffnungen frei.
     venue.clear_halt()
     assert sync.desync is False

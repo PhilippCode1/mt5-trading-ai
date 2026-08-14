@@ -6,6 +6,12 @@ Konto, zinsfreie Margin, Instrument nicht offensichtlich verboten) und zertifizi
 "halal". Die fiqh-Grundfrage -- ob ein gehebelter CFD ueberhaupt zulaessig ist (gharar,
 fehlendes Eigentum, Termincharakter) -- bleibt **immer** offen und wird zur Gelehrten-/
 Philipp-Pruefung markiert. Fail-closed.
+
+**Aufrufer (Paket 5):** ``Mt5Venue.submit_order`` ruft ``screen_halal`` fuer jede
+eroeffnende Live-Order. Nicht mechanisch konform -> Ablehnung; da
+``requires_scholar_review`` IMMER wahr ist, kann eine Live-Order nur eroeffnen, wenn ein
+Mensch die Gelehrten-Entscheidung als ``halal_scholar_review_id`` hinterlegt hat --
+Kernregel 16 systemseitig durchgesetzt. Auf Demo entfaellt der Screen.
 """
 
 from __future__ import annotations

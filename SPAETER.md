@@ -177,14 +177,32 @@ durchs Kostentor. EURUSD (Edge-Test-Fokus) ist gleich notiert und voll abgedeckt
 Zwei vorbestehende Vertrauensgrenzen, die der §9-Fix-Re-Check von Paket 3 benannte — **kein**
 Defekt der neuen Kostentor-Logik, aber ehrlich zu vermerken:
 
-- **`reduce_only`-Carve-out:** `Mt5Venue.submit_order` überspringt für `reduce_only=True` **alle**
-  Eröffnungs-Tore (Global-Halt, Stop-Pflicht, Live-Freigabe, Hebel-Preflight, **Kostentor**) —
-  bewusst, weil Risikoabbau (Schließen) nicht an denselben Eröffnungs-Schranken hängen darf. Rand:
-  `RealMt5Terminal.order_send` setzt bei `reduce_only` **ohne** passende Gegenposition kein
-  `position`-Ticket und sendet dann einen normalen Deal — ein `reduce_only`-Missbrauch auf einer
-  faktisch **eröffnenden** Order läge damit außerhalb aller Tore. **Zu entscheiden (nicht jetzt):**
-  eine Vorbedingung, die `reduce_only` an eine real existierende Gegenposition bindet (Buch-/
-  Positions-Check), bevor die Tore übersprungen werden.
+- **`reduce_only`-Carve-out — ERLEDIGT (Abnahme-Paket 5, §9-Review).** Der §9-Review von Paket 5
+  bestätigte, dass das blind vertraute `reduce_only`-Flag ein echtes **fail-open** war: eine als
+  `reduce_only` markierte Order **ohne** Gegenposition eröffnete (kein No-Op) und umging damit alle
+  Eröffnungs-Tore (Compliance, Risiko) **und** den Global-Halt. **Behoben:** `submit_order` überspringt
+  die Tore jetzt nur noch, wenn die Order eine **tatsächlich offene Gegenposition abbaut**
+  (`_reduces_position`: maßgeblich ist **ausschließlich** die autoritative Börsen-Gegenposition —
+  `get_positions()` ist ein frischer Broker-Query, hedging-fähig, deckt auch serverseitige SL/TP-
+  und externe Schließungen). Das lokale Netto-Buch trägt die Reduce-Autorisierung **nie**: es kann
+  in beide Richtungen veralten. **Volumen-begrenzt:** nur wenn das Order-Volumen die Gegenposition
+  **nicht überschreitet**, ist es reine Reduktion; ein Over-Fill flippt netto, und der Überschuss ist
+  eine Eröffnung, die durch alle Tore muss (`test_reduce_only_over_fill_is_gated_as_opening`). Ein
+  `reduce_only`-Flag ohne (oder gleichgerichtet/übergroß zu einer) Position fällt in den
+  Eröffnungs-Zweig und wird regulär geprüft/abgelehnt
+  (`test_live_reduce_only_without_position_is_gated_as_opening`). Drei Fix-Re-Check-Runden
+  (Volumen-Klammer → Börsen-Autorität statt `max(Buch,Börse)` → Buch-Zweig ganz entfernt, weil
+  Stille/Latenz `desync` nicht setzt). Der legitime Risikoabbau
+  (echtes Schließen) passiert weiter ohne Freigabe, auch im Halt.
+  **Offene, vorbestehende Randnotiz (kein fail-open, orthogonal):** Das Reduce-Gate summiert das
+  gesamte Gegen-Brutto, während `RealMt5Terminal.order_send` nur das **erste** passende
+  Gegen-Ticket adressiert. Auf einem **Hedging**-Konto mit mehreren Gegen-Tickets kann eine
+  Reduce-Order, deren Volumen das erste Ticket übersteigt (aber ≤ Gesamt-Brutto), das Gate
+  passieren und dennoch nur ein kleineres Einzel-Ticket treffen; das Überlauf-Verhalten ist
+  broker-definiert. Das Netto-Exposure sinkt in jedem Fall (es ist ein Abbau), und das Verhalten ist
+  unverändert aus der Zeit vor Paket 5. **Zu entscheiden, sobald Hedging-Konten in Betrieb gehen:**
+  `order_send` über mehrere Gegen-Tickets iterieren oder das Gate auf das größte Einzel-Ticket
+  klammern. Für Netting-Konten (ESMA-Retail-Norm) irrelevant.
 - **Broker-Datenintegrität:** Das Kostentor liest `entry.fees` direkt aus dem Katalog und vertraut
   der vom Terminal gemeldeten `currency_profit` (= Notierungswährung). Ein falsch gemeldetes
   `currency_profit` oder eine 0-Kommission-Datenlücke (die `load_cost_fees` ablehnen würde, im

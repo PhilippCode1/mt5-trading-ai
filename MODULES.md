@@ -325,6 +325,7 @@ Plattformunabhaengiger Handelsplatz-Vertrag.
 
 Demo-Smoke-Test der MT5-Bindung — die Orchestrierung, terminalunabhaengig.
 
+- `class DemoRunInputs`
 - `class SmokeStep`
 - `class SmokeReport`
 - `def run_smoke`

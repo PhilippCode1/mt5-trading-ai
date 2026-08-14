@@ -8,6 +8,12 @@ des Betreibers (``venue/smoke.py``, ``allow_write`` nur auf einem Demokonto). Ec
 bleibt hart gesperrt.
 
 Fail-closed: eine Strategie ohne bestandenen Edge-Test kommt nicht in den Demo-Betrieb.
+
+**Aufrufer (Paket 5):** Die Demo-Harness (``venue/smoke.py``, ``run_smoke(demo=...)``)
+fuettert ``register_for_demo`` (fail-closed ohne Edge) und ``evaluate_demo_progress``
+mit den echten Edge-Verdicts; das ``DemoReadiness`` fragt das Live-Freigabe-Tor
+(``Mt5Venue._require_live_release_for_opening``) ab -- keine Live-Eroeffnung vor >= 180
+Tagen mit weiter bestandenem Edge.
 """
 
 from __future__ import annotations

@@ -1557,3 +1557,97 @@ vereinfacht (kein Teil-Fill-Tracking); der Manager-Zustand ist In-Memory (kein N
 **Zeilenstand (gemessen, 2026-08-13):** 6.641 Zeilen, 29 Module, 355 Testfunktionen, 409 Testfälle
 grün; `ruff`, `mypy --strict`, `gen_docs --check`, `check_doc_numbers` sauber. SPAETER **S1**
 erledigt, **S12** neu.
+
+---
+
+## ERLEDIGT — Abnahme-Paket 5 (Compliance-Tore an den Live-/Demo-Pfad: Halal, Demo, LLM)
+
+Fünftes Paket des `ABNAHME_PLAN.md`. Kernbefund: drei getestete, aber **verwaiste** Compliance-
+Module (`venue/halal.py`, `venue/demo_run.py`, `backtest/llm_compare.py`) hatten keinen Aufrufer —
+sie waren Funktionen, keine wirksamen Tore. Die fiqh-Bewertung selbst bleibt bewusst beim Gelehrten
+(Kernregel 16); der Code erzwingt nur das mechanisch Prüfbare und die menschliche Sign-off.
+
+**Was gebaut wurde:**
+- **Halal-Screen in `submit_order`** (`venue/mt5.py` `_enforce_halal`): jede eröffnende Live-Order
+  (Demo-frei) wird gegen Instrument/Kontokonfiguration gescreent. Zweiteilig, beide fail-closed:
+  (1) **mechanische** Konformität (`screen_halal`: swapfreies Konto, zinsfreie Margin, Instrument
+  nicht verboten — aus `settings`, Defaults konservativ = nicht konform); (2) weil
+  `requires_scholar_review` per Kernregel 16 **immer** wahr ist, kann eine Live-Order nur eröffnen,
+  wenn ein Mensch die Gelehrten-Entscheidung als `halal_scholar_review_id` hinterlegt hat — sonst
+  `halal_scholar_review_missing`. Der Code entscheidet die fiqh-Grundfrage nie.
+- **Demo-Reife-Tor an die Live-Freigabe gebunden** (`venue/mt5.py`
+  `_require_live_release_for_opening`): eine Live-Eröffnung verlangt zusätzlich ein injiziertes
+  `DemoReadiness` mit `ready_for_live_question` (≥ 180 Tage Demo-Betrieb + weiter bestandener Edge);
+  fehlt es oder ist es nicht reif → `demo_not_ready`. Die Naht §8.5→§7: `venue/smoke.py`
+  `run_smoke(demo=DemoRunInputs)` füttert `register_for_demo` (fail-closed ohne Edge) und
+  `evaluate_demo_progress` mit echten Edge-Verdicts; das Ergebnis speist das Tor.
+- **LLM-Tor verankert** (`backtest/llm_compare.py` unverändert fail-closed): der Entscheidungspfad
+  ist heute **LLM-frei** (regelbasierte Strategien) — per Regressionstest
+  `test_decision_path_is_llm_free` verankert, der die entscheidungstragenden Module auf
+  LLM-Bibliotheks-Importe scannt. `evaluate_llm_gate` bleibt die einzige Zulassungsstelle: käme je
+  ein Modell in den Pfad, muss es zuvor den belegten Vergleich (schlägt Baseline, keine Leckage,
+  Versionsstempel) bestehen.
+- **Docstrings angeglichen**: die drei Module tragen jetzt „Aufrufer (Paket 5)"-Vermerke.
+
+**§9-Review (vier Blickwinkel, 13 Agenten) fand einen bestätigten HOCH-Blocker — behoben, dann per
+Fix-Re-Check gegengeprüft:**
+- **HOCH / fail-OPEN — `reduce_only` umging ALLE Tore + Global-Halt:** das caller-gesetzte
+  `reduce_only`-Flag wurde blind vertraut → eine als `reduce_only` markierte **eröffnende** Order
+  (ohne Gegenposition) umging sämtliche Compliance-/Risiko-Tore **und** den Not-Aus (per LIMIT sogar
+  ohne Stop). Genau die Schein-Gate-Klasse, die dieses Paket eliminieren soll (in Paket 4 als
+  S11-„Vertrauensgrenze" vermerkt — der Review zeigte, dass es real fail-open ist). **Fix:**
+  `submit_order` überspringt die Eröffnungs-Tore nur noch, wenn die Order eine **tatsächlich offene
+  Gegenposition abbaut** (neuer Helper `_reduces_position`: Gegenseiten-Exposure aus lokalem
+  Netto-Buch **und** autoritativen Börsen-Positionen — hedging-fähig, deckt Drift vor der Adoption).
+  Ein `reduce_only`-Flag ohne (oder gleichgerichtet zu einer) Position fällt in den Eröffnungs-Zweig
+  und wird regulär geprüft/abgelehnt (`test_live_reduce_only_without_position_is_gated_as_opening`).
+  Legitimer Risikoabbau (echtes Schließen) passiert weiter ohne Freigabe, auch im Halt. SPAETER
+  **S11** als erledigt markiert.
+- **Drei Fix-Re-Check-Nachzüge auf denselben Vektor (loop-until-dry, jede Runde ein subtilerer
+  Buch-Vektor):** (i) volumen-blind → ein Over-Fill flippte netto → **Volumen-Klammer**
+  (`volume <= opposite`); (ii) `opposite = max(Buch, Börse)` → ein **stale-hohes Buch** überzeichnete
+  die Börse → **börsen-autoritativ, Buch nur bei `not desync`**; (iii) **Stille/Latenz setzt `desync`
+  nicht** (ein routinemäßiger SL/TP-Close, dessen Fill-Event nur in-flight ist) → das stale-Buch
+  schlüpfte weiter durch. **Endfassung:** der Buch-Zweig ist **ganz entfernt** — maßgeblich ist
+  **ausschließlich** die autoritative Börsen-Gegenposition (`get_positions()`, ein frischer
+  Broker-Query). Das lokale Buch trägt die Reduce-Autorisierung nie (es kann in beide Richtungen
+  veralten). Das schneidet die gesamte „stale-Buch"-Klasse an der Wurzel. Über-Fill/Flip/flat →
+  gated; Teilschluss/Hedging/exaktes Glattstellen (`volume == opposite`)/Abbau im Halt bleiben
+  reine Reduktion. Tests: `test_reduce_only_over_fill_is_gated_as_opening`,
+  `test_live_reduce_only_without_position_is_gated_as_opening`, Drift/Desync/Sync via
+  Terminal-Position. Ein abschließender vierter Re-Check bestätigte die Endfassung **frei von
+  fail-open und regressionsfrei** (`problem_count: 0`).
+- **2 Non-Blocker (LLM-Anker) — gehärtet:** mein `test_decision_path_is_llm_free` scannte nur 8
+  Dateien (nicht transitiv) und hatte eine unvollständige Denylist. **Gehärtet:** scannt jetzt das
+  **ganze Paket** (`rglob *.py`, transitiv-vollständig für statische Importe), erweiterte
+  `_LLM_LIBS`; der Anspruch ist ehrlich auf statische Importe begrenzt (dynamischer `importlib`-Import
+  bewusst außerhalb dieses Regressions-Ankers).
+
+**Negativ gefahren / nachgewiesen (Order-Pfad, `tests/test_mt5_venue.py`):** nicht-halal (Krypto)
+→ `halal_not_conformant`; nicht-swapfreies Konto → `halal_not_conformant`; fehlende
+Gelehrten-Freigabe (auch bei konformem EURUSD) → `halal_scholar_review_missing`; Demo < 180 Tage /
+Edge verfehlt → `demo_not_ready`; kein Reife-Ergebnis → `demo_not_ready`; realer
+`register_for_demo → evaluate_demo_progress`-Fluss (≥ 180 Tage + Edge) → Live-Eröffnung besteht;
+Demo überspringt alle Compliance-Tore. Plus `tests/test_mt5_smoke.py` (Demo-Registrierung reif /
+fail-closed ohne Edge), `tests/test_llm_compare.py` (Tor-Bedingungen + LLM-frei-Anker),
+`tests/test_demo_run.py`.
+
+**Entscheidungen, die ich selbst getroffen habe:** den Halal-Screen als **Live-Pflicht/Demo-frei**
+zu bauen (ein Live-Compliance-Tor; Demo hat kein Echtgeld); die Gelehrten-Freigabe als hinterlegte
+`halal_scholar_review_id` zu erzwingen (systemische Kernregel-16-Durchsetzung — ohne menschliche
+fiqh-Entscheidung keine Live-Order, ohne dass der Code fiqh entscheidet); das LLM-Tor als
+**dokumentierten Frei-Vermerk + Regressionstest** zu verankern (statt eines synthetischen
+Durchsetzungspunkts ohne LLM-Infrastruktur), weil der Pfad heute LLM-frei ist.
+
+**Auffälligkeiten, gemeldet, nicht angefasst (ehrlich):** Der Halal-Screen liest swapfrei/zinsfrei
+aus `settings` (Betreiber-Selbstauskunft), nicht als Broker-bestätigte Kontoeigenschaft — der
+`Mt5Account` trägt das Feld nicht. Das ist eine bewusste Grenze: der Code erzwingt, dass die Flags
+gesetzt UND die Gelehrten-Freigabe hinterlegt sind, kann die Broker-Realität aber nicht prüfen (wie
+schon bei den Live-Freigabe-Schaltern). Der LLM-Anker deckt statische Importe im ganzen Paket ab,
+nicht dynamische `importlib`-Importe (bewusst außerhalb des Regressions-Ankers). Und: das
+Reduce-Gate summiert das Gegen-Brutto, während `order_send` nur das erste Gegen-Ticket adressiert —
+auf Hedging-Konten ein broker-definiertes Überlauf-Verhalten (kein fail-open, senkt immer das Netto;
+vorbestehend, SPAETER **S11**); für Netting-Konten (ESMA-Retail-Norm) irrelevant.
+
+**Zeilenstand (gemessen, 2026-08-14):** 6.805 Zeilen, 29 Module, 367 Testfunktionen, 421 Testfälle
+grün; `ruff`, `mypy --strict`, `gen_docs --check`, `check_doc_numbers` sauber.

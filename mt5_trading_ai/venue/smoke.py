@@ -17,6 +17,13 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from decimal import ROUND_DOWN, Decimal
 
+from mt5_trading_ai.backtest.edge import EdgeVerdict
+from mt5_trading_ai.venue.demo_run import (
+    DemoGateError,
+    DemoReadiness,
+    evaluate_demo_progress,
+    register_for_demo,
+)
 from mt5_trading_ai.venue.mt5 import Mt5Venue
 from mt5_trading_ai.venue.protocol import (
     Instrument,
@@ -29,6 +36,23 @@ from mt5_trading_ai.venue.protocol import (
 )
 
 
+@dataclass(frozen=True)
+class DemoRunInputs:
+    """Belege, mit denen die Demo-Harness den Demo-Betrieb registriert und den
+    Fortschritt prueft -- die Naht §8.5->§7 (``venue/demo_run.py``).
+
+    ``edge_verdict`` ist das Ergebnis des Sechs-Bedingungen-Tors aus ``run_backtest ->
+    evaluate_edge`` **zum Registrierungszeitpunkt**; ``live_verdict`` das im Demo weiter
+    gemessene Ergebnis. ``elapsed_days`` ist die bisherige Demo-Laufzeit.
+    """
+
+    strategy_id: str
+    version: str
+    edge_verdict: EdgeVerdict
+    elapsed_days: int
+    live_verdict: EdgeVerdict
+
+
 @dataclass
 class SmokeStep:
     name: str
@@ -39,6 +63,8 @@ class SmokeStep:
 @dataclass
 class SmokeReport:
     steps: list[SmokeStep] = field(default_factory=list)
+    #: Ergebnis des Demo-Reife-Tors, falls ``run_smoke`` mit ``demo`` gefahren wurde.
+    demo_readiness: DemoReadiness | None = None
 
     @property
     def ok(self) -> bool:
@@ -54,9 +80,15 @@ def run_smoke(
     symbol: str,
     allow_write: bool = False,
     now: datetime | None = None,
+    demo: DemoRunInputs | None = None,
 ) -> SmokeReport:
     """Fahre die Smoke-Folge. Standardmaessig nur lesend; ``allow_write`` schaltet die
     Schreib-Probe frei (die dennoch ein Demokonto verlangt).
+
+    ``demo`` fuettert die Naht §8.5->§7: die Harness registriert die Strategie fuer den
+    Demo-Betrieb (``register_for_demo`` -- fail-closed ohne bestandenen Edge) und prueft
+    den Fortschritt (``evaluate_demo_progress``); das Ergebnis liegt in
+    ``report.demo_readiness`` und ist die Vorbedingung des Live-Freigabe-Tors.
     """
     report = SmokeReport()
     at = now if now is not None else datetime.now(UTC)
@@ -76,6 +108,27 @@ def run_smoke(
             report.add("demo_guard", False, "KEIN Demokonto — Smoke abgebrochen")
             return report
         report.add("demo_guard", True, "Demokonto bestaetigt")
+
+        if demo is not None:
+            # Naht §8.5->§7: Demo-Registrierung (fail-closed ohne Edge) + Fortschritt.
+            try:
+                registration = register_for_demo(
+                    strategy_id=demo.strategy_id, version=demo.version,
+                    edge_verdict=demo.edge_verdict, registered_on=at.date(),
+                )
+            except DemoGateError as exc:
+                report.add("demo_registration", False, str(exc))
+            else:
+                report.add("demo_registration", True, registration.strategy_id)
+                readiness = evaluate_demo_progress(
+                    registration=registration, elapsed_days=demo.elapsed_days,
+                    live_verdict=demo.live_verdict,
+                )
+                report.demo_readiness = readiness
+                report.add(
+                    "demo_progress", readiness.ready_for_live_question,
+                    ", ".join(readiness.reasons) or "reif fuer Live-Frage",
+                )
 
         instruments = venue.list_instruments()
         report.add(

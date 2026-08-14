@@ -26,6 +26,6 @@ Aendert sich der Code, ohne dass diese Zahlen nachgezogen werden, wird der Test 
 
 <!-- KENNZAHLEN-ANFANG (geprueft von tests/test_readme_numbers.py) -->
 - module_count: 29
-- test_function_count: 355
-- source_lines: 6641
+- test_function_count: 367
+- source_lines: 6805
 <!-- KENNZAHLEN-ENDE -->

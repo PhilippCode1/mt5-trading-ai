@@ -37,6 +37,8 @@ from mt5_trading_ai.execution.reconcile import (
 from mt5_trading_ai.execution.release import live_release_blocks_opening_order
 from mt5_trading_ai.execution.risk_manager import RiskManager
 from mt5_trading_ai.venue.catalog import CatalogEntry
+from mt5_trading_ai.venue.demo_run import DemoReadiness
+from mt5_trading_ai.venue.halal import screen_halal
 from mt5_trading_ai.venue.protocol import (
     AccountState,
     Bar,
@@ -186,6 +188,12 @@ class Mt5Venue(TradingVenue):
     Kill-Switch (Tagesverlust/Drawdown/Deckel/Gap), Drossel, Stop-Budget und
     Positionsgroesse. Wie das Kostentor: auf **Live** fuer eroeffnende Orders Pflicht
     (fehlt es -> fail-closed), auf Demo unerheblich. Drawdown-Halt setzt ``_halted``.
+
+    ``demo_readiness`` (Paket 5) ist das Ergebnis des Demo-Reife-Tors
+    (``venue/demo_run.py``): eine Live-Eroeffnung verlangt >= 180 Tage Demo-Betrieb
+    **und** weiter bestandenen Edge; fehlt es oder ist es nicht reif, blockt die
+    Live-Freigabe. Der Halal-Screen (``venue/halal.py``) laeuft ebenfalls je
+    eroeffnender Live-Order und liest swapfrei/zinsfrei/Freigabe aus ``settings``.
     """
 
     def __init__(
@@ -199,6 +207,7 @@ class Mt5Venue(TradingVenue):
         sync: PrivateSync | None = None,
         cost_gate: CostGate | None = None,
         risk_manager: RiskManager | None = None,
+        demo_readiness: DemoReadiness | None = None,
     ) -> None:
         self.name = name
         self._terminal = terminal
@@ -207,6 +216,7 @@ class Mt5Venue(TradingVenue):
         self._max_notional_drift = max_notional_drift
         self._cost_gate = cost_gate
         self._risk_manager = risk_manager
+        self._demo_readiness = demo_readiness
         self._connected = False
         #: Idempotenz je ``client_order_id`` — nur angenommene Orders.
         self._results: dict[str, OrderResult] = {}
@@ -339,7 +349,14 @@ class Mt5Venue(TradingVenue):
         instrument = self.get_instrument(request.symbol)
         self._validate_volume(instrument, request.volume)
 
-        if not request.reduce_only:
+        # ``reduce_only`` ueberspringt die Eroeffnungs-Tore -- aber NUR, wenn die Order
+        # eine tatsaechlich offene Gegenposition abbaut. Ein reduce_only-Flag ohne (oder
+        # gleichgerichtet zu einer) offenen Position ist eine Eroeffnung und muss durch
+        # alle Tore (sonst umginge es Compliance/Risiko + Global-Halt -- §9 Paket 5).
+        pre_net = self._book.net(request.symbol)
+        is_reducing = request.reduce_only and self._reduces_position(request)
+
+        if not is_reducing:
             if self._halted:
                 raise OrderRejectedError(
                     "Global-Halt aktiv (Reconcile-Drift) — keine Eroeffnung",
@@ -353,8 +370,10 @@ class Mt5Venue(TradingVenue):
                     reason="missing_stop_loss",
                     retryable=False,
                 )
-            # Live-Freigabe-Tor: nur eroeffnende Orders an einem Live-Konto.
+            # Live-Freigabe (inkl. Demo-Reife): nur eroeffnende Orders am Live-Konto.
             self._require_live_release_for_opening()
+            # Halal-Screen: mechanische Konformitaet + hinterlegte Gelehrten-Freigabe.
+            self._enforce_halal(instrument)
             # Hebelklammer am Order-Pfad: handelbar, geklammert, Marge frei?
             effective_leverage = self._enforce_leverage(instrument, request)
             # Pre-Trade-Kostentor: reale Roundturn-Kosten unter der Backtest-Schwelle?
@@ -380,29 +399,53 @@ class Mt5Venue(TradingVenue):
             raw=send.raw,
         )
         self._results[request.client_order_id] = result
-        # Netto-Stand VOR der Buchung erfassen: das lokale Buch wird nur ohne Strom hier
-        # mutiert; mit Strom bucht der (nachlaufende) private Fill. Aus pre_net + diesem
-        # Fill folgt der resultierende Netto-Stand in BEIDEN Modi konsistent.
-        pre_net = self._book.net(request.symbol)
+        # ``pre_net`` (oben, vor jeder Buchung erfasst) + dieser Fill ergibt den
+        # resultierenden Netto-Stand -- stromunabhaengig (das lokale Buch wird nur ohne
+        # Strom hier mutiert; mit Strom bucht der nachlaufende private Fill).
         if self._sync is None:
             # Ohne Strom optimistisch buchen; mit Strom bucht der autoritative Fill.
             self._book.apply_fill(request.symbol, request.side, send.filled_volume)
         # Akzeptierten Fill an die Risikoschicht melden (Live, mit Manager).
         if self._risk_manager is not None and not self._terminal.account().is_demo:
-            if not request.reduce_only:
+            if not is_reducing:
                 # Eroeffnung: Frequenz-Zaehler + offene Position fortschreiben.
                 self._risk_manager.record_open_fill(request.symbol, send.ts)
             else:
-                signed = (
+                signed_fill = (
                     send.filled_volume
                     if request.side is OrderSide.BUY
                     else -send.filled_volume
                 )
-                if pre_net + signed == 0:
+                if pre_net + signed_fill == 0:
                     # Schliessung, die das Symbol netto glattstellt -> Deckel frei.
-                    # pre_net + signed statt book.net(): stromunabhaengig korrekt.
+                    # pre_net + Fill statt book.net(): stromunabhaengig korrekt.
                     self._risk_manager.record_close(request.symbol)
         return result
+
+    def _reduces_position(self, request: OrderRequest) -> bool:
+        """Baut die Order eine offene Gegenposition ab, OHNE sie zu ueberschreiten?
+
+        Massgeblich ist **ausschliesslich** die autoritative Boersen-Gegenposition:
+        ``get_positions()`` ist ein frischer Broker-Query (unabhaengig vom Privatstrom)
+        und spiegelt jeden Stand -- auch serverseitige SL/TP- und externe Schliessungen.
+        Das lokale Netto-Buch wird BEWUSST NICHT herangezogen: es kann in beide
+        Richtungen veralten (kein Close-Hook ohne Strom; stiller/nachhinkender Strom
+        setzt ``desync`` nicht) und darf die Reduce-Autorisierung nie tragen -- sonst
+        laesst ein stale-hohes Buch einen Over-Fill/Flip an den Toren + Halt vorbei
+        (§9-Fix-Re-Check). ``reduce_only`` ueberspringt die Tore nur, wenn das Volumen
+        die Gegenposition nicht reisst (hedging-faehig: Summe der Gegen-Tickets). Nur
+        fuer ``reduce_only``-Orders gerufen.
+        """
+        opposite = sum(
+            (
+                pos.volume
+                for pos in self.get_positions()
+                if pos.symbol == request.symbol and pos.side is not request.side
+            ),
+            Decimal("0"),
+        )
+        # opposite > 0: Gegenposition da; volume <= opposite: kein Flip/Over-Fill.
+        return opposite > 0 and request.volume <= opposite
 
     def _require_live_release_for_opening(self) -> None:
         account = self._terminal.account()
@@ -413,6 +456,56 @@ class Mt5Venue(TradingVenue):
             raise OrderRejectedError(
                 "Live-Freigabe unvollstaendig — eroeffnende Order blockiert",
                 reason=blocked.reason or "live_release_incomplete",
+                retryable=False,
+            )
+        # Demo-Reife-Tor (Paket 5): keine Live-Eroeffnung vor >= 180 Tagen Demo-Betrieb
+        # mit weiter bestandenem Edge. Fehlt das Reife-Ergebnis -> fail-closed.
+        ready = self._demo_readiness
+        if ready is None or not ready.ready_for_live_question:
+            reasons = ready.reasons if ready is not None else ("demo_readiness_fehlt",)
+            raise OrderRejectedError(
+                f"Demo-Reife nicht belegt: {', '.join(reasons)}",
+                reason="demo_not_ready",
+                retryable=False,
+            )
+
+    def _enforce_halal(self, instrument: Instrument) -> None:
+        """Halal-Screen fuer eine eroeffnende Live-Order (Demo-frei).
+
+        Zweiteilig, beide fail-closed: (1) **mechanische** Konformitaet -- swapfreies
+        Konto, zinsfreie Margin, Instrument nicht verboten (``screen_halal``, liest die
+        Kontokonfiguration aus ``settings``, Defaults konservativ = nicht konform);
+        (2) **Gelehrten-Freigabe** -- ``requires_scholar_review`` ist per Kernregel 16
+        IMMER wahr; der Code entscheidet die fiqh-Grundfrage nicht. Eine Live-Order kann
+        daher nur eroeffnen, wenn ein Mensch die Gelehrten-Entscheidung als
+        ``halal_scholar_review_id`` hinterlegt hat. Auf Demo entfaellt der Screen.
+        """
+        if self._terminal.account().is_demo:
+            return  # Demokonto: kein Echtgeld, Halal-Screen nicht bindend.
+        # Defaults konservativ (fail-closed): unbekannt = nicht swapfrei / zinsbehaftet.
+        verdict = screen_halal(
+            asset_class=instrument.asset_class,
+            account_swap_free=getattr(
+                self._settings, "halal_account_swap_free", False
+            )
+            is True,
+            interest_bearing_margin=getattr(
+                self._settings, "halal_interest_bearing_margin", True
+            )
+            is not False,
+        )
+        if not verdict.mechanically_conformant:
+            raise OrderRejectedError(
+                f"Halal-Screen nicht bestanden: {', '.join(verdict.reasons)}",
+                reason="halal_not_conformant",
+                retryable=False,
+            )
+        # Kernregel 16: die fiqh-Grundfrage entscheidet ein Gelehrter, nicht der Code.
+        review_id = getattr(self._settings, "halal_scholar_review_id", None)
+        if not (review_id is not None and str(review_id).strip()):
+            raise OrderRejectedError(
+                "Halal: keine Gelehrten-Freigabe (halal_scholar_review_id) hinterlegt",
+                reason="halal_scholar_review_missing",
                 retryable=False,
             )
 
