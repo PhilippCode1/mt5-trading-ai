@@ -1831,3 +1831,109 @@ zurückfällt — nie lockerer als zuvor. Rückwärtskompatibilität und die üb
 
 **Zeilenstand (gemessen, 2026-08-14):** 6.973 Zeilen, 30 Module, 387 Testfunktionen, 441 Testfälle grün;
 `ruff`, `mypy --strict`, `gen_docs --check`, `check_doc_numbers` sauber.
+
+## ERLEDIGT — Abnahme-Paket 7 (Ende-zu-Ende-Runner + Treiber-Loop + Abnahme-Checkliste)
+
+**Ziel (aus dem Plan):** Alle in Paket 3–5 verdrahteten Einzelteile spielen in **einem**
+beweisbaren Lauf zusammen, die Frische-/Drift-Prüfungen laufen **getaktet** statt passiv, und
+eine Checkliste stellt die vollständige Abnahme fest. Bis hierher gab es außer der Forschungs-
+kette (`edge_test`) keinen integrierenden Runner.
+
+**Was gebaut wurde:**
+
+- **Integrierender Runner (`execution/runner.py`, `run_signal`).** Fährt EIN Signal durch die
+  volle Naht-Kette und quittiert jede als Checklisten-Punkt: **Zulassung(§9.3) → Signal →
+  Daten-Tor → Halal → Hebel → Stop-Preis → Kostentor → Limits → Evaluation → Stop-Budget →
+  Sizing → submit_order → Buchung.** Der `RunnerReport` **ist** die Abnahme-Checkliste (je Naht
+  ein `ok`/`detail`-Schritt). Fail-closed: die erste nicht-grüne Naht bricht die Kette ab, es
+  wird nichts eröffnet.
+
+- **„Variante B" — jede Naht bindend, auch auf Demo.** Auf einem Demokonto überspringt
+  `submit_order` Kostentor, Risikoschicht und Live-Freigabe (kein Echtgeld) — nur Halal + Hebel
+  laufen dort immer. Ein Paper-Lauf, der sich allein auf `submit_order` verließe, ließe die
+  übersprungenen Nähte als No-op durchgehen. Deshalb fährt der Runner **Kostentor**
+  (`evaluate_cost_gate`) und die **Risikoschicht** (`RiskManager.authorize_opening` — die
+  fusionierte Naht Limits→Evaluation→Stop-Budget→Sizing) **selbst** als bindende Vor-Schritte,
+  baut die auf `sizing.volume` dimensionierte Order und ruft dann `submit_order` (das dieselben
+  Tore auf einem Live-Konto ein zweites Mal erzwingt — Defense-in-Depth). Der Runner hält seinen
+  **eigenen** `RiskManager` und ist **fail-closed auf Demo beschränkt** (`account.is_demo`, sonst
+  `runner_requires_demo`) — gegen ein Live-Konto würde `submit_order` die Risikoschicht selbst
+  fahren **und** buchen (Doppelzählung `record_open_fill`); der Guard schneidet das ab.
+
+- **Treiber-Loop/Scheduler (`execution/scheduler.py`, `SyncScheduler.tick`) — S2 geschlossen.**
+  Taktet je Intervall `observe_equity` → private Ereignisse → `check_sync(max_silence)` →
+  `reconcile()`, unabhängig vom Signal-Pfad; Stille, Desync und Positions-Drift latchen den
+  Global-Halt am Venue, der jede Eröffnung sperrt. Statt einer Alters-Prüfung je Eröffnung setzt
+  der Loop den Halt **proaktiv**, sobald die Frische reißt. Zusätzlich die vom §9-Review
+  gefundene **Fail-open-Kante geschlossen:** `PrivateSync.is_stale` gibt `False`, solange nie ein
+  Ereignis kam (ein nie gestarteter Strom galt nicht als tot) — der Scheduler latcht via der
+  neuen `Mt5Venue.latch_halt`, wenn ein konfigurierter Strom bis `started_at + max_silence` kein
+  einziges Ereignis lieferte (`stream_never_started`). `latch_halt` ist symmetrisch zu
+  `clear_halt`, idempotent und **fail-safe** (Halten ist immer die sichere Richtung).
+
+- **Das eine Kommando (`tools/paper_run.py`).** Fährt die volle Kette + einen Scheduler-Takt
+  gegen ein synthetisches Demo-Terminal und druckt die Checkliste Punkt für Punkt; `exit 0` nur,
+  wenn die Kette sauber durchlief **und** eröffnete. Die §9.3-**Zulassung** ist dort ein deutlich
+  markierter DEMO-Platzhalter — im echten Betrieb kommt sie aus `evaluate_criteria` eines realen
+  OoS-Laufs (`edge_test`), nicht aus diesem Werkzeug.
+
+**Abnahme belegt (`tests/test_paper_runner.py`, gegen ein Fake-Terminal):**
+- **Volle Kette grün:** `run_signal` eröffnet und quittiert **alle 13 Nähte** grün
+  (`test_full_chain_opens_and_every_seam_is_green`); das Kommando läuft mit `exit 0`.
+- **Scheduler mit simulierter Drift setzt den Halt automatisch** (Abnahmekriterium):
+  `test_scheduler_position_drift_latches_halt` — Buch leer, Börse meldet eine Position → `reconcile`
+  latcht.
+- **S2** (nie gestarteter Strom) latcht (`test_scheduler_never_started_stream_latches_halt_S2`);
+  Stille nach dem ersten Ereignis latcht.
+
+**Negativ gefahren (jede Wache bewiesen):** Zulassung nicht bestanden → kein Handel; `FLAT` →
+keine Eröffnung; Halal (Krypto/fehlende Gelehrten-Freigabe) → Ablehnung; Kostentor über Schwelle
+→ Ablehnung; Drawdown → Risiko-Ablehnung **und** Venue-Latch gesetzt; **Nicht-Demo-Konto →
+`runner_requires_demo`** (Doppelzählung abgeschnitten); **S2-Kante deaktiviert → S2-Test rot**
+(zurückgebaut → grün); **Dead-Session-Latch deaktiviert → Test rot** (siehe §9).
+
+**§9-Review (adversarial, 4 Linsen als Hintergrund-Workflow, vor dem Commit):** 3 bestätigte
+Befunde — **ein Blocker** plus zwei Non-Blocker, alle gefixt:
+- **MITTEL / „Halt latcht nicht" (Blocker) — Scheduler ignorierte einen Sitzungsabbruch bei
+  verdrahtetem RiskManager:** `SyncScheduler.tick` rief `observe_equity(now, get_account().equity)`
+  **außerhalb** jedes try/except. `get_account()` wirft bei toter Sitzung `VenueUnavailableError`;
+  mit rm propagierte die Ausnahme aus `tick()` und präemptierte die **gesamte** Halt-Logik
+  (reconcile-Latch, S2, Stille/Desync) → das Venue blieb **ungelatcht**, obwohl „Sitzung weg"
+  fail-closed latchen soll (ohne rm latchte derselbe Ausfall korrekt via reconcile). **Fix:** die
+  Equity-Beobachtung in ein eigenes try/except gegen `VenueError` gelegt, das `latch_halt(
+  reason="account_unavailable")` ruft und weiterläuft — ein Sitzungsabbruch latcht jetzt in
+  **jeder** Konfiguration klebrig. Negativ gefahren: ohne den Schutz propagiert `tick()` statt zu
+  latchen (`test_scheduler_dead_session_latches_even_with_risk_manager` rot → grün).
+- **MITTEL / konservativ — idempotenter Replay buchte doppelt:** der Runner buchte
+  `record_open_fill` allein auf `result.accepted` und ignorierte `result.idempotent_replay`. Ein
+  Retry mit stabiler `client_order_id` liefert `accepted=True` **ohne** zweite Order — die zweite
+  Buchung verfälschte die Frequenz-/Tagesdeckel-Zähler (Richtung konservativ, kein fail-open).
+  **Fix:** Buchung nur bei `accepted and not idempotent_replay`
+  (`test_idempotent_replay_is_not_rebooked`).
+- **NIEDRIG / safety-neutral — `halt_reason` war bei internen Latches None:** nur `latch_halt`
+  pflegte `_halt_reason`; reconcile-Drift, check_sync-Stille/Desync, Stream-Desync, Drawdown und
+  emergency_flatten setzten den Halt ohne Grund → `TickResult.halt_reason` blieb None/stale (Alarm
+  ohne Ursache). **Fix:** alle Latch-Pfade setzen jetzt einen sprechenden `_halt_reason`
+  (`test_scheduler_position_drift_latches_halt` prüft `reconcile_drift`).
+
+**Doku angeglichen:** `SPAETER.md` **S2 → ERLEDIGT** (Frische-Latch geschlossen); `MODULES.md`
+regeneriert (neue Module `runner`, `scheduler`); README-Kennzahlen aktualisiert; `check_docs_claims`
+sauber (keine Zusage ohne Aufrufer im Pfad).
+
+**Entscheidungen, die ich selbst getroffen habe:** den Runner als **Variante B / Demo-only**
+(fail-closed `is_demo`) zu bauen, weil das die Naht-Buchung eindeutig hält (kein Doppel-`record_open_fill`)
+und die auf Demo übersprungenen Tore bindend fährt; die S2-Frische als **proaktiven Scheduler-Latch**
+statt einer Alters-Prüfung je Eröffnung (dieselbe Sicherheits­eigenschaft, kontinuierlich); die
+Nie-gestartet-Kante über eine **Loop-Startzeit + `latch_halt`** zu schließen, statt `PrivateSync.is_stale`
+zu ändern (dessen Vertrag als reiner Ereignis-Konsument bleibt unangetastet).
+
+**Auffälligkeiten, gemeldet, nicht angefasst (ehrlich):** Die §9.3-Zulassung im Kommando ist ein
+Demo-Platzhalter (echter Betrieb: `evaluate_criteria` aus realem OoS-Lauf). Die Volatilitäts-
+komponente des Stop-Floors ist am Order-Pfad weiter 0 (je Bar nicht verfügbar, SPAETER S12); die
+Kosten-/Budget-Spannen laufen auf der Annahmetabelle, bis gegen Demo-Feed gemessen wird (SPAETER).
+Eine echte Bewertungsschleife mit mehreren Kandidaten (Score/Korrelation im Evaluation-Gate) bleibt
+SPAETER S12. Der Real-Terminal-Strom (seq/ts-Quelle) ist extern zu binden.
+
+**Zeilenstand (gemessen, 2026-08-15):** 7.429 Zeilen, 32 Module, 404 Testfunktionen, 458 Testfälle
+grün; `ruff`, `mypy --strict`, `gen_docs --check`, `check_docs_claims`, `check_doc_numbers` sauber.
+**System abnahmefertig.**

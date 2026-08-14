@@ -226,6 +226,8 @@ class Mt5Venue(TradingVenue):
         self._book = sync.book if sync is not None else PositionBook()
         #: Global-Halt-Latch (Reconcile-Drift/Desync). Klaert nur ``clear_halt``.
         self._halted = False
+        #: Grund des zuletzt gesetzten Halts (best-effort, fuer Nachweis/Alarm).
+        self._halt_reason: str | None = None
 
     # --- Verbindung -------------------------------------------------------
     def connect(self) -> None:
@@ -616,6 +618,7 @@ class Mt5Venue(TradingVenue):
             if auth.latch_halt:
                 # Drawdown-Halt: Latch setzen. Loest nur ``clear_halt`` + Freigabe.
                 self._halted = True
+                self._halt_reason = auth.reason or "risk_drawdown_halt"
             raise OrderRejectedError(
                 f"Risiko-Tor abgelehnt: {auth.reason}",
                 reason=auth.reason or "risk_rejected",
@@ -717,9 +720,40 @@ class Mt5Venue(TradingVenue):
     def is_halted(self) -> bool:
         return self._halted
 
+    @property
+    def halt_reason(self) -> str | None:
+        """Grund des zuletzt via ``latch_halt`` gesetzten Halts (best-effort)."""
+        return self._halt_reason
+
+    @property
+    def has_private_stream(self) -> bool:
+        """Ist ein privater Kontostrom (``PrivateSync``) konfiguriert?"""
+        return self._sync is not None
+
+    @property
+    def stream_last_event_ts(self) -> datetime | None:
+        """Zeitstempel des letzten Stromereignisses; ``None`` ohne Strom oder bevor je
+        eines ankam. Der Treiber-Loop schliesst darueber die S2-Kante: ``check_sync``/
+        ``is_stale`` faengt Stille erst NACH dem ersten Ereignis -- ein nie gestarteter
+        Strom bleibt sonst unbemerkt fail-open."""
+        return self._sync.last_event_ts if self._sync is not None else None
+
+    def latch_halt(self, *, reason: str) -> None:
+        """Global-Halt von aussen setzen (Scheduler-S2-Frische-Latch, Drawdown-Halt).
+
+        Symmetrisch zu ``clear_halt``. Idempotent und **fail-safe**: Halten ist immer
+        die sichere Richtung. Der Treiber-Loop nutzt es, um einen nie gestarteten oder
+        still gewordenen Strom zu latchen, den ``check_sync`` selbst nicht faengt
+        (``is_stale`` ist blind, solange nie ein Ereignis kam). Klaert nur via
+        ``clear_halt``.
+        """
+        self._halted = True
+        self._halt_reason = reason
+
     def clear_halt(self) -> None:
         """Manuelle Freigabe nach aufgeloester Drift. Der Latch klaert nicht selbst."""
         self._halted = False
+        self._halt_reason = None
         if self._sync is not None:
             self._sync.clear_desync()
 
@@ -747,6 +781,7 @@ class Mt5Venue(TradingVenue):
         )
         if result.halt:
             self._halted = True
+            self._halt_reason = f"reconcile_drift:{result.reason or 'drift'}"
         return result
 
     def adopt_book(self) -> dict[str, Decimal]:
@@ -768,6 +803,7 @@ class Mt5Venue(TradingVenue):
         self._sync.apply(event)
         if self._sync.desync:
             self._halted = True
+            self._halt_reason = f"stream_desync:{self._sync.desync_reason or 'desync'}"
 
     def check_sync(self, now: datetime, *, max_silence: timedelta) -> bool:
         """Pruefe die Stromgesundheit; bei Stille/Desync Global-Halt setzen."""
@@ -776,6 +812,8 @@ class Mt5Venue(TradingVenue):
         healthy = self._sync.healthy(now, max_silence)
         if not healthy:
             self._halted = True
+            reason = self._sync.desync_reason or "stream_stale"
+            self._halt_reason = f"check_sync:{reason}"
         return healthy
 
     def emergency_flatten(self) -> tuple[OrderResult, ...]:
@@ -789,6 +827,7 @@ class Mt5Venue(TradingVenue):
         """
         self._require_healthy()
         self._halted = True
+        self._halt_reason = "emergency_flatten"
         results: list[OrderResult] = []
         for position in self.get_positions():
             close_side = (

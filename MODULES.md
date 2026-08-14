@@ -160,6 +160,22 @@ Risikoschicht am Order-Pfad: die vier Grenzen als letzte Verteidigungslinie.
 - `class RiskAuthorization`
 - `class RiskManager`
 
+## `mt5_trading_ai/execution/runner.py`
+
+Integrierender Paper/Dry-Run-Runner (Paket 7): die eine beweisbare Kette.
+
+- `class RunnerConfig`
+- `class SeamStep`
+- `class RunnerReport`
+- `def run_signal`
+
+## `mt5_trading_ai/execution/scheduler.py`
+
+Treiber-Loop/Scheduler (Paket 7): Frische, Drift und Drawdown-Peak getaktet pruefen.
+
+- `class TickResult`
+- `class SyncScheduler`
+
 ## `mt5_trading_ai/gates/criteria.py`
 
 Vorregistrierte Kriterien und ihre Auswertung (Phase 9.3).

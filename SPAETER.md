@@ -41,13 +41,24 @@ Volatilität steht am Order-Pfad nicht je Bar bereit → im Stop-Floor mit 0 ang
 (Broker-Abstand, Tiefe, Spread binden weiter). (iii) Der Positions-Lebenszyklus ist netto je
 Symbol geführt (kein lot-genaues Teil-Fill-Buch je Ticket).
 
-## S2 — Kein Frische-Mechanismus am Halt-Latch (Befund 1, aus A0.3)
+## S2 — Kein Frische-Mechanismus am Halt-Latch (Befund 1, aus A0.3) — ERLEDIGT (Abnahme-Paket 7)
 
-`reconcile()` ist betreiber-gerufen, kein Automatismus je Order. Ein Halt-Latch, den
-niemand füllt, ist beliebig alt; es gibt keinen Zeitstempel + Maximalalter, der eine
-Eröffnung blockiert, wenn der letzte Portfolio-Risiko-Check zu alt ist. Der frühere
-`portfolio_risk_check_fresh` bleibt damit **offen**. Nachzurüsten: Frische-Pflicht
-(Alter des letzten Reconcile < Grenze) als Vorbedingung jeder Eröffnung.
+Früher war `reconcile()` rein betreiber-gerufen, kein Automatismus: ein Halt-Latch, den
+niemand füllt, ist beliebig alt, und eine Eröffnung lief weiter, obwohl der letzte
+Portfolio-Risiko-Check zu alt war.
+
+**Geschlossen durch den Treiber-Loop (`execution/scheduler.py`, `SyncScheduler`):** Er
+taktet je Intervall `observe_equity` → private Ereignisse → `check_sync(max_silence)` →
+`reconcile()`, unabhängig vom Signal-Pfad. Stille (Strom länger als `max_silence` stumm),
+Desync und Positions-Drift latchen den Global-Halt am Venue (`_halted`); der blockt jede
+Eröffnung (`submit_order` wirft `global_halt`). Statt einer Alters-Prüfung je Eröffnung
+setzt der Loop den Halt **proaktiv**, sobald die Frische reißt — dieselbe Sicherheits­eigen­schaft, kontinuierlich statt punktuell.
+
+Zusätzlich die **Fail-open-Kante geschlossen**, die der §9-Review fand: `PrivateSync.is_stale`
+gibt `False`, solange nie ein Ereignis kam (ein nie gestarteter Strom galt nicht als tot).
+Der Scheduler kennt die Loop-Startzeit und latcht den Halt (`stream_never_started`), wenn
+ein konfigurierter Strom bis `started_at + max_silence` kein einziges Ereignis lieferte
+(`venue.latch_halt`, negativ gefahren in `test_paper_runner.py`).
 
 ## S3 — MASTERBERICHT §3 wiederholt Modul-Zeilenzahlen (Rule 9)
 
