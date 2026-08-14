@@ -1781,3 +1781,53 @@ Paket):**
 
 **Zeilenstand (gemessen, 2026-08-14):** 6.958 Zeilen, 30 Module, 384 Testfunktionen, 438 Testfälle
 grün; `ruff`, `mypy --strict`, `gen_docs --check`, `check_doc_numbers` sauber.
+
+## ERLEDIGT — Deflations-Härtung (Nachzug: order-gameable `count_scope='total'`, §9-Befund aus Paket 6)
+
+**Herkunft:** Der §9-Review von Paket 6 fand einen **HOCH**-Befund außerhalb der damaligen Diff
+(vorbestehend, daher dort nicht gefixt): `deflated_sharpe_for_report(count_scope='total')` las die
+Versuchszahl **zum Aufrufzeitpunkt** (`trials.total_trials`). In einer Kampagne — `multi_instrument_edge`
+deflationiert je Instrument **sofort** nach dessen Registrierung, ebenso sequentielle `edge_test`-Läufe
+gegen dasselbe `TRIALS.jsonl` — sah der **zuerst** getestete Lauf nur seine ~6 Versuche, der letzte die
+volle Zahl. Da die Deflated Sharpe **streng monoton mit der Versuchszahl fällt** und Bedingung 2
+(`deflated_sharpe > 0.95`) eine PASS-Bedingung ist, war das **order-gameable**: das Wunsch-Instrument
+zuerst testen = schwächste Deflation. Gemessenes Straddle-Band (§9): `trade_sharpe_per_obs` in
+[0,059..0,066] bestand bei n=6 (DSR 0,95..0,97), fiel aber bei ehrlichem n=12 (DSR 0,90..0,93) durch —
+gleicher Bericht, Lücke bis 0,13. Auf ausdrücklichen Wunsch als eigenes kleines Paket vorgezogen.
+
+**Fix — Deflation gegen eine deklarierte, aufrufzeit-unabhängige Kampagnengröße:**
+- `deflated_sharpe_for_report` bekommt `expected_trials: int | None`. Nach dem Zählen:
+  `n_trials = max(gezählt, expected_trials)`. Die **deklarierte** Kampagnengröße wirkt als
+  **Untergrenze** — jeder Lauf deflationiert gegen dieselbe volle Zahl, egal als wievielter er läuft.
+  Das `max` fängt zugleich ein Über-Laufen über die Deklaration hinaus (mehr Versuche → strenger, **nie**
+  lockerer). Eine dishonest **kleine** Deklaration kann die Deflation nicht schwächen: sie fällt dann auf
+  den echten Registerstand zurück. Fehlt `expected_trials`, bleibt exakt das alte Verhalten
+  (rückwärtskompatibel).
+- `multi_instrument_edge.py`: `WALK_FORWARD_FOLDS = 5`, `TRIALS_PER_INSTRUMENT = 6` (5 WF-Fenster + 1
+  OoS); `main()` berechnet `expected_trials = len(Instrumente) × 6` **fest, bevor das erste Instrument
+  läuft**, und reicht es je Instrument in die Deflation. Schließt den gemessenen Exploit.
+- `edge_test.py`: optionales `--campaign-trials` (deklarierte Gesamtzahl für Mehr-Strategie-Kampagnen
+  über dasselbe Ledger) → `expected_trials`. Ohne Angabe unverändert (ein Einzellauf registriert seine
+  6 Versuche ohnehin vollständig vor der Deflation).
+
+**Negativ gefahren:** `test_expected_trials_makes_total_scope_order_independent` — mit deaktiviertem
+Floor **rot** (`fixed_few 2,57e-05 ≠ fixed_many 5,07e-06`, order-abhängig); mit Floor grün
+(`fixed_few == fixed_many == naive_many`, exakt gegen die volle Kampagnenzahl). Dazu:
+`_is_a_floor_not_a_cap` (bei mehr Ist-Versuchen als deklariert zählt der höhere Ist-Stand) und ein
+Tool-Test, dass `_run_one` die Zahl **strikt** durchreicht (größere Kampagne → strikt kleinere DSR;
+mit `<=` wäre er bei deaktiviertem Fix falsch-grün gewesen — auf `<` gehärtet).
+
+**Entscheidung:** die Untergrenze als `max(Ist, Deklariert)` statt reiner Deklaration — so bleibt die
+Ledger-Ehrlichkeit (Undercount wird über den Ist-Stand weiter gefangen) **und** die Order-Unabhängigkeit
+gilt. Konservativ: fehlen Folds (kurze Daten → weniger als 5), überzählt `expected` leicht → strengere,
+nie lockerere Deflation.
+
+**§9-Review (3 Linsen, vor dem Commit):** in der **ersten** Runde **sauber** (0 Befunde). Die Synthese
+belegt formal, dass der `max`-Floor die Deflation **nie zu locker** machen kann (`expected_max_sharpe`
+streng monoton steigend → `sr0` steigt → `z` fällt → `DSR` fällt; `max` hebt `n_trials` nur an) und dass
+Unter-Deklaration bzw. `expected_trials<=0` höchstens auf das **vorbestehende** naive Verhalten
+zurückfällt — nie lockerer als zuvor. Rückwärtskompatibilität und die übrigen `count_scope='total'`-Aufrufer
+(`test_e2e_smoke`, `test_demo_run_e2e`) sind unberührt.
+
+**Zeilenstand (gemessen, 2026-08-14):** 6.973 Zeilen, 30 Module, 387 Testfunktionen, 441 Testfälle grün;
+`ruff`, `mypy --strict`, `gen_docs --check`, `check_doc_numbers` sauber.

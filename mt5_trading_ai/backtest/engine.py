@@ -517,6 +517,7 @@ def deflated_sharpe_for_report(
     version: str | None = None,
     ledger_path: str | None = None,
     count_scope: str = "strategy",
+    expected_trials: int | None = None,
 ) -> float:
     """Deflationiere die Berichts-Sharpe gegen die WAHRE Versuchszahl aus dem Register.
 
@@ -529,6 +530,16 @@ def deflated_sharpe_for_report(
     mit Parametervarianten); "total" zaehlt das GESAMTE Register -- die ehrliche
     Multiple-Testing-Zahl, wenn mehrere verschiedene Strategien gegen dieselben
     OoS-Daten selektiert werden (eine Kampagne). Bei einer Strategie sind beide gleich.
+
+    ``expected_trials`` ist die **vorregistrierte** Kampagnengroesse und wirkt als
+    aufrufzeit-UNABHAENGIGE Untergrenze: ``n_trials = max(gezaehlt, expected_trials)``.
+    Ohne sie liest ``count_scope='total'`` den Registerstand ZUM AUFRUFZEITPUNKT -- in
+    einer Kampagne, die je Instrument/Strategie sofort nach der Registrierung
+    deflationiert, saehe der zuerst getestete Lauf zu wenige Versuche und waere zu
+    locker bewertet (order-gameable: Wunsch-Instrument zuerst = schwaechste Deflation).
+    Die deklarierte Zahl deflationiert JEDEN Lauf gegen dieselbe volle Kampagnengroesse;
+    das ``max`` faengt zugleich ein Ueber-Laufen ueber die Deklaration hinaus (mehr
+    Versuche -> strenger, nie lockerer). Fehlt sie, bleibt das alte Verhalten.
     """
     if count_scope == "total":
         n_trials = max(1, trials.total_trials(path=ledger_path))
@@ -538,6 +549,10 @@ def deflated_sharpe_for_report(
         )
     else:
         raise ValueError("count_scope muss 'strategy' oder 'total' sein")
+    if expected_trials is not None:
+        # Deklarierte Kampagnengroesse als Untergrenze -- macht die Deflation
+        # order-unabhaengig und schneidet das Vorziehen des Wunsch-Laufs ab.
+        n_trials = max(n_trials, expected_trials)
     # S8: gegen die TRADE-Level-Sharpe deflationieren -- dieselbe Kennzahl, die das Tor
     # (Bedingung 1) prueft, statt der Bar-Sharpe. Das macht Gemessenes und
     # Deflationiertes KONSISTENT; ob die Zahl dadurch strenger oder lockerer wird, ist

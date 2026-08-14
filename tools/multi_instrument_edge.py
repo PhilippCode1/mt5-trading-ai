@@ -41,6 +41,11 @@ from mt5_trading_ai.data.loader import FxSession, load_verified_csv  # noqa: E40
 VERSION = "v1"
 OOS_FRACTION = 0.30
 LEVERAGE = Decimal("5")  # konservativ, unter jeder ESMA-Klassengrenze
+WALK_FORWARD_FOLDS = 5   # k der Walk-Forward-Fenster je Instrument
+#: Registrierte Versuche je Instrument: die WF-Fenster + der eine OoS-Abschluss. Geht in
+#: die deklarierte Kampagnengroesse ein, damit die Deflation NICHT ordnungsabhaengig ist
+#: (jedes Instrument gegen die volle Kampagne, nicht gegen den laufenden Registerstand).
+TRIALS_PER_INSTRUMENT = WALK_FORWARD_FOLDS + 1
 
 
 def _pip_size(symbol: str) -> Decimal:
@@ -48,9 +53,15 @@ def _pip_size(symbol: str) -> Decimal:
 
 
 def _run_one(
-    symbol: str, csv_path: Path, ledger: str, checksum: str, commit: str
+    symbol: str, csv_path: Path, ledger: str, checksum: str, commit: str,
+    expected_trials: int,
 ) -> tuple[EdgeVerdict, int, float, float]:
-    """Ein Instrument durchs Tor. -> (Urteil, Trades, Netto, DSR)."""
+    """Ein Instrument durchs Tor. -> (Urteil, Trades, Netto, DSR).
+
+    ``expected_trials`` ist die deklarierte Gesamt-Kampagnengroesse (alle Instrumente);
+    die Deflation nutzt sie als Untergrenze, damit sie unabhaengig davon ist, als
+    wievieltes dieses Instrument laeuft.
+    """
     # Qualitaetstor + Provenienz am Backtest-Rand (Paket 1), fail-closed je Instrument.
     bars, _chk = load_verified_csv(
         csv_path, instrument=symbol, timeframe="H1", session_predicate=FxSession(),
@@ -71,7 +82,7 @@ def _run_one(
         return mean_reversion_zscore(48, 2.0, 0.5)
 
     wf = run_walk_forward(
-        in_sample, lambda _train: factory(), spec, 5,   # Fixparameter -> Fit No-op
+        in_sample, lambda _train: factory(), spec, WALK_FORWARD_FOLDS,  # Fit = No-op
         purge_ms=3_600_000, embargo_ms=3_600_000,
         strategy_id=strategy_id, seed=100, version=VERSION,
         data_checksum="", code_commit=commit, ledger_path=ledger,
@@ -83,7 +94,7 @@ def _run_one(
     )
     dsr = deflated_sharpe_for_report(
         oos_report, strategy_id=strategy_id, version=VERSION, ledger_path=ledger,
-        count_scope="total",
+        count_scope="total", expected_trials=expected_trials,
     )
     # Bedingung 6 wird je Instrument GEFAHREN, nicht behauptet: Zufalls-Referenz < 0
     # nach Kosten, und der Leckage-Schutz faengt eine Zukunfts-Strategie.
@@ -132,11 +143,16 @@ def main() -> int:
     code_commit = args.code_commit or code_commit_from_git()
 
     ledger = str(args.ledger)
+    # Deklarierte Kampagnengroesse: alle Instrumente x (WF-Fenster + OoS). Fest, bevor
+    # das erste Instrument laeuft -- so deflationiert JEDES Instrument gegen dieselbe
+    # volle Zahl statt gegen den laufenden Registerstand (nicht order-gameable, §8.1).
+    expected_trials = len(args.instrument) * TRIALS_PER_INSTRUMENT
     passed_count = 0
     print("=== MULTI-INSTRUMENT-EDGE (jedes einzeln durchs Sechs-Bedingungen-Tor) ===")
     for symbol, csv in args.instrument:
         verdict, trades, net, dsr = _run_one(
-            symbol.upper(), Path(csv), ledger, args.data_checksum, code_commit
+            symbol.upper(), Path(csv), ledger, args.data_checksum, code_commit,
+            expected_trials,
         )
         mark = "EDGE BELEGT" if verdict.passed else "KEIN EDGE"
         if verdict.passed:

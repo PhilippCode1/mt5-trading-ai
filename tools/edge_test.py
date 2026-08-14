@@ -100,6 +100,12 @@ def main() -> int:
     )
     ap.add_argument("--data-checksum", default="")
     ap.add_argument("--code-commit", default="")
+    ap.add_argument(
+        "--campaign-trials", type=int, default=None,
+        help="deklarierte GESAMT-Versuchszahl der Kampagne (mehrere Strategien gegen "
+             "dasselbe Ledger); deflationiert jeden Lauf gegen dieselbe volle Zahl "
+             "statt gegen den laufenden Registerstand -- nicht order-gameable",
+    )
     args = ap.parse_args()
 
     # Herkunft (Paket 6): der Codestand kommt aus git, wenn nicht explizit gesetzt --
@@ -171,7 +177,7 @@ def main() -> int:
     # Zahl die Summe aller Versuche, nicht nur die dieser einen Strategie.
     dsr = deflated_sharpe_for_report(
         oos_report, strategy_id=strategy_id, version=VERSION, ledger_path=ledger,
-        count_scope="total",
+        count_scope="total", expected_trials=args.campaign_trials,
     )
 
     # Bedingung 6 wird GEFAHREN, nicht behauptet: Zufalls-Referenzlauf < 0 nach Kosten,

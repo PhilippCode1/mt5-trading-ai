@@ -39,7 +39,7 @@ def test_run_one_delivers_real_verdict_and_registers(tmp_path: Path) -> None:
     module = _load()
     ledger = str(tmp_path / "TRIALS.jsonl")
     verdict, trades, net, dsr = module._run_one(  # type: ignore[attr-defined]
-        "EURUSD", FIXTURE, ledger, PINNED_CHECKSUM, COMMIT
+        "EURUSD", FIXTURE, ledger, PINNED_CHECKSUM, COMMIT, 6  # ein Instrument -> 6
     )
     # Ein ECHTES Urteil aus der Kette (run_walk_forward -> run_registered_backtest ->
     # deflated_sharpe -> evaluate_edge), kein handgesetztes Flag.
@@ -77,3 +77,17 @@ def test_main_runs_single_instrument_and_keeps_discipline(
     ids = {e.strategy_id for e in trials_ledger.iter_trials(ledger)}
     assert ids == {STRATEGY_ID}
     assert ids.isdisjoint(CONTROL_IDS)
+
+
+def test_run_one_uses_expected_trials_for_deflation(tmp_path: Path) -> None:
+    # Die Deflation nutzt die deklarierte Kampagnenzahl: gleiche Fixture, getrennte
+    # Ledger, groessere expected_trials -> strengere (kleiner-gleich) DSR. Beweist, dass
+    # _run_one expected_trials wirklich durchreicht (nicht order-gameable).
+    module = _load()
+    _v1, _t1, _n1, dsr_small = module._run_one(  # type: ignore[attr-defined]
+        "EURUSD", FIXTURE, str(tmp_path / "a.jsonl"), PINNED_CHECKSUM, COMMIT, 6)
+    _v2, _t2, _n2, dsr_big = module._run_one(  # type: ignore[attr-defined]
+        "EURUSD", FIXTURE, str(tmp_path / "b.jsonl"), PINNED_CHECKSUM, COMMIT, 600)
+    # STRIKT: ohne die Durchreichung waeren beide gleich (actual=6 in beiden) -> der
+    # Test faellt bei deaktiviertem Fix rot, statt falsch-gruen durchzugehen.
+    assert dsr_big < dsr_small

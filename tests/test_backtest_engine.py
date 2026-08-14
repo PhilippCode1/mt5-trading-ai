@@ -304,6 +304,61 @@ def test_deflated_sharpe_invalid_count_scope_raises() -> None:
         deflated_sharpe_for_report(report, strategy_id="s", count_scope="bogus")
 
 
+def _seed_ledger(path: str, n: int) -> str:
+    """n vollstaendige Versuche (mit Herkunft) ins Register schreiben."""
+    for i in range(n):
+        append(new_trial(
+            strategy_id="s", version="v", instruments=("EURUSD",),
+            period_start=datetime(2022, 1, 1, tzinfo=UTC),
+            period_end=datetime(2022, 1, 2, tzinfo=UTC),
+            leverage=5, parameters={"i": i}, outcome="completed",
+            data_checksum="chk", code_commit="commit",
+        ), path)
+    return path
+
+
+def test_expected_trials_makes_total_scope_order_independent(tmp_path: object) -> None:
+    # §9-Non-Blocker: ohne deklarierte Kampagnenzahl ist count_scope='total'
+    # ORDER-GAMEABLE -- der zuerst getestete Lauf sieht weniger Versuche und wird zu
+    # locker bewertet. Mit expected_trials deflationiert JEDER Lauf gegen dieselbe volle
+    # Kampagnenzahl, egal als wievielter er laeuft.
+    report = _run(random_signal_strategy(3))
+    few = _seed_ledger(str(tmp_path / "few.jsonl"), 6)    # type: ignore[operator]
+    many = _seed_ledger(str(tmp_path / "many.jsonl"), 12)  # type: ignore[operator]
+
+    naive_few = deflated_sharpe_for_report(
+        report, strategy_id="s", ledger_path=few, count_scope="total")
+    naive_many = deflated_sharpe_for_report(
+        report, strategy_id="s", ledger_path=many, count_scope="total")
+    fixed_few = deflated_sharpe_for_report(
+        report, strategy_id="s", ledger_path=few, count_scope="total",
+        expected_trials=12)
+    fixed_many = deflated_sharpe_for_report(
+        report, strategy_id="s", ledger_path=many, count_scope="total",
+        expected_trials=12)
+
+    # FIX: gleiche deklarierte Zahl -> identische Deflation, unabhaengig vom Registerstand.
+    assert fixed_few == fixed_many
+    # Der frueh getestete Lauf wird jetzt EXAKT wie der volle Kampagnenstand deflationiert
+    # (12), statt gegen die 6 zum Aufrufzeitpunkt -- genau das schliesst das Order-Gaming.
+    assert fixed_few == naive_many
+    # ... und ist damit mindestens so streng wie die naive (order-abhaengige) Fruehzahl.
+    assert fixed_few <= naive_few
+
+
+def test_expected_trials_is_a_floor_not_a_cap(tmp_path: object) -> None:
+    # Laufen MEHR Versuche als deklariert, zaehlt der hoehere IST-Stand (strenger) --
+    # expected_trials ist eine Untergrenze, keine Deckelung.
+    report = _run(random_signal_strategy(3))
+    path = _seed_ledger(str(tmp_path / "L.jsonl"), 20)  # type: ignore[operator]
+    with_floor = deflated_sharpe_for_report(
+        report, strategy_id="s", ledger_path=path, count_scope="total",
+        expected_trials=12)
+    without = deflated_sharpe_for_report(
+        report, strategy_id="s", ledger_path=path, count_scope="total")
+    assert with_floor == without  # max(20, 12) == 20 -> Untergrenze greift nicht
+
+
 def test_walk_forward_with_nonzero_purge_still_runs() -> None:
     res = run_walk_forward(
         _bars(300), lambda _train: random_signal_strategy(1), _spec(), 5,
