@@ -42,6 +42,10 @@ class Trial:
     leverage: int
     parameters: dict[str, Any]
     outcome: str
+    #: Herkunft (Paket 6): Datenpruefsumme + Codestand. Pflicht -- kein Versuch geht
+    #: mit leerer Herkunft ins Register.
+    data_checksum: str
+    code_commit: str
     sharpe: float | None = None
     net_expectancy: float | None = None
     trades: int | None = None
@@ -58,6 +62,12 @@ class Trial:
             raise TrialsLedgerError("strategy_id und version sind Pflicht")
         if not self.instruments:
             raise TrialsLedgerError("instruments darf nicht leer sein")
+        # Fail-closed: ein Lauf ohne ableitbare Herkunft (Datenpruefsumme + Codestand)
+        # kommt nicht ins Register -- sonst ist der Eintrag beweisfrei.
+        if not self.data_checksum.strip():
+            raise TrialsLedgerError("data_checksum ist Pflicht (leere Herkunft)")
+        if not self.code_commit.strip():
+            raise TrialsLedgerError("code_commit ist Pflicht (leere Herkunft)")
 
     def to_json_line(self) -> str:
         payload = asdict(self)
@@ -75,6 +85,8 @@ def new_trial(
     leverage: int,
     parameters: dict[str, Any],
     outcome: str,
+    data_checksum: str,
+    code_commit: str,
     sharpe: float | None = None,
     net_expectancy: float | None = None,
     trades: int | None = None,
@@ -92,6 +104,8 @@ def new_trial(
         leverage=int(leverage),
         parameters=dict(parameters),
         outcome=outcome,
+        data_checksum=data_checksum,
+        code_commit=code_commit,
         sharpe=sharpe,
         net_expectancy=net_expectancy,
         trades=trades,
@@ -137,6 +151,10 @@ def iter_trials(path: Path | str | None = None) -> Iterator[Trial]:
             ) from exc
         payload["instruments"] = tuple(payload.get("instruments") or ())
         payload.pop("ledger_version", None)
+        # Rueckwaertskompatibel: Eintraege vor Paket 6 tragen keine Herkunft; sie als
+        # ``legacy`` lesen, ohne die Schreib-Pflicht (non-empty) aufzuweichen.
+        payload.setdefault("data_checksum", "legacy")
+        payload.setdefault("code_commit", "legacy")
         yield Trial(ledger_version=TRIALS_LEDGER_VERSION, **payload)
 
 

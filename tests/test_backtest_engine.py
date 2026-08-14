@@ -258,6 +258,7 @@ def test_deflated_sharpe_binds_true_trial_count(tmp_path: object) -> None:
             period_start=datetime(2022, 1, 1, tzinfo=UTC),
             period_end=datetime(2022, 1, 2, tzinfo=UTC),
             leverage=5, parameters={}, outcome="completed",
+            data_checksum="testchk", code_commit="testcommit",
         ), ledger)
 
     _add()
@@ -280,6 +281,7 @@ def test_deflated_sharpe_count_scope_total_counts_all_strategies(
             period_start=datetime(2022, 1, 1, tzinfo=UTC),
             period_end=datetime(2022, 1, 2, tzinfo=UTC),
             leverage=5, parameters={}, outcome="completed",
+            data_checksum="testchk", code_commit="testcommit",
         ), ledger)
 
     for _ in range(3):

@@ -103,6 +103,8 @@ def test_every_proposal_lands_in_the_ledger(tmp_path: Path) -> None:
         period_start=NOW - timedelta(days=365),
         period_end=NOW,
         leverage=5,
+        data_checksum="abcdef0123456789",
+        code_commit="deadbeefcafef00d",
         now=NOW,
     )
     assert len(out) == 2
@@ -119,6 +121,8 @@ def test_a_rejected_proposal_does_not_reach_the_ledger(tmp_path: Path) -> None:
             period_start=NOW - timedelta(days=1),
             period_end=NOW,
             leverage=5,
+            data_checksum="abcdef0123456789",
+            code_commit="deadbeefcafef00d",
             now=NOW,
         )
     assert trials_ledger.total_trials(path) == 0

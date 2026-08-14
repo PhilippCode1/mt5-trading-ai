@@ -40,6 +40,13 @@ Paket 5: das Tor fuer ein LLM im Entscheidungspfad (§8.2-8.4).
 - `class LlmGateDecision`
 - `def evaluate_llm_gate`
 
+## `mt5_trading_ai/backtest/provenance.py`
+
+Herkunft eines Backtest-Laufs: der Codestand aus git (Paket 6).
+
+- `class ProvenanceError`
+- `def code_commit_from_git`
+
 ## `mt5_trading_ai/backtest/splits.py`
 
 Zeitreihen-Splits mit Purge und Embargo — herausgeloest aus learning_engine.

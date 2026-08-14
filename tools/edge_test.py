@@ -37,6 +37,7 @@ from mt5_trading_ai.backtest.engine import (  # noqa: E402
     run_walk_forward,
     stressed_spec,
 )
+from mt5_trading_ai.backtest.provenance import code_commit_from_git  # noqa: E402
 from mt5_trading_ai.backtest.strategies import (  # noqa: E402
     mean_reversion_zscore,
     moving_average_crossover,
@@ -101,6 +102,10 @@ def main() -> int:
     ap.add_argument("--code-commit", default="")
     args = ap.parse_args()
 
+    # Herkunft (Paket 6): der Codestand kommt aus git, wenn nicht explizit gesetzt --
+    # ein registrierter Versuch mit leerem Commit ist fail-closed nicht moeglich.
+    code_commit = args.code_commit or code_commit_from_git()
+
     strategy_id, factory, label = _strategy(args.strategy)
     # Tor am Backtest-Rand (Paket 1): Qualitaetstor + Provenienz, fail-closed.
     bars, _chk = load_verified_csv(
@@ -150,7 +155,7 @@ def main() -> int:
     wf = run_walk_forward(
         in_sample, lambda _train: factory(), spec, 5,   # Fixparameter -> Fit ist No-op
         purge_ms=3_600_000, embargo_ms=3_600_000, strategy_id=strategy_id, seed=100,
-        version=VERSION, data_checksum="", code_commit=args.code_commit,
+        version=VERSION, data_checksum="", code_commit=code_commit,
         ledger_path=ledger,
     )
     fold_returns = [f.net_return for f in wf.folds]
@@ -158,7 +163,7 @@ def main() -> int:
     oos_report = run_registered_backtest(  # der OoS-Abschlusslauf, genau einmal
         oos, factory(), spec,
         strategy_id=strategy_id, version=VERSION, seed=0,
-        data_checksum="", code_commit=args.code_commit,
+        data_checksum="", code_commit=code_commit,
         ledger_path=ledger,
     )
     # Deflation gegen das GESAMTE Register (count_scope="total"): bei einer Kampagne mit

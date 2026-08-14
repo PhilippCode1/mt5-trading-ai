@@ -499,6 +499,8 @@ def run_walk_forward(
                     parameters={"fold": fold_index, "seed": seed + fold_index},
                     outcome="completed", sharpe=report.annualised_sharpe,
                     net_expectancy=report.net_return, trades=report.trades,
+                    # Herkunft je Fold (Paket 6): die abgeleitete Fenster-Pruefsumme.
+                    data_checksum=report.data_checksum, code_commit=code_commit,
                 ),
                 ledger_path,
             )
@@ -630,13 +632,16 @@ def run_registered_backtest(
         )
     except Exception as exc:  # jeder Lauf zaehlt -- auch unerwartete Fehler
         outcome = "aborted" if isinstance(exc, LookAheadError) else "error"
+        # Herkunft auch im Fehlerfall: Pruefsumme aus den Bars ableiten (Paket 6).
         trials.append(
             trials.new_trial(
                 strategy_id=strategy_id, version=version, instruments=(spec.symbol,),
                 period_start=period_start, period_end=period_end,
                 leverage=int(spec.leverage),
                 parameters={"seed": seed, "error": str(exc)},
-                outcome=outcome, ts=stamp,
+                outcome=outcome,
+                data_checksum=bars_checksum(list(bars)), code_commit=code_commit,
+                ts=stamp,
             ),
             ledger_path,
         )
@@ -647,7 +652,10 @@ def run_registered_backtest(
             period_start=period_start, period_end=period_end,
             leverage=int(spec.leverage), parameters={"seed": seed},
             outcome="completed", sharpe=report.annualised_sharpe,
-            net_expectancy=report.net_return, trades=report.trades, ts=stamp,
+            net_expectancy=report.net_return, trades=report.trades,
+            # Die im Bericht abgeleitete (echte) Pruefsumme, nicht der Erwartungswert.
+            data_checksum=report.data_checksum, code_commit=code_commit,
+            ts=stamp,
         ),
         ledger_path,
     )

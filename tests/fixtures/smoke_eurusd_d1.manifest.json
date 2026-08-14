@@ -1,0 +1,13 @@
+{
+  "bar_count": 220,
+  "bars_checksum": "035616dd398b1c19423e2cc25ec37d3410fc715191f7dd4c3941956a90346fd2",
+  "first_ts": "2023-01-02T00:00:00+00:00",
+  "instrument": "EURUSD",
+  "last_ts": "2023-11-03T00:00:00+00:00",
+  "loader_version": "data-loader-v1",
+  "price_divisor": 100000.0,
+  "quality_reasons": [],
+  "session": "weekday",
+  "source": "synthetic-smoke-fixture",
+  "timeframe": "D1"
+}

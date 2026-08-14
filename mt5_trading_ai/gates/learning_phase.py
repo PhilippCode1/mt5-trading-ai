@@ -239,6 +239,8 @@ def propose_parameter_sets(
     period_start: datetime,
     period_end: datetime,
     leverage: int,
+    data_checksum: str,
+    code_commit: str,
     now: datetime,
 ) -> tuple[Proposal, ...]:
     """Jeder Vorschlag wird geprueft **und** als Versuch im Ledger vermerkt.
@@ -246,6 +248,12 @@ def propose_parameter_sets(
     Der Ledger-Eintrag entsteht **vor** der Rueckgabe. Wer den Vorschlag nutzt,
     kann den Versuchszaehler nicht mehr umgehen; genau darauf beruht die
     Deflated Sharpe Ratio.
+
+    Herkunft (Paket 6): Auch ein blosser Vorschlag benennt Datenpruefsumme und
+    Codestand -- man kann eine Optimierung nicht einmal *vorschlagen*, ohne zu
+    sagen, gegen welche verifizierten Daten und welchen Code sie laufen soll.
+    Der Aufrufer liefert beide (fail-closed am Gate-Rand); dieses Modul koppelt
+    sich nicht an git.
     """
     if not proposals:
         return ()
@@ -261,6 +269,8 @@ def propose_parameter_sets(
             leverage=leverage,
             parameters=proposal.parameters,
             outcome="aborted",
+            data_checksum=data_checksum,
+            code_commit=code_commit,
             notes=f"Lernphase-Vorschlag: {proposal.rationale}",
             ts=now,
         )

@@ -1651,3 +1651,133 @@ vorbestehend, SPAETER **S11**); für Netting-Konten (ESMA-Retail-Norm) irrelevan
 
 **Zeilenstand (gemessen, 2026-08-14):** 6.805 Zeilen, 29 Module, 367 Testfunktionen, 421 Testfälle
 grün; `ruff`, `mypy --strict`, `gen_docs --check`, `check_doc_numbers` sauber.
+
+## ERLEDIGT — Abnahme-Paket 6 (Werkzeug-Härtung: erzwungene Provenienz, E2E-Smoke, Verhaltens-Tests)
+
+**Ziel (aus dem Plan):** Die Forschungs-Werkzeuge sind regressionsfest auf ihrem real
+gefahrenen Pfad, ein Mini-Fixture beweist die ganze Kette in der CI, und **kein
+registrierter Versuch geht mit leerer Herkunft ins Ledger**. Die Deflated Sharpe hängt an
+der ehrlichen Versuchszahl — ein beweisfreier Eintrag macht sie unehrlich. Genau das wird
+hier fail-closed geschlossen.
+
+**Was gebaut wurde:**
+
+- **Provenienz erzwungen (Kern).** Neues Modul `backtest/provenance.py`: `code_commit_from_git()`
+  leitet den Codestand aus `git rev-parse HEAD` ab — fail-closed (`ProvenanceError`), wenn git
+  fehlt, kein Repo vorliegt, HEAD unbestimmt ist **oder der Arbeitsbaum schmutzig ist** (siehe
+  §9-Blocker unten). Der `Trial` (in `gates/trials.py`) trägt jetzt zwei **Pflicht**-Felder
+  `data_checksum` + `code_commit`; `__post_init__` wirft `TrialsLedgerError`, sobald eines
+  leer/blank ist — ein Versuch ohne ableitbare Herkunft kommt nicht mehr ins Register. `new_trial()`
+  reicht beide durch. `run_registered_backtest` und `run_walk_forward` schreiben die **abgeleitete,
+  echte** Fenster-/Bericht-Prüfsumme (`report.data_checksum`, nicht den Erwartungswert-Parameter)
+  plus den git-Commit — auch im Fehlerfall (`bars_checksum` der Bars). Die Werkzeuge
+  (`edge_test.py`, `multi_instrument_edge.py`) leiten den Commit aus git ab (`args.code_commit or
+  code_commit_from_git()`) und reichen ihn überall durch; `learning_phase.propose_parameter_sets`
+  verlangt die Herkunft jetzt ebenfalls (man kann eine Optimierung nicht einmal *vorschlagen*, ohne
+  die verifizierten Daten und den Code zu benennen).
+
+- **Rückwärtskompatibel gelesen, ohne die Schreib-Pflicht zu weichen.** `iter_trials()` setzt für
+  Alt-Zeilen (vor Paket 6) `data_checksum`/`code_commit` beim **Lesen** auf `"legacy"`. Die
+  non-empty-Pflicht gilt unverändert beim **Schreiben** (`__post_init__`), sodass kein neuer Eintrag
+  ohne Herkunft entsteht.
+
+- **E2E-Smoke auf committeter Mini-Fixture.** `tests/fixtures/smoke_eurusd_d1.csv` (+ Manifest) ist
+  eine **synthetische** D1-Reihe (kein Marktdatum, `source: synthetic-smoke-fixture`), 220
+  Weekday-Bars, die das Datenqualitätstor besteht. `test_e2e_smoke.py` fährt die ganze Kette als
+  **einen** zusammenlaufenden Lauf: `load_verified_csv → run_walk_forward →
+  run_registered_backtest → deflated_sharpe_for_report → evaluate_edge`. Geprüft wird die
+  **Konvergenz** und dass die Herkunft durch die ganze Kette ins Register fällt — nicht, dass ein
+  Edge existiert (auf Rauschen ist das ehrliche Urteil „kein Edge"). Die Prüfsumme ist angeheftet:
+  driftet die Fixture, fällt der Smoke laut auf.
+
+- **Register-Disziplin als Verhaltens-Test.** `tests/fixtures/smoke_eurusd_h1.csv` (+ Manifest,
+  synthetisch, FxSession-tauglich) trägt `test_edge_test_cli.py`: `edge_test.main()` läuft real,
+  danach steht im Register **nur** die Strategie-ID (5 WF-Fenster + 1 OoS = 6 Einträge), die
+  Kontroll-Läufe (`rnd`/`leak`/`stress`) stehen **nicht** drin. Ein versehentliches `ledger_path` am
+  Kontrolllauf ließe dessen ID auftauchen → der Test wird rot.
+
+- **`multi_instrument_edge` + `demo_run` mit echtem Verdict.** `test_multi_instrument_edge.py` prüft
+  `_run_one`/`main` auf der Fixture (echtes `EdgeVerdict`, 6 Register-Einträge, dieselbe Disziplin).
+  `test_demo_run_e2e.py` erzeugt ein **real abgeleitetes** Urteil aus `run_backtest → evaluate_edge`
+  und füttert es in `register_for_demo`/`evaluate_demo_progress` — ein ehrlich durchgefallenes Urteil
+  (synthetisches Rauschen) wird fail-closed abgelehnt, mit den echten offenen Bedingungen als
+  Begründung.
+
+**§9-Review (adversarial, 4 Linsen als Hintergrund-Workflow, vor dem Commit) — loop-until-dry über
+drei Runden auf denselben Vektor:** Der erste Lauf brachte 6 bestätigte Befunde, verdichtet auf
+**einen Blocker** (aus vier Linsen derselbe Defekt) plus zwei Non-Blocker. Der Blocker wurde gefixt,
+und **zwei Fix-Re-Checks** (je ein eigener adversarialer Workflow) legten nach — jede Runde ein
+subtilerer Umgehungsweg derselben Wache, bis sie hermetisch war.
+
+- **HOCH / fail-OPEN — `code_commit_from_git()` belegte nicht den tatsächlich gefahrenen Code
+  (vier Runden, jede fand einen subtileren Umgehungsweg derselben Wache):**
+  - *Runde 1 (Blocker):* Die Funktion nahm allein `git rev-parse HEAD`. Lief ein Backtest gegen
+    **uncommitteten** Code, trug der Ledger-Eintrag den sauberen HEAD-Hash — non-empty, also am
+    `__post_init__`-Tor vorbei, aber eine **Lüge über den gefahrenen Code**. Ein Prüfer, der den
+    Commit auscheckt, kann eine Manipulation (z. B. gesenkte Tor-Schwelle) weder reproduzieren noch
+    entdecken. *Fix 1:* `git status --porcelain`; nicht leer → `ProvenanceError`.
+  - *Runde 2 (Fix-Re-Check fand zwei Umgehungen, beide blockierend):* (A) `status.showUntrackedFiles=no`
+    (eine gutartige Performance-Config) versteckt neue untracked `.py` vor `--porcelain`; (B)
+    `git update-index --assume-unchanged`/`--skip-worktree` macht `status` blind für eine
+    **modifizierte** versionierte Datei. Beide liefern weiter einen sauberen Hash für schmutzigen Code
+    — und falsifizierten meine eigene Fix-1-Zusicherung samt Test. *Fix 2:* Helfer
+    `_working_tree_is_dirty` mit **zwei** config-unabhängigen Prüfungen —
+    `git --no-optional-locks status --porcelain --untracked-files=all` (das feste `--untracked-files=all`
+    überschreibt `showUntrackedFiles=no` → schließt A) **und** `git ls-files -v`, wo jede Zeile mit
+    Kleinbuchstaben-Tag (`assume-unchanged`→`h`) oder `S` (`skip-worktree`) als schmutzig gilt → schließt
+    B. Tags empirisch verifiziert.
+  - *Runde 3 (Fix-Re-Check fand die Skopierung):* `git ls-files -v` ist **verzeichnis-skopiert**. Der
+    Default-Pfad läuft mit `cwd = .../mt5_trading_ai/backtest/` (Modul-Unterverzeichnis); von dort
+    listete der Suppress-Bit-Scan **nur** `backtest/` — ein `assume-unchanged`/`skip-worktree`-Bit auf
+    `costs/`, `gates/`, `risk/`, `venue/` … blieb unsichtbar, also Vektor B für fast den ganzen Baum
+    wieder offen (end-to-end reproduziert). *Fix 3 (Endfassung):* `code_commit_from_git` löst zuerst das
+    Repo-**Toplevel** auf (`git rev-parse --show-toplevel`, fail-closed ohne Repo) und fährt **alle**
+    git-Aufrufe von dort — der `ls-files`-Scan ist damit repo-weit statt teilbaum-lokal.
+  - `.gitignore` wird durchgehend beachtet, also zählen lokale Daten/`TRIALS.jsonl` **nicht** als
+    Schmutz.
+
+**Negativ gefahren (jede Wache bewiesen):**
+- **Leere Herkunft** → `test_empty_provenance_is_rejected`: `data_checksum=""` und
+  `code_commit="   "` werfen `TrialsLedgerError` bei Konstruktion.
+- **Schmutziger Arbeitsbaum, alle Umgehungswege** (`tests/test_provenance.py`, hermetisches tmp-git-Repo,
+  vorher **null** Abdeckung): sauber → 40-Hex-Hash; tracked-modifiziert → Fehler; untracked Quelldatei →
+  Fehler; **untracked trotz `showUntrackedFiles=no`** → Fehler (R2-Vektor A);
+  **`assume-unchanged`/`skip-worktree` modifiziert** → Fehler (R2-Vektor B); **Suppress-Bit auf Datei
+  außerhalb des cwd-Teilbaums, Aufruf vom Unterverzeichnis** → Fehler (R3-Skopierung); gitignored →
+  **kein** Schmutz; kein Repo → Fehler.
+- **Register-Disziplin (edge_test):** temporär einen Kontroll-Lauf (`rnd`) fälschlich registriert →
+  `test_only_real_runs_reach_the_ledger` **rot** (7 statt 6 Einträge, fremde ID `rnd`). Zurückgebaut
+  → grün.
+- **Demo-Naht:** temporär die fail-closed-Prüfung in `register_for_demo` aufgebrochen →
+  `test_real_no_edge_verdict_is_refused_by_demo_gate` **rot** („DID NOT RAISE"). Zurückgebaut → grün.
+
+**Entscheidungen, die ich selbst getroffen habe:** D1/Weekday für die E2E-Smoke-Fixture (das
+Qualitätstor ist dort am einfachsten ehrlich zu bestehen; H1/FxSession separat für den
+`edge_test`-Pfad, der auf H1 fest verdrahtet ist); die Fixtures **synthetisch** und mit Manifest
+committen (kein Marktdatum ins öffentliche Repo — die Marktdaten-Regel bleibt); die Herkunfts-Pflicht
+auch auf `learning_phase.propose_parameter_sets` ausdehnen (ein Vorschlag ist ein Versuch und zählt
+in die Deflation — also benennt auch er Daten + Code); die Werkzeuge leiten den Commit ab, das
+Gate-Modul koppelt sich **nicht** an git (Aufrufer liefert, fail-closed am Rand); den Dirty-Tree-Fix
+als **fail-closed-Wurf** (statt `<hash>-dirty`-Markierung), weil ein nicht reproduzierbarer Lauf gar
+nicht erst registriert werden soll — Code erzwingt Ehrlichkeit statt Betreiber-Disziplin.
+
+**Auffälligkeiten, gemeldet, nicht angefasst (ehrlich — vom §9-Review, kein Blocker für dieses
+Paket):**
+- **NIEDRIG — Lese-/Audit-Härtungslücke im Ledger:** `iter_trials()` ersetzt fehlende Herkunft
+  still durch `"legacy"`, und `check_integrity()` prüft die Herkunft nie. Eine hand-angehängte Zeile
+  ohne Herkunft ist so von einem echten Alt-Eintrag nicht unterscheidbar und wird mitgezählt.
+  Konservativ (Overcount senkt die DSR, kann sie nicht schönrechnen), die **Schreib**-Pflicht ist
+  intakt — daher Follow-up, kein Blocker. Richtung: nach der Migration `"legacy"`-Coercion abschaffen
+  bzw. `check_integrity` fehlende Herkunft flaggen lassen.
+- **HOCH, aber vorbestehend/außerhalb der Paket-6-Diff — `count_scope='total'` ist ordnungsabhängig:**
+  `deflated_sharpe_for_report` liest `total_trials` **zum Aufrufzeitpunkt**. In einer Mehr-Instrument-
+  /Mehr-Strategie-Kampagne wird der zuerst getestete Lauf nur gegen seine ~6 Versuche deflationiert,
+  der letzte gegen die volle Zahl — „Wunsch-Instrument zuerst" = schwächste Deflation, an der
+  Tor-Schwelle (Bedingung 2, `deflated_sharpe > 0.95`) messbar order-gameable. Der Code ist im
+  Paket-6-Diff **unverändert** (Kontextzeilen), also vorbestehend und keine Herkunfts-Änderung —
+  fällt nicht unter das Blockier-Kriterium dieses Commits. Als eigenes Ticket vermerkt: Endbewertung
+  gegen den finalen Registerstand oder die vorregistrierte Kampagnengröße
+  (`Preregistration.total_instruments/total_folds`), nicht gegen den laufenden Stand.
+
+**Zeilenstand (gemessen, 2026-08-14):** 6.958 Zeilen, 30 Module, 384 Testfunktionen, 438 Testfälle
+grün; `ruff`, `mypy --strict`, `gen_docs --check`, `check_doc_numbers` sauber.

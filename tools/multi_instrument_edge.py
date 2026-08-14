@@ -33,6 +33,7 @@ from mt5_trading_ai.backtest.engine import (  # noqa: E402
     run_registered_backtest,
     run_walk_forward,
 )
+from mt5_trading_ai.backtest.provenance import code_commit_from_git  # noqa: E402
 from mt5_trading_ai.backtest.strategies import mean_reversion_zscore  # noqa: E402
 from mt5_trading_ai.costs.model import load_cost_fees  # noqa: E402
 from mt5_trading_ai.data.loader import FxSession, load_verified_csv  # noqa: E402
@@ -126,12 +127,16 @@ def main() -> int:
     ap.add_argument("--code-commit", default="")
     args = ap.parse_args()
 
+    # Herkunft (Paket 6): der Codestand kommt aus git, wenn nicht explizit gesetzt --
+    # ein registrierter Versuch mit leerem Commit ist fail-closed nicht moeglich.
+    code_commit = args.code_commit or code_commit_from_git()
+
     ledger = str(args.ledger)
     passed_count = 0
     print("=== MULTI-INSTRUMENT-EDGE (jedes einzeln durchs Sechs-Bedingungen-Tor) ===")
     for symbol, csv in args.instrument:
         verdict, trades, net, dsr = _run_one(
-            symbol.upper(), Path(csv), ledger, args.data_checksum, args.code_commit
+            symbol.upper(), Path(csv), ledger, args.data_checksum, code_commit
         )
         mark = "EDGE BELEGT" if verdict.passed else "KEIN EDGE"
         if verdict.passed:

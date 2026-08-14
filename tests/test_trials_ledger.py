@@ -23,10 +23,20 @@ def _trial(outcome: str = "completed", minute: int = 0, **overrides: object):
         "leverage": 5,
         "parameters": {"threshold": 70},
         "outcome": outcome,
+        "data_checksum": "abcdef0123456789",
+        "code_commit": "deadbeefcafef00d",
         "ts": datetime(2026, 8, 6, 12, minute, tzinfo=UTC),
     }
     kwargs.update(overrides)
     return ledger.new_trial(**kwargs)  # type: ignore[arg-type]
+
+
+def test_empty_provenance_is_rejected(tmp_path: Path) -> None:
+    # Paket 6: kein Versuch geht mit leerer Herkunft (Pruefsumme/Commit) ins Register.
+    with pytest.raises(ledger.TrialsLedgerError):
+        _trial(data_checksum="")
+    with pytest.raises(ledger.TrialsLedgerError):
+        _trial(code_commit="   ")
 
 
 def test_every_run_counts_including_failures(tmp_path: Path) -> None:
