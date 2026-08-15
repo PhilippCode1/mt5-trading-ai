@@ -233,7 +233,7 @@ class FakeMt5Terminal:
         return self._account
 
 
-#: Grosszuegige Kostenschwelle (50 bp), die die reale Testorder (~24,5 bp) durchlaesst.
+#: Grosszuegige Kostenschwelle (5 bp), die die reale Testorder (~2,45 bp) durchlaesst.
 _LENIENT_COST_GATE = CostGate(max_roundturn_cost_fraction=Decimal("0.0005"))
 
 
@@ -395,7 +395,7 @@ def test_live_opening_rejected_when_cost_gate_unconfigured() -> None:
 
 
 def test_live_opening_rejected_when_cost_exceeds_threshold() -> None:
-    # Reale Roundturn-Kosten ~24,5 bp; Schwelle 10 bp -> Ablehnung vor dem Send.
+    # Reale Roundturn-Kosten ~2,45 bp; Schwelle 1 bp -> Ablehnung vor dem Send.
     tight = CostGate(max_roundturn_cost_fraction=Decimal("0.0001"))
     venue, terminal = _venue(
         is_demo=False, settings=_released_settings(), cost_gate=tight,
@@ -408,7 +408,7 @@ def test_live_opening_rejected_when_cost_exceeds_threshold() -> None:
 
 
 def test_live_opening_allowed_when_cost_within_threshold() -> None:
-    # Schwelle 50 bp deckt die realen ~24,5 bp -> Order laeuft durch (Kostenquote ist
+    # Schwelle 5 bp deckt die realen ~2,45 bp -> Order laeuft durch (Kostenquote ist
     # volumenunabhaengig, 0,01 Lot passt zusaetzlich ins Risikobudget).
     venue, terminal = _venue(
         is_demo=False, settings=_released_settings(), cost_gate=_LENIENT_COST_GATE,

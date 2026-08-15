@@ -65,7 +65,7 @@ def _evaluate(gate: CostGate, **overrides: object) -> object:
 
 
 def test_within_threshold_is_approved() -> None:
-    # Reale Roundturn-Reibung ~24,5 bp; Schwelle 50 bp -> zugelassen.
+    # Reale Roundturn-Reibung ~2,45 bp; Schwelle 5 bp -> zugelassen.
     decision = _evaluate(CostGate(max_roundturn_cost_fraction=Decimal("0.0005")))
     assert decision.approved is True
     assert decision.reason is None

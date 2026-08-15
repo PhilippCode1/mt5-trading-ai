@@ -44,7 +44,7 @@ from mt5_trading_ai.venue.protocol import (
 )
 
 TS = datetime(2026, 8, 11, 12, 0, tzinfo=UTC)  # Dienstag, 12:00 UTC
-LENIENT_GATE = CostGate(max_roundturn_cost_fraction=Decimal("0.0005"))  # 50 bp
+LENIENT_GATE = CostGate(max_roundturn_cost_fraction=Decimal("0.0005"))  # 5 bp
 MAX_SILENCE = timedelta(minutes=5)
 
 
