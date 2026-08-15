@@ -99,3 +99,43 @@ def test_band_covers_purge_before_and_embargo_after() -> None:
     band = _band_for_purge_and_embargo(1000, 2000, purge_ms=30, embargo_ms=50)
     assert band.start == 970  # 1000 - 30 (Purge)
     assert band.end == 2050  # 2000 + 50 (Embargo)
+
+
+# --- Embargo ist WIRKSAM: ein Post-Test-Bar faellt aus dem Training ----------
+# purged_kfold_embargo_indices testet einen Block in der MITTE der Reihe; die Bars
+# DAHINTER waeren sonst im Training. Diese Tests belegen negativ gefahren, dass das
+# Embargo genau diese Nachbar-Bars aus dem Training entfernt (keine Fassade). (Im
+# produktiv genutzten purged_walk_forward_indices ist Embargo dagegen ein bewusster
+# No-op -- die Leckfreiheit dort traegt die Vergangenheits-Konstruktion + Purge; siehe
+# test_embargo_alone_does_not_change_the_training_window.)
+
+
+def test_index_embargo_drops_a_post_test_bar_from_training() -> None:
+    # 6 Bars, 2 Folds (fold_size=3). Fold 0 testet [0,1,2]; Index 3 liegt DIREKT dahinter.
+    ranges = _ranges(6)
+    without = purged_kfold_embargo_indices(
+        ranges, 2, 0.0, purge_ms=0, embargo_time_ms=0
+    )
+    with_embargo = purged_kfold_embargo_indices(
+        ranges, 2, 0.2, purge_ms=0, embargo_time_ms=0  # embargo_n = round(6*0.2) = 1
+    )
+    train0_without = without[0][0]
+    train0_with = with_embargo[0][0]
+    assert 3 in train0_without                      # ohne Embargo: Nachbar im Training
+    assert 3 not in train0_with                     # mit Embargo: entfernt
+    assert train0_with == [j for j in train0_without if j != 3]  # genau der eine Nachbar
+
+
+def test_time_embargo_drops_a_post_test_bar_from_training() -> None:
+    # Derselbe Aufbau ueber das ZEIT-Band statt den Index-Zaehler: embargo_time_ms
+    # dehnt das Sperrband hinter den Test, sodass der Nachbar-Bar (Range(30,39))
+    # ueberlappt und ausgeschlossen wird.
+    ranges = _ranges(6)
+    without = purged_kfold_embargo_indices(
+        ranges, 2, 0.0, purge_ms=0, embargo_time_ms=0
+    )
+    with_embargo = purged_kfold_embargo_indices(
+        ranges, 2, 0.0, purge_ms=0, embargo_time_ms=15  # Band [.., 29+15] deckt Index 3
+    )
+    assert 3 in without[0][0]
+    assert 3 not in with_embargo[0][0]
