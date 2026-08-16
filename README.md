@@ -29,3 +29,37 @@ Aendert sich der Code, ohne dass diese Zahlen nachgezogen werden, wird der Test 
 - test_function_count: 406
 - source_lines: 7429
 <!-- KENNZAHLEN-ENDE -->
+
+## Abschluss Paket 2
+
+Ergebnisse des Auftrags „Kostentor, Verdrahtung, Wahrheit". Jede Datei ist einzeln
+verlinkt, damit sie von aussen abrufbar ist — Verzeichnisseiten sind es nicht.
+
+- [ABSCHLUSS/00-UEBERSICHT.md](ABSCHLUSS/00-UEBERSICHT.md) — je Aufgabe eine Zeile: Ampel, Zahl, Bezugsgroesse
+- [ABSCHLUSS/01-KOSTENTOR.md](ABSCHLUSS/01-KOSTENTOR.md) — Kostentabellen, Quellen mit Abrufdatum, Urteil gegen M1 und M2
+- [ABSCHLUSS/02-VERDRAHTUNG.md](ABSCHLUSS/02-VERDRAHTUNG.md) — Eintrittspunkte gezaehlt, Quote vorher/nachher, Eichfaelle
+- [ABSCHLUSS/03-DOKU-WAHRHEIT.md](ABSCHLUSS/03-DOKU-WAHRHEIT.md) — Widersprueche geschlossen, Geheimnispruefung mit Bezugsgroesse
+- [ABSCHLUSS/04-ALPHA.md](ABSCHLUSS/04-ALPHA.md) — Kopie von `ALPHA.md`
+- [ABSCHLUSS/05-HALAL-VORFRAGE.md](ABSCHLUSS/05-HALAL-VORFRAGE.md) — Kopie von `HALAL-VORFRAGE.md`
+- [ABSCHLUSS/06-ABBRUCHKRITERIUM.md](ABSCHLUSS/06-ABBRUCHKRITERIUM.md) — Kopie von `ABBRUCH.md`
+- [ABSCHLUSS/08-SPAETER.md](ABSCHLUSS/08-SPAETER.md) — bewusst zurueckgestellte Funde, je einer mit Begruendung
+- [ABSCHLUSS/09-EIGENE-FEHLER.md](ABSCHLUSS/09-EIGENE-FEHLER.md) — was schiefging, ohne Beschoenigung
+
+Rohe Terminalausgaben des Pruefstands, eine Datei je Befehl:
+
+- [ABSCHLUSS/07-AUSGABEN/pytest.txt](ABSCHLUSS/07-AUSGABEN/pytest.txt)
+- [ABSCHLUSS/07-AUSGABEN/ruff.txt](ABSCHLUSS/07-AUSGABEN/ruff.txt)
+- [ABSCHLUSS/07-AUSGABEN/mypy.txt](ABSCHLUSS/07-AUSGABEN/mypy.txt)
+- [ABSCHLUSS/07-AUSGABEN/gen_docs.txt](ABSCHLUSS/07-AUSGABEN/gen_docs.txt)
+- [ABSCHLUSS/07-AUSGABEN/check_docs_claims.txt](ABSCHLUSS/07-AUSGABEN/check_docs_claims.txt)
+- [ABSCHLUSS/07-AUSGABEN/check_doc_numbers.txt](ABSCHLUSS/07-AUSGABEN/check_doc_numbers.txt)
+- [ABSCHLUSS/07-AUSGABEN/kostentor.txt](ABSCHLUSS/07-AUSGABEN/kostentor.txt)
+- [ABSCHLUSS/07-AUSGABEN/atr_messung.txt](ABSCHLUSS/07-AUSGABEN/atr_messung.txt)
+- [ABSCHLUSS/07-AUSGABEN/geheimnispruefung.txt](ABSCHLUSS/07-AUSGABEN/geheimnispruefung.txt)
+- [ABSCHLUSS/07-AUSGABEN/eichfaelle.txt](ABSCHLUSS/07-AUSGABEN/eichfaelle.txt)
+
+Wurzeldokumente, die in diesem Auftrag entstehen:
+
+- [ABBRUCH.md](ABBRUCH.md) — beziffertes Abbruchkriterium fuer das Gesamtvorhaben
+- [ALPHA.md](ALPHA.md) — woher der Vorteil kommen soll, auf einer Seite
+- [HALAL-VORFRAGE.md](HALAL-VORFRAGE.md) — Vorlage fuer einen qualifizierten Gelehrten
