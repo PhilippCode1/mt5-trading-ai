@@ -1,5 +1,13 @@
 # Entwicklungs-/Pruefwerkzeuge, gepinnt fuer reproduzierbare CI.
-# Das Paket selbst haengt an nichts ausserhalb der Standardbibliothek.
+#
+# Das Paket selbst laesst sich ohne jedes Fremdpaket IMPORTIEREN, und die gesamte
+# Testsuite laeuft ohne eines (nachgewiesen mit blockiertem MetaTrader5-Import).
+# Wer das MT5-Terminal wirklich anspricht -- lesend wie schreibend --, braucht
+# zusaetzlich:
+#     pip install MetaTrader5      fuer tools/mt5_smoke.py und tools/atr_messung.py
+#     pip install detect-secrets   fuer tools/geheimnis_scan.py
+# Beide stehen bewusst NICHT hier: die CI soll ohne Terminal gruen sein, und ein
+# Fremdpaket in dieser Datei wuerde die Aussage oben unwahr machen.
 ruff==0.9.2
 mypy==1.14.1
 pytest==8.3.4
