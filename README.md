@@ -60,6 +60,17 @@ laeuft nur auf 127.0.0.1, gebaut aus der Standardbibliothek.
 Das Terminal wird dort mit `allow_write=False` geoeffnet — das ist kein Schalter des
 Werkzeugs. Die Seite hat keinen Knopf, kein Formular und keinen Schreibpfad.
 
+Auswertung eines Laufs und aller Laeufe:
+
+```
+python tools/betrieb_auswerten.py          # ein Journal
+python tools/betrieb_reihe.py              # alle Journale hintereinander
+python tools/journal_sichern.py --ziel D:/sicherung/mt5
+```
+
+Beide Leser benutzen `mt5_trading_ai/betrieb/journal.py` — die eine getestete Stelle,
+an der aus Journalzeilen Aussagen werden.
+
 ---
 
 ## Stand des Vorhabens (2026-08-17)

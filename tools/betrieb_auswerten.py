@@ -23,146 +23,129 @@ Aufruf::
 
 from __future__ import annotations
 
-import json
 import math
+import statistics
 import sys
 from collections import Counter
-from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
-from typing import Any
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from mt5_trading_ai.betrieb.journal import lies_journal  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[1]
 JOURNALE = REPO / "betrieb"
 
 
-def _lies(pfad: Path) -> list[dict[str, Any]]:
-    zeilen: list[dict[str, Any]] = []
-    with pfad.open(encoding="utf-8") as fh:
-        for nr, roh in enumerate(fh, 1):
-            roh = roh.strip()
-            if not roh:
-                continue
-            try:
-                zeilen.append(json.loads(roh))
-            except json.JSONDecodeError as exc:
-                print(f"  !! Zeile {nr} unlesbar: {exc}", file=sys.stderr)
-    return zeilen
-
-
-def _dauer(zeilen: list[dict[str, Any]]) -> str:
-    stempel = [datetime.fromisoformat(z["ts"]) for z in zeilen if "ts" in z]
-    if len(stempel) < 2:
-        return "?"
-    spanne = max(stempel) - min(stempel)
-    stunden = spanne.total_seconds() / 3600
-    if stunden >= 1:
-        return f"{stunden:.2f} h"
-    return f"{spanne.total_seconds() / 60:.1f} min"
-
-
 def auswerten(pfad: Path) -> int:
-    zeilen = _lies(pfad)
-    if not zeilen:
+    lauf = lies_journal(pfad)
+    if not lauf.saetze:
         print(f"FEHLGESCHLAGEN — {pfad} ist leer.", file=sys.stderr)
         return 1
-    nach_art: dict[str, list[dict[str, Any]]] = {}
-    for z in zeilen:
-        nach_art.setdefault(str(z.get("art")), []).append(z)
-
-    start = (nach_art.get("start") or [{}])[0]
-    ende = (nach_art.get("ende") or [{}])[0]
+    start, ende = lauf.start, lauf.ende
+    takte, versuche = lauf.art("takt"), lauf.art("eroeffnungsversuch")
+    trades = lauf.trades()
+    zu = [t for t in trades if not t.offen]
 
     print("=" * 78)
     print(f"BETRIEBSLAUF {pfad.name}")
     print("=" * 78)
-    print(f"Konto        : {start.get('konto')} (Demo: {start.get('demo')})")
-    print(f"Instrumente  : {', '.join(start.get('symbole') or [])}")
-    print(f"Strategie    : {start.get('strategie')}")
-    print(f"Dauer        : {_dauer(zeilen)} ueber "
-          f"{len(nach_art.get('takt', []))} Takte")
-    scharf = start.get("scharf")
-    print(f"Scharf       : {'JA' if scharf else 'nein (trocken)'}")
-    if scharf:
-        print(f"  Zulassung uebergangen mit Begruendung: "
-              f"{start.get('zulassung_uebergangen')}")
-        print(f"  {start.get('hinweis')}")
+    print(f"Konto        : {start['konto'] if start else '—'} "
+          f"(Demo: {start['demo'] if start else '—'})")
+    print(f"Instrumente  : {', '.join((start['symbole'] if start else []) or [])}")
+    print(f"Strategie    : {start['strategie'] if start else '—'}")
+    print(f"Codestand    : {lauf.version or '—'}")
+    print(f"Lauf-Kennung : {lauf.lauf_id or '—'}")
+    stempel = [s.ts for s in lauf.saetze]
+    spanne = (max(stempel) - min(stempel)).total_seconds() / 60 if stempel else 0.0
+    print(f"Dauer        : {spanne:.1f} min ueber {len(takte)} Takte")
+    print(f"Scharf       : {'JA' if lauf.scharf else 'nein (trocken)'}")
+    if lauf.scharf and start:
+        print(f"  Zulassung uebergangen: {start['zulassung_uebergangen']}")
+        print(f"  {start['hinweis']}")
     print()
 
-    # --- 1. Lief die Maschine sauber? ---
     print("-" * 78)
     print("1. LIEF DIE MASCHINE SAUBER?")
     print("-" * 78)
-    fehler = nach_art.get("takt_fehler", [])
-    halts = [z for z in nach_art.get("takt", []) if z.get("halt")]
-    zu_fehl = nach_art.get("schliessen_fehlgeschlagen", [])
-    auf_fehl = nach_art.get("eroeffnen_fehlgeschlagen", [])
-    print(f"  Takte gesamt              : {len(nach_art.get('takt', []))}")
+    fehler = lauf.art("takt_fehler")
+    halts = [t for t in takte if t["halt"]]
+    zu_fehl = lauf.art("schliessen_fehlgeschlagen")
+    auf_fehl = lauf.art("eroeffnen_fehlgeschlagen")
+    print(f"  Takte gesamt              : {len(takte)}")
     print(f"  Takte mit Fehler          : {len(fehler)}")
     print(f"  Takte im Halt             : {len(halts)}")
     print(f"  Schliessen fehlgeschlagen : {len(zu_fehl)}")
     print(f"  Eroeffnen fehlgeschlagen  : {len(auf_fehl)}")
-    for z in fehler[:5]:
-        print(f"    Takt {z.get('nr')}: {z.get('fehler')}")
-    sauber = not fehler and not halts and not zu_fehl and not auf_fehl
+    print(f"  Geordnet beendet          : {'ja' if lauf.beendet else 'NEIN'}")
+    for s in fehler[:5]:
+        print(f"    Takt {s['nr']}: {s['fehler']}")
+    sauber = not (fehler or halts or zu_fehl or auf_fehl) and lauf.beendet
     print(f"  URTEIL: {'sauber durchgelaufen' if sauber else 'mit Stoerungen'}")
     print()
 
-    # --- 2. Was hat sie getan? ---
     print("-" * 78)
     print("2. WAS HAT SIE GETAN?")
     print("-" * 78)
-    versuche = nach_art.get("eroeffnungsversuch", [])
-    eroeffnet = [z for z in versuche if z.get("eroeffnet")]
+    auf = [v for v in versuche if v["eroeffnet"]]
     print(f"  Eroeffnungsversuche : {len(versuche)}")
-    print(f"  davon eroeffnet     : {len(eroeffnet)}")
-    if len(versuche) > len(eroeffnet):
+    print(f"  davon eroeffnet     : {len(auf)}")
+    if len(versuche) > len(auf):
         print("  Woran die uebrigen scheiterten:")
         wo: Counter[str] = Counter()
-        for z in versuche:
-            if z.get("eroeffnet"):
+        for v in versuche:
+            if v["eroeffnet"]:
                 continue
             letzte = next(
-                (s["naht"] for s in reversed(z.get("schritte") or []) if not s["ok"]),
-                z.get("grund") or "?",
+                (x["naht"] for x in reversed(v["schritte"] or []) if not x["ok"]),
+                str(v["grund"] or "?"),
             )
-            wo[f"{letzte} ({z.get('grund')})"] += 1
+            wo[f"{letzte} ({v['grund']})"] += 1
         for grund, n in wo.most_common():
             print(f"    {n:>4}x  {grund}")
     print()
-    zu = nach_art.get("geschlossen", [])
-    broker_zu = nach_art.get("vom_broker_geschlossen", [])
-    print(f"  Selbst geschlossen  : {len(zu)}")
-    if zu:
-        for grund, n in Counter(str(z.get("grund")) for z in zu).most_common():
-            print(f"    {n:>4}x  {grund}")
-    print(f"  Vom Broker zu (Stop): {len(broker_zu)}")
+    print(f"  Trades geschlossen  : {len(zu)}")
+    for grund, n in Counter(str(t.grund) for t in zu).most_common():
+        print(f"    {n:>4}x  {grund}")
     print()
 
-    # --- 3. Was sagt das Ergebnis? ---
     print("-" * 78)
     print("3. WAS SAGT DAS ERGEBNIS?")
     print("-" * 78)
-    if not ende:
-        print("  Kein Endeintrag — der Lauf wurde hart abgebrochen.")
+    reihe = lauf.equity_reihe()
+    if ende is not None:
+        e0 = Decimal(str(ende["equity_start"] or "0"))
+        e1 = Decimal(str(ende["equity"] or "0"))
+    elif len(reihe) >= 2:
+        e0, e1 = reihe[0][1], reihe[-1][1]
+        print("  (Kein Endeintrag — Equity aus dem ersten und letzten Takt.)")
+    else:
+        print("  Zu wenige Messpunkte fuer eine Aussage.")
         return 0
-    e0 = Decimal(str(ende.get("equity_start", "0")))
-    e1 = Decimal(str(ende.get("equity", "0")))
-    delta = e1 - e0
-    print(f"  Equity   : {e0} -> {e1}   ({delta:+})")
+    print(f"  Equity   : {e0} -> {e1}   ({e1 - e0:+})")
     if e0 > 0:
-        print(f"  Rendite  : {delta / e0 * 100:+.4f} %")
+        print(f"  Rendite  : {(e1 - e0) / e0 * 100:+.4f} %")
 
-    n = len(eroeffnet)
+    rechenbar = [t.ergebnis_bps for t in zu if t.ergebnis_bps is not None]
+    print()
+    print(f"  Trades mit rechenbarem Ergebnis: {len(rechenbar)} von {len(zu)}")
+    if rechenbar:
+        treffer = sum(1 for w in rechenbar if w > 0) / len(rechenbar) * 100
+        print(f"    Median {statistics.median(rechenbar):+.2f} bp | "
+              f"Treffer {treffer:.0f} %")
+        print("    Preisdifferenz OHNE Kommission und Swap.")
+    elif zu:
+        print("    Kein einziger vollstaendig — meist fehlt der Ausstiegspreis eines")
+        print("    broker-seitigen Schlusses. Das ist NICHT Ergebnis null.")
+
+    n = len(auf)
     print()
     print("  EINORDNUNG — bitte lesen, bevor jemand diese Zahl deutet:")
     if n == 0:
         print("    Es wurde nichts eroeffnet. Das Ergebnis sagt ueber die Strategie")
         print("    nichts, sondern nur, dass die Kette nicht bis zum Handel kam.")
     else:
-        # Wie gross muesste ein echter Vorteil sein, um ihn bei n Trades von Null zu
-        # trennen? Faustregel: t = mittlere Rendite / (Streuung / sqrt(n)); fuer eine
-        # ernsthafte Trennung braucht es t ~ 2. Also: noetiger Effekt ~ 2*s/sqrt(n).
         print(f"    {n} eroeffnete Position(en). Um einen echten Vorteil von Null zu")
         print("    trennen, muesste der mittlere Gewinn je Trade rund")
         print(f"    {2 / math.sqrt(n):.2f} Standardabweichungen betragen.")
@@ -175,6 +158,8 @@ def auswerten(pfad: Path) -> int:
     print("  Wer jetzt die Parameter auf dieses Ergebnis dreht, betreibt Anpassung an")
     print("  eine Stichprobe dieser Groesse. Genau dagegen ist die Deflation in")
     print("  gates/criteria.py gebaut.")
+    print()
+    print("  Ueber ALLE Laeufe: python tools/betrieb_reihe.py")
     return 0
 
 
