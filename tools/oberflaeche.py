@@ -493,6 +493,8 @@ font-weight:600;background:var(--feld2);border:1px solid var(--haar)}
 gap:1rem}
 .hinweis{background:var(--feld2);border:1px solid var(--haar);border-left:3px solid
 var(--warn);border-radius:6px;padding:.7rem .9rem;font-size:.83rem;margin:1rem 0}
+.hinweis.krit-rand{border-left-color:var(--krit)}
+table{display:block;overflow-x:auto;white-space:nowrap}
 .diagramm{background:var(--feld);border:1px solid var(--haar);border-radius:8px;
 padding:.7rem .8rem}
 .diagramm h3{margin:0 0 .3rem}
@@ -502,9 +504,21 @@ color:var(--matt);font-size:.75rem}
 
 
 def seite(stand: dict[str, Any]) -> str:
-    fehler = stand.get("fehler")
-    warnung = (f"<div class='hinweis'><b>Terminal:</b> {_e(fehler)}</div>"
-               if fehler else "")
+    # Jeder Defekt gehoert AUF die Seite. Der Journalfehler wurde bisher zwar
+    # gefangen und abgelegt, aber nirgends gezeigt -- die Seite meldete dann
+    # "Kein Journal gefunden", wo "defektes Journal" richtig gewesen waere. Eine
+    # Oberflaeche, die einen Fehler in eine harmlose Leermeldung verwandelt, ist
+    # schlimmer als eine, die abstuerzt: man sieht ihr nicht an, dass sie luegt.
+    stoerungen = [
+        (etikett, stand.get(schluessel))
+        for etikett, schluessel in (("Terminal", "fehler"),
+                                    ("Journal", "journalfehler"))
+        if stand.get(schluessel)
+    ]
+    warnung = "".join(
+        f"<div class='hinweis krit-rand'><b>{etikett}:</b> {_e(text)}</div>"
+        for etikett, text in stoerungen
+    )
     return f"""<!doctype html><html lang="de"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="refresh" content="{NEULADEN}">
