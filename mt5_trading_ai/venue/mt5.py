@@ -130,6 +130,8 @@ class Mt5Account:
     #: ``True`` nur bei einem Demokonto. Der Live-Pfad prueft dieses Feld.
     is_demo: bool
     ts: datetime
+    #: Hebel, den der Broker diesem Konto gewaehrt (1:N -> N). ``None`` = unbekannt.
+    leverage: int | None = None
 
 
 @dataclass(frozen=True)
@@ -775,6 +777,7 @@ class Mt5Venue(TradingVenue):
             margin_free=acc.margin_free,
             is_demo=acc.is_demo,
             ts=acc.ts,
+            leverage=acc.leverage,
         )
 
     # --- Order-Lebenszyklus / Reconcile -----------------------------------
@@ -929,6 +932,81 @@ class Mt5Venue(TradingVenue):
                 # der Global-Halt steht bereits.
                 continue
         return tuple(results)
+
+
+def _send_angenommen(mt5: Any, res: Any) -> bool:
+    """Hat der Handelsplatz die Order wirklich angenommen?
+
+    Die Dokumentation nennt ``TRADE_RETCODE_DONE`` (10009). **Nicht jeder Server haelt
+    sich daran.** Am hier gemessenen Broker liefert ein erfolgreicher ``order_send``
+    ``retcode=0`` mit ``comment='Done'`` -- samt gueltiger Order-Kennung, Deal-Kennung,
+    Volumen und Preis. Eine Pruefung allein auf 10009 haelt so eine ausgefuehrte Order
+    fuer abgelehnt.
+
+    Das ist die gefaehrlichste Fehlrichtung, die es hier gibt: die Position steht beim
+    Broker, das System weiss nichts davon, das lokale Buch bleibt leer, der naechste
+    Reconcile sieht Drift und latcht den Global-Halt. Genau das ist beim ersten
+    scharfen Lauf passiert.
+
+    Angenommen wird darum:
+
+    * ein dokumentierter Erfolgscode (DONE, PLACED, DONE_PARTIAL), **oder**
+    * ``retcode == 0`` **zusammen mit dem Beweis einer Ausfuehrung** -- einer
+      zugeteilten Order- oder Deal-Kennung und einem Volumen groesser null.
+
+    Die zweite Bedingung ist bewusst konjunktiv. Ein blosses „kein Fehlercode" genuegt
+    nicht; es muss etwas zugeteilt worden sein.
+    """
+    if res is None:
+        return False
+    code = int(getattr(res, "retcode", -1))
+    erfolgscodes = {
+        int(getattr(mt5, "TRADE_RETCODE_DONE", 10009)),
+        int(getattr(mt5, "TRADE_RETCODE_PLACED", 10008)),
+        int(getattr(mt5, "TRADE_RETCODE_DONE_PARTIAL", 10010)),
+    }
+    if code in erfolgscodes:
+        return True
+    if code != 0:
+        return False
+    zugeteilt = int(getattr(res, "order", 0) or 0) or int(getattr(res, "deal", 0) or 0)
+    volumen = float(getattr(res, "volume", 0) or 0)
+    return bool(zugeteilt) and volumen > 0
+
+
+def _fuellart(mt5: Any, symbol: str) -> int:
+    """Die Ausfuehrungsart, die dieser Broker fuer DIESES Symbol anbietet.
+
+    Hier lauern zwei verschiedene Bitbelegungen, die leicht verwechselt werden -- und
+    die Verwechslung kostete jede Order:
+
+    * ``symbol_info(...).filling_mode`` ist eine **Bitmaske**:
+      1 = FOK, 2 = IOC, 4 = RETURN.
+    * ``request["type_filling"]`` erwartet eine **Konstante**:
+      ``ORDER_FILLING_FOK`` = 0, ``ORDER_FILLING_IOC`` = 1, ``RETURN`` = 2.
+
+    Eine fest gesetzte Art trifft deshalb nur zufaellig. An diesem Broker melden
+    EURUSD, GBPUSD, USDJPY und EURGBP die Maske 1 (nur FOK), US500 die Maske 2 (nur
+    IOC) und XAUUSD die Maske 3 (beides). Ein fest gesetztes IOC laesst jede
+    EURUSD-Order mit ``Unsupported filling mode`` auflaufen -- und zwar erst beim
+    Senden, nachdem die ganze Risikokette gruen gerechnet hat.
+
+    Bevorzugt wird **FOK**: ganz oder gar nicht. Eine Teilfuellung braucht eine
+    Buchfuehrung, die dieses Repo nicht hat, und ein halb gefuellter Auftrag mit
+    vollem Stop waere eine andere Position als die berechnete.
+    """
+    info = mt5.symbol_info(symbol)
+    maske = int(getattr(info, "filling_mode", 0)) if info is not None else 0
+    if maske & 1:
+        return int(mt5.ORDER_FILLING_FOK)
+    if maske & 2:
+        return int(mt5.ORDER_FILLING_IOC)
+    if maske & 4:
+        return int(mt5.ORDER_FILLING_RETURN)
+    raise VenueUnavailableError(
+        f"{symbol}: der Broker meldet keine unterstuetzte Ausfuehrungsart "
+        f"(filling_mode={maske}). Fail-closed statt raten."
+    )
 
 
 class RealMt5Terminal:
@@ -1134,6 +1212,7 @@ class RealMt5Terminal:
             margin_free=self._d(raw.margin_free),
             is_demo=int(raw.trade_mode) == demo_mode,
             ts=datetime.now(UTC),
+            leverage=int(raw.leverage) if getattr(raw, "leverage", None) else None,
         )
 
     # --- Schreiben (fail-closed) -----------------------------------------
@@ -1163,7 +1242,7 @@ class RealMt5Terminal:
             "sl": float(request["stop_loss"]),
             "deviation": 20,
             "type_time": mt5.ORDER_TIME_GTC,
-            "type_filling": mt5.ORDER_FILLING_IOC,
+            "type_filling": _fuellart(mt5, symbol),
             "comment": str(request.get("comment", "")),
         }
         take_profit = request.get("take_profit")
@@ -1179,12 +1258,14 @@ class RealMt5Terminal:
                     req["position"] = int(pos.ticket)
                     break
         res = mt5.order_send(req)
-        done = int(getattr(mt5, "TRADE_RETCODE_DONE", 10009))
-        accepted = res is not None and int(res.retcode) == done
+        accepted = _send_angenommen(mt5, res)
         if accepted:
             reason = "done"
         elif res is not None:
-            reason = str(res.comment)
+            # Der Rueckgabecode gehoert in die Meldung. Ohne ihn steht im Protokoll
+            # nur der Kommentar des Brokers -- und der lautet auch bei manchen
+            # Fehlschlaegen "Done", was die Ursachensuche unmoeglich macht.
+            reason = f"{res.comment} (retcode={int(res.retcode)})"
         else:
             reason = "no_result"
         return Mt5SendResult(

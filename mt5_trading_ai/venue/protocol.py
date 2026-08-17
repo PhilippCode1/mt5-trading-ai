@@ -217,6 +217,11 @@ class AccountState:
     #: ``True`` nur bei einem Demokonto. Der Live-Pfad prueft dieses Feld.
     is_demo: bool
     ts: datetime
+    #: Hebel, den der BROKER diesem Konto gewaehrt (1:N -> N). ``None`` heisst
+    #: unbekannt. Er ist eine harte Obergrenze: mehr als der Broker gibt, kann keine
+    #: Politik sich nehmen. Ohne dieses Feld rechnet die Margenpruefung mit dem
+    #: GEWUENSCHTEN Hebel und laesst Positionen zu, die der Broker ablehnt.
+    leverage: int | None = None
 
 
 @runtime_checkable

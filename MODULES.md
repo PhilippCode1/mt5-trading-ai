@@ -235,7 +235,7 @@ Frische-Latch fuer den Kontozustand — S2 aus Paket 0.
 
 ## `mt5_trading_ai/execution/leverage_preflight.py`
 
-Zeilen: 92
+Zeilen: 106
 
 Anschluss der Hebelklammer an den Order-Pfad.
 
@@ -286,7 +286,7 @@ Risikoschicht am Order-Pfad: die vier Grenzen als letzte Verteidigungslinie.
 
 ## `mt5_trading_ai/execution/runner.py`
 
-Zeilen: 302
+Zeilen: 362
 
 Integrierender Paper/Dry-Run-Runner (Paket 7): die eine beweisbare Kette.
 
@@ -459,7 +459,7 @@ Der Halal-Screen: das mechanisch Pruefbare erzwingen, die fiqh-Grenze benennen (
 
 ## `mt5_trading_ai/venue/mt5.py`
 
-Zeilen: 1226
+Zeilen: 1307
 
 MT5-Anbindung an das ``TradingVenue``-Protokoll.
 
@@ -475,7 +475,7 @@ MT5-Anbindung an das ``TradingVenue``-Protokoll.
 
 ## `mt5_trading_ai/venue/protocol.py`
 
-Zeilen: 280
+Zeilen: 285
 
 Plattformunabhaengiger Handelsplatz-Vertrag.
 

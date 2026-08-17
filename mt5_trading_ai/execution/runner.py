@@ -41,12 +41,18 @@ from mt5_trading_ai.risk.stop_budget import stop_budget
 from mt5_trading_ai.venue.halal import screen_halal
 from mt5_trading_ai.venue.mt5 import Mt5Venue
 from mt5_trading_ai.venue.protocol import (
+    AccountState,
+    Instrument,
     OrderRequest,
     OrderResult,
     OrderSide,
     OrderType,
     VenueError,
 )
+
+#: Anteil der zustehenden Marge, der tatsaechlich belegt werden darf. Der Rest ist
+#: Puffer fuer Kursbewegung und Spread zwischen Rechnung und Ausfuehrung.
+_MARGEN_SICHERHEIT = Decimal("0.8")
 
 RUNNER_VERSION = "paper-runner-v1"
 
@@ -69,6 +75,10 @@ class RunnerConfig:
     scholar_review_id: str = ""
     requested_leverage: object | None = None
     measured_cost_bps: dict[str, Decimal] = field(default_factory=dict)
+    #: Gleichzeitig erlaubte Positionen -- Bezugsgroesse des Margendeckels. Gleich
+    #: der Vorgabe in ``ThrottlePolicy``/``LossLimits``, damit die erste Position
+    #: nicht die Marge der uebrigen aufbraucht.
+    max_concurrent_positions: int = 3
 
 
 @dataclass
@@ -116,6 +126,29 @@ def _quantise(value: Decimal, tick: Decimal, side: OrderSide) -> Decimal:
     lehnt der Platz mit INVALID_STOPS ab."""
     rounding = ROUND_DOWN if side is OrderSide.BUY else ROUND_UP
     return (value / tick).to_integral_value(rounding=rounding) * tick
+
+
+def _margen_deckel(
+    *, instrument: Instrument, account: AccountState, price: Decimal, plaetze: int
+) -> Decimal | None:
+    """Groesstes Volumen, das die freie Marge je Position hergibt. ``None`` = unbekannt.
+
+    Ohne gemeldeten Kontohebel kann diese Rechnung nicht gefuehrt werden -- dann gibt
+    es keinen Deckel, und es bleibt bei der Pruefung im Hebel-Anschluss.
+    """
+    if account.leverage is None or account.leverage <= 0 or price <= 0:
+        return None
+    if instrument.contract_size <= 0 or plaetze < 1:
+        return None
+    anteil = account.margin_free / Decimal(plaetze) * _MARGEN_SICHERHEIT
+    je_lot = instrument.contract_size * price / Decimal(account.leverage)
+    if je_lot <= 0:
+        return None
+    roh = anteil / je_lot
+    schritt = instrument.volume_step
+    if schritt <= 0:
+        return roh
+    return (roh / schritt).to_integral_value(rounding=ROUND_DOWN) * schritt
 
 
 def run_signal(
@@ -269,6 +302,33 @@ def run_signal(
     if sized_volume is None:
         return report._reject("sizing", "risk_sizing_no_volume")
     report.add("sizing", True, f"volume={sized_volume}")
+
+    # 8b) Margendeckel. Die Risikogroesse folgt aus Risikoanteil und Stopabstand und
+    # weiss nichts davon, wie viel Marge das Konto hergibt. Auf einem Konto mit
+    # kleinem Hebel entsteht so eine Groesse, die der Broker gar nicht eroeffnen kann
+    # -- gemessen an einem Demokonto mit 1:1: 0,71 Lot EURUSD verlangten die vollen
+    # 71.000 gegen 50.000 freie Marge.
+    #
+    # Gedeckelt wird auf den Anteil der freien Marge, der EINER Position zusteht:
+    # geteilt durch die Zahl gleichzeitig erlaubter Positionen, damit die erste nicht
+    # das ganze Konto belegt, und mit Sicherheitsabschlag, damit Kursbewegung und
+    # Spread noch Platz haben. Kleiner handeln als das Risikobudget erlaubt ist
+    # sicher; groesser handeln, als der Broker zulaesst, ist gar kein Handel.
+    deckel = _margen_deckel(
+        instrument=instrument, account=account, price=ref,
+        plaetze=config.max_concurrent_positions,
+    )
+    if deckel is not None and deckel < sized_volume:
+        if deckel < instrument.volume_min:
+            return report._reject(
+                "margen-deckel", "margin_below_min_volume",
+                detail=f"moeglich {deckel}, Mindestvolumen {instrument.volume_min}",
+            )
+        report.add("margen-deckel", True,
+                   f"{sized_volume} -> {deckel} (freie Marge)")
+        sized_volume = deckel
+    else:
+        report.add("margen-deckel", True, "nicht bindend")
 
     # 9) Submit: die eigentliche Paper-Order. ``submit_order`` erzwingt Hebel, Frische
     # und die volle Risikoschicht erneut (auf jedem Konto), auf Live zusaetzlich

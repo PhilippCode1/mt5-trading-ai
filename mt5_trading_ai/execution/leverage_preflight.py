@@ -73,19 +73,33 @@ def evaluate_leverage_preflight(
             reason="invalid_price",
             leverage=decision,
         )
+    # Der Hebel des KONTOS ist eine harte Obergrenze. Keine Politik kann sich mehr
+    # nehmen, als der Broker gewaehrt -- und wer die Marge mit dem gewuenschten Hebel
+    # rechnet, laesst Positionen zu, die der Broker mit "No money" ablehnt. Gemessen
+    # an einem Demokonto mit 1:1: 0,71 Lot EURUSD galten hier als gedeckt
+    # (71.000 / 5 = 14.200 gegen 50.000 frei), verlangten beim Broker aber die vollen
+    # 71.000 und fielen erst beim Senden aus.
+    #
+    # ``None`` heisst unbekannt: dann bleibt es beim geklammerten Wunsch. Ein
+    # Handelsplatz, der seinen Kontohebel nicht meldet, soll nicht schlechter
+    # dastehen als vorher -- aber der echte MT5-Pfad meldet ihn.
+    wirksam = decision.leverage
+    if account.leverage is not None and account.leverage > 0:
+        wirksam = min(wirksam, account.leverage)
+
     notional = request.volume * instrument.contract_size * price
-    required_margin = notional / Decimal(decision.leverage)
+    required_margin = notional / Decimal(wirksam)
     if required_margin > account.margin_free:
         return LeveragePreflight(
             approved=False,
-            effective_leverage=decision.leverage,
+            effective_leverage=wirksam,
             required_margin=required_margin,
             reason="insufficient_margin",
             leverage=decision,
         )
     return LeveragePreflight(
         approved=True,
-        effective_leverage=decision.leverage,
+        effective_leverage=wirksam,
         required_margin=required_margin,
         reason=None,
         leverage=decision,
