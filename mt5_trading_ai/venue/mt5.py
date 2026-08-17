@@ -1093,6 +1093,36 @@ class RealMt5Terminal:
     def _d(value: Any) -> Decimal:
         return Decimal(str(value))
 
+    def _zu_server(self, ts: datetime) -> datetime:
+        """Echte UTC-Zeit in die Wanduhr des Servers -- die Umkehr von :meth:`_utc`.
+
+        ``copy_rates_range`` liest seine Grenzen in **Serverzeit**, nicht in UTC. Wer
+        eine echte UTC-Zeit hineinreicht, fragt einen um den Serverversatz verschobenen
+        Zeitraum ab: gemessen am 17.08.2026 (Server UTC+3) endete eine Abfrage mit
+        ``end=jetzt`` bei einer Kerze von **14:00 UTC**, waehrend es 17:26 UTC war --
+        3,4 Stunden Rueckstand.
+
+        Das ist nicht bloss eine unvollstaendige Anzeige: die Trendfolge im Betrieb
+        rechnete ihre gleitenden Durchschnitte auf Kerzen, die drei Stunden alt waren.
+        Ein Signal auf veralteten Kerzen ist ein falsches Signal.
+
+        Die Wanduhr wird **als UTC etikettiert** zurueckgegeben, nicht naiv. Das ist
+        kein Schoenheitsfehler: eine naive Zeit rechnet das MetaTrader5-Paket ueber die
+        Zeitzone des RECHNERS um. Am 17.08.2026 gemessen (Rechner UTC+2, Server UTC+3)
+        ergab das genau eine Stunde Rueckstand -- die Abfrage endete bei Rohstempel
+        18:00 statt 20:00. Mit dem UTC-Etikett trifft sie.
+
+        Alle vier Varianten wurden gegen dasselbe Terminal gemessen: roh 17:00,
+        naiv 18:00, **als UTC etikettiert 20:00**, mit sechs Stunden Puffer 20:00.
+        Nur die dritte trifft UND schiesst nicht darueber hinaus.
+
+        Ohne bekannte Serverzone bleibt die Zeit unveraendert -- dann ist ohnehin nichts
+        gedreht, und ein einseitiger Eingriff waere schlimmer als keiner.
+        """
+        if self._server_tz is None:
+            return ts
+        return ts.astimezone(self._server_tz).replace(tzinfo=None).replace(tzinfo=UTC)
+
     def _utc(self, epoch_seconds: Any) -> datetime:
         """Zeitstempel des Terminals -- in echtem UTC, wenn die Serverzone bekannt ist.
 
@@ -1169,7 +1199,9 @@ class RealMt5Terminal:
         self, name: str, timeframe: Timeframe, start: datetime, end: datetime
     ) -> tuple[Mt5Rate, ...]:
         tf = getattr(self._mt5, f"TIMEFRAME_{timeframe.value}")
-        rows = self._mt5.copy_rates_range(name, tf, start, end)
+        rows = self._mt5.copy_rates_range(
+            name, tf, self._zu_server(start), self._zu_server(end)
+        )
         if rows is None:
             return ()
         names = set(rows.dtype.names)
