@@ -97,6 +97,12 @@ from mt5_trading_ai.venue.protocol import (  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[1]
 JOURNALE = REPO / "betrieb"
+#: Wer diese Datei anlegt, beendet den Lauf geordnet. Unter Windows gibt es fuer
+#: einen abgekoppelten Prozess kein zuverlaessiges Signal: Strg-C braucht ein
+#: Konsolenfenster, und ``taskkill /F`` toetet hart -- der finally-Block liefe nicht,
+#: und die Positionen blieben offen. Eine Datei ist plattformunabhaengig, braucht
+#: keine Rechte und kann nicht danebengehen.
+STOPPDATEI = JOURNALE / "STOP"
 
 #: Trendfolge, Parameter per Konvention. NICHT auf Daten optimiert und nicht als
 #: Vorschlag gemeint -- diese Logik hat nie ein Bewertungstor bestanden.
@@ -510,6 +516,9 @@ def main() -> int:
         strategie=f"moving_average_crossover({SCHNELL},{LANGSAM})",
     )
     print(f"Journal: {journal.pfad}")
+    # Eine Stoppdatei aus einem frueheren Lauf wuerde diesen sofort beenden.
+    STOPPDATEI.unlink(missing_ok=True)
+    print(f"Geordnet beenden: diese Datei anlegen -> {STOPPDATEI}")
     print(f"Laufzeit {args.dauer} h, Takt {args.takt:g} s, {len(symbole)} Instrumente, "
           f"Hoechsthaltedauer {args.max_haltedauer} h, "
           f"Notbremse bei {args.verlustgrenze} % Verlust.\n")
@@ -541,6 +550,10 @@ def main() -> int:
     gestoppt = False
     try:
         while datetime.now(UTC) < ende and not abbruch["jetzt"] and not gestoppt:
+            if STOPPDATEI.exists():
+                print(f"\nStoppdatei {STOPPDATEI.name} gefunden — geordnet beenden.")
+                journal.schreib("stoppdatei", pfad=str(STOPPDATEI))
+                break
             nr += 1
             if not _verbindung_sichern(venue, terminal, journal):
                 break
@@ -560,22 +573,48 @@ def main() -> int:
             if datetime.now(UTC) < ende and not abbruch["jetzt"] and not gestoppt:
                 time.sleep(args.takt)
     finally:
-        if not args.am_ende_offen_lassen:
-            jetzt = datetime.now(UTC)
-            for offen in _lage_lesen(venue).values():
-                _schliesse(venue, manager, offen, jetzt, "lauf_beendet", journal)
-        konto_ende = venue.get_account()
-        journal.schreib(
-            "ende", takte=nr, equity=konto_ende.equity,
-            equity_start=konto.equity,
-            veraenderung=konto_ende.equity - konto.equity,
-        )
-        print(f"\nBeendet nach {nr} Takten. Equity {konto.equity} -> "
-              f"{konto_ende.equity} {konto_ende.currency}")
+        # JEDER Schritt einzeln abgesichert. Der haeufigste Abbruchgrund ist eine
+        # verlorene Sitzung -- und dann wirft schon der erste Aufruf hier. Ohne
+        # Absicherung gaebe es dann kein Glattstellen (obwohl der Modulkopf es
+        # zusagt), keinen Endeintrag und kein shutdown, sondern einen Traceback.
+        offen_geblieben: list[str] = []
+        try:
+            if not args.am_ende_offen_lassen:
+                jetzt = datetime.now(UTC)
+                for offen in _lage_lesen(venue).values():
+                    if not _schliesse(venue, manager, offen, jetzt,
+                                      "lauf_beendet", journal):
+                        offen_geblieben.append(offen.symbol)
+                offen_geblieben += list(_lage_lesen(venue))
+        except VenueError as exc:
+            journal.schreib("ende_glattstellen_fehlgeschlagen", fehler=str(exc))
+            print(f"  !! Glattstellen am Ende fehlgeschlagen: {exc}", file=sys.stderr)
+            offen_geblieben.append("unbekannt")
+        try:
+            konto_ende = venue.get_account()
+            journal.schreib(
+                "ende", takte=nr, equity=konto_ende.equity,
+                equity_start=konto.equity,
+                veraenderung=konto_ende.equity - konto.equity,
+                offen_geblieben=sorted(set(offen_geblieben)),
+            )
+            print(f"\nBeendet nach {nr} Takten. Equity {konto.equity} -> "
+                  f"{konto_ende.equity} {konto_ende.currency}")
+        except VenueError as exc:
+            journal.schreib("ende_ohne_kontostand", fehler=str(exc), takte=nr,
+                            offen_geblieben=sorted(set(offen_geblieben)))
+            print(f"\nBeendet nach {nr} Takten, Kontostand nicht lesbar: {exc}")
+        if offen_geblieben:
+            print(f"!! ACHTUNG: Positionen koennen offen geblieben sein: "
+                  f"{sorted(set(offen_geblieben))}", file=sys.stderr)
         print(f"Journal: {journal.pfad}")
         print(f"Auswertung: python tools/betrieb_auswerten.py {journal.pfad.name}")
-        terminal.shutdown()
-    return 0
+        try:
+            terminal.shutdown()
+        except Exception:  # noqa: BLE001 - Aufraeumen darf nichts mehr werfen
+            pass
+        STOPPDATEI.unlink(missing_ok=True)
+    return 4 if offen_geblieben else 0
 
 
 if __name__ == "__main__":
