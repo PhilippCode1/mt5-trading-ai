@@ -349,8 +349,11 @@ def _verbindung_sichern(
 def _buch_abgleichen(
     venue: Mt5Venue, manager: RiskManager, bekannt: dict[str, Lage],
     lage: dict[str, Lage], journal: Journal,
-) -> None:
+) -> bool:
     """Was der Broker geschlossen hat, muss Manager UND Buch erfahren.
+
+    Gibt ``True``, wenn etwas verschwunden ist. Der Aufrufer braucht die Nachricht,
+    um einen dadurch ausgeloesten Reconcile-Halt als **erklaert** zu behandeln.
 
     Nur ``record_close`` zu rufen genuegt nicht: das lokale Positionsbuch der Venue
     behielte die Position, und der naechste ``reconcile`` saehe die Differenz als
@@ -359,7 +362,7 @@ def _buch_abgleichen(
     """
     verschwunden = [s for s in bekannt if s not in lage]
     if not verschwunden:
-        return
+        return False
     for symbol in verschwunden:
         manager.record_close(symbol)
         # Was wir noch wissen, gehoert ins Protokoll: der Satz trug frueher NUR das
@@ -374,9 +377,10 @@ def _buch_abgleichen(
                      "bis zu einen Takt spaeter als der wirkliche Schluss."),
         )
         print(f"  WEG  {symbol} (Broker hat geschlossen, vermutlich Stop)")
-    vorher = venue.book_snapshot() if hasattr(venue, "book_snapshot") else None
     nachher = venue.adopt_book()
-    journal.schreib("buch_uebernommen", vorher=vorher, nachher=nachher)
+    journal.schreib("buch_uebernommen", nachher=nachher,
+                    ausgeloest_durch=verschwunden)
+    return True
 
 
 def _notbremse(
@@ -457,7 +461,26 @@ def takt(
         journal.schreib("kurs", symbol=symbol, bid=q.bid, ask=q.ask, ts_kurs=q.ts)
 
     # 2) Buchfuehrung gleichziehen -- Manager UND Positionsbuch.
-    _buch_abgleichen(venue, manager, bekannt, lage, journal)
+    erklaert = _buch_abgleichen(venue, manager, bekannt, lage, journal)
+
+    # Der Scheduler laeuft VOR diesem Abgleich und sieht die vom Broker geschlossene
+    # Position noch im Buch -- bei max_notional_drift=0 latcht das den Global-Halt.
+    # Gemessen am 17.08.2026, Takt 43: ein voellig normaler Stop-Fill auf XAUUSD
+    # setzte reconcile_drift:notional_drift_exceeds_limit, und ab da eroeffnete der
+    # Lauf nichts mehr.
+    #
+    # Aufgeloest wird NUR dieser eine Fall: ein Reconcile-Halt, fuer den in DEMSELBEN
+    # Takt eine erkannte Schliessung vorliegt. Jeder andere Halt -- Drawdown, Desync,
+    # Notbremse -- bleibt stehen. Eine Sperre, die sich selbst aufhebt, waere keine.
+    if erklaert and tick.halted and str(venue.halt_reason or "").startswith(
+        "reconcile_drift"
+    ):
+        journal.schreib("halt_erklaert", grund=venue.halt_reason,
+                        durch="broker_schliessung")
+        print(f"  ..   Halt aufgeloest: {venue.halt_reason} "
+              f"war eine erkannte Broker-Schliessung")
+        venue.clear_halt()
+        tick = scheduler.tick(jetzt)
 
     # 2b) Notbremse. Vor allem anderen, und sie stellt wirklich glatt.
     if _notbremse(venue, manager, journal, equity_jetzt=konto.equity,
