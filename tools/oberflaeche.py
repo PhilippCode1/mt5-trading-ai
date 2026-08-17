@@ -37,7 +37,6 @@ from __future__ import annotations
 
 import argparse
 import html
-import json
 import sys
 import webbrowser
 from datetime import UTC, datetime, timedelta
@@ -49,6 +48,12 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from mt5_trading_ai.backtest.kalender import SERVER_TZ_NAME  # noqa: E402
+from mt5_trading_ai.betrieb.journal import (  # noqa: E402
+    JournalError,
+    Lauf,
+    durchgehende_equity,
+    lies_alle,
+)
 from mt5_trading_ai.costs.broker_costs import load_broker_costs  # noqa: E402
 from mt5_trading_ai.execution.freshness import (  # noqa: E402
     MAX_SNAPSHOT_AGE,
@@ -66,31 +71,32 @@ NEULADEN = 10  # Sekunden
 # --------------------------------------------------------------------------
 # Daten sammeln
 # --------------------------------------------------------------------------
-def _journal() -> tuple[Path | None, list[dict[str, Any]]]:
-    if not JOURNALE.is_dir():
-        return None, []
-    dateien = sorted(JOURNALE.glob("journal-*.jsonl"))
-    if not dateien:
-        return None, []
-    pfad = dateien[-1]
-    zeilen: list[dict[str, Any]] = []
-    for roh in pfad.read_text(encoding="utf-8", errors="replace").splitlines():
-        roh = roh.strip()
-        if not roh:
-            continue
-        try:
-            zeilen.append(json.loads(roh))
-        except json.JSONDecodeError:
-            continue
-    return pfad, zeilen
+def _neuester_lauf() -> Lauf | None:
+    """Der zuletzt begonnene Lauf -- gelesen ueber den gemeinsamen Journal-Leser.
+
+    Frueher parste diese Datei das Journal selbst und uebersprang unlesbare Zeilen
+    stillschweigend. Der Leser in ``mt5_trading_ai/betrieb/journal.py`` ist getestet
+    und meldet einen Defekt, statt ihn zu verschlucken.
+    """
+    laeufe = lies_alle(JOURNALE)
+    if not laeufe:
+        return None
+    # Der LAUFENDE Lauf schlaegt den zuletzt begonnenen. Ein kurzer Testlauf nach dem
+    # Start des Dauerbetriebs waere sonst der neueste, und die Seite zeigte einen
+    # Lauf mit einem einzigen Takt statt des Betriebs, der gerade handelt.
+    offen = [lauf for lauf in laeufe if not lauf.beendet]
+    return offen[-1] if offen else laeufe[-1]
 
 
 def _lage() -> dict[str, Any]:
     """Alles, was die Seite braucht. Fehler werden gemeldet, nicht verschluckt."""
     stand: dict[str, Any] = {"jetzt": datetime.now(UTC), "fehler": None}
-    pfad, zeilen = _journal()
-    stand["journal_pfad"] = pfad
-    stand["journal"] = zeilen
+    try:
+        stand["lauf"] = _neuester_lauf()
+    except JournalError as exc:
+        stand["lauf"] = None
+        stand["journalfehler"] = str(exc)
+    stand["alle_laeufe"] = lies_alle(JOURNALE) if stand.get("lauf") else []
 
     terminal = RealMt5Terminal(allow_write=False, server_tz=SERVER_TZ_NAME)
     if not terminal.initialize():
@@ -146,6 +152,87 @@ def _zahl(wert: Any, stellen: int = 2) -> str:
         return f"{float(wert):,.{stellen}f}".replace(",", " ")
     except (TypeError, ValueError):
         return _e(wert)
+
+
+def _linienzug(
+    punkte: list[tuple[datetime, Decimal]], *, titel: str, einheit: str = "",
+    breite: int = 560, hoehe: int = 150,
+) -> str:
+    """Ein Linienzug als Inline-SVG. Ohne JavaScript, ohne Bibliothek.
+
+    Serverseitig erzeugtes SVG reicht fuer alles, was diese Seite zeigen soll, und
+    haelt die Abhaengigkeitsliste des Repos leer. Gemessen: rund 13 Zeichen je Punkt,
+    also 1,7 KB fuer 70 Punkte -- bei zehn Sekunden Neuladeintervall unerheblich.
+
+    Die Farben kommen aus den CSS-Variablen des Seitenstils, damit der Dunkelmodus
+    ohne Zutun stimmt.
+    """
+    if len(punkte) < 2:
+        return (f"<div class='diagramm'><h3>{_e(titel)}</h3>"
+                f"<p class='leer'>Zu wenige Messpunkte ({len(punkte)}).</p></div>")
+    rand_l, rand_r, rand_o, rand_u = 58, 8, 14, 20
+    innen_b, innen_h = breite - rand_l - rand_r, hoehe - rand_o - rand_u
+    werte = [float(w) for _, w in punkte]
+    tiefe, hoch = min(werte), max(werte)
+    spanne = hoch - tiefe or 1.0
+    # Etwas Luft, damit die Linie nicht am Rand klebt.
+    tiefe, hoch = tiefe - spanne * 0.08, hoch + spanne * 0.08
+    spanne = hoch - tiefe
+
+    def x(i: int) -> float:
+        return rand_l + innen_b * i / (len(punkte) - 1)
+
+    def y(wert: float) -> float:
+        return rand_o + innen_h * (1 - (wert - tiefe) / spanne)
+
+    gitter = []
+    for anteil in (0.0, 0.5, 1.0):
+        wert = tiefe + spanne * anteil
+        yy = y(wert)
+        gitter.append(
+            f'<line x1="{rand_l}" y1="{yy:.1f}" x2="{breite - rand_r}" y2="{yy:.1f}" '
+            f'stroke="var(--haar)" stroke-width="1"/>'
+            f'<text x="{rand_l - 6}" y="{yy + 3:.1f}" text-anchor="end" '
+            f'font-size="9" fill="var(--matt)">{wert:,.2f}</text>'.replace(",", " ")
+        )
+    linie = " ".join(f"{x(i):.1f},{y(w):.1f}" for i, w in enumerate(werte))
+    farbe = "var(--gut)" if werte[-1] >= werte[0] else "var(--krit)"
+    von, bis = punkte[0][0], punkte[-1][0]
+    return f"""<div class="diagramm">
+      <h3>{_e(titel)} <span class="klein">{len(punkte)} Punkte ·
+        {werte[0]:,.2f} → {werte[-1]:,.2f} {_e(einheit)}</span></h3>
+      <svg viewBox="0 0 {breite} {hoehe}" width="100%" height="{hoehe}"
+           role="img" aria-label="{_e(titel)}">
+        {''.join(gitter)}
+        <polyline points="{linie}" fill="none" stroke="{farbe}" stroke-width="1.6"
+                  stroke-linejoin="round"/>
+        <text x="{rand_l}" y="{hoehe - 5}" font-size="9" fill="var(--matt)">
+          {von:%H:%M}</text>
+        <text x="{breite - rand_r}" y="{hoehe - 5}" font-size="9" text-anchor="end"
+              fill="var(--matt)">{bis:%H:%M} UTC</text>
+      </svg>
+    </div>""".replace(",", " ")
+
+
+def _abschnitt_verlauf(stand: dict[str, Any]) -> str:
+    lauf: Lauf | None = stand.get("lauf")
+    if lauf is None:
+        return "<p class='leer'>Kein Journal.</p>"
+    teile = [_linienzug(lauf.equity_reihe(), titel="Equity, dieser Lauf",
+                        einheit="EUR")]
+    alle = stand.get("alle_laeufe") or []
+    if len(alle) > 1:
+        ueber = [(ts, wert) for ts, wert, _ in durchgehende_equity(alle)]
+        luecken = sum(1 for _, _, lk in durchgehende_equity(alle) if lk)
+        teile.append(_linienzug(
+            ueber, titel=f"Equity, alle {len(alle)} Läufe", einheit="EUR"))
+        teile.append(
+            f"<p class='klein'>{luecken} Lücken zwischen den Läufen. Dort lief die "
+            "Schleife nicht — was in der Pause geschah, steht in keinem Journal.</p>"
+        )
+    for symbol in lauf.symbole_mit_kursen()[:2]:
+        teile.append(_linienzug(lauf.kurs_reihe(symbol), titel=f"Kurs {symbol}"))
+    return f"<div class='zweispaltig'>{''.join(teile)}</div>"
 
 
 def _abschnitt_konto(stand: dict[str, Any]) -> str:
@@ -220,31 +307,25 @@ def _abschnitt_positionen(stand: dict[str, Any]) -> str:
 
 
 def _abschnitt_lauf(stand: dict[str, Any]) -> str:
-    zeilen = stand.get("journal") or []
-    if not zeilen:
-        return ("<p class='leer'>Kein Journal gefunden. "
-                "Es läuft gerade kein Betrieb.</p>")
-    nach_art: dict[str, list[dict[str, Any]]] = {}
-    for z in zeilen:
-        nach_art.setdefault(str(z.get("art")), []).append(z)
-    start = (nach_art.get("start") or [{}])[0]
-    ende = nach_art.get("ende") or []
-    takte = nach_art.get("takt", [])
-    versuche = nach_art.get("eroeffnungsversuch", [])
-    auf = [v for v in versuche if v.get("eroeffnet")]
-    zu = nach_art.get("geschlossen", [])
-    halts = [t for t in takte if t.get("halt")]
-    laeuft = not ende
+    lauf: Lauf | None = stand.get("lauf")
+    if lauf is None:
+        return "<p class='leer'>Kein Journal gefunden.</p>"
+    takte = lauf.art("takt")
+    versuche = lauf.art("eroeffnungsversuch")
+    auf = [v for v in versuche if v["eroeffnet"]]
+    trades = lauf.trades()
+    zu = [t for t in trades if not t.offen]
+    halts = [t for t in takte if t["halt"]]
 
     gruende: dict[str, int] = {}
     for v in versuche:
-        if v.get("eroeffnet"):
+        if v["eroeffnet"]:
             continue
         letzte = next(
-            (s["naht"] for s in reversed(v.get("schritte") or []) if not s["ok"]),
-            str(v.get("grund") or "?"),
+            (x["naht"] for x in reversed(v["schritte"] or []) if not x["ok"]),
+            str(v["grund"] or "?"),
         )
-        schluessel = f"{letzte} — {v.get('grund')}"
+        schluessel = f"{letzte} — {v['grund']}"
         gruende[schluessel] = gruende.get(schluessel, 0) + 1
     grundzeilen = "".join(
         f"<tr><td class='zahl'>{n}×</td><td class='mono'>{_e(g)}</td></tr>"
@@ -252,31 +333,33 @@ def _abschnitt_lauf(stand: dict[str, Any]) -> str:
     ) or "<tr><td colspan='2' class='leer'>keine Ablehnungen</td></tr>"
 
     zugruende: dict[str, int] = {}
-    for z in zu:
-        g = str(z.get("grund"))
-        zugruende[g] = zugruende.get(g, 0) + 1
+    for t in zu:
+        zugruende[str(t.grund)] = zugruende.get(str(t.grund), 0) + 1
     zuzeilen = "".join(
         f"<tr><td class='zahl'>{n}×</td><td class='mono'>{_e(g)}</td></tr>"
         for g, n in sorted(zugruende.items(), key=lambda x: -x[1])
     ) or "<tr><td colspan='2' class='leer'>noch keine Schließung</td></tr>"
 
-    zustand = ("<span class='marke gut'>läuft</span>" if laeuft
-               else "<span class='marke'>beendet</span>")
-    scharf = ("<span class='marke krit'>scharf</span>" if start.get("scharf")
+    start = lauf.start
+    zustand = ("<span class='marke'>beendet</span>" if lauf.beendet
+               else "<span class='marke gut'>läuft</span>")
+    scharf = ("<span class='marke krit'>scharf</span>" if lauf.scharf
               else "<span class='marke'>trocken</span>")
+    rechenbar = sum(1 for t in zu if t.vollstaendig)
     return f"""
     <p>{zustand} {scharf}
-      <span class="klein">Strategie {_e(start.get('strategie'))} ·
-      Journal <span class="mono">{_e(stand['journal_pfad'].name
-        if stand.get('journal_pfad') else '—')}</span></span></p>
+      <span class="klein">Strategie {_e(start['strategie'] if start else None)} ·
+      Codestand <span class="mono">{_e(lauf.version)}</span> ·
+      Journal <span class="mono">{_e(lauf.pfad.name)}</span></span></p>
     <div class="kacheln">
       <div class="kachel"><span class="etikett">Takte</span>
         <span class="wert">{len(takte)}</span></div>
       <div class="kachel"><span class="etikett">Eröffnet</span>
         <span class="wert gut">{len(auf)}</span>
         <span class="klein">von {len(versuche)} Versuchen</span></div>
-      <div class="kachel"><span class="etikett">Geschlossen</span>
-        <span class="wert">{len(zu)}</span></div>
+      <div class="kachel"><span class="etikett">Trades zu</span>
+        <span class="wert">{len(zu)}</span>
+        <span class="klein">{rechenbar} rechenbar</span></div>
       <div class="kachel"><span class="etikett">Takte im Halt</span>
         <span class="wert {'krit' if halts else 'gut'}">{len(halts)}</span></div>
     </div>
@@ -285,31 +368,62 @@ def _abschnitt_lauf(stand: dict[str, Any]) -> str:
         <table><tbody>{grundzeilen}</tbody></table></div>
       <div><h3>Warum geschlossen wurde</h3>
         <table><tbody>{zuzeilen}</tbody></table></div>
-    </div>"""
+    </div>
+    {_abschnitt_trades(trades)}"""
+
+
+def _abschnitt_trades(trades: list[Any]) -> str:
+    if not trades:
+        return ""
+    zeilen = []
+    for t in trades[-10:]:
+        erg = t.ergebnis_bps
+        if erg is None:
+            ergtext = "<span class='klein'>unvollständig</span>"
+        else:
+            ergtext = (f"<span class='{'gut' if erg >= 0 else 'krit'}'>"
+                       f"{float(erg):+.2f} bp</span>")
+        dauer = t.dauer_stunden
+        zeilen.append(f"""<tr><td class="mono">{_e(t.symbol)}</td>
+          <td>{'BUY' if t.ist_kauf else 'SELL'}</td>
+          <td class="zahl">{_zahl(t.volumen)}</td>
+          <td class="zahl mono">{_e(t.einstieg)}</td>
+          <td class="zahl mono">{_e(t.ausstieg)}</td>
+          <td class="zahl">{'offen' if dauer is None else f'{dauer:.2f} h'}</td>
+          <td class="klein">{_e(t.grund)}</td>
+          <td class="zahl">{ergtext}</td></tr>""")
+    return f"""<h3>Die letzten Trades</h3>
+    <table><thead><tr><th>Instrument</th><th>Seite</th><th class="zahl">Volumen</th>
+      <th class="zahl">Einstieg</th><th class="zahl">Ausstieg</th>
+      <th class="zahl">Dauer</th><th>Grund</th>
+      <th class="zahl">Ergebnis</th></tr></thead>
+      <tbody>{''.join(zeilen)}</tbody></table>
+    <p class="klein">Das Ergebnis rechnet die Preisdifferenz — <b>ohne</b> Kommission
+      und Swap. „Unvollständig“ heißt, dass ein Preis fehlt; es heißt nicht null.</p>"""
 
 
 def _abschnitt_sperren(stand: dict[str, Any]) -> str:
     """Die letzte vollstaendige Checkliste -- die Kette, Naht fuer Naht."""
-    zeilen = stand.get("journal") or []
-    letzte = None
-    for z in reversed(zeilen):
-        if z.get("art") == "eroeffnungsversuch" and z.get("schritte"):
-            letzte = z
-            break
+    lauf: Lauf | None = stand.get("lauf")
+    if lauf is None:
+        return "<p class='leer'>Kein Journal.</p>"
+    letzte = next(
+        (s for s in reversed(lauf.saetze)
+         if s.art == "eroeffnungsversuch" and s["schritte"]), None
+    )
     if letzte is None:
         return "<p class='leer'>Noch kein Durchlauf der Orderkette im Journal.</p>"
     schritte = "".join(
-        f"""<tr><td class="marke {'gut' if s['ok'] else 'krit'}">
-              {'OK' if s['ok'] else 'HALT'}</td>
-            <td class="mono">{_e(s['naht'])}</td>
-            <td class="klein">{_e(s.get('detail'))}</td></tr>"""
-        for s in letzte["schritte"]
+        f"""<tr><td class="marke {'gut' if x['ok'] else 'krit'}">
+              {'OK' if x['ok'] else 'HALT'}</td>
+            <td class="mono">{_e(x['naht'])}</td>
+            <td class="klein">{_e(x.get('detail'))}</td></tr>"""
+        for x in letzte["schritte"]
     )
-    kopf = (f"{_e(letzte.get('symbol'))} · {_e(letzte.get('signal'))} · "
-            f"{_e(letzte.get('ts'))}")
-    ergebnis = ("<span class='marke gut'>eröffnet</span>" if letzte.get("eroeffnet")
-                else f"<span class='marke krit'>{_e(letzte.get('grund'))}</span>")
-    return f"""<p class="klein">{kopf} {ergebnis}</p>
+    ergebnis = ("<span class='marke gut'>eröffnet</span>" if letzte["eroeffnet"]
+                else f"<span class='marke krit'>{_e(letzte['grund'])}</span>")
+    return f"""<p class="klein">{_e(letzte['symbol'])} · {_e(letzte['signal'])} ·
+      {letzte.ts:%H:%M:%S} UTC {ergebnis}</p>
     <table><tbody>{schritte}</tbody></table>"""
 
 
@@ -379,6 +493,9 @@ font-weight:600;background:var(--feld2);border:1px solid var(--haar)}
 gap:1rem}
 .hinweis{background:var(--feld2);border:1px solid var(--haar);border-left:3px solid
 var(--warn);border-radius:6px;padding:.7rem .9rem;font-size:.83rem;margin:1rem 0}
+.diagramm{background:var(--feld);border:1px solid var(--haar);border-radius:8px;
+padding:.7rem .8rem}
+.diagramm h3{margin:0 0 .3rem}
 .fuss{margin-top:2rem;padding-top:.8rem;border-top:1px solid var(--haar);
 color:var(--matt);font-size:.75rem}
 """
@@ -405,6 +522,7 @@ def seite(stand: dict[str, Any]) -> str:
   </div>
   <h2>Konto und Verbindung</h2>{_abschnitt_konto(stand)}
   <h2>Offene Positionen</h2>{_abschnitt_positionen(stand)}
+  <h2>Verlauf</h2>{_abschnitt_verlauf(stand)}
   <h2>Der laufende Betrieb</h2>{_abschnitt_lauf(stand)}
   <h2>Die Orderkette, Naht für Naht</h2>{_abschnitt_sperren(stand)}
   <h2>Kurse gegen Kostenmodell</h2>{_abschnitt_preise(stand)}

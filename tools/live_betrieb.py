@@ -65,6 +65,7 @@ from __future__ import annotations
 import argparse
 import json
 import signal as signalmodul
+import subprocess
 import sys
 import time
 import uuid
@@ -113,12 +114,21 @@ KERZEN_STUNDEN = 360
 
 @dataclass
 class Lage:
-    """Was die Schleife ueber eine offene Position weiss."""
+    """Was die Schleife ueber eine offene Position weiss.
+
+    ``position_id`` und ``einstiegspreis`` kamen frueher vom Handelsplatz und wurden
+    hier weggeworfen. Genau sie fehlten dann im Protokoll, und ohne sie laesst sich das
+    Ergebnis eines einzelnen Trades nicht rekonstruieren.
+    """
 
     symbol: str
     ist_kauf: bool
     volumen: Decimal
     seit: datetime
+    position_id: str
+    einstiegspreis: Decimal
+    unrealisiert: Decimal
+    swap: Decimal
 
 
 class Journal:
@@ -128,12 +138,22 @@ class Journal:
     aendern laesst, ist als Beleg wertlos.
     """
 
-    def __init__(self, pfad: Path) -> None:
+    def __init__(self, pfad: Path, *, lauf: str, version: str) -> None:
         self.pfad = pfad
+        #: Kennung dieses Laufs. Ohne sie steckt die Zugehoerigkeit allein im
+        #: Dateinamen -- zusammenkopierte Journale waeren nicht mehr auftrennbar.
+        self.lauf = lauf
+        #: Codestand, unter dem der Lauf lief. Zwei Laeufe mit unterschiedlichem
+        #: Code sehen sonst identisch aus, und genau dort wird eine laufuebergreifende
+        #: Auswertung still falsch.
+        self.version = version
         pfad.parent.mkdir(parents=True, exist_ok=True)
 
     def schreib(self, art: str, **felder: Any) -> None:
-        zeile = {"ts": datetime.now(UTC).isoformat(timespec="seconds"), "art": art}
+        zeile = {
+            "ts": datetime.now(UTC).isoformat(timespec="seconds"),
+            "art": art, "lauf": self.lauf, "version": self.version,
+        }
         zeile.update({k: _jsonfaehig(v) for k, v in felder.items()})
         with self.pfad.open("a", encoding="utf-8") as fh:
             fh.write(json.dumps(zeile, ensure_ascii=False) + "\n")
@@ -192,6 +212,10 @@ def _lage_lesen(venue: Mt5Venue) -> dict[str, Lage]:
         aus[p.symbol] = Lage(
             symbol=p.symbol, ist_kauf=p.side is OrderSide.BUY,
             volumen=p.volume, seit=p.opened_at,
+            position_id=p.venue_position_id,
+            einstiegspreis=p.entry_price,
+            unrealisiert=p.unrealised_pnl,
+            swap=p.swap_accrued,
         )
     return aus
 
@@ -218,9 +242,18 @@ def _schliesse(
                         grund=grund, fehler=str(exc))
         return False
     manager.record_close(lage.symbol)
+    # Preis, Volumen und Positions-ID gehoeren ins Protokoll. Ohne sie laesst sich
+    # nicht sagen, was ein einzelner Trade gemacht hat -- ``order_id`` ist die Kennung
+    # der SCHLIESSENDEN Order und verbindet nichts mit der Eroeffnung.
     journal.schreib("geschlossen", symbol=lage.symbol, grund=grund,
                     volumen=lage.volumen, war_kauf=lage.ist_kauf,
-                    order_id=ergebnis.venue_order_id)
+                    order_id=ergebnis.venue_order_id,
+                    client_order_id=anfrage.client_order_id,
+                    position_id=lage.position_id,
+                    ausstiegspreis=ergebnis.average_price,
+                    gefuellt=ergebnis.filled_volume,
+                    einstiegspreis=lage.einstiegspreis,
+                    seit=lage.seit)
     print(f"  ZU   {lage.symbol} {lage.volumen} ({grund})")
     return True
 
@@ -244,10 +277,29 @@ def _eroeffne(
         journal.schreib("eroeffnen_fehlgeschlagen", symbol=symbol, fehler=str(exc))
         return
     schritte = [{"naht": s.name, "ok": s.ok, "detail": s.detail} for s in bericht.steps]
+    # Bei einer ANGENOMMENEN Order gehoeren Preis, Volumen und Kennungen als Zahlen ins
+    # Protokoll -- nicht als Fliesstext in der Naht-Begruendung. Ohne sie fehlt der
+    # Anfang jedes Trades, und ein Ergebnis laesst sich nicht rechnen.
+    erg = bericht.submitted
     journal.schreib(
         "eroeffnungsversuch", symbol=symbol, signal=sig.name,
         eroeffnet=bericht.opened, grund=bericht.reject_reason, schritte=schritte,
+        client_order_id=None if erg is None else erg.client_order_id,
+        order_id=None if erg is None else erg.venue_order_id,
+        einstiegspreis=None if erg is None else erg.average_price,
+        gefuellt=None if erg is None else erg.filled_volume,
     )
+    if bericht.opened:
+        # Die Positions-ID kennt erst der Handelsplatz, nach dem Fill. Sie ist der
+        # einzige Schluessel, der Eroeffnung und Schliessung verbindet.
+        offen = _lage_lesen(venue).get(symbol)
+        if offen is not None:
+            journal.schreib(
+                "eroeffnet", symbol=symbol, signal=sig.name,
+                position_id=offen.position_id, volumen=offen.volumen,
+                einstiegspreis=offen.einstiegspreis, seit=offen.seit,
+                client_order_id=None if erg is None else erg.client_order_id,
+            )
     if bericht.opened:
         print(f"  AUF  {symbol} {sig.name}")
     else:
@@ -310,7 +362,17 @@ def _buch_abgleichen(
         return
     for symbol in verschwunden:
         manager.record_close(symbol)
-        journal.schreib("vom_broker_geschlossen", symbol=symbol)
+        # Was wir noch wissen, gehoert ins Protokoll: der Satz trug frueher NUR das
+        # Symbol. Stop, Margin Call oder Handeingriff waren damit ununterscheidbar.
+        weg = bekannt[symbol]
+        journal.schreib(
+            "vom_broker_geschlossen", symbol=symbol, volumen=weg.volumen,
+            war_kauf=weg.ist_kauf, position_id=weg.position_id,
+            einstiegspreis=weg.einstiegspreis, seit=weg.seit,
+            zuletzt_unrealisiert=weg.unrealisiert,
+            hinweis=("Zeitpunkt ist der Takt, in dem das Verschwinden auffiel -- "
+                     "bis zu einen Takt spaeter als der wirkliche Schluss."),
+        )
         print(f"  WEG  {symbol} (Broker hat geschlossen, vermutlich Stop)")
     vorher = venue.book_snapshot() if hasattr(venue, "book_snapshot") else None
     nachher = venue.adopt_book()
@@ -360,13 +422,41 @@ def takt(
     #    KEIN ``events=``: ohne konfigurierten Strom wirft ``apply_private_event``.
     tick = scheduler.tick(jetzt)
     konto = venue.get_account()
+    lage = _lage_lesen(venue)
     print(f"[{jetzt.strftime('%H:%M:%S')}] Takt {nr} | Equity {konto.equity} "
           f"{konto.currency} | Halt: {'JA' if tick.halted else 'nein'}")
-    journal.schreib("takt", nr=nr, equity=konto.equity, halt=tick.halted,
-                    halt_grund=tick.halt_reason, demo=konto.is_demo)
+    # Der Takt traegt alles, was den Kontozustand ausmacht -- nicht nur die Equity.
+    # Ohne ``balance`` laesst sich eine Equity-Bewegung nicht in realisiertes Ergebnis
+    # und offene Bewertung zerlegen: man saehe die Kurve zappeln und wuesste nicht, ob
+    # ein Trade zuging oder eine Position nur schwankt. Die Positionsliste steht hier
+    # ohnehin schon im Speicher; sie kostet keine zusaetzliche Abfrage.
+    journal.schreib(
+        "takt", nr=nr, equity=konto.equity, balance=konto.balance,
+        marge_belegt=konto.margin_used, marge_frei=konto.margin_free,
+        unrealisiert=sum((p.unrealisiert for p in lage.values()), Decimal("0")),
+        halt=tick.halted, halt_grund=tick.halt_reason, demo=konto.is_demo,
+        positionen=[
+            {"symbol": p.symbol, "ist_kauf": p.ist_kauf, "volumen": p.volumen,
+             "seit": p.seit, "position_id": p.position_id,
+             "einstiegspreis": p.einstiegspreis, "unrealisiert": p.unrealisiert,
+             "swap": p.swap}
+            for p in lage.values()
+        ],
+    )
+
+    # 1b) Kurse je Takt -- UNABHAENGIG von Signal und Positionslage.
+    #     Preis und Spread standen frueher nur im Daten-Tor eines Eroeffnungsversuchs,
+    #     und der entsteht nicht, wenn das Symbol schon offen ist. Gemessen ueber 71
+    #     Takte: fuer die Instrumente OHNE Position 71 Punkte, fuer die MIT Position
+    #     genau einer. Der Verlauf fehlte also ausgerechnet dort, wo Geld stand.
+    for symbol in symbole:
+        try:
+            q = venue.get_quote(symbol)
+        except VenueError:
+            continue
+        journal.schreib("kurs", symbol=symbol, bid=q.bid, ask=q.ask, ts_kurs=q.ts)
 
     # 2) Buchfuehrung gleichziehen -- Manager UND Positionsbuch.
-    lage = _lage_lesen(venue)
     _buch_abgleichen(venue, manager, bekannt, lage, journal)
 
     # 2b) Notbremse. Vor allem anderen, und sie stellt wirklich glatt.
@@ -402,6 +492,27 @@ def takt(
             journal.schreib("signal", symbol=symbol, signal=sig.name, detail=warum)
             _eroeffne(venue, manager, symbol, sig, jetzt, zulassung, journal)
     return _lage_lesen(venue), False
+
+
+def _codestand() -> str:
+    """Der Commit, unter dem dieser Lauf faehrt. ``unbekannt``, wenn kein Git da ist.
+
+    Zwei Laeufe mit unterschiedlichem Code sehen im Journal sonst identisch aus -- und
+    genau dort wird eine laufuebergreifende Auswertung still falsch. Ein angehaengtes
+    ``+aenderungen`` sagt, dass der Baum beim Start nicht sauber war.
+    """
+    try:
+        stand = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"], cwd=REPO,
+            capture_output=True, text=True, check=True,
+        ).stdout.strip()
+        schmutzig = subprocess.run(
+            ["git", "status", "--porcelain"], cwd=REPO,
+            capture_output=True, text=True, check=True,
+        ).stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        return "unbekannt"
+    return f"{stand}+aenderungen" if schmutzig else stand
 
 
 def _autotrading_an() -> bool:
@@ -484,7 +595,11 @@ def main() -> int:
         return 3
 
     start = datetime.now(UTC)
-    journal = Journal(JOURNALE / f"journal-{start.strftime('%Y%m%dT%H%M%S')}.jsonl")
+    lauf = uuid.uuid4().hex
+    journal = Journal(
+        JOURNALE / f"journal-{start.strftime('%Y%m%dT%H%M%S')}.jsonl",
+        lauf=lauf, version=_codestand(),
+    )
     # Nur Symbole, die dieser Broker wirklich fuehrt. Der Katalog ist breiter als
     # das Angebot eines einzelnen Brokers; ein unbekanntes Symbol wuerde sonst in
     # JEDEM Takt einen Fehler ins Protokoll schreiben und es unlesbar machen.
@@ -520,7 +635,8 @@ def main() -> int:
     zulassung = CriteriaVerdict(passed=bool(args.scharf), results=())
 
     journal.schreib(
-        "start", konto=konto.account_id, equity=konto.equity, demo=konto.is_demo,
+        "start", lauf=lauf, konto=konto.account_id,
+        equity=konto.equity, demo=konto.is_demo,
         symbole=symbole, uebersprungen=fehlend,
         dauer_stunden=args.dauer, takt_sekunden=args.takt,
         max_haltedauer_stunden=args.max_haltedauer,

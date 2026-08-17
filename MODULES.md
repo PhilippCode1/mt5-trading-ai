@@ -127,6 +127,20 @@ Einfache, ernsthafte Signallogiken fuer den Edge-Test -- ohne Optimierung.
 - `def mean_reversion_zscore`
 - `def volatility_breakout`
 
+## `mt5_trading_ai/betrieb/journal.py`
+
+Zeilen: 315
+
+Betriebsjournale lesen -- die eine Stelle, an der aus Zeilen Aussagen werden.
+
+- `class JournalError`
+- `class Satz`
+- `class Trade`
+- `class Lauf`
+- `def lies_journal`
+- `def lies_alle`
+- `def durchgehende_equity`
+
 ## `mt5_trading_ai/costs/broker_costs.py`
 
 Zeilen: 454
