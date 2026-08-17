@@ -42,3 +42,6 @@ jobs:
 
       - name: Doku-Zahlen = Code
         run: python tools/check_doc_numbers.py
+
+      - name: Kopien wortgleich mit ihren Originalen
+        run: python tools/kopien_abgleichen.py --pruefen

@@ -22,11 +22,23 @@ Ein Hinweis vorab, weil er erfahrungsgemäß Verwirrung stiftet:
 > nichts über Frage 2 (Margin und Hebel). Ein swap-freies Konto ändert an den ersten beiden
 > Mechanismen nichts.
 
-Der Betreiber hat bisher **keinen** Handel durchgeführt. Der technische Aufbau sperrt jeden
-Ausführungspfad, bis eine Antwort auf dieses Dokument vorliegt: der Code verlangt vor jeder
-eröffnenden Order am Echtgeldkonto eine hinterlegte Kennung der Gelehrten-Entscheidung und
-lehnt sonst ab. Die Entscheidung des Gelehrten wird also technisch erzwungen, nicht nur
-dokumentiert.
+**Zum bisherigen Handel — damit der Sachverhalt vollständig ist.** Am 2026-08-17 hat der
+Betreiber die Software einen Tag lang auf einem **Demokonto** des Brokers laufen lassen:
+Spielgeld, kein Echtgeld, keine Ein- oder Auszahlung, kein Zugriff auf eigenes oder fremdes
+Vermögen. Dabei wurden **23 Positionen** eröffnet und wieder geschlossen — acht auf dem
+Währungspaar EUR/USD, sieben auf GBP/USD, acht auf Gold, mit Haltedauern von Minuten bis
+wenigen Stunden. Zweck war die Prüfung, ob die Maschine technisch fehlerfrei arbeitet.
+
+**Am Echtgeldkonto wurde nicht gehandelt.** Der Weg dorthin ist im Code versperrt: vor jeder
+eröffnenden Order an einem Konto, das **kein** Demokonto ist, verlangt das Programm eine
+hinterlegte Kennung der Gelehrten-Entscheidung und weist die Order sonst zurück. Genau diese
+Prüfung überspringt der Code, wenn das Konto ein Demokonto ist — und das ist der Grund,
+warum der beschriebene Tageslauf überhaupt möglich war. Für Echtgeld wird die Entscheidung
+des Gelehrten also technisch erzwungen, nicht nur dokumentiert.
+
+Ob ein Handel mit Spielgeld anders zu beurteilen ist als einer mit Echtgeld, sagt der
+Betreiber ausdrücklich **nicht**. Das ist Teil der Frage, nicht ihre Antwort. Der Sachverhalt
+steht darum hier, statt weggelassen zu werden.
 
 ---
 
@@ -187,6 +199,9 @@ Rechtsfrage, gehört aber zur ehrlichen Beschreibung der Alternative.
    Code verlangt sie als Feld; ohne sie bleibt jeder Ausführungspfad gesperrt.
 
 Der Betreiber hat die technische Vorbereitung so gebaut, dass ein negatives Urteil
-**folgenlos** bleibt: es wurde noch nicht gehandelt, und die Sperren sind zu.
+**folgenlos** bleibt: am Echtgeldkonto wurde nicht gehandelt, es steht kein Vermögen im
+Markt, und die Sperren sind zu. Der Tageslauf vom 2026-08-17 fand auf einem Demokonto statt
+(siehe Abschnitt 0); er lässt sich nicht rückgängig machen, hat aber auch nichts bewirkt,
+was rückgängig zu machen wäre.
 
 *Wa-Llāhu aʿlam.*

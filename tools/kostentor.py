@@ -45,6 +45,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from collections.abc import Sequence
 from dataclasses import dataclass
 from decimal import Decimal
 from pathlib import Path
@@ -75,6 +76,13 @@ from mt5_trading_ai.risk.stop_budget import (  # noqa: E402
 M1_GRUEN_MAX = Decimal("0.56")
 M1_GELB_MAX = Decimal("0.62")
 M1_MIN_INSTRUMENTE_GRUEN = 3
+#: Die Untergrenze an BEWERTBAREN Instrumenten, unter der M1 nicht mehr beurteilt wird.
+#: Berichtigung vom 2026-08-17 (ABBRUCH.md, Bedingung 1): die erste Fassung verlangte
+#: fuer ROT "alle sechs" Instrumente. Da BTCUSD dauerhaft nicht bewertbar ist, konnte
+#: ROT damit NIE eintreten -- eine Ampel, die nicht rot werden kann, schuetzt nicht.
+#: Seither laeuft die ROT-Schwelle gegen die bewertbaren Instrumente, und zu duenne
+#: Datenlage gilt fail-closed als ausgeloest statt als gruen.
+M1_MIN_BEWERTBAR = 4
 M2_MAX_JAHRESLAST = Decimal("0.50")
 
 #: Stopabstaende als Vielfaches des gemessenen Median-ATR(14) auf H1.
@@ -96,6 +104,58 @@ UNIVERSUM: tuple[tuple[str, str, str, int], ...] = (
     ("BTCUSD", "Krypto", "crypto", 2),
     ("NVDA", "Einzelaktie (Technik/KI)", "equity", 5),
 )
+
+
+def m1_ampel(
+    *,
+    bewertbar: Sequence[str],
+    gruen: Sequence[str],
+    rot: Sequence[str],
+    bester_broker: tuple[str, Sequence[str]],
+) -> tuple[str, str]:
+    """Das M1-Urteil als reine Funktion -- Ampel und Begruendung.
+
+    Steht hier getrennt vom Druck, weil ein Urteil, das nur als Nebenwirkung einer
+    ``print``-Kaskade entsteht, sich nicht pruefen laesst. Genau das war der Grund,
+    warum die Berichtigung der ROT-Schwelle monatelang nur im Dokument stand und nicht
+    im Werkzeug: es gab keinen Test, der den Unterschied haette bemerken koennen.
+
+    ``bewertbar`` sind die Instrumente mit mindestens einer rechenbaren Kostenzeile;
+    ``rot`` und ``gruen`` sind Teilmengen davon. ``bester_broker`` ist der einzelne
+    Anbieter mit den meisten gruenen Instrumenten -- M1 sagt "bei mindestens einem
+    Broker", nicht "je Instrument der guenstigste".
+    """
+    if len(bewertbar) < M1_MIN_BEWERTBAR:
+        # Die Datenlage wird VOR dem guenstigen Fall geprueft. Sonst stuende ein
+        # gruenes Urteil moeglicherweise auf drei Messungen, waehrend die Haelfte des
+        # Universums unbewertet bleibt -- fail-open genau dort, wo es am teuersten ist.
+        return "AUSGELOEST", (
+            f"Nur {len(bewertbar)} von {len(UNIVERSUM)} Instrumenten ueberhaupt "
+            f"bewertbar (gefordert: mindestens {M1_MIN_BEWERTBAR}). Eine fehlende "
+            f"Messung gilt als nicht erfuellt, nicht als guenstig."
+        )
+    if (
+        len(gruen) >= M1_MIN_INSTRUMENTE_GRUEN
+        and len(bester_broker[1]) >= M1_MIN_INSTRUMENTE_GRUEN
+    ):
+        return "GRUEN", (
+            f"p* <= {M1_GRUEN_MAX * 100:.0f} % bei {len(gruen)} Instrumenten, und "
+            f"{bester_broker[0]} allein traegt {len(bester_broker[1])} davon "
+            f"(gefordert: mindestens {M1_MIN_INSTRUMENTE_GRUEN})."
+        )
+    if rot and len(rot) == len(bewertbar):
+        # Gegen die BEWERTBAREN, nicht gegen das ganze Universum: sonst haelt ein
+        # einziges dauerhaft nicht bewertbares Instrument (BTCUSD) die Ampel fuer
+        # immer aus dem roten Bereich heraus.
+        return "ROT", (
+            f"p* > {M1_GELB_MAX * 100:.0f} % bei allen {len(bewertbar)} bewertbaren "
+            f"Instrumenten bei allen Brokern."
+        )
+    return "GELB", (
+        f"Weniger als {M1_MIN_INSTRUMENTE_GRUEN} Instrumente unter "
+        f"{M1_GRUEN_MAX * 100:.0f} %, aber nicht alle ueber "
+        f"{M1_GELB_MAX * 100:.0f} %."
+    )
 
 
 class KostentorError(RuntimeError):
@@ -421,43 +481,40 @@ def main() -> int:
           f"(gefordert: mindestens {M1_MIN_INSTRUMENTE_GRUEN})")
     print()
 
-    if (
-        len(gruen) >= M1_MIN_INSTRUMENTE_GRUEN
-        and len(bester_broker[1]) >= M1_MIN_INSTRUMENTE_GRUEN
-    ):
-        m1 = "GRUEN"
-        satz = (f"p* <= {M1_GRUEN_MAX * 100:.0f} % bei {len(gruen)} Instrumenten, und "
-                f"{bester_broker[0]} allein traegt {len(bester_broker[1])} davon "
-                f"(gefordert: mindestens {M1_MIN_INSTRUMENTE_GRUEN}).")
-    elif rot and len(rot) == len(UNIVERSUM):
-        m1 = "ROT"
-        satz = "p* > 62 % bei allen sechs Instrumenten bei allen Brokern."
-    else:
-        m1 = "GELB"
-        satz = (f"Weniger als {M1_MIN_INSTRUMENTE_GRUEN} Instrumente unter "
-                f"{M1_GRUEN_MAX * 100:.0f} %, aber nicht alle ueber "
-                f"{M1_GELB_MAX * 100:.0f} %.")
+    m1, satz = m1_ampel(
+        bewertbar=gemessene_instrumente,
+        gruen=gruen,
+        rot=rot,
+        bester_broker=(bester_broker[0], list(bester_broker[1])),
+    )
     print(f"  M1-AMPEL: {m1} — {satz}")
     print()
 
     if nicht_bewertbar:
         print(
-            "  ZUR AMPEL SELBST, ausdruecklich: solange ein Instrument nicht bewertbar"
-        )
-        print(f"  ist ({nicht_bewertbar}), kann ROT nach dem Wortlaut von M1 gar nicht")
-        print(
-            "  eintreten -- ROT verlangt 'bei allen sechs Instrumenten'. Die Ampel ist"
+            "  ZUR AMPEL SELBST, ausdruecklich: die erste Fassung von M1 verlangte fuer"
         )
         print(
-            "  in dieser Richtung fail-open, und das widerspricht der Kernregel 'nicht"
+            "  ROT 'bei allen sechs Instrumenten'. Weil BTCUSD dauerhaft nicht"
+        )
+        print(f"  bewertbar ist ({nicht_bewertbar}), konnte ROT damit NIE eintreten --")
+        print(
+            "  fail-open gegen die Kernregel 'nicht bewertbar = nicht erfuellt'. Seit"
         )
         print(
-            "  bewertbar = nicht erfuellt'. Das nicht bewertbare Instrument zaehlt hier"
+            "  der Berichtigung vom 2026-08-17 (ABBRUCH.md, Bedingung 1) laeuft die"
         )
         print(
-            "  darum als NICHT gruen; ein ROT-Urteil waere mit dieser Datenlage nicht"
+            f"  ROT-Schwelle gegen die BEWERTBAREN Instrumente (hier "
+            f"{len(gemessene_instrumente)}), und"
         )
-        print("  feststellbar und wird auch nicht behauptet.")
+        print(
+            f"  unter {M1_MIN_BEWERTBAR} bewertbaren gilt M1 fail-closed als"
+        )
+        print(
+            "  ausgeloest. Das nicht bewertbare Instrument zaehlt weiterhin als NICHT"
+        )
+        print("  gruen.")
         print()
 
     _robustheit(rechenbar, gruen)

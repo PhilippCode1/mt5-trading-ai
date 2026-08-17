@@ -37,6 +37,24 @@ werden kann, schützt nicht. Das widersprach der Kernregel dieses Dokuments, das
 fehlende Messung als ausgelöst gilt. Die Schwelle ist darauf umgestellt: alle bewertbaren,
 mindestens vier. Am Stand vom 2026-08-17 ändert das nichts (fünf bewertbar, M1 grün).
 
+**Nachtrag vom 2026-08-17 (Prüfung des eigenen Bestands).** Der Absatz darüber beschrieb
+eine Umstellung, die es **im Werkzeug nicht gab**. `tools/kostentor.py` prüfte weiterhin
+`len(rot) == len(UNIVERSUM)` — also alle sechs — und die Regel „weniger als vier bewertbar
+= ausgelöst" hatte gar keine Umsetzung. Die dem Abschluss beiliegende Rohausgabe
+widersprach diesem Dokument wörtlich. Damit war die einzige grüne Ampel des Vorhabens
+nicht gemessen, sondern konstruiert: genau die Fehlerklasse, die der Absatz darüber
+benennt, nur eine Ebene tiefer. Der Grund, warum das monatelang unbemerkt blieb: das
+M1-Urteil entstand als Nebenwirkung einer `print`-Kaskade, und kein Test konnte den
+Unterschied sehen.
+
+Behoben. Die Ampel liegt jetzt in `tools/kostentor.py::m1_ampel` als reine Funktion, die
+Datenlage wird **vor** dem günstigen Fall geprüft, und `tests/test_kostentor_ampel.py`
+hält einen roten Eichfall: alle bewertbaren Instrumente über 62 %, ein Instrument nicht
+bewertbar — die alte Fassung urteilte GELB, die neue ROT. Neu gemessen ändert sich am
+Ergebnis nichts: fünf bewertbar, vier grün, `ic_markets_eu` trägt drei davon, **M1 bleibt
+grün** (Rohausgabe `ABSCHLUSS-3a/07-AUSGABEN/kostentor.txt`). Der Vorbehalt darunter gilt
+unverändert.
+
 **Ausdrücklicher Vorbehalt, der zur Bedingung gehört.** Das grüne Urteil hat **keine
 Reserve**. Unter fünf gleich vertretbaren Lesartenderselben Daten (Tabelle 2b des Werkzeugs)
 fällt EURUSD in drei Fällen aus dem grünen Block; es bleiben dann exakt die geforderten drei

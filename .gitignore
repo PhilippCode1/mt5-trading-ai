@@ -12,8 +12,16 @@ venv/
 .coverage
 htmlcov/
 
-# Laufzeitdaten des Versuchsregisters (anhaengend, kein Quellcode)
-TRIALS.jsonl
+# Laufzeitdaten des Versuchsregisters (anhaengend, kein Quellcode).
+# Bewusst nicht versioniert: die Datei waechst bei jedem Lauf, und ein mitwachsender
+# Arbeitsbaum liesse ``backtest/provenance.py`` bei der naechsten Studie fail-closed
+# abbrechen. Der belegkraeftige Stand liegt eingefroren in
+# ABSCHLUSS-3a/07-AUSGABEN/trials.jsonl -- diesen Abzug bei jedem Abschluss nachziehen,
+# sonst ist die Versuchszahl nach einem Rechnerwechsel nicht mehr feststellbar.
+# Der fuehrende Schraegstrich ist noetig: ohne ihn greift das Muster in JEDEM
+# Verzeichnis und verschluckt unter Windows (case-insensitiv) genau den Abzug,
+# der den Beleg retten soll.
+/TRIALS.jsonl
 
 # Geheimnisse / lokale Konfiguration — nie einchecken (.env.example bleibt)
 .env

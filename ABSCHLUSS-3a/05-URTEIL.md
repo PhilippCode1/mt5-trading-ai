@@ -186,7 +186,13 @@ nichts liegen darf?".
 
 Die Zahlen in diesem Dokument stammen aus den Läufen in
 [`07-AUSGABEN/`](07-AUSGABEN/) und sind mit den dort abgelegten Rohausgaben nachprüfbar.
-Die sieben Versuche stehen im anhängenden Register `docs/trials.jsonl`.
+Die sieben Versuche stehen im anhängenden Register `TRIALS.jsonl` im Wurzelverzeichnis.
+Diese Datei ist bewusst **nicht** versioniert: sie wächst bei jedem Lauf, und ein
+mitwachsender Arbeitsbaum ließe das Herkunfts-Tor (`backtest/provenance.py`) bei der
+nächsten Studie fail-closed abbrechen. Der Stand zum Abschluss liegt darum als
+eingefrorener Abzug unter [`07-AUSGABEN/trials.jsonl`](07-AUSGABEN/trials.jsonl) — das
+ist der Beleg, auf den sich dieses Dokument beruft, und der einzige, der einen
+Rechnerwechsel überlebt.
 
 | | |
 |---|---|

@@ -29,7 +29,9 @@ wurde, ist **nicht an die Zwangslage gebunden** — er ist die allgemeine Eigens
 Stundenrendite, nach einer Bewegung leicht zurückzukehren.
 
 Belege: [`ABSCHLUSS-3a/04-EREIGNISSTUDIE.md`](ABSCHLUSS-3a/04-EREIGNISSTUDIE.md),
-[`ABSCHLUSS-3a/05-URTEIL.md`](ABSCHLUSS-3a/05-URTEIL.md), Register `docs/trials.jsonl`.
+[`ABSCHLUSS-3a/05-URTEIL.md`](ABSCHLUSS-3a/05-URTEIL.md), Versuchsregister als
+eingefrorener Abzug in
+[`ABSCHLUSS-3a/07-AUSGABEN/trials.jsonl`](ABSCHLUSS-3a/07-AUSGABEN/trials.jsonl).
 
 ---
 

@@ -2,8 +2,9 @@
 
 Sieben Studien, sieben verbrauchte Versuche von zwölf. Rohausgabe in
 [`07-AUSGABEN/ereignisstudie.txt`](07-AUSGABEN/ereignisstudie.txt), Register in
-`docs/trials.jsonl`, Code in `mt5_trading_ai/backtest/ereignisstudie.py` und
-`tools/ereignisstudie.py`.
+[`07-AUSGABEN/trials.jsonl`](07-AUSGABEN/trials.jsonl) — dem eingefrorenen Abzug des
+nicht versionierten `TRIALS.jsonl` —, Code in `mt5_trading_ai/backtest/ereignisstudie.py`
+und `tools/ereignisstudie.py`.
 
 **Ergebnis in einem Satz: keine der sieben Studien besteht M6.1, keine besteht auch nur
 eine der drei Prüfungen aus M6.2.**

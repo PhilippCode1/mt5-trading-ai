@@ -104,13 +104,15 @@ URTEIL GEGEN M1 — Kennzahl: p* bei CRV 1:1 und S = 1,0 x Median-ATR(14) H1
 
   M1-AMPEL: GRUEN — p* <= 56 % bei 4 Instrumenten, und ic_markets_eu allein traegt 3 davon (gefordert: mindestens 3).
 
-  ZUR AMPEL SELBST, ausdruecklich: solange ein Instrument nicht bewertbar
-  ist (['BTCUSD']), kann ROT nach dem Wortlaut von M1 gar nicht
-  eintreten -- ROT verlangt 'bei allen sechs Instrumenten'. Die Ampel ist
-  in dieser Richtung fail-open, und das widerspricht der Kernregel 'nicht
-  bewertbar = nicht erfuellt'. Das nicht bewertbare Instrument zaehlt hier
-  darum als NICHT gruen; ein ROT-Urteil waere mit dieser Datenlage nicht
-  feststellbar und wird auch nicht behauptet.
+  ZUR AMPEL SELBST, ausdruecklich: die erste Fassung von M1 verlangte fuer
+  ROT 'bei allen sechs Instrumenten'. Weil BTCUSD dauerhaft nicht
+  bewertbar ist (['BTCUSD']), konnte ROT damit NIE eintreten --
+  fail-open gegen die Kernregel 'nicht bewertbar = nicht erfuellt'. Seit
+  der Berichtigung vom 2026-08-17 (ABBRUCH.md, Bedingung 1) laeuft die
+  ROT-Schwelle gegen die BEWERTBAREN Instrumente (hier 5), und
+  unter 4 bewertbaren gilt M1 fail-closed als
+  ausgeloest. Das nicht bewertbare Instrument zaehlt weiterhin als NICHT
+  gruen.
 
 ----------------------------------------------------------------------------------------------------
 TABELLE 2b — ROBUSTHEIT: p* bei S = 1,0 x ATR unter fuenf Lesarten
