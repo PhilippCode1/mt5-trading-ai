@@ -78,6 +78,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from mt5_trading_ai.backtest.engine import MarketView, Signal  # noqa: E402
+from mt5_trading_ai.backtest.kalender import server_zu_utc  # noqa: E402
 from mt5_trading_ai.backtest.strategies import moving_average_crossover  # noqa: E402
 from mt5_trading_ai.data.quality import BarRow  # noqa: E402
 from mt5_trading_ai.execution.cost_gate import CostGate  # noqa: E402
@@ -175,12 +176,18 @@ def _signal(venue: Mt5Venue, symbol: str, jetzt: datetime) -> tuple[Signal, str]
 
 
 def _lage_lesen(venue: Mt5Venue) -> dict[str, Lage]:
-    """Die WIRKLICH offenen Positionen, vom Terminal. Nicht aus dem Gedaechtnis."""
+    """Die WIRKLICH offenen Positionen, vom Terminal. Nicht aus dem Gedaechtnis.
+
+    ``opened_at`` kommt mit dem Etikett ``UTC``, traegt aber die Serverzeit (EET/EEST).
+    Ungedreht ist das Alter einer Position um 2-3 Stunden zu klein -- gemessen am
+    laufenden Betrieb: real 0,77 h alt, gerechnet -2,23 h. Die Hoechsthaltedauer von
+    vier Stunden feuerte damit erst nach sieben realen Stunden.
+    """
     aus: dict[str, Lage] = {}
     for p in venue.get_positions():
         aus[p.symbol] = Lage(
             symbol=p.symbol, ist_kauf=p.side is OrderSide.BUY,
-            volumen=p.volume, seit=p.opened_at,
+            volumen=p.volume, seit=server_zu_utc(p.opened_at),
         )
     return aus
 

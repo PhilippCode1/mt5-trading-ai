@@ -141,8 +141,10 @@ eine ernsthafte Suche, zu wenig, um sich unbemerkt in eine unbefristete zu verwa
 angenommen.** Fünf Zwangslagen wurden benannt und in sieben Studien gemessen. Sie
 existieren; sie tragen ihre Kosten nicht. Größter Bruttoeffekt 1,36 bp (K3, GBPJPY) gegen
 eine Schwelle von 5,51 bp; alle sieben Nettoeffekte negativ; höchster Deflated Sharpe
-0,686 gegen die Schwelle 0,95. Damit ist auch **Bedingung 2 ausgelöst**, erstmals
-gemessen. Die Bedingung 6 ist nicht aufgehoben, sondern besser belegt: vorher fehlte die
+0,686 gegen die Schwelle 0,95. Bedingung 2 ist damit erstmals **gemessen** — aber
+**nicht ausgelöst**: ihre eigene Fassung setzt den Messzeitpunkt bei 60 Versuchen an,
+und das Register hält 7. Eine frühere Fassung dieses Absatzes behauptete die Auslösung;
+das war falsch und ist in `ABSCHLUSS-3a/05-URTEIL.md` §3 berichtigt. Die Bedingung 6 ist nicht aufgehoben, sondern besser belegt: vorher fehlte die
 Antwort, jetzt liegt sie vor und lautet nein. Beleg:
 [`ABSCHLUSS-3a/05-URTEIL.md`](ABSCHLUSS-3a/05-URTEIL.md).
 

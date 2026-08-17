@@ -71,7 +71,7 @@ handelbar machen, sondern das allgemeine Rauschen.
 | # | Bedingung | Gemessener Wert | Stand |
 |---|---|---|---|
 | 1 | Kostentor rot | M1 grün (alle sechs Instrumente unter 50 %, knappster Wert XAUUSD 51,0 % → siehe Paket 2), **M2 gerissen**: 13 von 18 Kostenzeilen über 50 % bei 4 RT/Tag und Hebel 5 | **nicht ausgelöst** (Bedingung verlangt M1) |
-| 2 | Kein Kandidat übersteht die Deflation | Höchster Deflated Sharpe über alle sieben Studien: **0,686** (K4/GBPJPY, Out-of-Sample), Schwelle 0,95 | **ausgelöst** |
+| 2 | Kein Kandidat übersteht die Deflation | Höchster Deflated Sharpe über alle sieben Studien: **0,686** (K4/GBPJPY, Out-of-Sample), Schwelle 0,95. **Aber:** die Bedingung greift laut eigener Fassung erst nach **60** Versuchen; das Register hält **7** | **nicht ausgelöst** — siehe Berichtigung unten |
 | 3 | Realisierte Kosten weichen ab | Nicht messbar — kein Handelsbetrieb, keine realisierten Kosten. Nach der Regel des Dokuments gilt eine fehlende Messung als ausgelöst | **ausgelöst (mangels Messung)** |
 | 4 | Halal-Vorfrage negativ | Unverändert offen; drei getrennte Fragen in `HALAL-VORFRAGE.md`, keine beantwortet | **offen** |
 | 5 | Aufwandsgrenze 12 Monate | Frist bis 2027-08-17. Heute 2026-08-17, also **12 Monate verbleibend**. Kein grünes Bewertungstor erreicht | **nicht ausgelöst, Uhr läuft** |
@@ -80,6 +80,23 @@ handelbar machen, sondern das allgemeine Rauschen.
 Bedingung 2 ist mit diesem Paket erstmals **gemessen** statt angenommen: sieben Studien,
 höchster DSR 0,686 gegen die Schwelle 0,95, gerechnet auf dem Out-of-Sample-Drittel gegen
 T = 12 Versuche.
+
+### Berichtigung vom 2026-08-17 (nachgetragen, alter Stand bleibt oben stehen)
+
+**Die erste Fassung dieser Zeile führte Bedingung 2 als „ausgelöst". Das war falsch.**
+
+`ABBRUCH.md` §2 nennt als messbare Schwelle „nach **60** vorregistrierten Versuchen kein
+Kandidat mit Deflated Sharpe ≥ 0,95" und als Messzeitpunkt ausdrücklich: „sobald
+`total_trials` im Register 60 erreicht". Das Register hält **7** Einträge. Der
+Messzeitpunkt ist nicht eingetreten; die Bedingung ist **nicht ausgelöst**.
+
+Was stimmt, ist die Messung: sieben Studien, höchster DSR 0,686. Was nicht stimmte, war
+das Urteil darüber. Der Unterschied ist nicht formal — er entscheidet, ob das Vorhaben
+nach eigener Regel beendet ist oder ob **53 von 60** Versuchen offenstehen.
+
+Das ändert am Gesamturteil dieses Pakets nichts: M5 bleibt gelb, Bedingung 6 bleibt
+ausgelöst, und keine der sieben Studien trägt ihre Kosten. Es ändert die Frage, was
+danach zulässig ist.
 
 ---
 
@@ -93,9 +110,15 @@ und er ist nach der Randomisierung nicht einmal an die Ereigniszeitpunkte gebund
 
 **Paket 3b wird nicht geschrieben.** Es setzte ein grünes M5 voraus.
 
-Verbleibendes Versuchsbudget: **5 von 12**. Sie bleiben ungenutzt, solange keine neue
-Zwangslage mit eigener Begründungstiefe vorliegt — nicht als Vorrat für weitere Anläufe
-auf dieselben fünf.
+Verbleibendes Versuchsbudget **dieses Pakets**: 5 von 12. Sie bleiben ungenutzt, solange
+keine neue Zwangslage mit eigener Begründungstiefe vorliegt — nicht als Vorrat für weitere
+Anläufe auf dieselben fünf.
+
+Davon zu unterscheiden ist das **Kampagnenbudget** aus `ABBRUCH.md` §2: dort sind **60**
+Versuche vorregistriert, verbraucht sind **7**. Die 12 waren die Zuteilung an Paket 3a,
+nicht die Obergrenze des Vorhabens. Diese Unterscheidung ist erst mit der Berichtigung
+oben sichtbar geworden und entscheidet, wie viel Suche überhaupt noch zulässig ist:
+**53 Versuche**, befristet bis 2027-08-17.
 
 ---
 
