@@ -44,6 +44,32 @@ Aendert sich der Code, ohne dass diese Zahlen nachgezogen werden, wird der Test 
 - source_lines: 8540
 <!-- KENNZAHLEN-ENDE -->
 
+## Abschluss Paket 3a
+
+Ergebnisse des Auftrags „Die Vorfrage, auf das Aufloesbare zugeschnitten". Dieses Paket
+liest nur — kein Broker-Konto, kein Handelsbetrieb. Es kann das Vorhaben beenden.
+
+- [ABSCHLUSS-3a/00-UEBERSICHT.md](ABSCHLUSS-3a/00-UEBERSICHT.md) — je Aufgabe eine Zeile: Ampel, Zahl, Bezugsgroesse
+- [ABSCHLUSS-3a/01-AUFLOESUNG.md](ABSCHLUSS-3a/01-AUFLOESUNG.md) — gemessene Fensterstreuung, Aufloesungstabelle genaehert gegen gemessen
+- [ABSCHLUSS-3a/02-DATENLAGE.md](ABSCHLUSS-3a/02-DATENLAGE.md) — Historientiefe, Pruefsummen, Gegenprobe, Zeitversatz
+- [ABSCHLUSS-3a/03-KALENDER.md](ABSCHLUSS-3a/03-KALENDER.md) — Kandidaten, Ereigniszeitpunkte, Quellen, ausgesonderte mit Grund
+- [ABSCHLUSS-3a/04-EREIGNISSTUDIE.md](ABSCHLUSS-3a/04-EREIGNISSTUDIE.md) — je Kandidat: Effekt, Netto, Bestaetigungstests, Urteil gegen M6
+- [ABSCHLUSS-3a/05-URTEIL.md](ABSCHLUSS-3a/05-URTEIL.md) — Go/No-Go, Zustand aller sechs Abbruchbedingungen, Unterschrift
+- [ABSCHLUSS-3a/08-SPAETER.md](ABSCHLUSS-3a/08-SPAETER.md) — bewusst zurueckgestellte Funde, je einer mit Begruendung
+- [ABSCHLUSS-3a/09-EIGENE-FEHLER.md](ABSCHLUSS-3a/09-EIGENE-FEHLER.md) — was schiefging, ohne Beschoenigung
+
+Rohe Terminalausgaben, eine Datei je Befehl:
+
+- [ABSCHLUSS-3a/07-AUSGABEN/pytest.txt](ABSCHLUSS-3a/07-AUSGABEN/pytest.txt)
+- [ABSCHLUSS-3a/07-AUSGABEN/ruff.txt](ABSCHLUSS-3a/07-AUSGABEN/ruff.txt)
+- [ABSCHLUSS-3a/07-AUSGABEN/mypy.txt](ABSCHLUSS-3a/07-AUSGABEN/mypy.txt)
+- [ABSCHLUSS-3a/07-AUSGABEN/gen_docs.txt](ABSCHLUSS-3a/07-AUSGABEN/gen_docs.txt)
+- [ABSCHLUSS-3a/07-AUSGABEN/check_docs_claims.txt](ABSCHLUSS-3a/07-AUSGABEN/check_docs_claims.txt)
+- [ABSCHLUSS-3a/07-AUSGABEN/check_doc_numbers.txt](ABSCHLUSS-3a/07-AUSGABEN/check_doc_numbers.txt)
+- [ABSCHLUSS-3a/07-AUSGABEN/kostentor.txt](ABSCHLUSS-3a/07-AUSGABEN/kostentor.txt)
+- [ABSCHLUSS-3a/07-AUSGABEN/ereignisstudie_selbsttest.txt](ABSCHLUSS-3a/07-AUSGABEN/ereignisstudie_selbsttest.txt)
+- [ABSCHLUSS-3a/07-AUSGABEN/aufloesung.txt](ABSCHLUSS-3a/07-AUSGABEN/aufloesung.txt)
+
 ## Abschluss Paket 2
 
 Ergebnisse des Auftrags „Kostentor, Verdrahtung, Wahrheit". Jede Datei ist einzeln

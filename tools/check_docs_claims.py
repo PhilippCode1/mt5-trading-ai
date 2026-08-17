@@ -22,12 +22,14 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 
-# Bewusst angehoben (Paket 2): 12 -> 24. Die Grenze soll Doku-Wildwuchs bremsen, nicht
-# einen vorgeschriebenen Abschlussordner verhindern. Neu hinzugekommen sind genau 12
-# Dateien: die neun Dateien aus ABSCHLUSS/ und die drei Wurzeldokumente ABBRUCH.md,
-# ALPHA.md und HALAL-VORFRAGE.md. Jede weitere neue Markdown-Datei laesst das Tor wieder
-# rot werden -- die Bremse bleibt also scharf, sie steht nur ein Stueck weiter.
-MAX_MARKDOWN_FILES = 24
+# Bewusst angehoben, zweimal, jeweils fuer einen vorgeschriebenen Abschlussordner.
+# Die Grenze soll Doku-Wildwuchs bremsen, nicht einen Auftrag verhindern.
+#   12 -> 24 (Paket 2): neun Dateien aus ABSCHLUSS/ plus die drei Wurzeldokumente
+#                       ABBRUCH.md, ALPHA.md und HALAL-VORFRAGE.md.
+#   24 -> 32 (Paket 3a): die acht Dateien aus ABSCHLUSS-3a/.
+# Jede weitere neue Markdown-Datei laesst das Tor wieder rot werden -- die Bremse bleibt
+# scharf, sie steht nur ein Stueck weiter. Wer sie erneut anhebt, benennt hier, wofuer.
+MAX_MARKDOWN_FILES = 32
 
 CLAIMS: list[tuple[str, re.Pattern[str]]] = [
     ("Notenbehauptung 10/10", re.compile(r"\b10\s*/\s*10\b")),
