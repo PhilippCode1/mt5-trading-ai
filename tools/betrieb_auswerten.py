@@ -32,34 +32,43 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from mt5_trading_ai.betrieb.journal import Trade, lies_journal  # noqa: E402
+from mt5_trading_ai.betrieb.journal import (  # noqa: E402
+    Trade,
+    bilanz,
+    geldbilanz,
+    lies_journal,
+)
 
 REPO = Path(__file__).resolve().parents[1]
 JOURNALE = REPO / "betrieb"
 
 
-def _geldsumme(trades: list[Trade]) -> None:
-    """Summe der Geldergebnisse -- nur wenn sie ueberhaupt eine Einheit haben.
+def _geldbericht(trades: list[Trade]) -> None:
+    """Die Geldergebnisse: woher sie kommen, und ob sich summieren laesst.
 
-    Verschiedene Kontowaehrungen, oder gar keine Angabe (Journale von vor der
-    Protokollerweiterung), sind nicht summierbar. Statt still zu addieren, sagt das
-    Werkzeug, dass es nicht geht: eine Summe ueber gemischte Einheiten waere eine
-    Zahl, die aussieht wie Geld und keines ist.
+    Uebergeben werden ALLE geschlossenen Trades, nicht nur die ohne Preisergebnis.
+    Sonst bestuende die Geldstatistik wieder ausschliesslich aus Stop-Outs -- also aus
+    Verlierern --, weil ``Trade.urteilsquelle`` dem Preis den Vorrang gibt und ein
+    selbst geschlossener Trade damit nie im Geldtopf landet. Genau das war der Grund,
+    aus dem der ``geschlossen``-Satz sein Geldfeld ueberhaupt bekommen hat.
+
+    Die Herkunft steht dabei: ein aus einem Altjournal GEDEUTETER Betrag ist keine
+    geschriebene Auskunft, und dieser Unterschied darf nicht in einer Summe
+    verschwinden.
     """
-    betraege = [t.ergebnis_geld for t in trades if t.ergebnis_geld is not None]
-    if not betraege:
+    b = geldbilanz(trades)
+    if not b.trades:
         return
-    waehrungen = {t.ergebnis_geld_waehrung for t in trades}
-    if None in waehrungen:
-        print("    Keine Summe: mindestens ein Betrag kommt ohne Waehrungsangabe")
-        print("    (Journal von vor der Protokollerweiterung).")
+    eigene = len(b.trades) - b.vom_broker
+    print(f"    Geldergebnisse: {len(b.trades)} ({b.vom_broker} vom Broker "
+          f"geschlossen, {eigene} selbst geschlossen)")
+    for herkunft, n in sorted(b.je_herkunft.items()):
+        print(f"      {n:>4}x  Herkunft: {herkunft}")
+    if b.summe is None:
+        print(f"    Keine Summe: {b.hindernis}.")
         return
-    if len(waehrungen) != 1:
-        print(f"    Keine Summe: verschiedene Waehrungen "
-              f"{sorted(str(w) for w in waehrungen)}.")
-        return
-    print(f"    Summe dieser Schaetzungen: {sum(betraege, Decimal('0')):+} "
-          f"{waehrungen.pop()} (brutto, ohne Swap und Kommission)")
+    print(f"    Summe dieser Schaetzungen: {b.summe:+} "
+          f"{b.waehrung} (brutto, ohne Swap und Kommission)")
 
 
 def auswerten(pfad: Path) -> int:
@@ -161,10 +170,11 @@ def auswerten(pfad: Path) -> int:
     # ausschliesslich von gemessenen Preisen; der Trefferanteil darf zusaetzlich das
     # Vorzeichen des Geldergebnisses verwenden. Vermischt man beides, steht am Ende
     # eine Zahl da, der niemand ansieht, wie viel Schaetzung in ihr steckt.
-    preis = [t.ergebnis_bps for t in zu if t.ergebnis_bps is not None]
-    beurteilt = [t for t in zu if t.beurteilbar]
-    nur_geld = [t for t in beurteilt if t.urteilsquelle == "geld"]
-    stumm = [t for t in zu if not t.beurteilbar]
+    #
+    # Die Einteilung selbst steht in ``betrieb/journal.py`` -- sie lag hier und in
+    # ``betrieb_reihe.py`` doppelt, mit bereits auseinandergelaufenen Ausgaben.
+    b = bilanz(zu)
+    preis, beurteilt, nur_geld, stumm = b.preis, b.beurteilt, b.nur_geld, b.stumm
     print()
     print(f"  Trades geschlossen             : {len(zu)}")
     print(f"    mit Preisergebnis (bp)       : {len(preis)}")
@@ -184,7 +194,7 @@ def auswerten(pfad: Path) -> int:
         print("    eine Schaetzung und geht in KEINEN Median, sein VORZEICHEN geht in")
         print("    den Trefferanteil. Ohne das fielen die Stop-Outs -- also die")
         print("    Verlierer -- ganz aus der Statistik, und sie sah besser aus.")
-        _geldsumme(nur_geld)
+    _geldbericht(zu)
     if stumm:
         print("    Ohne jedes Ergebnis heisst UNBEKANNT, nicht null. Diese Trades")
         print("    zaehlen in keine Zahl oben hinein -- Journale von vor der")

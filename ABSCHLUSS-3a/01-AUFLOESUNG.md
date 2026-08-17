@@ -8,10 +8,16 @@ Bedingung, wie in `mt5_trading_ai/backtest/resolution.py` umgesetzt:
 
     nötige_Sharpe(N, T) × Fensterstreuung  ≤  3 × K
 
-Beleg: `tests/test_resolution.py` (33 Fälle), Rohausgabe in
+Sie gilt nur oberhalb der beiden Untergrenzen, unter denen `ereignisstudie.bestaetige`
+gar nicht erst bestätigt (30 messbare Ereignisse, 20 Out-of-Sample-Beobachtungen).
+Darunter gibt `assess` kein Urteil, sondern einen Fehler: „auflösbar, aber nicht
+bestätigungsfähig" ist keine Aussage. Die 30 Zeilen der Tabelle unten sind davon nicht
+berührt — die kleinste Kombination führt N = 193 und damit 65 Beobachtungen.
+
+Beleg: `tests/test_resolution.py` (39 Fälle), Rohausgabe in
 [`07-AUSGABEN/aufloesung.txt`](07-AUSGABEN/aufloesung.txt), Messdatei
 `config/aufloesung.json`, Reihen-Manifeste in `config/reihen/`.
-Das messende Werkzeug selbst: `tests/test_aufloesung_werkzeug.py` (11 Fälle).
+Das messende Werkzeug selbst: `tests/test_aufloesung_werkzeug.py` (17 Fälle).
 
 Parameter des Laufs: T = 12 Versuche, Deflationsschwelle 0,95, Kostenfaktor 3,0.
 
@@ -72,9 +78,52 @@ rechnet jetzt jede Zeile nach, statt nur zu zählen, ob welche da sind. Gegen di
 **Nicht behoben sind die Zahlen in dieser Datei und in `config/aufloesung.json`.** Sie
 stammen aus einem Lauf über den lesenden MT5-Pfad und werden nicht nachträglich
 überschrieben; die Spalte oben ist die Nachrechnung, keine zweite Messung. Solange die
-Messdatei kein `oos_share` führt, verlangt
+Messdatei nicht gegen `OOS_ANTEIL` gerechnet ist, verlangt
 `tests/test_resolution.py::test_die_echte_aufloesungsdatei_ist_in_sich_stimmig`, dass
-dieser Vorbehalt hier steht — er kann nicht verschwinden, ohne dass neu gemessen wurde.
+dieser Vorbehalt hier steht.
+
+### 0.1 Nachtrag: der Melder maß zuerst das Falsche
+
+Der Satz, der hier zuvor stand — „er kann nicht verschwinden, ohne dass neu gemessen
+wurde" — **war falsch**, und zwar auf genau die Art, gegen die dieser ganze Abschnitt
+geschrieben ist. Ein Prüfer hat es ausgeführt: `pruefen()` und der zugehörige Test
+fragten `"oos_share" not in roh`, also die **Anwesenheit** eines Schlüssels statt seinen
+**Wert**. Wer der unverändert falsch gerechneten `config/aufloesung.json` die eine Zeile
+`"oos_share": 1.0` nachtrug, drehte das Tor von rot auf grün: Rückgabe 0, Ausgabe
+„ok — 13 von 30 Kombinationen auflösbar", alle sechs oben genannten Zeilen wieder als
+auflösbar geführt — ohne dass eine einzige Zahl gemessen worden wäre. Die Zusicherung
+auf diesen Vorbehalt lief danach überhaupt nicht mehr; er wäre löschbar gewesen.
+
+Acht Befunde des Prüfers betrafen diesen Bereich; alle acht sind behoben, jeder mit
+einem Eichfall, der ohne die Behebung rot ist. Die drei schwersten:
+
+| Befund | Behebung | Eichfall |
+|---|---|---|
+| Melder prüfte die Anwesenheit des Schlüssels | Abgleich des **Werts** gegen `OOS_ANTEIL` | `test_pruefen_faellt_auf_einen_nachgetragenen_anteil_rot` |
+| Im Fehlschlag stand „ok …" samt Tabelle auf stdout, der Befund erst danach auf stderr | im Fehlschlag **kein Wort** auf stdout | `test_pruefen_druckt_im_fehlschlag_kein_wort_auf_stdout` |
+| `assess` ließ Stichproben durch, die `bestaetige` verwirft (18 Beobachtungen: Verhältnis 0,975, „auflösbar" — `bestaetige` wirft dort „Out-of-Sample-Drittel zu klein: 18") | Untergrenzen 30/20, gegen die echte `bestaetige` geeicht | `test_die_untergrenzen_sind_die_der_bestaetigung` |
+
+Die fünf übrigen: das `except` in `pruefen()` umschloss den `assess`-Aufruf, aber nicht
+die Zeilen, die tatsächlich warfen (eine Messdatei ohne `ratio` riss das Tor mit einem
+`KeyError` ab, statt es rot zu färben); `pruefen()` las von jeder Zeile nur `ratio` und
+`resolvable` und ließ `oos_share`, `deflation_events`, `required_sharpe`,
+`detectable_bps` und `needed_bps` ungeprüft; `min_events_for_resolution` warf an seiner
+eigenen unteren Suchgrenze, statt `int | None` zu liefern, und sein Aufruf im Messlauf
+lag außerhalb des `try` — ein Messlauf wäre dort nach der gedruckten Tabelle und **vor**
+dem Schreiben von `config/aufloesung.json` abgebrochen; der Kopplungstest gegen
+`bestaetige` lief auf einer Ereigniszahl, bei der Abschneiden und Runden zufällig
+dasselbe ergeben, und konnte die Rundungsart, die er festnageln soll, nicht
+unterscheiden (er läuft jetzt zweimal, einmal mit N ≡ 1 mod 3); und er hing über das
+Repo-Register `TRIALS.jsonl` an einer Datei, die nicht versioniert ist — auf jedem
+frischen Klon war er rot. Belegt: dieselben zwei Testdateien in einem `git worktree`
+ohne `TRIALS.jsonl` gaben vorher „1 failed, 56 passed" (`TrialsLedgerError: Register …
+fehlt`), nach der Reparatur laufen dort 70 Fälle grün durch.
+
+An der Tabelle oben ändert das alles nichts: die sechs kippenden Zeilen und die sieben
+verbleibenden auflösbaren stehen unverändert, und die neuen Untergrenzen greifen bei
+keiner der 30 Kombinationen. `python tools/aufloesung.py --check` fällt gegen die
+abgelegte Messdatei weiterhin rot, jetzt aber ohne grüne Zeile davor — und auch dann,
+wenn jemand den Schlüssel nachträgt.
 
 **Am Urteil ändert das nichts.** Alle sieben Studien sind schon an M6.1 gescheitert,
 Abbruchbedingung 6 ist ausgelöst ([`05-URTEIL.md`](05-URTEIL.md)). Der Vorbehalt macht das

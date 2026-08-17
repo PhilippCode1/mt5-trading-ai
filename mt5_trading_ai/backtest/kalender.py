@@ -78,14 +78,6 @@ def utc_zu_server(ts: datetime) -> datetime:
     return ts.astimezone(SERVER_TZ).replace(tzinfo=None).replace(tzinfo=UTC)
 
 
-#: Etikett der Zeitbasis, auf der gemessen wird. Es steht in jeder eingefrorenen Reihe,
-#: weil genau diese Angabe den Unterschied macht: die Manifeste in ``config/reihen``
-#: tragen ``zeitbasis: server-etikett``, die Studie misst auf gedrehten Stempeln. Zwei
-#: Reihen mit denselben Kursen und verschiedener Zeitbasis sind verschiedene Daten, und
-#: eine Pruefsumme, die das verschweigt, deckt die falsche von beiden.
-ZEITBASIS_ECHT_UTC = "echt-utc"
-
-
 def verlange_echtes_utc(ts: datetime, wofuer: str) -> datetime:
     """Verlange einen Zeitstempel mit Zone und gib ihn in echtem UTC zurueck.
 
@@ -95,6 +87,13 @@ def verlange_echtes_utc(ts: datetime, wofuer: str) -> datetime:
     hier ein Fehler und kein Anlass, UTC zu **raten**: genau dieses Raten
     (``RealMt5Terminal._utc`` haengt das Etikett UTC an Serverzeit) ist die Ursache des
     ganzen Zeitproblems dieses Pakets.
+
+    WAS DIESE FUNKTION NICHT SAGT — und was frueher darauf gebaut wurde: sie stellt
+    NICHT fest, dass die Wanduhr echtes UTC zeigt. Ein Stempel aus
+    :func:`utc_zu_server` traegt Serverzeit unter dem Etikett ``UTC`` und kommt hier
+    anstandslos durch. Wer daraufhin irgendwo ``zeitbasis=echt-utc`` schreibt,
+    behauptet mehr, als hier geprueft wurde. Genau dieses Etikett stand bis zu dieser
+    Fassung im Kopf der Studienreihe und ist ersatzlos entfallen.
 
     Die Rueckgabe ist kanonisch (``+00:00``), damit dieselbe Zeitscheibe unter
     verschiedenen Zonen-Etiketten nicht zwei verschiedene Textformen ergibt.

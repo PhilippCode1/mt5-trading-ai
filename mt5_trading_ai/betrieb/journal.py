@@ -44,6 +44,20 @@ Darum: ``ergebnis_bps`` bleibt das Preisergebnis und bekommt nichts hinzugerechn
 ``gewinn`` beantwortet die Ja/Nein-Frage und nimmt dafuer notfalls das Geldergebnis.
 ``None`` heisst an beiden Stellen **unbekannt** und nie null.
 
+Ein Betrag **ohne Herkunftsangabe** ist dabei kein Ergebnis, sondern ein Defekt: er
+wirft (``_verlange_quelle``). Frueher ging er als ``"unbenannt"`` durch und zaehlte im
+Trefferanteil mit -- eine Schaetzung, die sich als Messung ausgab, und niemand sah es
+der Zahl an.
+
+WO DIE EINTEILUNG STEHT
+-----------------------
+Hier, und nur hier: ``bilanz()`` sortiert die geschlossenen Trades in die vier Toepfe
+(Preis / beurteilt / nur Geld / stumm), ``geldbilanz()`` fasst die Geldergebnisse
+zusammen. Beide Rechnungen standen bis hierher zweimal im Haus -- inline in
+``betrieb_auswerten.py`` und noch einmal als eigene Klasse in ``betrieb_reihe.py`` --,
+und sie liefen bereits auseinander: nur eine der beiden Kopien gab ueberhaupt eine
+Geldsumme aus.
+
 Was dagegen belastbar ist: die **Equity-Reihe**. Sie kommt aus dem Kontostand je Takt
 und haengt ueber Laeufe hinweg lueckenlos aneinander.
 """
@@ -51,7 +65,8 @@ und haengt ueber Laeufe hinweg lueckenlos aneinander.
 from __future__ import annotations
 
 import json
-from collections.abc import Iterator
+from collections import Counter
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
@@ -75,6 +90,30 @@ QUELLE_ALTJOURNAL = "altjournal:zuletzt_unrealisiert"
 
 class JournalError(ValueError):
     """Das Journal ist nicht lesbar. Fail-closed: keine halbe Auswertung."""
+
+
+def _verlange_quelle(kennung: str, betrag: Any, quelle: Any) -> None:
+    """Ein geschriebener Geldbetrag OHNE Herkunftsangabe wirft. Kein Rueckfall.
+
+    Hier stand ein ``"unbenannt"``: fehlte ``ergebnis_geld_quelle``, ging der Betrag
+    stillschweigend als vollwertiges Geldergebnis durch und bestimmte ueber
+    ``gewinn`` den Trefferanteil mit. Das ist die schmeichelnde Richtung, denn die
+    Herkunft ist genau das Feld, das Schaetzung von Messung trennt -- und sie fehlte
+    ausgerechnet dort, wo niemand mehr nachsehen kann, woher die Zahl kam.
+
+    Ein Altjournal laeuft hier nicht hinein: dort gibt es ``ergebnis_geld`` gar nicht.
+    Der Buchwert kommt bei alten Saetzen ueber ``zuletzt_unrealisiert`` und bekommt
+    seine Marke (``QUELLE_ALTJOURNAL``) vom Leser -- sichtbar gedeutet statt still
+    uebernommen. Wer ``ergebnis_geld`` schreibt, schreibt die Herkunft dazu.
+    """
+    if betrag is None:
+        return
+    if quelle is None or not str(quelle).strip():
+        raise JournalError(
+            f"{kennung}: ergebnis_geld={betrag!r} ohne ergebnis_geld_quelle. Ein "
+            f"Betrag ohne Herkunft ist nicht deutbar -- Messung und Schaetzung "
+            f"waeren im Trefferanteil nicht mehr auseinanderzuhalten."
+        )
 
 
 def _dezimal(wert: Any) -> Decimal | None:
@@ -118,20 +157,28 @@ def _geldergebnis(satz: Satz) -> tuple[Decimal | None, str | None, str | None]:
     zoege jeden Median und jeden Trefferanteil zur Mitte, ohne dass es jemand saehe.
 
     Der geschriebene Wert hat Vorrang vor der Deutung: steht ``ergebnis_geld`` da, hat
-    der Schreiber die Zahl ALS ERGEBNIS gemeint und ihre Herkunft dazugeschrieben.
-    Fehlt es, bleibt nur ``zuletzt_unrealisiert`` aus einem Journal von vor dieser
-    Erweiterung. Der Wert ist derselbe Buchwert, aber die Deutung faellt dann hier --
-    und wird als ``QUELLE_ALTJOURNAL`` mitgefuehrt, damit die Auswertung die beiden
-    Faelle auseinanderhalten kann.
+    der Schreiber die Zahl ALS ERGEBNIS gemeint und ihre Herkunft dazugeschrieben --
+    ohne Herkunft wirft es (``_verlange_quelle``). Fehlt das Feld ganz, bleibt nur
+    ``zuletzt_unrealisiert`` aus einem Journal von vor dieser Erweiterung. Der Wert ist
+    derselbe Buchwert, aber die Deutung faellt dann hier -- und wird als
+    ``QUELLE_ALTJOURNAL`` mitgefuehrt, damit die Auswertung die beiden Faelle
+    auseinanderhalten kann.
+
+    Die WAEHRUNG darf dagegen fehlen: sie ist keine Voraussetzung fuer das Vorzeichen,
+    und ihr Fehlen ist bereits sichtbar -- ``geldbilanz`` verweigert dann die Summe und
+    sagt warum. Die Herkunft dagegen faellt niemandem auf, wenn sie fehlt.
     """
+    _verlange_quelle(
+        f"{satz.art} um {satz.ts.isoformat(timespec='seconds')}",
+        satz["ergebnis_geld"], satz["ergebnis_geld_quelle"],
+    )
     wert = _dezimal(satz["ergebnis_geld"])
     if wert is not None:
         waehrung = satz["ergebnis_geld_waehrung"]
-        quelle = satz["ergebnis_geld_quelle"]
         return (
             wert,
             None if waehrung is None else str(waehrung),
-            "unbenannt" if quelle is None else str(quelle),
+            str(satz["ergebnis_geld_quelle"]),
         )
     alt = _dezimal(satz["zuletzt_unrealisiert"])
     if alt is not None:
@@ -397,6 +444,11 @@ def lies_journal(pfad: Path) -> Lauf:
         ts = _zeit(d["ts"])
         if ts is None:
             raise JournalError(f"{pfad.name}:{nr}: ts nicht lesbar ({d['ts']!r})")
+        # Dieselbe Regel wie in ``_geldergebnis``, nur hier mit Zeilennummer -- und sie
+        # gilt fuer JEDEN Leser, nicht nur fuer den ueber ``trades()``.
+        _verlange_quelle(
+            f"{pfad.name}:{nr}", d.get("ergebnis_geld"), d.get("ergebnis_geld_quelle")
+        )
         saetze.append(Satz(
             ts=ts, art=str(d["art"]),
             lauf=None if d.get("lauf") is None else str(d["lauf"]),
@@ -440,3 +492,105 @@ def durchgehende_equity(
             yield ts, wert, i == 0 and vorher is not None and vorher != kennung
         if reihe:
             vorher = kennung
+
+
+# -- Aussagen ueber viele Trades -------------------------------------------
+# Beide Rechnungen standen bis hierher in den Werkzeugen, und zwar doppelt:
+# ``betrieb_auswerten.py`` sortierte die vier Toepfe inline, ``betrieb_reihe.py``
+# noch einmal als eigene Klasse. Genau davor warnt der Modulkopf -- und die Kopien
+# waren bereits auseinandergelaufen (nur eine gab eine Geldsumme aus).
+
+
+@dataclass(frozen=True)
+class Bilanz:
+    """Geschlossene Trades in vier Toepfen -- nach Belastbarkeit getrennt.
+
+    ``preis`` sind gemessene Preisdifferenzen, und nur sie gehoeren in einen Median.
+    ``beurteilt`` ist die groessere Menge: dort darf das Vorzeichen notfalls aus dem
+    zuletzt beobachteten Buchwert kommen. ``nur_geld`` ist der Teil davon, der ohne
+    Preis auskommen musste -- er beziffert, wie viel Schaetzung in einer Trefferquote
+    steckt. ``stumm`` bleibt UNBEKANNT und geht in keine einzige Zahl ein.
+    """
+
+    geschlossen: list[Trade]
+    preis: list[Decimal]
+    beurteilt: list[Trade]
+    nur_geld: list[Trade]
+    stumm: list[Trade]
+
+
+def bilanz(trades: Iterable[Trade]) -> Bilanz:
+    """Die eine Einteilung. Offene Trades bleiben draussen, ein stummer bleibt stumm."""
+    zu = [t for t in trades if not t.offen]
+    return Bilanz(
+        geschlossen=zu,
+        preis=[t.ergebnis_bps for t in zu if t.ergebnis_bps is not None],
+        beurteilt=[t for t in zu if t.beurteilbar],
+        nur_geld=[t for t in zu if t.urteilsquelle == "geld"],
+        stumm=[t for t in zu if not t.beurteilbar],
+    )
+
+
+@dataclass(frozen=True)
+class Geldbilanz:
+    """Die Geldergebnisse -- ALLE, nicht nur die ohne Preis.
+
+    Der Unterschied ist der Kern: ``Trade.urteilsquelle`` gibt dem Preis den Vorrang,
+    und wer die Geldstatistik an dieser Auswahl aufhaengt, hat wieder nur die
+    Stop-Outs im Topf -- also nur die Verlierer, derselbe blinde Fleck wie zuvor mit
+    umgekehrtem Vorzeichen. Ein selbst geschlossener Trade traegt sein Geldergebnis
+    genauso, und er gehoert hier hinein.
+
+    ``je_herkunft`` ist der Leser fuer ``ergebnis_geld_quelle``: geschriebene Betraege
+    (``QUELLE_BEOBACHTET``) und aus einem Altjournal GEDEUTETE (``QUELLE_ALTJOURNAL``)
+    stehen getrennt da, statt in einer Zahl zu verschwinden.
+
+    ``summe`` ist ``None``, wenn nicht summiert werden darf; ``hindernis`` sagt dann
+    warum. Sind beide ``None`` und ``trades`` leer, gibt es schlicht kein Geldergebnis.
+    """
+
+    trades: list[Trade]
+    je_herkunft: dict[str, int]
+    vom_broker: int
+    summe: Decimal | None
+    waehrung: str | None
+    hindernis: str | None
+
+
+def geldbilanz(trades: Iterable[Trade]) -> Geldbilanz:
+    """Geldergebnisse zusammenfassen -- summieren nur bei EINER bekannten Waehrung.
+
+    Verschiedene Kontowaehrungen oder eine fehlende Angabe (Altjournale) sind nicht
+    summierbar. Statt still zu addieren, bleibt die Summe aus: eine Zahl ueber
+    gemischte Einheiten sieht aus wie Geld und ist keines. Ueber mehrere Laeufe
+    (``betrieb_reihe.py``) ist der Fall echt erreichbar -- verschiedene Konten haben
+    verschiedene Waehrungen.
+    """
+    mit_geld = [t for t in trades if t.ergebnis_geld is not None]
+    if not mit_geld:
+        return Geldbilanz([], {}, 0, None, None, None)
+    # Dieselbe Regel wie beim Lesen, hier an der Stelle, wo aufsummiert wird: ein
+    # Betrag ohne Herkunft darf in keine Zahl eingehen.
+    for t in mit_geld:
+        _verlange_quelle(
+            f"Trade {t.symbol} von {t.auf_ts.isoformat(timespec='seconds')}",
+            t.ergebnis_geld, t.ergebnis_geld_quelle,
+        )
+    je_herkunft = Counter(str(t.ergebnis_geld_quelle) for t in mit_geld)
+    vom_broker = sum(1 for t in mit_geld if t.vom_broker)
+    waehrungen = {t.ergebnis_geld_waehrung for t in mit_geld}
+    if None in waehrungen:
+        return Geldbilanz(
+            mit_geld, dict(je_herkunft), vom_broker, None, None,
+            "mindestens ein Betrag kommt ohne Waehrungsangabe (Altjournal)",
+        )
+    if len(waehrungen) != 1:
+        return Geldbilanz(
+            mit_geld, dict(je_herkunft), vom_broker, None, None,
+            f"verschiedene Waehrungen {sorted(str(w) for w in waehrungen)}",
+        )
+    betraege = [t.ergebnis_geld for t in mit_geld if t.ergebnis_geld is not None]
+    return Geldbilanz(
+        mit_geld, dict(je_herkunft), vom_broker,
+        sum(betraege, Decimal("0")), str(waehrungen.pop()), None,
+    )

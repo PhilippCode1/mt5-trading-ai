@@ -190,39 +190,95 @@ def total_trials(path: Path | str | None = None) -> int:
     return sum(1 for _ in iter_trials(path))
 
 
-def deflation_trials(
-    path: Path | str | None = None,
-    *,
-    include_running: bool = True,
-) -> int:
-    """Versuchszahl fuer die Deflation — aus dem Register, fail-closed.
+@dataclass(frozen=True)
+class Kampagne:
+    """Eine VORREGISTRIERTE Studienreihe: Kennungspraefix und Zahl ihrer Laeufe.
+
+    ``praefix`` trennt die Laeufe dieser Reihe von allem anderen im Register -- eine
+    ``strategy_id`` gehoert zur Reihe, wenn sie damit beginnt. ``groesse`` ist die Zahl
+    der Laeufe, die die Reihe **vor ihrem Beginn** angemeldet hat; sie steht im Code
+    der Reihe und ist damit versioniert, nicht aus dem Register geraten.
+    """
+
+    praefix: str
+    groesse: int
+
+    def __post_init__(self) -> None:
+        if not self.praefix.strip():
+            raise TrialsLedgerError(
+                "Kampagne ohne Praefix -- dann liesse sich die eigene Reihe nicht von "
+                "fremden Laeufen trennen"
+            )
+        if self.groesse < 1:
+            raise TrialsLedgerError(
+                f"Kampagnengroesse muss >= 1 sein, nicht {self.groesse}"
+            )
+
+
+def deflation_trials(kampagne: Kampagne, path: Path | str | None = None) -> int:
+    """Versuchszahl fuer die Deflation -- aufrufzeit-UNABHAENGIG und fail-closed.
 
     Warum das nicht ``total_trials`` sein darf: ein fehlendes Register liefert dort
     null, und der uebliche Aufruf ``max(1, ...)`` macht daraus eins. Bei einem
-    Versuch ist ``expected_max_sharpe`` exakt null — die Mehrfachvergleichs-Korrektur
+    Versuch ist ``expected_max_sharpe`` exakt null -- die Mehrfachvergleichs-Korrektur
     ist dann vollstaendig aufgehoben, und zwar lautlos. Gemessen an einem echten Fall
     dieses Repos (Sharpe 0,2759 auf 64 Out-of-Sample-Ereignissen): mit dem
     Registerstand acht ergibt sich eine DSR von 0,755, ueber die stille Eins dagegen
-    0,984 — dieselbe Messung faellt einmal durch und besteht einmal die Schwelle
+    0,984 -- dieselbe Messung faellt einmal durch und besteht einmal die Schwelle
     0,95. Ein fehlendes Register ist deshalb hier ein Fehler und kein Vorgabewert.
 
-    ``include_running`` zaehlt den gerade laufenden Versuch mit. Das Register ist
-    anhaengend und wird erst **nach** der Messung geschrieben; ohne diesen Zuschlag
-    saehe ein Lauf sich selbst nicht, und untertreiben heisst hier schmeicheln.
+    WARUM DIE ZAHL NICHT DER REGISTERSTAND SEIN DARF
+    ------------------------------------------------
+    Das Register ist anhaengend und waechst waehrend der Reihe: jede Studie schreibt
+    unmittelbar nach ihrer Messung an. Wer den Stand zur Aufrufzeit liest, bekommt
+    darum eine Zahl, die von der Schleifenposition abhaengt. Nachgemessen an sieben
+    Studien bei Registerstand sieben: die erste saehe acht Versuche (DSR 0,7550), die
+    siebte vierzehn (DSR 0,6594) -- gleiche Daten, gleiches Verfahren, anderes Urteil,
+    und wer zuerst laeuft, wird am mildesten geprueft. Dieselbe Falle beschreibt
+    ``backtest/engine.py::deflated_sharpe_for_report`` unter ``expected_trials``.
 
-    Ein leeres Register ist kein Fehler: dann ist dies der erste Versuch, die DSR ist
-    die Probabilistic Sharpe Ratio, und es gibt nichts zu deflationieren. Dass daraus
-    niemand durch Loeschen des Registers wieder eins macht, sichert die Anhaenge-Regel
-    dieses Moduls samt :func:`check_integrity` — nicht diese Funktion.
+    Gezaehlt wird deshalb in **ganzen Kampagnen**::
+
+        versuche = fremde Zeilen + (eigene Zeilen // groesse + 1) * groesse
+
+    Waehrend einer ganz durchlaufenden Reihe waechst ``eigene`` von ``q*groesse``
+    bis ``q*groesse + groesse - 1``; die ganzzahlige Division liefert dort durchweg
+    ``q``, also fuer jede Studie derselbe Wert. Ein zweiter Durchlauf derselben Reihe
+    zaehlt eine Kampagne mehr -- zweimal suchen ist zweimal suchen. Die Zahl ist nie
+    kleiner als der schlichte Registerstand plus eins (Beweis: mit
+    ``eigene = q*groesse + r`` und ``0 <= r < groesse`` ist ``(q+1)*groesse >=
+    eigene + 1``), untertreibt also nie -- und untertreiben hiesse hier schmeicheln.
+
+    Grenze der Zusage, ausdruecklich: exakt konstant ist die Zahl nur fuer Reihen, die
+    ganz durchlaufen. Bricht eine Reihe nach drei von sieben Laeufen ab, liegt die
+    Kampagnengrenze fortan schief, und die naechste Reihe springt an einer Stelle um
+    ``groesse`` nach oben. Der Sprung geht nur nach oben, also in die strenge Richtung.
+
+    Ein leeres Register ist kein Fehler: dann laeuft die erste Kampagne, und die Zahl
+    ist ihre angemeldete Groesse. Dass niemand durch **Loeschen** des Registers wieder
+    bei eins landet, sichert nicht :func:`check_integrity` -- die meldet eine fehlende
+    wie eine leere Datei als ``ok`` (und das ist dort richtig, sie zaehlt Zeilen und
+    beurteilt sie, sie kennt keinen Sollstand). Es sichert die angemeldete
+    Kampagnengroesse: sie ist die Untergrenze, die ein verlorenes Register ueberlebt.
+    Vollstaendig ist dieser Schutz nicht -- Laeufe FREMDER Reihen sind nach einem
+    Registerverlust verloren, und die Wiederherstellung ist der versionierte Abzug
+    (``ABSCHLUSS-3a/07-AUSGABEN/trials.jsonl``), nicht dieses Modul.
     """
     ledger = Path(path) if path is not None else default_ledger_path()
     if not ledger.is_file():
         raise TrialsLedgerError(
             f"Register {ledger} fehlt. Ohne Register ist die Versuchszahl unbekannt, "
             "und unbekannt ist nicht eins: bei einem Versuch deflationiert nichts. "
-            "Fail-closed — kein Vorgabewert."
+            "Fail-closed -- kein Vorgabewert."
         )
-    return total_trials(ledger) + (1 if include_running else 0)
+    fremd = 0
+    eigen = 0
+    for trial in iter_trials(ledger):
+        if trial.strategy_id.startswith(kampagne.praefix):
+            eigen += 1
+        else:
+            fremd += 1
+    return fremd + (eigen // kampagne.groesse + 1) * kampagne.groesse
 
 
 @dataclass(frozen=True)

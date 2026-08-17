@@ -27,12 +27,56 @@ und Schliessungen (``record_close``) zurueck; der Betreiber beobachtet Equity
 **Kostenbasis der dritten Grenze.** Die Budget-Untergrenze ist eine Kostenrechnung; sie
 taugt nur so viel wie die Kostenzahl, die hineingeht. Diese Schicht sucht sie in dieser
 Reihenfolge: das Argument ``measured_cost_bps`` (die Messung DIESER Order, die der
-Runner am Live-Bid/Ask genommen hat) -> ``request.meta[MEASURED_COST_BPS_META_KEY]``
-(dieselbe Messung, mitgereist am Auftrag, damit die zweite Pruefung im Venue dieselbe
-Zahl sieht und nicht eine mildere) -> ``RiskPolicy.measured_cost_bps`` je Klasse (eine
-Messkampagne) -> Annahmetabelle. Der letzte Schritt ist der einzige ungedeckte; er
-steht deshalb als ``cost_basis`` in jeder Autorisierung, und ``require_measured_cost``
-macht ihn auf Wunsch zur Sperre (Begruendung: ``risk/stop_budget.py``).
+Runner im selben Lauf am Live-Bid/Ask genommen hat) ->
+``request.meta[MEASURED_COST_BPS_META_KEY]`` (dieselbe Messung, mitgereist am Auftrag,
+damit die zweite Pruefung im Venue dieselbe Zahl sieht und nicht eine mildere) ->
+``RiskPolicy.measured_cost_bps`` je Klasse (eine Messkampagne) -> Annahmetabelle. Der
+letzte Schritt ist der einzige ungedeckte; die Herkunft steht deshalb als erstes Wort
+in ``detail["cost_basis"]`` jeder Autorisierung (``gemessen``/``auftrag``/``kampagne``/
+``annahme``), und ``require_measured_cost`` macht den Rueckfall auf Wunsch zur Sperre
+(Begruendung: ``risk/stop_budget.py``).
+
+**Die mitgereiste Zahl darf nur anheben.** Der ``meta``-Kanal ueberquert eine Grenze:
+er kommt als *Auftragsdatum* herein, nicht als Messung dieser Schicht. Naehme sie ihn
+ungeprueft, koennte ein Aufrufer die Kostenpraemisse des Systems von aussen setzen --
+und ausgerechnet ``venue/mt5.py::_enforce_risk``, die zweite Pruefung, die einen Fehler
+der ersten abfangen soll, rechnete dann mit einer Zahl aus der Schicht, die sie
+absichert. Sie waere nie strenger als diese. Gemessen an der neuen Fassung reichte
+``meta={"measured_cost_bps": Decimal("0.001")}``, um die Untergrenze trotz einer
+Politik mit 5,0 bp auf 0,01 bp zu druecken -- mit dem Etikett "gemessen".
+
+Darum wird die mitgereiste Zahl gegen die **Praemisse** dieser Schicht gehalten
+(Messkampagne der Politik, sonst die Annahmetabelle der Klasse) und kann die Rechnung
+nur in **eine** Richtung bewegen: darueber zaehlt sie und verschaerft die Untergrenze
+-- genau der Zweck des Kanals --, darunter bleibt die Praemisse stehen. Nicht still:
+die verworfene Zahl steht mit ihrem Grund in ``detail["cost_basis"]``.
+
+Warum hier geklammert und nicht geworfen wird -- der Unterschied zum Typfehler in
+``measured_cost_from_meta``: eine zu **niedrige** Zahl ist nicht zwingend ein Defekt.
+Sie entsteht auch dann, wenn ein Markt ehrlich billiger ist als die (schmeichelnde)
+Annahme -- Gold ist mit 1,5 bp angenommen, 1,0 bp sind messbar. Diese Schicht kann
+"ehrlich gemessen" von "erfunden" nicht unterscheiden, weil sie nur die Zahl sieht;
+sie rechnet deshalb mit ihrer eigenen Praemisse weiter und laesst die vorhandenen Tore
+urteilen (zu enger Stop -> ``stop_budget_below_cost_floor``, ein typisierter,
+begruendeter Abbruch). Ein Wurf machte aus einem Marktzustand einen Absturz mitten im
+Live-Takt, der ``VenueError`` faengt und ``ValueError`` nicht.
+
+Wer eine echt guenstigere Kostenlage handeln will, hinterlegt sie als Messkampagne in
+``RiskPolicy.measured_cost_bps`` -- eine Entscheidung des Betreibers, nicht eines
+Auftrags. Politik steht ueber Auftragsdaten, nicht darunter. Der Preis dieser
+Unabhaengigkeit ist benannt und gewollt: eine in-Prozess gemessene Lage UNTER der
+Praemisse traegt die erste Pruefung (Argument), nicht aber die zweite im Venue, die nur
+das Auftragsdatum sieht -- die Order faellt dort fail-closed durch, statt auf einer
+Zahl zu eroeffnen, die niemand nachpruefen kann.
+
+**Eine Budgetrechnung, nicht zwei.** ``stop_budget_for`` ist die einzige Stelle, an der
+diese Politik in ``risk/stop_budget.py`` geht; ``execution/runner.py`` ruft dieselbe
+Methode, statt ``stop_budget`` mit den Vorgabewerten der Signatur zu fahren. Sonst
+rechnet der Runner die Untergrenze mit ``max_cost_drag=0.05``, waehrend eine Politik mit
+``0.02`` unmittelbar danach das Doppelte verlangt -- der Runner setzt den Stop auf die
+eigene Zahl und diese Schicht lehnt ihn mit ``stop_budget_below_cost_floor`` ab. Zwei
+Fassungen derselben Rechnung, und die strengere Politik erzeugt nicht den weiteren
+Stop, sondern gar keinen Handel.
 
 Fail-closed: jede nicht sicher zulaessige Order wird abgelehnt, ohne Default. Die
 **Politik** (Grenzen, Schwellen, Risikoanteil) traegt der ``RiskPolicy``; die Venue
@@ -65,7 +109,11 @@ from mt5_trading_ai.risk.sizing import (
     executable_stop_floor,
     size_position,
 )
-from mt5_trading_ai.risk.stop_budget import StopBudget, stop_budget
+from mt5_trading_ai.risk.stop_budget import (
+    StopBudget,
+    assumed_cost_bps,
+    stop_budget,
+)
 from mt5_trading_ai.venue.protocol import (
     AccountState,
     Instrument,
@@ -88,15 +136,18 @@ class RiskPolicy:
     Einzelmodule; ``risk_fraction`` ist der Risikoanteil je Trade (geklammert in
     ``size_position``); ``max_cost_drag``/``safety`` steuern die Budgetspanne;
     ``measured_cost_bps`` erlaubt gemessene Round-Turn-Kosten je Klasse (schlagen die
-    Annahmen im Stop-Budget).
+    Annahmen im Stop-Budget). Der Eintrag ist zugleich die **Praemisse**, gegen die eine
+    am Auftrag mitgereiste Zahl gehalten wird: darueber zaehlt sie, darunter wirft sie.
 
     ``require_measured_cost`` macht eine fehlende Messung zur Sperre statt zum Griff in
     die Annahmetabelle. Die Vorgabe ist ``False``, und das ist kein Versehen: es gibt
     heute noch eroeffnende Aufrufer ohne Messung (von Hand gebaute ``OrderRequest`` am
     Venue, die Schreibprobe in ``venue/smoke.py``), die eine Umstellung ersatzlos
     sperren wuerde. Bis die nachgezogen sind, gilt sichtbar statt still: die Basis
-    steht als ``cost_basis`` in jeder Autorisierung. Der Pfad, der heute wirklich
-    eroeffnet (``execution/runner.py``), misst und setzt den Schalter selbst.
+    steht als ``cost_basis`` in jeder Autorisierung. Der Schalter gehoert **hierher**
+    und nicht an eine Aufrufstelle: der Pfad, der heute wirklich eroeffnet
+    (``execution/runner.py``), uebergibt seine Messung unbedingt -- dort waere der
+    Schalter eine Tautologie und keine Sperre.
     """
 
     loss_limits: LossLimits = field(default_factory=LossLimits)
@@ -116,9 +167,12 @@ class RiskAuthorization:
     ``_halted``-Latch (der sich nicht von selbst loest). ``detail`` traegt die
     Zwischenergebnisse fuer den Nachweis (Limit-Zustand, Budgetspanne, Sizing) und --
     sobald ein Budget gerechnet wurde -- unter ``cost_basis``, worauf die
-    Budget-Untergrenze beruht: ``gemessen <bp>`` oder ``annahme <bp>``. Der Eintrag ist
-    nicht schmueckend: er ist die Stelle, an der ein Aufrufer sieht, dass er gerade auf
-    einer ungemessenen Kostenlage handeln wuerde.
+    Budget-Untergrenze beruht: ``<herkunft> <bp>`` mit ``herkunft`` aus ``gemessen``
+    (Live-Messung dieses Laufs), ``auftrag`` (am ``meta`` mitgereist, gegen die
+    Praemisse geprueft), ``kampagne`` (``RiskPolicy.measured_cost_bps``) oder
+    ``annahme`` (Tabelle). Der Eintrag ist nicht schmueckend: er ist die Stelle, an der
+    ein Aufrufer sieht, worauf er gerade handelt -- und der Kanal steht dabei, weil
+    "gemessen" ohne ihn nur hiesse, dass irgendjemand irgendeine Zahl uebergeben hat.
     """
 
     approved: bool
@@ -136,6 +190,18 @@ def measured_cost_from_meta(request: OrderRequest) -> Decimal | None:
     (oder ein String) an dieser Stelle hiesse, dass jemand die Messung ungenau oder
     ungeprueft weiterreicht. Er wirft, statt auf die Annahmetabelle zurueckzufallen --
     sonst waere ein Tippfehler im Schluessel eine stille Rueckstufung der Sperre.
+
+    Dieselbe Strenge gilt fuer den Wert: eine nicht endliche oder nicht positive Zahl
+    ist keine Kostenlage (Roundturn-Kosten sind Spread + Kommission + Slippage und damit
+    echt positiv). Sie wirft **hier**, denn nachgelagert wuerde sie verschwinden: die
+    Praemisse in ``RiskManager._kostenbasis`` klammert alles ab, was zu niedrig ist, und
+    machte aus einer unbrauchbaren Zahl stillschweigend eine Nichtzahl -- ``NaN`` waere
+    dort sogar ein ``InvalidOperation`` beim Vergleich. Ein Defekt wirft, er wird nicht
+    weggeklammert.
+
+    Geprueft wird hier nur die **Form**. Ob eine formal gueltige Zahl inhaltlich gelten
+    darf, entscheidet ``RiskManager._kostenbasis``: dort steht die Praemisse, die sie
+    nicht unterbieten darf. Diese Funktion kennt weder Politik noch Anlageklasse.
     """
     roh = request.meta.get(MEASURED_COST_BPS_META_KEY)
     if roh is None:
@@ -145,7 +211,32 @@ def measured_cost_from_meta(request: OrderRequest) -> Decimal | None:
             f"{MEASURED_COST_BPS_META_KEY} in OrderRequest.meta muss ein Decimal sein, "
             f"ist {type(roh).__name__} ({roh!r})"
         )
+    if not roh.is_finite() or roh <= 0:
+        raise ValueError(
+            f"{MEASURED_COST_BPS_META_KEY} in OrderRequest.meta muss endlich und "
+            f"positiv sein, ist {roh}"
+        )
     return roh
+
+
+@dataclass(frozen=True)
+class _Kostenbasis:
+    """Die aufgeloeste Kostenzahl, ihre Herkunft -- und was dabei verworfen wurde.
+
+    ``herkunft`` ist eines von ``gemessen`` (Live-Messung dieses Laufs, als Argument
+    hereingereicht), ``auftrag`` (am ``meta`` mitgereist und ueber der Praemisse),
+    ``kampagne`` (``RiskPolicy.measured_cost_bps``) oder ``annahme`` (Tabelle).
+    ``verworfen`` ist leer oder nennt eine mitgereiste Zahl, die die Praemisse
+    unterboten hat -- damit die Klammerung im Protokoll steht und nicht still bleibt.
+    """
+
+    bps: Decimal | None
+    herkunft: str
+    verworfen: str = ""
+
+    def als_text(self, cost_bps: Decimal) -> str:
+        """Die Zeile fuer ``RiskAuthorization.detail["cost_basis"]``."""
+        return f"{self.herkunft} {cost_bps} bp{self.verworfen}"
 
 
 class RiskManager:
@@ -245,6 +336,75 @@ class RiskManager:
         self._manual_release_id = release_id
         self._release_ceiling = None
 
+    # --- Kostenbasis ------------------------------------------------------
+    def stop_budget_for(
+        self,
+        *,
+        asset_class: str,
+        leverage: int,
+        measured_cost_bps: Decimal | None = None,
+    ) -> StopBudget:
+        """Die Budgetspanne nach DIESER Politik -- die eine Stelle, die sie rechnet.
+
+        Oeffentlich, weil ``execution/runner.py`` dieselbe Spanne braucht, bevor er
+        den Stop-Preis setzt. Riefe er ``stop_budget`` selbst, uebernaehme er die
+        Vorgabewerte der Signatur (``max_cost_drag=0.05``, ``safety=3``) statt der
+        konfigurierten Politik -- und rechnete damit an einer Politik mit
+        ``max_cost_drag=0.02`` vorbei, deren Untergrenze doppelt so hoch liegt. Der
+        Runner setzte den Stop auf seine Zahl, diese Schicht lehnte ihn Zeilen
+        spaeter mit ``stop_budget_below_cost_floor`` ab: die strengere Politik
+        erzeugte keinen weiteren Stop, sondern gar keinen Handel.
+
+        ``measured_cost_bps`` ist die bereits aufgeloeste Kostenzahl (siehe
+        ``_kostenbasis``); ``None`` bedeutet "keine Messung" -- dann entscheidet
+        ``require_measured_cost`` zwischen Annahmetabelle und Sperre.
+        """
+        return stop_budget(
+            asset_class=asset_class,
+            leverage=leverage,
+            measured_cost_bps=measured_cost_bps,
+            max_cost_drag=self._policy.max_cost_drag,
+            safety=self._policy.safety,
+            require_measured_cost=self._policy.require_measured_cost,
+        )
+
+    def _kostenbasis(
+        self,
+        *,
+        instrument: Instrument,
+        request: OrderRequest,
+        measured_cost_bps: Decimal | None,
+    ) -> _Kostenbasis:
+        """Welche Kostenzahl fuer diese Order gilt -- und **woher** sie stammt.
+
+        Rangfolge, Praemisse und Begruendung stehen im Modul-Docstring unter
+        "Kostenbasis". ``bps is None`` heisst: keine gemessene Zahl -- ``stop_budget``
+        entscheidet dann zwischen Annahmetabelle und Sperre.
+
+        Die mitgereiste Zahl gilt nur, soweit sie die Praemisse nicht unterbietet. Sie
+        wird auch dann gegen die Praemisse gehalten, wenn das Argument sie schlaegt:
+        sie faehrt am Auftrag weiter zur zweiten Pruefung im Venue, und was dort
+        gelten wird, gehoert schon hier in die Akte.
+        """
+        klasse = instrument.asset_class.value
+        kampagne = self._policy.measured_cost_bps.get(klasse)
+        praemisse = kampagne if kampagne is not None else assumed_cost_bps(klasse)
+        mitgereist = measured_cost_from_meta(request)
+        verworfen = ""
+        if mitgereist is not None and praemisse is not None and mitgereist < praemisse:
+            verworfen = (
+                f" (Auftrag {mitgereist} bp verworfen: unter Praemisse {praemisse} bp)"
+            )
+            mitgereist = None
+
+        if measured_cost_bps is not None:
+            return _Kostenbasis(measured_cost_bps, "gemessen", verworfen)
+        if mitgereist is not None:
+            return _Kostenbasis(mitgereist, "auftrag", verworfen)
+        if kampagne is not None:
+            return _Kostenbasis(kampagne, "kampagne", verworfen)
+        return _Kostenbasis(None, "annahme", verworfen)
+
     # --- Autorisierung ----------------------------------------------------
     def authorize_opening(
         self,
@@ -267,6 +427,11 @@ class RiskManager:
         ``measured_cost_bps`` sind die am Live-Bid/Ask gemessenen Roundturn-Kosten
         DIESER Order in bp. Wer sie hat, gibt sie her: sie bestimmt die
         Budget-Untergrenze und schlaegt jede Tabelle (Rangfolge im Modul-Docstring).
+        Sie steht oben in der Rangfolge, weil sie **in diesem Prozess** entstanden ist
+        -- der Aufrufer hat gerade gemessen. Die am Auftrag mitgereiste Zahl ist etwas
+        anderes: sie hat eine Grenze ueberquert und wird gegen die Praemisse dieser
+        Schicht geprueft (``_kostenbasis``); unterbietet sie sie, wirft die
+        Autorisierung, statt milder zu rechnen.
         """
         self.observe_equity(now, account.equity)
         # Frequenz-Tageszaehler auch auf dem LESEpfad rollen (nicht nur beim Fill),
@@ -361,23 +526,19 @@ class RiskManager:
                 depth_ratio=None,
             )
         )
-        # Kostenbasis in der Rangfolge Messung dieser Order -> mitgereiste Messung ->
-        # Messkampagne je Klasse -> Annahme. Die ersten drei sind gemessen; nur die
-        # letzte ist eine Behauptung, und sie steht unten sichtbar im ``detail``.
-        kosten = measured_cost_bps
-        if kosten is None:
-            kosten = measured_cost_from_meta(request)
-        if kosten is None:
-            kosten = self._policy.measured_cost_bps.get(instrument.asset_class.value)
-        budget = stop_budget(
+        # Kostenbasis samt Herkunft (Rangfolge und Pruefung: ``_kostenbasis``). Das
+        # erste Wort im ``detail`` benennt den Kanal, nicht nur "jemand hat eine Zahl
+        # uebergeben" -- eine mitgereiste Zahl ist etwas anderes als eine Messung
+        # dieses Laufs, auch wenn beide gepruefte Zahlen sind.
+        basis = self._kostenbasis(
+            instrument=instrument, request=request, measured_cost_bps=measured_cost_bps
+        )
+        budget = self.stop_budget_for(
             asset_class=instrument.asset_class.value,
             leverage=leverage,
-            measured_cost_bps=kosten,
-            max_cost_drag=self._policy.max_cost_drag,
-            safety=self._policy.safety,
-            require_measured_cost=self._policy.require_measured_cost,
+            measured_cost_bps=basis.bps,
         )
-        kostenbasis = f"{budget.cost_basis} {budget.cost_bps} bp"
+        kostenbasis = basis.als_text(budget.cost_bps)
         if not budget.tradeable:
             return RiskAuthorization(
                 approved=False,

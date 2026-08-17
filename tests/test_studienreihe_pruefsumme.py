@@ -4,12 +4,22 @@ Die sieben Studien aus Paket 3a trugen als ``data_checksum`` die Pruefsumme aus
 ``config/reihen/<Symbol>_H1.manifest.json``. Die Manifeste halten die Reihe fest, wie
 ``tools/aufloesung.py`` sie geholt hat: mit den **ungedrehten** Serverstempeln und dem
 Datenstand ihres eigenen Abrufs. Gemessen wird dagegen auf **gedrehten** und bei jedem
-Lauf neu geholten Kerzen. Diese Pruefsumme konnte die gemessenen Daten also nie decken —
+Lauf neu geholten Kerzen. Diese Pruefsumme konnte die gemessenen Daten also nie decken --
 und ein Etikett, das nichts deckt, ist schlechter als keines: es sieht nach
 Nachpruefbarkeit aus.
 
-Alle Faelle in dieser Datei waeren gegen die alte Fassung fehlgeschlagen; dort gab es
-weder eine abgeleitete Pruefsumme noch eine Pruefung einer mitgebrachten.
+WAS DIESE DATEI PRUEFT UND WAS OFFEN BLEIBT
+--------------------------------------------
+Geprueft ist die abgeleitete Pruefsumme: ``Ergebnis.reihen_pruefsumme`` entsteht aus
+genau den Kerzen, auf denen gemessen wurde, und aus keiner anderen Quelle.
+
+OFFEN und hier ausdruecklich nicht bemaentelt: diese Zahl steht noch nicht im
+Register. ``tools/ereignisstudie.py`` schreibt weiter die Manifest-Pruefsumme. Eine
+fruehere Fassung hatte dafuer ``friere_reihe_ein``/``lade_reihe``/``pruefe_deckung``
+samt Tests -- aber ohne einen einzigen Aufrufer ausserhalb des Moduls und dieser Datei.
+Tests fuer eine Vorrichtung, die kein Produktionspfad je betritt, belegen nur, dass sie
+uebersetzt. Sie sind mit der Vorrichtung entfallen; der Mangel steht im Modulkopf von
+``backtest/ereignisstudie.py``.
 """
 
 from __future__ import annotations
@@ -22,17 +32,14 @@ import pytest
 from mt5_trading_ai.backtest.ereignisstudie import (
     Kerze,
     StudienError,
-    friere_reihe_ein,
-    lade_reihe,
-    pruefe_deckung,
     reihen_pruefsumme,
     studie,
 )
 from mt5_trading_ai.backtest.kalender import (
     KalenderError,
     server_zu_utc,
+    utc_zu_server,
 )
-from mt5_trading_ai.data.loader import MIN_CHECKSUM_PREFIX
 
 REPO = Path(__file__).resolve().parents[1]
 EURUSD_MANIFEST = REPO / "config" / "reihen" / "EURUSD_H1.manifest.json"
@@ -49,7 +56,7 @@ def _kerzen(anzahl: int, *, ab: datetime | None = None) -> list[Kerze]:
     return kerzen
 
 
-def _studie(kerzen: list[Kerze], erwartet: str | None = None) -> str:
+def _studie(kerzen: list[Kerze]) -> str:
     ereignisse = [k.ts for k in kerzen[4:-4:4]]
     ergebnis, _ = studie(
         kandidat="erfunden",
@@ -58,7 +65,6 @@ def _studie(kerzen: list[Kerze], erwartet: str | None = None) -> str:
         ereignisse=ereignisse,
         fenster_stunden=1.0,
         k_bps=1.0,
-        erwartete_pruefsumme=erwartet,
     )
     return ergebnis.reihen_pruefsumme
 
@@ -67,7 +73,7 @@ def _studie(kerzen: list[Kerze], erwartet: str | None = None) -> str:
 def test_eine_kerze_mehr_ist_eine_andere_reihe() -> None:
     """Der Eichfall in seiner reinsten Form.
 
-    Zwischen zwei Laeufen kommt eine Stunde dazu — die Studie holt die Kerzen bei
+    Zwischen zwei Laeufen kommt eine Stunde dazu -- die Studie holt die Kerzen bei
     jedem Lauf frisch. Die alte Fassung meldete fuer beide Laeufe dieselbe Zahl aus
     demselben Manifest und konnte den Unterschied gar nicht sehen. Die neue leitet die
     Zahl aus der Reihe ab, also unterscheiden sich beide.
@@ -97,7 +103,8 @@ def test_dieselben_kurse_mit_anderer_zeitbasis_sind_andere_daten() -> None:
 
     Dieselben Kurse, einmal mit dem Serveretikett und einmal gedreht. Gemessen wird auf
     der gedrehten Reihe; die Manifeste halten die ungedrehte fest. Eine Pruefsumme, die
-    beide nicht unterscheidet, deckt hoechstens eine von beiden.
+    beide nicht unterscheidet, deckt hoechstens eine von beiden. Unterschieden werden
+    sie an den STEMPELN -- nicht an einem Etikett im Kopf (siehe den Fall unten).
     """
     etikett = _kerzen(120)
     gedreht = [
@@ -107,7 +114,7 @@ def test_dieselben_kurse_mit_anderer_zeitbasis_sind_andere_daten() -> None:
 
 
 def test_gleiche_zeitpunkte_in_anderer_zone_ergeben_dieselbe_pruefsumme() -> None:
-    """Kanonisch heisst: derselbe Augenblick, dieselbe Zahl — auch als +02:00."""
+    """Kanonisch heisst: derselbe Augenblick, dieselbe Zahl -- auch als +02:00."""
     utc = _kerzen(48)
     verschoben = [
         Kerze(
@@ -120,74 +127,52 @@ def test_gleiche_zeitpunkte_in_anderer_zone_ergeben_dieselbe_pruefsumme() -> Non
     assert reihen_pruefsumme(utc) == reihen_pruefsumme(verschoben)
 
 
-# --- Eine mitgebrachte Pruefsumme wird geprueft ---------------------------
-def test_die_manifest_pruefsumme_deckt_die_gemessene_reihe_nicht() -> None:
+def test_die_manifest_pruefsumme_ist_nicht_die_gemessene() -> None:
     """Der Befund an der echten Zahl: das Manifest aus Paket 3a gegen eine Messung.
 
-    ``3f7474f0...`` steht als ``data_checksum`` an den Studien K1/EURUSD und
-    K4/EURUSD im Register. Wird sie als Erwartung mitgegeben, bricht die Studie jetzt
-    ab, statt sie als eigene Herkunft weiterzureichen.
+    ``3f7474f0...`` steht als ``data_checksum`` an den Studien K1/EURUSD und K4/EURUSD
+    im Register. Sie ist nicht die Pruefsumme irgendeiner gemessenen Reihe -- sie kann
+    es von Bauart her nicht sein. Der Registereintrag traegt sie trotzdem noch; das ist
+    der offene Rest von E3 und steht im Modulkopf von ``backtest/ereignisstudie.py``.
     """
     if not EURUSD_MANIFEST.is_file():
         pytest.skip("config/reihen/EURUSD_H1.manifest.json nicht vorhanden")
     manifest = json.loads(EURUSD_MANIFEST.read_text(encoding="utf-8"))
     aus_dem_manifest = str(manifest["checksum"])
-    with pytest.raises(StudienError, match="deckt die gemessene Reihe nicht"):
-        _studie(_kerzen(300), aus_dem_manifest)
-
-
-def test_zu_kurze_erwartung_ist_ein_fehler() -> None:
-    """Ein kurzes Praefix deckt beliebige Datenstaende — Regel wie im Engine."""
-    kerzen = _kerzen(120)
-    echt = reihen_pruefsumme(kerzen)
-    with pytest.raises(StudienError, match="zu kurz"):
-        pruefe_deckung(echt[: MIN_CHECKSUM_PREFIX - 1], kerzen)
-    assert pruefe_deckung(echt[:MIN_CHECKSUM_PREFIX], kerzen) == echt
-
-
-def test_passende_erwartung_geht_durch() -> None:
-    kerzen = _kerzen(300)
-    assert _studie(kerzen, reihen_pruefsumme(kerzen)) == reihen_pruefsumme(kerzen)
-
-
-# --- Einfrieren: ohne die Reihe belegt die Pruefsumme nichts --------------
-def test_eingefrorene_reihe_laesst_sich_nachrechnen(tmp_path: Path) -> None:
-    """Die Kerzen kommen bei jedem Lauf frisch aus dem Terminal — was gemessen wurde,
-    gibt es nachher nicht mehr. Erst die festgelegte Reihe macht die Zahl pruefbar."""
-    kerzen = _kerzen(300)
-    ziel = tmp_path / "reihen" / "ERFUNDEN_H1.reihe"
-    pruefsumme = friere_reihe_ein(kerzen, ziel)
-
-    assert pruefsumme == _studie(kerzen)
-    zurueck = lade_reihe(ziel)
-    assert zurueck == kerzen
-    assert reihen_pruefsumme(zurueck) == pruefsumme
-
-
-def test_kopf_nennt_die_zeitbasis(tmp_path: Path) -> None:
-    ziel = tmp_path / "reihe.txt"
-    friere_reihe_ein(_kerzen(10), ziel)
-    kopf = ziel.read_text(encoding="utf-8").splitlines()[0]
-    assert "zeitbasis=echt-utc" in kopf
-
-
-def test_reihe_mit_fremdem_kopf_wird_nicht_geladen(tmp_path: Path) -> None:
-    ziel = tmp_path / "reihe.txt"
-    friere_reihe_ein(_kerzen(10), ziel)
-    zeilen = ziel.read_text(encoding="utf-8").splitlines()
-    zeilen[0] = "ereignisreihe-v1 zeitbasis=server-etikett"
-    ziel.write_text("\n".join(zeilen) + "\n", encoding="utf-8")
-    with pytest.raises(StudienError, match="Kopf passt nicht"):
-        lade_reihe(ziel)
+    assert _studie(_kerzen(300)) != aus_dem_manifest
 
 
 # --- Zeitbasis: geraten wird nicht ----------------------------------------
 def test_naiver_zeitstempel_wird_abgewiesen() -> None:
-    """Ein Stempel ohne Zone koennte Serverzeit sein oder UTC. Geraten wird nicht —
+    """Ein Stempel ohne Zone koennte Serverzeit sein oder UTC. Geraten wird nicht --
     genau dieses Raten ist die Ursache des Zeitproblems dieses Pakets."""
     kerzen = [Kerze(ts=datetime(2020, 1, 6, 1), open=100.0, close=100.1)]
     with pytest.raises(KalenderError, match="ohne Zeitzone"):
         reihen_pruefsumme(kerzen)
+
+
+def test_der_kopf_behauptet_keine_zeitbasis() -> None:
+    """Eichfall gegen das Etikett ohne Deckung.
+
+    Die vorige Fassung schrieb ``zeitbasis=echt-utc`` bedingungslos in den Kopf der
+    Reihe, geprueft wurde aber nur, dass ueberhaupt eine Zone am Stempel haengt.
+    Serverzeit mit UTC-Etikett -- genau das, was ``RealMt5Terminal._utc`` liefert --
+    ging anstandslos durch und wurde als ``echt-utc`` gehasht. Das Etikett ist
+    entfallen: der Kopf nennt Format und Spalten und behauptet nichts, was der
+    Schreiber nicht pruefen kann.
+    """
+    serverzeit = [
+        Kerze(ts=utc_zu_server(k.ts), open=k.open, close=k.close)
+        for k in _kerzen(24)
+    ]
+    # Die Reihe laesst sich hashen -- pruefbar ist nur, dass eine Zone daranhaengt.
+    assert len(reihen_pruefsumme(serverzeit)) == 64
+    # Aber sie traegt keine Zusicherung, die niemand einloesen kann.
+    from mt5_trading_ai.backtest import ereignisstudie as modul
+
+    kopf = modul._kanonische_reihe(serverzeit).splitlines()[0]
+    assert "zeitbasis" not in kopf
+    assert kopf == modul.REIHEN_FORMAT_VERSION
 
 
 def test_leere_reihe_ist_ein_fehler() -> None:

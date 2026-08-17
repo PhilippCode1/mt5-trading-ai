@@ -50,7 +50,7 @@ from mt5_trading_ai.execution.risk_manager import (
 from mt5_trading_ai.gates.criteria import CriteriaVerdict
 from mt5_trading_ai.risk.leverage import clamp_leverage
 from mt5_trading_ai.risk.sizing import StopFloorInputs, executable_stop_floor
-from mt5_trading_ai.risk.stop_budget import cost_bps_from_fraction, stop_budget
+from mt5_trading_ai.risk.stop_budget import cost_bps_from_fraction
 from mt5_trading_ai.venue.halal import screen_halal
 from mt5_trading_ai.venue.mt5 import Mt5Venue
 from mt5_trading_ai.venue.protocol import (
@@ -286,14 +286,25 @@ def run_signal(
             depth_ratio=None,
         )
     )
-    budget = stop_budget(
+    # Die Spanne kommt aus DERSELBEN Rechnung, die die Risikoschicht in Schritt 8
+    # fahren wird (``RiskManager.stop_budget_for``) -- nicht aus ``stop_budget`` mit
+    # den Vorgabewerten der Signatur. Sonst rechnet der Runner mit
+    # ``max_cost_drag=0.05``, waehrend eine Politik mit ``0.02`` gleich danach das
+    # Doppelte verlangt: der Stop stuende auf der eigenen Zahl und die Risikoschicht
+    # lehnte ihn mit ``stop_budget_below_cost_floor`` ab. Eine strengere Politik muss
+    # einen weiteren Stop erzeugen, nicht gar keinen Handel.
+    #
+    # Hier stand ``require_measured_cost=True``. Der Schalter konnte an dieser Stelle
+    # nie ausloesen: ``gemessene_kosten_bps`` ist hier immer ein positives Decimal
+    # (sonst haette ``cost_bps_from_fraction`` bereits geworfen), die fehlende Messung
+    # ist also unerreichbar. Ein Schalter mit einer Stellung ist keiner; die Sperre
+    # gegen ungemessenes Eroeffnen steht dort, wo sie greifen kann -- in
+    # ``RiskPolicy.require_measured_cost`` -- und der Runner belegt seine Seite
+    # dadurch, dass er misst und die Messung unbedingt uebergibt.
+    budget = risk_manager.stop_budget_for(
         asset_class=instrument.asset_class.value,
         leverage=eff_lev,
         measured_cost_bps=gemessene_kosten_bps,
-        # Der Runner hat gerade gemessen; ein Rueckfall auf die Annahme waere hier
-        # nicht bequem, sondern falsch. Der Schalter macht das bindend, statt es zu
-        # behaupten: eine kuenftige Umbau-Fassung ohne Messung wird rot, nicht mild.
-        require_measured_cost=True,
     )
     if not budget.tradeable:
         return report._reject(
@@ -306,7 +317,33 @@ def run_signal(
     )
     if stop_loss <= 0:
         return report._reject("stop-preis", "stop_price_nonpositive")
-    report.add("stop-preis", True, f"{stop_bps:.1f}bps -> stop={stop_loss}")
+
+    # Der GESETZTE Stop muss die Untergrenze halten, nicht der gerechnete. Zwischen
+    # beiden liegen zwei Verluste: das Tick-Raster und die 28-stellige
+    # Dezimalarithmetik. Gemessen an der Politik ``max_cost_drag=0.02``: Untergrenze
+    # 61.36363636363636363636363638 bp, wirksam nach dem Setzen ...636 bp -- zwei
+    # Einheiten in der letzten Stelle. Die Risikoschicht in Schritt 8 prueft hart auf
+    # ``>=`` und lehnt das mit ``stop_budget_below_cost_floor`` ab; der Runner haette
+    # dann eine Order gebaut, die er selbst nicht durchlaesst. Bisher ging das gut,
+    # weil die Vorgabepolitik zufaellig aufgeht -- Zufall ist keine Naht.
+    #
+    # Also einen Tick weiter vom Markt weg. Weiter ist immer sicher: mehr Abstand,
+    # kleinere Position. Die OBERgrenze prueft hier bewusst niemand nach -- das tut
+    # ``size_position`` in Schritt 8 praezise (``risk/sizing.py``: Stopdistanz ueber
+    # Budget -> ``no_trade``, kein enger gesetzter Stop). Eine zweite Fassung dieser
+    # Pruefung waere eine zweite Fehlerquelle, und ein Melder, den kein Eichfall
+    # erreicht: die Spanne muesste dafuer schmaler sein als ein Tick.
+    wirksam_bps = abs(ref - stop_loss) / ref * Decimal("10000")
+    if wirksam_bps < budget.lower_bps:
+        stop_loss = (
+            stop_loss - instrument.tick_size
+            if side_enum is OrderSide.BUY
+            else stop_loss + instrument.tick_size
+        )
+        if stop_loss <= 0:
+            return report._reject("stop-preis", "stop_price_nonpositive")
+        wirksam_bps = abs(ref - stop_loss) / ref * Decimal("10000")
+    report.add("stop-preis", True, f"{wirksam_bps:.1f}bps -> stop={stop_loss}")
 
     # 7) Kandidaten-OrderRequest (vorlaeufiges Volumen = Mindestvolumen). Die gemessene
     # Kostenlage reist im ``meta`` mit: ``submit_order`` faehrt die Risikoschicht ein

@@ -31,7 +31,7 @@ brauchen den ganzen Orderpfad. Geprueft wird ausschliesslich, was die Maschine
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
@@ -41,7 +41,17 @@ import pytest
 from mt5_trading_ai.backtest.engine import Signal
 from mt5_trading_ai.betrieb.journal import lies_alle, lies_journal
 from mt5_trading_ai.execution.risk_manager import RiskManager
-from mt5_trading_ai.venue.protocol import Bar, Timeframe, VenueUnavailableError
+from mt5_trading_ai.execution.scheduler import TickResult
+from mt5_trading_ai.gates.criteria import CriteriaVerdict
+from mt5_trading_ai.venue.protocol import (
+    AccountState,
+    Bar,
+    OrderSide,
+    Position,
+    Quote,
+    Timeframe,
+    VenueUnavailableError,
+)
 from tools.betrieb_auswerten import auswerten
 from tools.betrieb_reihe import auswerten as reihe_auswerten
 from tools.live_betrieb import (
@@ -52,6 +62,7 @@ from tools.live_betrieb import (
     _schliesse,
     _signal,
     _signal_mit_protokoll,
+    takt,
 )
 
 T0 = datetime(2026, 8, 17, 0, 0, tzinfo=UTC)
@@ -90,6 +101,80 @@ class FakeVenue:
     def adopt_book(self) -> dict[str, Decimal]:
         self.buch_uebernommen += 1
         return {}
+
+
+class _Angenommen:
+    """Was ``submit_order`` zurueckgibt -- nur die drei Felder, die gelesen werden."""
+
+    venue_order_id = "O1"
+    average_price = Decimal("4420.00")
+    filled_volume = Decimal("0.01")
+
+
+@dataclass
+class TaktVenue:
+    """Ein Handelsplatz, der genau so viel kann, wie ``takt`` wirklich anfasst.
+
+    Kerzen je Symbol: so laesst sich in EINEM Takt ein Ausstieg (Signal gegen die
+    offene Position) und ein Eintritt (Symbol ohne Position) fahren, ohne dass der
+    Eintritt in den Orderpfad laeuft -- das Symbol ohne Kerzen ergibt FLAT.
+    """
+
+    kerzen: dict[str, tuple[Bar, ...]] = field(default_factory=dict)
+    positionen: tuple[Position, ...] = ()
+    halt_reason: str | None = None
+    gesendet: list[str] = field(default_factory=list)
+
+    def get_account(self) -> AccountState:
+        return AccountState(
+            account_id="DEMO-1", currency="EUR", balance=Decimal("50000"),
+            equity=Decimal("50000"), margin_used=Decimal("0"),
+            margin_free=Decimal("50000"), is_demo=True, ts=T0,
+        )
+
+    def get_positions(self) -> tuple[Position, ...]:
+        return self.positionen
+
+    def get_quote(self, symbol: str) -> Quote:
+        return Quote(symbol=symbol, ts=T0, bid=Decimal("1.1000"),
+                     ask=Decimal("1.1002"))
+
+    def get_bars(
+        self, symbol: str, timeframe: Timeframe, *, start: datetime, end: datetime
+    ) -> tuple[Bar, ...]:
+        return self.kerzen.get(symbol, ())
+
+    def is_trading_open(self, symbol: str, *, at: datetime) -> bool:
+        return True
+
+    def adopt_book(self) -> dict[str, Decimal]:
+        return {}
+
+    def submit_order(self, anfrage: Any) -> _Angenommen:
+        self.gesendet.append(anfrage.client_order_id)
+        return _Angenommen()
+
+
+@dataclass
+class FakeScheduler:
+    """Der Takt fragt nur ``halted`` und ``halt_reason`` ab."""
+
+    halted: bool = False
+
+    def tick(self, jetzt: datetime) -> TickResult:
+        return TickResult(
+            now=jetzt, halted=self.halted, halt_reason=None, sync_healthy=True,
+            stream_never_started=True, reconcile=None, events_applied=0,
+        )
+
+
+def _position(symbol: str = "XAUUSD") -> Position:
+    return Position(
+        venue_position_id="10060725485", symbol=symbol, side=OrderSide.BUY,
+        volume=Decimal("0.01"), entry_price=Decimal("4415.18"), stop_loss=None,
+        take_profit=None, opened_at=T0, unrealised_pnl=Decimal("-2.68"),
+        swap_accrued=Decimal("-0.11"),
+    )
 
 
 def _journal(tmp_path: Path) -> Journal:
@@ -199,6 +284,36 @@ def test_das_journal_nennt_die_kerze_auf_der_gerechnet_wurde(tmp_path: Path) -> 
     assert satz["kerzen_laufend_verworfen"] == 1
 
 
+def test_kerzen_verwendet_meldet_die_gerechneten_nicht_die_gelieferten() -> None:
+    """Ein Feld muss das melden, was sein Name sagt.
+
+    Gegen die alte Fassung: ``kerzen_verwendet=len(fertig)`` zaehlte JEDE gelieferte
+    abgeschlossene Kerze. Bei ``KERZEN_STUNDEN=360`` stuende im Journal
+    "kerzen_verwendet: 359", waehrend ``moving_average_crossover`` nur
+    ``history[-slow:]`` ansieht, also die letzten LANGSAM=26. Die vorhandenen Faelle
+    konnten das per Konstruktion nicht bemerken: ``FALLEND`` enthaelt genau LANGSAM
+    Kerzen, dort sind "geliefert" und "verwendet" dieselbe Zahl.
+    """
+    viele = tuple(_bar(i, 1.30 - i * 0.001, is_closed=True) for i in range(40))
+    lage = _signal(FakeVenue(bars=(*viele, AUSREISSER)), "EURUSD", T0)
+    assert lage.kerzen_abgeschlossen == 40
+    assert lage.kerzen_verwendet == LANGSAM
+    assert lage.kerzen_laufend == 1
+
+
+def test_ohne_signal_wurde_keine_einzige_kerze_verwendet() -> None:
+    """Zu wenige abgeschlossene Kerzen heisst: es wurde gar nicht gerechnet.
+
+    ``kerzen_verwendet=len(fertig)`` meldete hier eine Verwendung, die nicht
+    stattgefunden hat.
+    """
+    bars = (*FALLEND[: LANGSAM - 1], AUSREISSER)
+    lage = _signal(FakeVenue(bars=bars), "EURUSD", T0)
+    assert lage.signal is Signal.FLAT
+    assert lage.kerzen_abgeschlossen == LANGSAM - 1
+    assert lage.kerzen_verwendet == 0
+
+
 def test_auch_ein_flat_wird_protokolliert(tmp_path: Path) -> None:
     """Ein Takt ohne Satz war frueher nicht deutbar.
 
@@ -214,6 +329,69 @@ def test_auch_ein_flat_wird_protokolliert(tmp_path: Path) -> None:
     assert satz["art"] == "signalbasis"
     assert satz["signal"] == "FLAT"
     assert satz["kerze_ts"] is None
+
+
+# --- Die Verdrahtung im Takt ----------------------------------------------
+def _takt(tmp_path: Path, venue: TaktVenue) -> tuple[Journal, dict[str, Lage], bool]:
+    j = _journal(tmp_path)
+    lage, gestoppt = takt(
+        venue, RiskManager(), FakeScheduler(), ["EURUSD", "XAUUSD"],
+        CriteriaVerdict(passed=False, results=()), j,
+        nr=1, max_haltedauer=timedelta(hours=4), bekannt={},
+        equity_start=Decimal("50000"), verlustgrenze=Decimal("0.02"),
+    )
+    return j, lage, gestoppt
+
+
+def test_der_takt_schreibt_die_signalbasis_auf_beiden_wegen(tmp_path: Path) -> None:
+    """DER Verdrahtungstest -- und er ist es wirklich.
+
+    Die Pruefung davor hing an ``_signal_mit_protokoll`` selbst: beide Aufrufe in
+    ``takt`` liessen sich auf ``_signal`` zurueckdrehen, die Schleife schrieb dann
+    GAR KEINEN ``signalbasis``-Satz mehr, und die gesamte Suite blieb gruen. Genau die
+    Auskunft, die den Befund "der Live-Treiber rechnet auf der laufenden Kerze" so
+    lange verdeckt hat, konnte stillschweigend wieder verschwinden.
+
+    Der Takt faehrt hier beide Wege in einem Durchlauf: XAUUSD ist offen und bekommt
+    ein Gegensignal (Ausstieg), EURUSD ist frei und liefert keine Kerzen (FLAT, also
+    kein Eintritt und kein Orderpfad).
+    """
+    venue = TaktVenue(kerzen={"XAUUSD": FALLEND}, positionen=(_position(),))
+    j, _, gestoppt = _takt(tmp_path, venue)
+    basis = {s["zweck"]: s for s in _saetze(j) if s["art"] == "signalbasis"}
+    assert set(basis) == {"ausstieg", "eintritt"}
+    assert basis["ausstieg"]["symbol"] == "XAUUSD"
+    assert basis["ausstieg"]["signal"] == "SHORT"
+    assert basis["ausstieg"]["kerzen_verwendet"] == LANGSAM
+    assert basis["eintritt"]["symbol"] == "EURUSD"
+    assert basis["eintritt"]["signal"] == "FLAT"
+    assert gestoppt is False
+
+
+def test_der_takt_gibt_dem_geldergebnis_die_kontowaehrung_mit(tmp_path: Path) -> None:
+    """Die zweite ungetestete Verdrahtung: ``waehrung=konto.currency``.
+
+    Ohne sie stuende der Betrag ohne Einheit im Journal, und ueber mehrere Laeufe
+    liesse sich nicht mehr sagen, ob summiert werden darf. Der Schluss selbst kommt
+    hier aus dem Signalwechsel gegen die offene Kaufposition.
+    """
+    venue = TaktVenue(kerzen={"XAUUSD": FALLEND}, positionen=(_position(),))
+    j, _, _ = _takt(tmp_path, venue)
+    zu = next(s for s in _saetze(j) if s["art"] == "geschlossen")
+    assert zu["grund"] == "signalwechsel"
+    assert zu["ergebnis_geld"] == "-2.68"
+    assert zu["ergebnis_geld_waehrung"] == "EUR"
+    assert zu["ergebnis_geld_quelle"] == "zuletzt_beobachtet"
+    assert venue.gesendet, "Es wurde keine schliessende Order gesendet"
+
+
+def test_der_takt_schreibt_den_kontozustand(tmp_path: Path) -> None:
+    """Der ``takt``-Satz ist die Grundlage jeder Equity-Reihe."""
+    j, _, _ = _takt(tmp_path, TaktVenue(kerzen={"XAUUSD": FALLEND}))
+    satz = next(s for s in _saetze(j) if s["art"] == "takt")
+    assert satz["equity"] == "50000"
+    assert satz["demo"] is True
+    assert satz["halt"] is False
 
 
 # --- E5: der broker-seitige Schluss ---------------------------------------
@@ -453,6 +631,95 @@ def test_ohne_equity_punkte_verschwinden_die_trades_nicht(
     aus = capsys.readouterr().out
     assert "Zu wenige Messpunkte" in aus
     assert "nur mit Geldergebnis         : 1" in aus
+
+
+def test_die_geldsumme_enthaelt_auch_die_selbst_geschlossenen_trades(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Der Eichfall dafuer, dass das Geldfeld am eigenen Schluss ueberhaupt wirkt.
+
+    Gegen die alte Fassung: die Summe lief ueber den Topf "nur Geld", und in den
+    kommt ein selbst geschlossener Trade nie -- ``urteilsquelle`` gibt dem gemessenen
+    Preis den Vorrang. Die einzige Geldstatistik des Hauses bestand damit weiterhin zu
+    hundert Prozent aus Stop-Outs, also aus Verlierern, obwohl der Schreiber das Feld
+    ausdruecklich gegen genau diesen blinden Fleck gesetzt hat. Hier: ein Stop-Out mit
+    -2,68 und ein eigener Schluss mit +4,82 ergeben +2,14.
+    """
+    j = _broker_schluss(tmp_path)
+    j.schreib("geschlossen", symbol="EURUSD", war_kauf=True, volumen="0.1",
+              position_id="P8", einstiegspreis="1.10000", ausstiegspreis="1.10110",
+              grund="signalwechsel", ergebnis_geld="4.82",
+              ergebnis_geld_waehrung="EUR", ergebnis_geld_quelle="zuletzt_beobachtet")
+    assert auswerten(j.pfad) == 0
+    aus = capsys.readouterr().out
+    assert "Geldergebnisse: 2 (1 vom Broker geschlossen, 1 selbst geschlossen)" in aus
+    assert "Summe dieser Schaetzungen: +2.14 EUR" in aus
+    # Und die Trennung bleibt: der eigene Schluss zaehlt beim PREIS, nicht als
+    # Schaetzung -- die Geldsumme ist etwas anderes als der Geldtopf.
+    assert "mit Preisergebnis (bp)       : 1" in aus
+    assert "nur mit Geldergebnis         : 1" in aus
+
+
+def test_die_auswertung_nennt_die_herkunft_der_betraege(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """``ergebnis_geld_quelle`` hatte keinen einzigen Leser.
+
+    Geschrieben, geparst, am Trade mitgefuehrt -- und von keinem Werkzeug ausgegeben.
+    Die Zusicherung "die Marke reist am Trade mit, statt dass sich eine gedeutete Zahl
+    als geschriebene ausgibt" war damit nur auf Datenebene eingeloest: im Ausdruck war
+    eine gedeutete Zahl von einer geschriebenen nicht zu unterscheiden.
+    """
+    j = _broker_schluss(tmp_path)
+    j.schreib("vom_broker_geschlossen", symbol="EURUSD", war_kauf=True,
+              volumen="0.1", position_id="P7", einstiegspreis="1.1",
+              zuletzt_unrealisiert="-1.10")
+    assert auswerten(j.pfad) == 0
+    aus = capsys.readouterr().out
+    assert "1x  Herkunft: zuletzt_beobachtet" in aus
+    assert "1x  Herkunft: altjournal:zuletzt_unrealisiert" in aus
+
+
+def _lauf_mit_geld(tmp_path: Path, name: str, *, waehrung: str, betrag: str) -> None:
+    """Ein eigener Lauf (eigene Datei) mit genau einem Stop-Out in einer Waehrung."""
+    j = Journal(tmp_path / name, lauf=name, version="testv")
+    weg = _lage(betrag)
+    j.schreib("takt", nr=1, equity="50000")
+    _buch_abgleichen(
+        FakeVenue(), RiskManager(), {weg.symbol: weg}, {}, j, waehrung=waehrung,
+    )
+
+
+def test_die_reihe_summiert_ueber_laeufe_mit_gleicher_waehrung(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Die zweite Kopie der Einteilung gab ueberhaupt keine Geldsumme aus.
+
+    Genau daran war zu sehen, dass zwei Umsetzungen derselben Rechnung bereits
+    auseinandergelaufen waren.
+    """
+    _lauf_mit_geld(tmp_path, "journal-a.jsonl", waehrung="EUR", betrag="-2.68")
+    _lauf_mit_geld(tmp_path, "journal-b.jsonl", waehrung="EUR", betrag="-1.32")
+    assert reihe_auswerten(lies_alle(tmp_path), nur_scharf=False) == 0
+    aus = capsys.readouterr().out
+    assert "Summe der Schaetzungen: -4.00 EUR" in aus
+
+
+def test_die_reihe_summiert_keine_zwei_kontowaehrungen(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Hier ist der Fall echt erreichbar -- im Einzellauf-Werkzeug war er es nicht.
+
+    Ein Journal ist ein Lauf ist ein Konto ist eine Waehrung. Ueber mehrere Laeufe
+    koennen es zwei Konten sein, und dann ist eine Summe eine Zahl, die aussieht wie
+    Geld und keines ist.
+    """
+    _lauf_mit_geld(tmp_path, "journal-a.jsonl", waehrung="EUR", betrag="-2.68")
+    _lauf_mit_geld(tmp_path, "journal-b.jsonl", waehrung="USD", betrag="-1.32")
+    assert reihe_auswerten(lies_alle(tmp_path), nur_scharf=False) == 0
+    aus = capsys.readouterr().out
+    assert "Keine Summe: verschiedene Waehrungen ['EUR', 'USD']" in aus
+    assert "Summe der Schaetzungen" not in aus
 
 
 def test_die_reihe_ueber_mehrere_laeufe_zaehlt_den_stop_out_mit(

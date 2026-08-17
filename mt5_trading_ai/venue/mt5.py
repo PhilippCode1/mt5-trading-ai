@@ -356,12 +356,26 @@ class Mt5Venue(TradingVenue):
 
         * Die Rechneruhr waere genau der Fehler, den dieses Repo schon einmal gemacht
           hat -- eine Sperre, die per Konstruktion nie ausloest, weil sie Systemzeit
-          gegen Systemzeit haelt. Hier waere er sogar schlimmer als dort: Kerzen- und
-          Tick-Stempel laufen beide durch ``RealMt5Terminal._utc``. Ist ``server_tz``
-          nicht gesetzt, tragen sie die Wanduhr des Servers unter dem Etikett UTC. Ein
-          Vergleich gegen echte UTC-Systemzeit haette dann den vollen Serverversatz
-          (an diesem Broker 2-3 Stunden) drin und wuerde -- bei einem Server hinter UTC
-          -- die laufende Kerze als abgeschlossen ausweisen. Fail-open, unbemerkt.
+          gegen Systemzeit haelt. Hier kommt hinzu, dass Kerzen- und Tick-Stempel beide
+          durch ``RealMt5Terminal._utc`` laufen: ist ``server_tz`` nicht gesetzt,
+          tragen sie die Wanduhr des Servers unter dem Etikett UTC, und ein Vergleich
+          gegen echte UTC-Systemzeit haette den vollen Serverversatz drin. **Welche
+          Richtung dabei herauskommt, haengt am Broker.** An diesem hier (Serverzone
+          ``Europe/Helsinki``, also VOR UTC, im Sommer +3 h) liegen die Stempel drei
+          Stunden vor der Rechneruhr; nachgemessen: die um 11:00 UTC fertige Kerze
+          traegt den Stempel 13:00, die Rechneruhr steht auf 11:30, ``13:00 + 1 h <=
+          11:30`` ist falsch -- **keine** Kerze gaelte je als abgeschlossen, der
+          Live-Takt bliebe auf FLAT ("nur 0 abgeschlossene von N Kerzen"). Bei Server
+          HINTER UTC (etwa UTC-5) dreht das Vorzeichen, und dieselbe Rechnung meldet
+          die laufende Kerze als fertig: fail-open, unbemerkt. Beide Richtungen sind
+          falsch; die Rechneruhr ist hier deshalb ueberhaupt keine Quelle.
+        * Dass es heute gutginge, genuegt nicht: der tatsaechlich konfigurierte
+          Live-Pfad setzt ``server_tz`` (``tools/live_betrieb.py``,
+          ``tools/live_konsole.py``), dort sind ``rate.ts`` und ``tick.ts`` echtes UTC
+          und liegen bis auf die Tick-Latenz auf der Rechneruhr. Eine Fassung mit
+          ``datetime.now(UTC)`` saehe in genau dieser Konfiguration richtig aus und
+          braeche, sobald ein Aufrufer die Zone weglaesst. Ein Venue, dessen
+          Richtigkeit an der Konfiguration seines Aufrufers haengt, ist nicht richtig.
         * ``end`` ist Wunsch des Aufrufers, keine Messung. Ein zu grosses ``end``
           erklaerte jede Kerze fuer offen, ein zu kleines die laufende fuer fertig.
         * Der Tick-Stempel dagegen kommt durch **dieselbe** Umrechnung wie ``rate.ts``.
@@ -377,9 +391,19 @@ class Mt5Venue(TradingVenue):
         ``get_quote`` wirft ohne Tick :class:`VenueUnavailableError` -- ohne Platzzeit
         ist nicht entscheidbar, welche Kerze steht, und nicht entscheidbar heisst hier
         nicht abgeschlossen genug zum Handeln. Fail-closed statt raten.
+
+        Bekannter Mangel: ``timeframe.duration`` ist eine feste Sekundenzahl, die
+        echte Grenze von D1 und H4 liegt aber an der Server-Mitternacht. Ueber eine
+        Zeitumstellung weichen beide um eine Stunde ab, am Rueckstelltag in die
+        schmeichelnde Richtung. Umfang und Begruendung stehen bei
+        ``protocol.Timeframe.duration``; der Live-Pfad faehrt ausschliesslich H1 und
+        ist immun.
         """
-        self._require_healthy()
-        self.get_instrument(symbol)
+        # ``get_quote`` prueft Sitzung und Symbol selbst, in genau dieser Reihenfolge
+        # (``_require_healthy`` -> ``get_instrument`` -> Tick). Ein eigener Vorlauf
+        # hier waere dieselbe Pruefung ein zweites Mal -- ein zweiter Terminal-Umlauf
+        # je ``get_bars`` und zwei Fassungen derselben Regel, die auseinanderlaufen
+        # koennen. Die Fehlerreihenfolge bleibt unveraendert.
         jetzt = self.get_quote(symbol).ts
         dauer = timeframe.duration
         rates = self._terminal.rates(symbol, timeframe, start, end)

@@ -317,6 +317,9 @@ def deflated_sharpe_ratio(
     Lauf zaehlt, auch Fehlversuche. Er kommt aus
     ``gates/trials.py::deflation_trials`` und nie aus einer Konstante: eine fest
     verdrahtete Zahl sagt nichts darueber, wie viel tatsaechlich gesucht wurde.
+    Gezaehlt wird dort in ganzen **Kampagnen** und nicht als Registerstand zur
+    Aufrufzeit — sonst haenge diese Zahl daran, als wievielter ein Lauf einer Reihe
+    gefahren wurde, und eine DSR, die man nicht nachrechnen kann, belegt nichts.
 
     WAS DIE VOREINSTELLUNG VON ``sharpe_variance`` IST -- UND WAS NICHT
     -------------------------------------------------------------------

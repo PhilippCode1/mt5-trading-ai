@@ -66,10 +66,46 @@ class Timeframe(str, Enum):
 
         Fehlt ein Eintrag, wird geworfen. Ein geratener Vorgabewert waere hier
         besonders teuer: er entscheidet mit, welche Kerze als abgeschlossen gilt.
+
+        Geworfen wird :class:`UnknownTimeframeError`, also eine Ableitung von
+        :class:`VenueError` -- **nicht** ``ValueError``. Diese Eigenschaft wird mitten
+        in ``venue/mt5.py:get_bars`` ausgewertet, und die Verbraucher dort fangen
+        genau ``VenueError`` (``tools/live_betrieb.py``, ``tools/live_konsole.py``).
+        Ein ``ValueError`` haette den Live-Takt nicht auf FLAT heruntergefahren,
+        sondern abgerissen: eine Wartungssperre, die den Vertrag bricht, den sie
+        schuetzen soll. Der Name steht weiter unten im Modul -- aufgeloest wird er
+        beim Aufruf, nicht beim Import.
+
+        **Bekannter Mangel: diese Laenge ist kalenderblind (D1 und H4).**
+        ``timedelta`` ist eine feste Sekundenzahl; die Raster von D1 und H4 haengen
+        dagegen an der Mitternacht des Handelsservers. Hat dessen Zone Sommerzeit
+        (hier gemessen: ``Europe/Helsinki``), dauert der Rueckstelltag 25 statt 24
+        Stunden. Nachgerechnet fuer den 25.10.2026: die Tageskerze beginnt 21:00 UTC
+        und endet 22:00 UTC am Folgetag, die starren 24 h laufen aber schon um 21:00
+        ab -- eine Stunde lang gilt die noch laufende Kerze als abgeschlossen, also
+        in die schmeichelnde Richtung. Am Vorstelltag (23 h) kippt es in die harmlose:
+        eine fertige Kerze gilt eine Stunde zu lang als laufend. H4 trifft es an
+        denselben zwei Tagen im 00:00-Eimer der Serverzeit (dort 5 bzw. 3 Stunden).
+        M1 bis H1 sind immun, weil die Umstellung ein ganzes Vielfaches ihrer Laenge
+        ist.
+
+        Bewusst **nicht** hier behoben: die kalenderbewusste Rechnung braucht die
+        Zone des Handelsservers, und die darf in diesem Modul nicht stehen. Es ist
+        der plattformunabhaengige Vertrag (siehe Modulkopf) -- eine Broker-Zeitzone
+        darin waere genau der Plattformname, den der Modulkopf verbietet. Sie muesste
+        vom Terminal (``RealMt5Terminal(server_tz=...)``) bis in ``Mt5Venue``
+        durchgereicht werden, also durch Bauplaetze, die diese Welle nicht anfasst.
+        Bis dahin gilt: ``is_closed`` ist fuer D1 und H4 an zwei Tagen im Jahr eine
+        Stunde lang falsch. Kein heutiger Verbraucher ist betroffen -- beide
+        Live-Treiber und der Rauchtest holen ausschliesslich H1; ``tools/aufloesung.py``
+        benutzt D1/H4, geht aber nicht ueber ``get_bars`` und liest kein ``is_closed``.
+        Festgenagelt ist der Mangel in ``tests/test_bar_geschlossen.py``
+        (``test_d1_ueber_die_zeitumstellung_gilt_zu_frueh_als_fertig``): wer ihn
+        behebt, macht diesen Fall rot und loescht ihn zusammen mit diesem Absatz.
         """
         seconds = TIMEFRAME_SECONDS.get(self.value)
         if seconds is None:
-            raise ValueError(
+            raise UnknownTimeframeError(
                 f"Keine Intervalllaenge fuer Zeitebene {self.value} hinterlegt "
                 "(data/quality.py: TIMEFRAME_SECONDS)"
             )
@@ -86,6 +122,15 @@ class VenueUnavailableError(VenueError):
 
 class UnknownInstrumentError(VenueError):
     """Instrument nicht im Katalog. Kein Handel, kein Default."""
+
+
+class UnknownTimeframeError(VenueError):
+    """Zeitebene ohne hinterlegte Intervalllaenge. Kein Handel, kein Default.
+
+    Wird von :attr:`Timeframe.duration` geworfen. Bewusst eine ``VenueError``-
+    Ableitung: der Zugriff liegt im Lesepfad einer Implementierung, und der Vertrag
+    oben sagt, dass von dort ausschliesslich ``VenueError`` herauskommt.
+    """
 
 
 class OrderRejectedError(VenueError):
@@ -213,6 +258,10 @@ class Bar:
     #: Ist das Intervall ``[ts, ts + timeframe.duration)`` vorbei? Nur dann ist
     #: ``close`` ein Schlusskurs. ``False`` heisst: Kerze in Bildung, ``close`` ist
     #: der aktuelle Kurs und aendert sich noch.
+    #: Einschraenkung: fuer D1 und H4 liegt die echte Grenze an der
+    #: Server-Mitternacht, nicht bei ``ts + duration``. Ueber eine Zeitumstellung
+    #: weichen beide um eine Stunde ab -- bekannter Mangel, Umfang und Begruendung
+    #: stehen bei :attr:`Timeframe.duration`.
     is_closed: bool
     volume: Decimal | None = None
     spread_avg_points: Decimal | None = None

@@ -24,6 +24,7 @@ from typing import Any
 
 import pytest
 from mt5_trading_ai.backtest.ereignisstudie import OOS_ANTEIL
+from mt5_trading_ai.backtest.resolution import deflation_observations
 from mt5_trading_ai.venue.mt5 import Mt5Rate
 from mt5_trading_ai.venue.protocol import Timeframe
 from tools.aufloesung import (
@@ -232,23 +233,44 @@ def test_manifest_haengt_an_den_daten_nicht_an_der_formatierung() -> None:
 
 # --- Die Nachrechnung der Messdatei --------------------------------------
 def _datei(tmp_path: Path, **felder: Any) -> Path:
-    """Eine erfundene Messdatei mit genau der einen Zeile, um die es geht."""
+    """Eine erfundene Messdatei mit genau der einen Zeile, um die es geht.
+
+    Schema 2 fuehrt ``oos_share`` und ``deflation_events`` auch JE ZEILE. Sie werden
+    hier aus dem Kopf abgeleitet, damit die Fixtur dasselbe Format hat wie das, was
+    ``messen()`` schreibt -- eine Fixtur, die schlanker ist als das Erzeugnis, prueft
+    ein Format, das es nicht gibt. ``zeile=`` ueberschreibt einzelne Zeilenfelder; so
+    bekommt ein Fall eine Zeile, die ihrem eigenen Kopf widerspricht.
+    """
     zeile = dict(K3_ZEILE)
     zeile["ratio"] = felder.pop("ratio")
     zeile["resolvable"] = felder.pop("resolvable")
+    ueberschreibungen: dict[str, Any] = felder.pop("zeile", {})
     dokument: dict[str, Any] = {
         "schema_version": felder.pop("schema_version", 2),
-        "trials_assumed": 12,
+        "trials_assumed": felder.pop("trials_assumed", 12),
         "entries": [zeile],
     }
     dokument.update(felder)
+    kopf_anteil = dokument.get("oos_share")
+    if dokument["schema_version"] >= 2 and isinstance(kopf_anteil, float):
+        zeile["oos_share"] = kopf_anteil
+        zeile["deflation_events"] = deflation_observations(
+            int(zeile["events"]), oos_share=kopf_anteil
+        )
+    zeile.update(ueberschreibungen)
     ziel = tmp_path / "aufloesung.json"
     ziel.write_text(json.dumps(dokument, indent=2), encoding="utf-8")
     return ziel
 
 
-def test_pruefen_nimmt_eine_nachrechenbare_datei_an(tmp_path: Path) -> None:
-    """Der Positivfall: Anteil genannt, Verhaeltnis passt, Urteil passt."""
+def test_pruefen_nimmt_eine_nachrechenbare_datei_an(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Der Positivfall: Anteil genannt UND richtig, Verhaeltnis passt, Urteil passt.
+
+    Die Gegenprobe zur Regel „im Fehlschlag nichts auf stdout": hier gehoert die
+    gruene Zeile hin, und nur hier.
+    """
     ziel = _datei(
         tmp_path,
         ratio=K3_VERHAELTNIS_DEFLATION,
@@ -256,6 +278,9 @@ def test_pruefen_nimmt_eine_nachrechenbare_datei_an(tmp_path: Path) -> None:
         oos_share=OOS_ANTEIL,
     )
     assert pruefen(ziel) == 0
+    ausgabe = capsys.readouterr()
+    assert ausgabe.out.startswith("ok — ")
+    assert ausgabe.err == ""
 
 
 def test_pruefen_faellt_auf_ein_falsches_verhaeltnis_rot(
@@ -289,12 +314,155 @@ def test_pruefen_faellt_auf_eine_datei_ohne_oos_anteil_rot(
     Ereigniszahl rechnet. Nur sieht die Deflation der Ereignisstudie das
     Out-of-Sample-Drittel, und damit ist das ganze Blatt rund Faktor 1,7 zu guenstig.
     Eine Pruefung, die sich auf die innere Stimmigkeit verlaesst, geht hier gruen durch.
+
+    Schema 1, wie die echte Datei: die Zeilenfelder aus Schema 2 gibt es dort nicht.
     """
-    ziel = _datei(tmp_path, ratio=K3_VERHAELTNIS_VOLL, resolvable=True)
+    ziel = _datei(
+        tmp_path, ratio=K3_VERHAELTNIS_VOLL, resolvable=True, schema_version=1
+    )
     assert pruefen(ziel) == 1
     fehler = capsys.readouterr().err
     assert "oos_share" in fehler
     assert "aufloesbar -> blind" in fehler
+
+
+def test_pruefen_faellt_auf_einen_nachgetragenen_anteil_rot(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """DER EICHFALL DIESER REPARATUR. Gegen die vorige Fassung gruen, mit Rueckgabe 0.
+
+    Die vorige Fassung fragte ``"oos_share" not in roh`` -- die ANWESENHEIT eines
+    Schluessels statt seinen WERT. Wer der falsch gerechneten Datei die eine Zeile
+    ``"oos_share": 1.0`` nachtrug, ohne eine einzige Zahl zu messen, drehte das Tor von
+    rot auf gruen; ``pruefen()`` druckte dann „ok" ueber genau den Verhaeltnissen, deren
+    Zurueckweisung sein Zweck ist. Das ist wortwoertlich die Fehlerklasse, gegen die
+    dieses Werkzeug gebaut wurde: ein Melder, der das Falsche misst.
+
+    Massgeblich ist jetzt der Abgleich gegen ``OOS_ANTEIL`` -- den Anteil, auf dem die
+    Deflation tatsaechlich laeuft.
+    """
+    ziel = _datei(
+        tmp_path,
+        ratio=K3_VERHAELTNIS_VOLL,
+        resolvable=True,
+        schema_version=1,
+        oos_share=1.0,
+    )
+    assert pruefen(ziel) == 1
+    ausgabe = capsys.readouterr()
+    assert "oos_share = 1.0" in ausgabe.err
+    assert "aufloesbar -> blind" in ausgabe.err
+    assert ausgabe.out == ""
+
+
+def test_pruefen_druckt_im_fehlschlag_kein_wort_auf_stdout(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Eichfall. Vorher stand die gruene Zeile VOR dem Befund -- und auf stdout.
+
+    ``pruefen()`` druckte im Fehlschlag zuerst „ok — ... Kombinationen aufloesbar"
+    samt Tabelle nach stdout und schob die Beanstandung danach auf stderr. Wer die
+    Ausgabe ueberflog -- oder stderr verwarf, wie es jede Pipe tut -- las Gruen ueber
+    falschen Zahlen. Eine Ampel, deren erstes Wort im Fehlschlag „ok" ist, ist keine.
+    """
+    ziel = _datei(
+        tmp_path, ratio=K3_VERHAELTNIS_VOLL, resolvable=True, schema_version=1
+    )
+    assert pruefen(ziel) == 1
+    ausgabe = capsys.readouterr()
+    assert ausgabe.out == "", "im Fehlschlag gehoert nichts auf stdout"
+    assert "ok" not in ausgabe.out
+    assert ausgabe.err.startswith("FEHLGESCHLAGEN")
+
+
+def test_pruefen_faellt_auf_eine_zeile_ohne_verhaeltnis_rot(tmp_path: Path) -> None:
+    """Eichfall. Vorher stuerzte ``pruefen()`` hier mit KeyError ab, statt 1 zu melden.
+
+    Das ``except`` umschloss nur den ``assess``-Aufruf; ``float(e["ratio"])`` und
+    ``e["resolvable"]`` standen davor bzw. dahinter im Freien. Eine Datei mit einer
+    unvollstaendigen Zeile riss das Tor ab, statt es rot zu faerben -- und ein
+    abgerissenes Tor ist von einem gruenen nur am Rueckgabewert zu unterscheiden.
+    """
+    zeile = dict(K3_ZEILE)
+    zeile["resolvable"] = False
+    zeile["oos_share"] = OOS_ANTEIL
+    zeile["deflation_events"] = deflation_observations(
+        int(zeile["events"]), oos_share=OOS_ANTEIL
+    )
+    ziel = tmp_path / "aufloesung.json"
+    ziel.write_text(
+        json.dumps(
+            {
+                "schema_version": 2,
+                "trials_assumed": 12,
+                "oos_share": OOS_ANTEIL,
+                "entries": [zeile],
+            }
+        ),
+        encoding="utf-8",
+    )
+    assert pruefen(ziel) == 1
+
+
+def test_pruefen_haelt_die_zeilenfelder_gegen_den_kopf(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Eichfall. Vorher gruen: die Zeilenfelder von Schema 2 wurden nie gelesen.
+
+    ``messen()`` schreibt je Zeile ``oos_share`` und ``deflation_events``.
+    ``pruefen()`` rechnete nur ``ratio`` und ``resolvable`` nach -- eine Datei, deren
+    Zeilen ihrem eigenen Kopf widersprechen, kam durch, und welche der beiden Zahlen
+    die gedruckte war, stand nirgends.
+    """
+    ziel = _datei(
+        tmp_path,
+        ratio=K3_VERHAELTNIS_DEFLATION,
+        resolvable=False,
+        oos_share=OOS_ANTEIL,
+        zeile={"deflation_events": 193, "oos_share": 1.0},
+    )
+    assert pruefen(ziel) == 1
+    fehler = capsys.readouterr().err
+    assert "deflation_events" in fehler
+    assert "oos_share" in fehler
+
+
+def test_pruefen_rechnet_auch_die_abgeleiteten_zahlen_nach(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Eichfall. Vorher gruen: nachgerechnet wurde nur das Verhaeltnis.
+
+    ``needed_bps``, ``detectable_bps`` und ``required_sharpe`` stehen in der Messdatei
+    und in der gedruckten Tabelle. Solange nur ``ratio`` geprueft wurde, konnte daneben
+    eine beliebige Zahl stehen -- und gelesen wird die Tabelle, nicht das Verhaeltnis.
+    """
+    ziel = _datei(
+        tmp_path,
+        ratio=K3_VERHAELTNIS_DEFLATION,
+        resolvable=False,
+        oos_share=OOS_ANTEIL,
+        zeile={"detectable_bps": 0.5, "needed_bps": 1.0},
+    )
+    assert pruefen(ziel) == 1
+    fehler = capsys.readouterr().err
+    assert "detectable_bps" in fehler
+    assert "needed_bps" in fehler
+
+
+def test_pruefen_verlangt_die_zeilenfelder_von_schema_zwei(tmp_path: Path) -> None:
+    """Schema 2 ohne die Felder von Schema 2 ist keine Schema-2-Datei."""
+    ziel = _datei(
+        tmp_path,
+        ratio=K3_VERHAELTNIS_DEFLATION,
+        resolvable=False,
+        oos_share=OOS_ANTEIL,
+        zeile={"deflation_events": None, "oos_share": None},
+    )
+    roh = json.loads(ziel.read_text(encoding="utf-8"))
+    del roh["entries"][0]["deflation_events"]
+    del roh["entries"][0]["oos_share"]
+    ziel.write_text(json.dumps(roh), encoding="utf-8")
+    assert pruefen(ziel) == 1
 
 
 def test_korrigiert_nennt_die_zeilen_die_ihr_urteil_wechseln() -> None:

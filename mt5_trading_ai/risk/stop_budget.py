@@ -52,17 +52,37 @@ Ein Rueckfall auf die Tabelle ist deshalb **kein sicherer Vorgabewert**: er
 senkt die Sperre, statt sie zu halten. Daraus folgen drei Regeln, und sie sind
 der Grund fuer die Form der Schnittstelle:
 
-1. Liegt eine Messung vor, schlaegt sie die Tabelle **immer**.
+1. Liegt eine Messung vor, schlaegt sie die Tabelle **immer**. Dieses Modul
+   nimmt die Zahl, die es bekommt; **welche** Zahl als Messung gilt, entscheidet
+   der Aufrufer. Das ist keine Nachlaessigkeit, sondern eine Zustaendigkeit:
+   ``execution/risk_manager.py`` kennt die Herkunft (in-Prozess gemessen,
+   am Auftrag mitgereist, Messkampagne der Politik) und prueft sie dort -- eine
+   am Auftrag mitgereiste Zahl darf die Kostenpraemisse nur anheben, nie senken.
 2. Liegt keine vor, traegt das Ergebnis ``cost_is_measured=False`` und
    ``cost_basis == "annahme"``. Die Basis reist mit dem Ergebnis mit, damit sie
    kein Aufrufer uebersehen kann; ``execution/risk_manager.py`` reicht sie als
-   ``cost_basis`` in die Autorisierung durch, der Runner druckt sie in die
-   Checkliste. Still ist der Rueckfall an keiner Stelle.
+   ``detail["cost_basis"]`` in **jede** Autorisierung durch, der Runner druckt
+   sie in die Checkliste.
+
+   Wie weit das heute traegt, gehoert dazu: der Runner misst immer, in seiner
+   Checkliste kann das Wort "annahme" also gar nicht stehen. Und der Pfad, auf
+   dem der Rueckfall wirklich stattfindet -- eine von Hand gebaute
+   ``OrderRequest`` am Venue, die Schreibprobe in ``venue/smoke.py`` -- laeuft
+   ueber ``venue/mt5.py::_enforce_risk``, und das verwirft ``auth.detail``
+   vollstaendig (bei Ablehnung wird nur ``auth.reason`` gehoben, bei Freigabe
+   nichts). Die Basis steht dort im Rueckgabewert, aber in keinem Protokoll.
+   SPAETER (``venue/mt5.py``, nicht dieses Paket): ``detail["cost_basis"]`` in
+   die Ablehnungs- bzw. Freigabemeldung heben. Bis dahin gilt die Zusage
+   "sichtbar statt still" fuer den Runner-Pfad und fuer jeden Aufrufer, der die
+   Autorisierung selbst liest -- nicht fuer den Venue-Pfad.
 3. Wer nicht auf Annahmen handeln darf, setzt ``require_measured_cost=True``:
    dann ist die fehlende Messung ``no_trade`` (``cost_not_measured``) und nicht
-   Tabelle. Der Order-Pfad des Runners misst die Kosten im Schritt "Kostentor"
-   selbst und setzt den Schalter; die Tabelle bleibt fuer Herleitung, Doku und
-   Backtest, wo keine Order entsteht.
+   Tabelle. Diesen Schalter setzt die **Politik** (``RiskPolicy``), nicht der
+   einzelne Aufrufer: am Order-Pfad des Runners waere er eine Tautologie -- der
+   Runner uebergibt die Messung des Kostentors unbedingt, die fehlende Messung
+   ist dort per Konstruktion unerreichbar, und ein Schalter mit nur einer
+   Stellung ist keiner. Die Tabelle bleibt fuer Herleitung, Doku und Backtest,
+   wo keine Order entsteht.
 
 Warum ``require_measured_cost`` nicht schon per Vorgabe gilt: es gibt Aufrufer
 am Order-Pfad, die heute noch keine Messung mitfuehren (eine von Hand gebaute
@@ -121,13 +141,41 @@ class StopBudget:
 
     @property
     def cost_basis(self) -> str:
-        """Woher ``cost_bps`` stammt: ``gemessen`` oder ``annahme``.
+        """Ob ``cost_bps`` uebergeben wurde (``gemessen``) oder aus der Tabelle
+        stammt (``annahme``).
 
         Ein Wort statt eines Wahrheitswerts, weil diese Zeile in Protokolle und
         Checklisten wandert und dort gelesen wird. Die Basis gehoert zum
         Ergebnis, nicht in den Kopf des Aufrufers.
+
+        Genau lesen: dieses Modul sieht eine Zahl, nicht ihre Herkunft. Es kann
+        deshalb nur "jemand hat gemessen und die Zahl uebergeben" von "niemand
+        hat" unterscheiden -- ob die Zahl aus einem Live-Bid/Ask, aus einer
+        Messkampagne oder aus dem ``meta`` eines Auftrags kam, weiss allein der
+        Aufrufer. Wer den Kanal braucht, liest ihn dort, wo er bekannt ist:
+        ``execution/risk_manager.py`` schreibt ihn als erstes Wort in
+        ``RiskAuthorization.detail["cost_basis"]`` (``gemessen``/``auftrag``/
+        ``kampagne``/``annahme``) und prueft die mitgereiste Zahl, bevor sie
+        dieses Etikett bekommt.
         """
         return "gemessen" if self.cost_is_measured else "annahme"
+
+
+def _klassen_schluessel(asset_class: str) -> str:
+    """Die **eine** Normalisierung des Klassennamens (Rand, Grossschreibung)."""
+    return str(asset_class).strip().lower()
+
+
+def assumed_cost_bps(asset_class: str) -> Decimal | None:
+    """Die Annahme dieser Klasse -- ``None``, wenn die Klasse unbekannt ist.
+
+    Der Lesezugriff auf ``ASSUMED_ROUND_TURN_COST_BPS`` steht hier und nicht bei
+    jedem Aufrufer, damit die Schluesselregel (gestutzt, klein) nicht in zwei
+    Fassungen im Haus liegt. ``execution/risk_manager.py`` braucht die Zahl, um
+    zu pruefen, ob eine am Auftrag mitgereiste "Messung" die Kostenpraemisse
+    unterbietet.
+    """
+    return ASSUMED_ROUND_TURN_COST_BPS.get(_klassen_schluessel(asset_class))
 
 
 def cost_bps_from_fraction(cost_fraction: Decimal) -> Decimal:
@@ -193,7 +241,7 @@ def stop_budget(
     Kostenzahl, aber sie macht eine unbekannte Anlageklasse nicht bekannt --
     sonst haette das Durchreichen der Messung die Klassensperre still entwertet.
     """
-    key = str(asset_class).strip().lower()
+    key = _klassen_schluessel(asset_class)
     if measured_cost_bps is not None and (
         not measured_cost_bps.is_finite() or measured_cost_bps <= 0
     ):
@@ -203,21 +251,29 @@ def stop_budget(
     measured = measured_cost_bps is not None
 
     if key not in ASSUMED_ROUND_TURN_COST_BPS:
+        # Die Klasse ist unbekannt -- die Kostenlage deswegen aber nicht. Wer
+        # gemessen hat, hat gemessen: die Zahl und ihr Etikett gehen in die
+        # Ablehnungsakte, sonst meldete der eine Datensatz, der die Kostenbasis
+        # dokumentieren soll, ausgerechnet im Fehlerfall "annahme 0 bp" ueber
+        # einen Aufrufer, der am Live-Bid/Ask gemessen hat. Das Budget bleibt
+        # 0/0: ohne bekannte Klasse gibt es keine Spanne, nur einen Grund.
         return StopBudget(
             lower_bps=Decimal("0"),
             upper_bps=Decimal("0"),
-            cost_bps=Decimal("0"),
+            cost_bps=measured_cost_bps if measured_cost_bps is not None else Decimal(0),
             asset_class=key,
             leverage=leverage,
             tradeable=False,
             reason="unknown_asset_class",
-            cost_is_measured=False,
+            cost_is_measured=measured,
         )
 
     if not measured and require_measured_cost:
         # Kein stiller Rueckfall auf die Annahme: der Aufrufer hat erklaert, dass
         # er die Zusage ``max_cost_drag`` belegen muss, und ohne Messung kann er
         # das nicht. Nicht handeln ist die einzige Antwort, die nicht luegt.
+        # ``cost_is_measured=False``/``cost_bps=0`` verlieren hier nichts: dieser
+        # Zweig ist nur ohne Messung erreichbar (``not measured``).
         return StopBudget(
             lower_bps=Decimal("0"),
             upper_bps=Decimal("0"),

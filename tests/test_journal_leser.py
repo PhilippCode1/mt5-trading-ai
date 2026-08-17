@@ -27,9 +27,13 @@ from typing import Any
 
 import pytest
 from mt5_trading_ai.betrieb.journal import (
+    QUELLE_ALTJOURNAL,
+    QUELLE_BEOBACHTET,
     JournalError,
     Trade,
+    bilanz,
     durchgehende_equity,
+    geldbilanz,
     lies_alle,
     lies_journal,
 )
@@ -254,6 +258,147 @@ def test_die_luecke_zwischen_zwei_laeufen_wird_markiert(tmp_path: Path) -> None:
 
 def test_leeres_verzeichnis_gibt_eine_leere_liste(tmp_path: Path) -> None:
     assert lies_alle(tmp_path) == []
+
+
+# --- Geld: Herkunft ist Pflicht -------------------------------------------
+def test_ein_geldbetrag_ohne_herkunft_ist_ein_fehler(tmp_path: Path) -> None:
+    """Der Eichfall gegen die schmeichelnde Richtung.
+
+    Gegen die alte Fassung: ``_geldergebnis`` setzte ``"unbenannt"`` ein, wenn
+    ``ergebnis_geld_quelle`` fehlte. Der Betrag ging damit als vollwertiges
+    Geldergebnis durch, bestimmte ueber ``gewinn`` den Trefferanteil mit -- und weil
+    das Herkunftsfeld ausserdem keinen Leser hatte, sah es niemand. Eine Schaetzung,
+    die sich als Messung ausgibt, ist genau die Sorte Zahl, gegen die dieses Repo
+    gebaut ist.
+
+    Alte Journale laufen hier nicht hinein: sie tragen ``ergebnis_geld`` gar nicht.
+    """
+    p = _schreib(
+        tmp_path / "journal-x.jsonl",
+        _zeile("vom_broker_geschlossen", 9, symbol="EURUSD", volumen="0.1",
+               war_kauf=True, position_id="P4", einstiegspreis="1.1",
+               ergebnis_geld="-3.10", ergebnis_geld_waehrung="EUR"),
+    )
+    with pytest.raises(JournalError, match="ohne ergebnis_geld_quelle"):
+        lies_journal(p)
+
+
+def test_die_herkunft_darf_nicht_leer_sein(tmp_path: Path) -> None:
+    """Ein leerer String ist keine Angabe -- sonst waere die Sperre in einem Zug
+    umgangen."""
+    p = _schreib(
+        tmp_path / "journal-x.jsonl",
+        _zeile("vom_broker_geschlossen", 9, symbol="EURUSD", volumen="0.1",
+               war_kauf=True, ergebnis_geld="-3.10", ergebnis_geld_quelle="  "),
+    )
+    with pytest.raises(JournalError, match="ohne ergebnis_geld_quelle"):
+        lies_journal(p)
+
+
+def test_ein_alter_satz_ohne_geldfeld_bleibt_lesbar(tmp_path: Path) -> None:
+    """Die Gegenprobe: die Sperre darf nicht die Altjournale erschlagen.
+
+    Kernregel 22 -- alte Saetze werden nicht umgeschrieben. Sie tragen kein
+    ``ergebnis_geld``, sondern ``zuletzt_unrealisiert``, und die Deutung faellt
+    sichtbar beim Lesen.
+    """
+    p = _schreib(
+        tmp_path / "journal-x.jsonl",
+        _zeile("vom_broker_geschlossen", 9, symbol="EURUSD", volumen="0.1",
+               war_kauf=True, zuletzt_unrealisiert="-3.10"),
+    )
+    t = lies_journal(p).trades()[0]
+    assert t.ergebnis_geld == Decimal("-3.10")
+    assert t.ergebnis_geld_quelle == QUELLE_ALTJOURNAL
+
+
+def test_geldbilanz_wirft_bei_einem_trade_ohne_herkunft() -> None:
+    """Dieselbe Regel dort, wo aufsummiert wird -- nicht nur am Dateileser."""
+    t = Trade(symbol="EURUSD", ist_kauf=True, volumen=Decimal("0.1"), auf_ts=T0,
+              einstieg=Decimal("1.1"), zu_ts=T0, ergebnis_geld=Decimal("-1"))
+    with pytest.raises(JournalError, match="ohne ergebnis_geld_quelle"):
+        geldbilanz([t])
+
+
+# --- Die eine Einteilung ---------------------------------------------------
+def _trade(
+    *, geld: str | None = None, ausstieg: str | None = None,
+    quelle: str = QUELLE_BEOBACHTET, waehrung: str | None = "EUR",
+    vom_broker: bool = False,
+) -> Trade:
+    return Trade(
+        symbol="EURUSD", ist_kauf=True, volumen=Decimal("0.1"), auf_ts=T0,
+        einstieg=Decimal("1.10000"), zu_ts=T0 + timedelta(minutes=5),
+        ausstieg=None if ausstieg is None else Decimal(ausstieg),
+        vom_broker=vom_broker,
+        ergebnis_geld=None if geld is None else Decimal(geld),
+        ergebnis_geld_waehrung=None if geld is None else waehrung,
+        ergebnis_geld_quelle=None if geld is None else quelle,
+    )
+
+
+def test_bilanz_sortiert_in_vier_toepfe() -> None:
+    """Die Einteilung, die vorher zweimal im Haus stand.
+
+    Ein Trade mit Preis zaehlt beim Preis, einer mit nur Geld im Geldtopf, ein stummer
+    in keinem von beiden -- und ein offener gar nicht mit.
+    """
+    offen = Trade(symbol="EURUSD", ist_kauf=True, volumen=Decimal("0.1"), auf_ts=T0,
+                  einstieg=Decimal("1.1"))
+    b = bilanz([
+        _trade(ausstieg="1.10110", geld="+4.82"),
+        _trade(geld="-2.68", vom_broker=True),
+        _trade(),
+        offen,
+    ])
+    assert len(b.geschlossen) == 3
+    assert len(b.preis) == 1
+    assert len(b.beurteilt) == 2
+    assert len(b.nur_geld) == 1
+    assert len(b.stumm) == 1
+
+
+def test_geldbilanz_nimmt_auch_die_selbst_geschlossenen_trades() -> None:
+    """Der Kern: der Geldtopf ist NICHT der Topf "nur Geld".
+
+    ``urteilsquelle`` gibt dem Preis den Vorrang. Wer die Geldsumme daran aufhaengt,
+    hat wieder ausschliesslich Stop-Outs -- also nur Verlierer -- in der Statistik,
+    und das Geldfeld am eigenen Schluss waere wirkungslos.
+    """
+    b = geldbilanz([_trade(ausstieg="1.10110", geld="+4.82"),
+                    _trade(geld="-2.68", vom_broker=True)])
+    assert len(b.trades) == 2
+    assert b.vom_broker == 1
+    assert b.summe == Decimal("2.14")
+    assert b.waehrung == "EUR"
+    assert b.hindernis is None
+
+
+def test_geldbilanz_haelt_geschriebene_und_gedeutete_betraege_auseinander() -> None:
+    """Der Leser fuer ``ergebnis_geld_quelle``. Ohne ihn ist die Marke Ballast."""
+    b = geldbilanz([_trade(geld="-2.68"),
+                    _trade(geld="-2.43", quelle=QUELLE_ALTJOURNAL)])
+    assert b.je_herkunft == {QUELLE_BEOBACHTET: 1, QUELLE_ALTJOURNAL: 1}
+
+
+def test_geldbilanz_summiert_keine_zwei_waehrungen() -> None:
+    """Ueber mehrere Laeufe ist das erreichbar: verschiedene Konten, verschiedene
+    Waehrungen. Eine Summe darueber sieht aus wie Geld und ist keines."""
+    b = geldbilanz([_trade(geld="+1.00"), _trade(geld="+2.00", waehrung="USD")])
+    assert b.summe is None
+    assert b.hindernis is not None and "verschiedene Waehrungen" in b.hindernis
+
+
+def test_geldbilanz_ohne_waehrungsangabe_summiert_nicht() -> None:
+    b = geldbilanz([_trade(geld="+1.00", waehrung=None)])
+    assert b.summe is None
+    assert b.hindernis is not None and "ohne Waehrungsangabe" in b.hindernis
+
+
+def test_geldbilanz_ohne_geldergebnisse_ist_leer() -> None:
+    b = geldbilanz([_trade(ausstieg="1.10110")])
+    assert b.trades == []
+    assert b.summe is None and b.hindernis is None
 
 
 # --- Gegen die echten Journale --------------------------------------------

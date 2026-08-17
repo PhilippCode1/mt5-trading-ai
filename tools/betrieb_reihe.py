@@ -36,7 +36,6 @@ import argparse
 import statistics
 import sys
 from collections import Counter
-from dataclasses import dataclass
 from decimal import Decimal
 from pathlib import Path
 
@@ -45,7 +44,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from mt5_trading_ai.betrieb.journal import (  # noqa: E402
     Lauf,
     Trade,
+    bilanz,
     durchgehende_equity,
+    geldbilanz,
     lies_alle,
 )
 
@@ -71,35 +72,27 @@ def _kopfzeile(lauf: Lauf) -> str:
     )
 
 
-@dataclass(frozen=True)
-class Bilanz:
-    """Was sich ueber eine Menge Trades sagen laesst -- nach Belastbarkeit getrennt.
+def _geldbericht(trades: list[Trade]) -> None:
+    """Die Geldergebnisse ueber ALLE Laeufe -- mit Herkunft, und nur summiert, wenn es
+    eine gemeinsame Waehrung gibt.
 
-    ``preis`` sind gemessene Preisdifferenzen und nur sie gehoeren in einen Median.
-    ``beurteilt`` ist die groessere Menge: dort kommt das Vorzeichen notfalls aus dem
-    zuletzt beobachteten Buchwert. Ohne diese Trennung stuende hinterher eine
-    Trefferquote da, der man nicht ansieht, wie viel Schaetzung in ihr steckt.
+    Hier ist der Fall echt: mehrere Laeufe koennen auf verschiedenen Konten und damit
+    in verschiedenen Waehrungen gelaufen sein. Im Einzellauf-Werkzeug kann er nicht
+    auftreten -- ein Journal ist ein Lauf ist ein Konto.
     """
-
-    preis: list[Decimal]
-    beurteilt: list[Trade]
-    nur_geld: list[Trade]
-    stumm: list[Trade]
-    geschlossen: int
-
-
-def _ergebnisse(trades: list[Trade]) -> Bilanz:
-    """Trades in die vier Toepfe sortieren. Ein stummer Trade bleibt stumm."""
-    zu = [t for t in trades if not t.offen]
-    werte = [t.ergebnis_bps for t in zu if t.ergebnis_bps is not None]
-    beurteilt = [t for t in zu if t.beurteilbar]
-    return Bilanz(
-        preis=[w for w in werte if w is not None],
-        beurteilt=beurteilt,
-        nur_geld=[t for t in beurteilt if t.urteilsquelle == "geld"],
-        stumm=[t for t in zu if not t.beurteilbar],
-        geschlossen=len(zu),
-    )
+    b = geldbilanz(trades)
+    if not b.trades:
+        return
+    eigene = len(b.trades) - b.vom_broker
+    print(f"  Geldergebnisse       : {len(b.trades)} ({b.vom_broker} vom Broker "
+          f"geschlossen, {eigene} selbst geschlossen)")
+    for herkunft, n in sorted(b.je_herkunft.items()):
+        print(f"      {n:>4}x  Herkunft: {herkunft}")
+    if b.summe is None:
+        print(f"  Keine Summe: {b.hindernis}.")
+        return
+    print(f"  Summe der Schaetzungen: {b.summe:+} {b.waehrung} "
+          f"(brutto, ohne Swap und Kommission)")
 
 
 def auswerten(laeufe: list[Lauf], *, nur_scharf: bool) -> int:
@@ -148,13 +141,15 @@ def auswerten(laeufe: list[Lauf], *, nur_scharf: bool) -> int:
         print()
 
     # --- Trades ------------------------------------------------------------
+    # Die Einteilung steht in ``betrieb/journal.py``: sie lag hier und in
+    # ``betrieb_auswerten.py`` doppelt, und die Kopien waren schon auseinander.
     alle = [t for lauf in laeufe for t in lauf.trades()]
-    b = _ergebnisse(alle)
+    b = bilanz(alle)
     print("-" * 100)
     print("TRADES")
     print("-" * 100)
     print(f"  gesamt                : {len(alle)}")
-    print(f"  davon geschlossen     : {b.geschlossen}")
+    print(f"  davon geschlossen     : {len(b.geschlossen)}")
     print(f"  mit Preisergebnis (bp): {len(b.preis)}")
     print(f"  nur mit Geldergebnis  : {len(b.nur_geld)}")
     print(f"  ohne jedes Ergebnis   : {len(b.stumm)}")
@@ -183,6 +178,7 @@ def auswerten(laeufe: list[Lauf], *, nur_scharf: bool) -> int:
         print(f"  Trefferanteil        : {treffer * 100:.1f} % ueber "
               f"{len(b.beurteilt)} beurteilbare "
               f"(davon {len(b.nur_geld)} per Geldschaetzung)")
+    _geldbericht(b.geschlossen)
     if b.preis or b.beurteilt:
         print()
         print("  ACHTUNG, was diese Zahlen NICHT sind: sie rechnen die Preisdifferenz")

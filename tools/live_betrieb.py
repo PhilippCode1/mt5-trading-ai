@@ -56,9 +56,10 @@ Strategie als die getestete, denn der Backtest kennt nur fertige Kerzen aus Date
 
 Die Entscheidung faellt in ``_signal`` ueber ``Bar.is_closed`` (gemessen in
 ``venue/mt5.py:get_bars`` gegen die Platzzeit) und wird in **jedem** Takt als
-``signalbasis``-Satz protokolliert: welche Kerze, wie viele verwendet, wie viele als
-laufend verworfen. Ohne diesen Satz war beim letzten Zweifel nicht feststellbar, was
-die Maschine wirklich gerechnet hat -- die Auskunft war nie geschrieben worden.
+``signalbasis``-Satz protokolliert: welche Kerze, wie viele abgeschlossene geliefert
+wurden, wie viele davon wirklich in die Rechnung eingehen, wie viele als laufend
+verworfen wurden. Ohne diesen Satz war beim letzten Zweifel nicht feststellbar, was die
+Maschine wirklich gerechnet hat -- die Auskunft war nie geschrieben worden.
 
 WAS DER LAUF NICHT BEANTWORTET
 -------------------------------
@@ -200,6 +201,15 @@ class Signallage:
     #: Beginn der JUENGSTEN ABGESCHLOSSENEN Kerze, auf der gerechnet wurde. ``None``
     #: heisst: es wurde gar nicht gerechnet (keine Kerzen, zu wenige abgeschlossene).
     kerze_ts: datetime | None
+    #: Wie viele ABGESCHLOSSENE Kerzen der Handelsplatz geliefert hat. Bei
+    #: ``KERZEN_STUNDEN=360`` sind das rund 359 -- und eben NICHT die Zahl, auf der
+    #: gerechnet wurde.
+    kerzen_abgeschlossen: int
+    #: Wie viele davon wirklich in die Rechnung eingehen. ``moving_average_crossover``
+    #: sieht nur ``history[-slow:]``, also die letzten ``LANGSAM``. Dieses Feld hiess
+    #: schon frueher so und meldete trotzdem die gelieferte Zahl: im Journal stuende
+    #: dann "kerzen_verwendet: 359", wo 26 gerechnet wurden. ``0`` heisst: es wurde
+    #: gar nicht gerechnet.
     kerzen_verwendet: int
     #: Wie viele gelieferte Kerzen als noch laufend verworfen wurden. Steht im
     #: Protokoll, weil eine Null hier der Hinweis waere, dass die Kennzeichnung nicht
@@ -234,14 +244,18 @@ def _signal(venue: Mt5Venue, symbol: str, jetzt: datetime) -> Signallage:
             start=jetzt - timedelta(hours=KERZEN_STUNDEN), end=jetzt,
         )
     except VenueError as exc:
-        return Signallage(Signal.FLAT, f"keine Kerzen: {exc}", None, 0, 0)
+        return Signallage(
+            signal=Signal.FLAT, detail=f"keine Kerzen: {exc}", kerze_ts=None,
+            kerzen_abgeschlossen=0, kerzen_verwendet=0, kerzen_laufend=0,
+        )
     fertig = [b for b in bars if b.is_closed]
     laufend = len(bars) - len(fertig)
     if len(fertig) < LANGSAM:
         return Signallage(
-            Signal.FLAT,
-            f"nur {len(fertig)} abgeschlossene von {len(bars)} Kerzen",
-            None, len(fertig), laufend,
+            signal=Signal.FLAT,
+            detail=f"nur {len(fertig)} abgeschlossene von {len(bars)} Kerzen",
+            kerze_ts=None, kerzen_abgeschlossen=len(fertig), kerzen_verwendet=0,
+            kerzen_laufend=laufend,
         )
     reihe = [
         BarRow(ts=b.ts, open=float(b.open), high=float(b.high), low=float(b.low),
@@ -249,7 +263,13 @@ def _signal(venue: Mt5Venue, symbol: str, jetzt: datetime) -> Signallage:
         for b in fertig
     ]
     sig = moving_average_crossover(SCHNELL, LANGSAM)(MarketView(reihe, len(reihe) - 1))
-    schluesse = [b.close for b in reihe[-LANGSAM:]]
+    # DIESELBE Auswahl, die die Strategie trifft (``history[-slow:]``), und nur sie
+    # geht als "verwendet" ins Protokoll. Der Handelsplatz liefert Hunderte Kerzen;
+    # gerechnet wird auf den letzten LANGSAM. Ein Feld ``kerzen_verwendet``, das die
+    # gelieferte Zahl meldet, waere ein Etikett ohne Deckung -- und ausgerechnet die
+    # Zahl, an der man haette ablesen sollen, worauf die Maschine rechnet.
+    verwendet = reihe[-LANGSAM:]
+    schluesse = [b.close for b in verwendet]
     return Signallage(
         signal=sig,
         detail=(
@@ -257,7 +277,8 @@ def _signal(venue: Mt5Venue, symbol: str, jetzt: datetime) -> Signallage:
             f"MA{LANGSAM}={sum(schluesse) / LANGSAM:.5f}"
         ),
         kerze_ts=reihe[-1].ts,
-        kerzen_verwendet=len(fertig),
+        kerzen_abgeschlossen=len(fertig),
+        kerzen_verwendet=len(verwendet),
         kerzen_laufend=laufend,
     )
 
@@ -277,7 +298,9 @@ def _signal_mit_protokoll(
     lage = _signal(venue, symbol, jetzt)
     journal.schreib(
         "signalbasis", symbol=symbol, zweck=zweck, signal=lage.signal.name,
-        kerze_ts=lage.kerze_ts, kerzen_verwendet=lage.kerzen_verwendet,
+        kerze_ts=lage.kerze_ts,
+        kerzen_abgeschlossen=lage.kerzen_abgeschlossen,
+        kerzen_verwendet=lage.kerzen_verwendet,
         kerzen_laufend_verworfen=lage.kerzen_laufend, detail=lage.detail,
     )
     return lage
@@ -338,8 +361,14 @@ def _schliesse(
     # beide Preise vorliegen und das Preisergebnis das bessere ist. Grund: traegen es
     # nur die broker-seitigen Schluesse, dann besteht jede Geldstatistik ausschliesslich
     # aus Stop-Outs, also aus Verlierern -- derselbe blinde Fleck wie zuvor, nur mit
-    # umgekehrtem Vorzeichen. Der Leser gibt dem Preisergebnis den Vorrang
-    # (``Trade.urteilsquelle``), das Geld ist die Rueckfallebene.
+    # umgekehrtem Vorzeichen.
+    #
+    # Das gilt aber nur, solange die Geldstatistik den Satz auch liest.
+    # ``Trade.urteilsquelle`` gibt dem gemessenen Preis den Vorrang, ein selbst
+    # geschlossener Trade steht darum NIE im Topf "nur Geld". Die Geldsumme laeuft
+    # deshalb ueber ``journal.geldbilanz`` und damit ueber ALLE Geldergebnisse; haengte
+    # sie am Topf "nur Geld", waere dieses Feld hier wirkungslos und der blinde Fleck
+    # bliebe bestehen.
     journal.schreib("geschlossen", symbol=lage.symbol, grund=grund,
                     volumen=lage.volumen, war_kauf=lage.ist_kauf,
                     order_id=ergebnis.venue_order_id,

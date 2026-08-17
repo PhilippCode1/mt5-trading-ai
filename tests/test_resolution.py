@@ -17,12 +17,22 @@ from __future__ import annotations
 import math
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import Any
 
 import pytest
-from mt5_trading_ai.backtest.ereignisstudie import OOS_ANTEIL, Kerze, bestaetige, studie
+from mt5_trading_ai.backtest.ereignisstudie import (
+    OOS_ANTEIL,
+    Kerze,
+    StudienError,
+    bestaetige,
+    studie,
+)
 from mt5_trading_ai.backtest.resolution import (
     DEFAULT_COST_FACTOR,
     DEFAULT_DSR_THRESHOLD,
+    MIN_DEFLATIONSBEOBACHTUNGEN,
+    MIN_EREIGNISSE,
+    DeflationUnreachableError,
     ResolutionError,
     assess,
     deflation_observations,
@@ -45,8 +55,41 @@ K3_KOSTEN = 1.8351
 K3_VERSUCHE = 12
 
 #: Ueberschrift des Vorbehalts in ``ABSCHLUSS-3a/01-AUFLOESUNG.md``. Solange
-#: ``config/aufloesung.json`` ohne ``oos_share`` dasteht, muss dieser Text dort stehen.
+#: ``config/aufloesung.json`` nicht gegen ``OOS_ANTEIL`` gerechnet ist, muss dieser Text
+#: dort stehen.
 VORBEHALT_MARKE = "Vorbehalt zur gesamten Tabelle"
+
+
+def _anteil_stimmt(roh: dict[str, Any]) -> bool:
+    """Fuehrt die Messdatei den Anteil, auf dem die Deflation TATSAECHLICH laeuft?
+
+    Geprueft wird der WERT, nicht die Anwesenheit des Schluessels. Die vorige Fassung
+    fragte ``"oos_share" not in roh`` -- damit liess sich die Zusicherung auf den
+    Vorbehalt durch EINEN nachgetragenen Schluessel abschalten, ohne dass eine einzige
+    Zahl neu gemessen worden waere. Genau diese Bauart -- ein Melder, der die
+    Anwesenheit eines Feldes fuer seinen Inhalt nimmt -- ist die Fehlerklasse, gegen
+    die dieses ganze Vorhaben laeuft.
+
+    ``True`` faellt ausdruecklich durch: in Python ist ``bool`` ein ``int``, und
+    ``"oos_share": true`` waere sonst klaglos 1,0.
+    """
+    wert = roh.get("oos_share")
+    if isinstance(wert, bool) or not isinstance(wert, int | float):
+        return False
+    return abs(float(wert) - OOS_ANTEIL) <= 1e-9
+
+
+def test_der_vorbehalt_haengt_am_wert_nicht_am_schluessel() -> None:
+    """Eichfall zum Melder dieses Tests selbst.
+
+    Gegen die vorige Fassung (``"oos_share" in roh``) sind die mittleren drei Zeilen
+    rot: dort galt jede Datei als geprueft, der jemand den Schluessel nachgetragen hat.
+    """
+    assert not _anteil_stimmt({})
+    assert not _anteil_stimmt({"oos_share": 1.0})
+    assert not _anteil_stimmt({"oos_share": "1/3"})
+    assert not _anteil_stimmt({"oos_share": True})
+    assert _anteil_stimmt({"oos_share": OOS_ANTEIL})
 
 
 # --- required_sharpe ------------------------------------------------------
@@ -236,6 +279,59 @@ def test_mindestereigniszahl_ist_none_wenn_es_nie_reicht() -> None:
     ) is None
 
 
+def test_mindestereigniszahl_wirft_nicht_an_ihrem_eigenen_rand() -> None:
+    """Eichfall. Vorher kam hier ein ``ResolutionError`` statt einer Zahl.
+
+    Bei einer kleinen Streuung liegt die Kippstelle unmittelbar an der unteren
+    Suchgrenze. Die suchte frueher ab „zwei Beobachtungen" -- also unterhalb dessen,
+    worueber ``assess`` ueberhaupt urteilt --, und die Binaersuche landete auf einer
+    Stichprobe, fuer die selbst eine Sharpe von 5,0 die Deflationsschwelle nicht
+    erreicht. Der zugesicherte Rueckgabetyp ``int | None`` war damit nicht eingeloest:
+    die Funktion warf. Der Aufruf in ``tools/aufloesung.py`` lag ausserhalb des
+    ``try``, ein Messlauf waere dort abgebrochen -- nach der gedruckten Tabelle und vor
+    dem Schreiben der Messdatei.
+    """
+    n = min_events_for_resolution(
+        trials=12, dispersion=0.5, cost_bps=1.0, oos_share=OOS_ANTEIL
+    )
+    assert n == 58, "die kleinste Ereigniszahl, aus der 20 Beobachtungen werden"
+    assert assess(
+        events=n, trials=12, dispersion=0.5, cost_bps=1.0, oos_share=OOS_ANTEIL
+    ).resolvable
+
+
+def test_mindestereigniszahl_bleibt_eine_zahl_wenn_die_schwelle_unerreichbar_ist() -> (
+    None
+):
+    """Auch am oberen Ende der Versuchszahl bleibt die Antwort eine Zahl.
+
+    Bei sehr vielen Versuchen ist die Schwelle fuer kleine Stichproben mit KEINER
+    Sharpe erreichbar; ``required_sharpe`` wirft dort. Das ist kein Rechenfehler,
+    sondern ein „nicht aufloesbar" in seiner schaerfsten Form, und die Suche liest es
+    genau so -- an einem eigenen Fehlertyp, nicht an einem breiten ``except``.
+    """
+    with pytest.raises(DeflationUnreachableError):
+        required_sharpe(MIN_DEFLATIONSBEOBACHTUNGEN, 1_000_000)
+    n = min_events_for_resolution(
+        trials=1_000_000, dispersion=0.5, cost_bps=1.0, oos_share=OOS_ANTEIL
+    )
+    assert n is not None and n > 58
+
+
+def test_mindestereigniszahl_ist_none_wenn_die_obergrenze_zu_klein_ist() -> None:
+    """Reicht ``ceiling`` nicht fuer eine bestaetigungsfaehige Stichprobe: ``None``.
+
+    Nicht ein Fehler und nicht eine geschmeichelte Zahl -- ``None`` heisst hier genau
+    das, was der Docstring zusagt: „so viele Ereignisse gibt es in diesem Rahmen nicht".
+    """
+    assert min_events_for_resolution(
+        trials=8, dispersion=1.0, cost_bps=1.0, oos_share=OOS_ANTEIL, ceiling=40
+    ) is None
+    assert min_events_for_resolution(
+        trials=8, dispersion=1.0, cost_bps=1.0, oos_share=1.0, ceiling=10
+    ) is None
+
+
 def test_mindestereigniszahl_zaehlt_ereignisse_nicht_beobachtungen() -> None:
     """Wer nur ein Drittel deflationiert, braucht rund dreimal so viele Ereignisse.
 
@@ -272,7 +368,26 @@ def _gerade_kerzen(anzahl: int) -> list[Kerze]:
     return kerzen
 
 
-def test_deflationsstichprobe_deckt_sich_mit_der_ereignisstudie() -> None:
+def _leeres_register(tmp_path: Path) -> Path:
+    """Ein eigenes, leeres Versuchsregister fuer diesen Testlauf.
+
+    Ohne Angabe griffe ``bestaetige`` auf ``<repo>/TRIALS.jsonl`` zu -- und die Datei
+    ist per ``.gitignore`` NICHT versioniert. Ein Fall, der sie braucht, ist auf dem
+    Rechner des Erbauers gruen und auf jedem frischen Klon rot. Ein leeres Register ist
+    fuer ``deflation_trials`` kein Fehler, sondern „dies ist der erste Versuch"; die
+    Versuchszahl geht in ``dsr_n`` ohnehin nicht ein.
+    """
+    register = tmp_path / "TRIALS.jsonl"
+    register.write_text("", encoding="utf-8")
+    return register
+
+
+@pytest.mark.parametrize(
+    "kerzenzahl,trennt_abschneiden_von_runden", [(320, False), (324, True)]
+)
+def test_deflationsstichprobe_deckt_sich_mit_der_ereignisstudie(
+    kerzenzahl: int, trennt_abschneiden_von_runden: bool, tmp_path: Path
+) -> None:
     """Die Umrechnung wird nicht nachgebaut, sondern gegen die Studie gehalten.
 
     ``bestaetige`` meldet in ``Bestaetigung.dsr_n``, wie viele Beobachtungen der DSR
@@ -280,8 +395,17 @@ def test_deflationsstichprobe_deckt_sich_mit_der_ereignisstudie() -> None:
     Waere hier nur die Formel aus der Studie abgeschrieben, pruefte der Fall die
     Abschrift und nicht die Uebereinstimmung -- und ein Abriss zwischen beiden Modulen
     bliebe unsichtbar.
+
+    ZWEI LAEUFE, WEIL EINER NICHTS UNTERSCHEIDET
+    --------------------------------------------
+    Mit 320 Kerzen sind 78 Ereignisse messbar, und 78 x 2/3 ist glatt 52: abschneiden,
+    runden und aufrunden liefern dasselbe. Der Fall haette also gruen bestanden, wenn
+    ``deflation_observations`` auf ``round`` gewechselt waere -- ausgerechnet die
+    Rundungsart, die sein Docstring als tragend bezeichnet. Mit 324 Kerzen sind es 79,
+    und dort trennen sich die beiden um einen ganzen Wert (27 gegen 26). Der Parameter
+    ``trennt_abschneiden_von_runden`` haelt fest, welcher Lauf das leisten kann.
     """
-    kerzen = _gerade_kerzen(320)
+    kerzen = _gerade_kerzen(kerzenzahl)
     ereignisse = [k.ts for k in kerzen[4:-4:4]]
     ergebnis, werte = studie(
         kandidat="erfunden",
@@ -298,11 +422,124 @@ def test_deflationsstichprobe_deckt_sich_mit_der_ereignisstudie() -> None:
         fenster_stunden=1.0,
         k_bps=1.0,
         saat=7,
+        register_pfad=_leeres_register(tmp_path),
     )
     assert bestaetigung.dsr_n == deflation_observations(
         ergebnis.n_gemessen, oos_share=OOS_ANTEIL
     )
     assert bestaetigung.dsr_n < ergebnis.n_gemessen
+
+    gerundet = ergebnis.n_gemessen - round(ergebnis.n_gemessen * (1.0 - OOS_ANTEIL))
+    assert (gerundet != bestaetigung.dsr_n) is trennt_abschneiden_von_runden, (
+        f"{ergebnis.n_gemessen} gemessene Ereignisse: abschneiden gibt "
+        f"{bestaetigung.dsr_n}, runden {gerundet} -- dieser Lauf sollte die beiden "
+        f"{'unterscheiden' if trennt_abschneiden_von_runden else 'nicht unterscheiden'}"
+    )
+
+
+def test_die_untergrenzen_sind_die_der_bestaetigung(tmp_path: Path) -> None:
+    """Woher ``MIN_EREIGNISSE`` und ``MIN_DEFLATIONSBEOBACHTUNGEN`` kommen -- gemessen.
+
+    Beide Zahlen stehen in ``ereignisstudie.py`` als nackte Literale in
+    ``studie``/``bestaetige`` und lassen sich von aussen nicht importieren. Statt sie
+    hier zu behaupten, fragt dieser Fall die echten Funktionen: was sie ablehnen, muss
+    ``assess`` ablehnen, und wo sie laufen, muss ``assess`` urteilen. Laufen die
+    Grenzen auseinander, wird es hier rot -- nicht erst in einer Studie, die als
+    „aufloesbar" gilt und deren Bestaetigung dann wirft.
+    """
+    register = _leeres_register(tmp_path)
+
+    # (a) Unter MIN_EREIGNISSE messbaren Werten faengt die Studie gar nicht erst an.
+    kurz = _gerade_kerzen(108)
+    with pytest.raises(StudienError, match="messbare Ereignisse"):
+        studie(
+            kandidat="erfunden",
+            instrument="ERFUNDEN",
+            kerzen=kurz,
+            ereignisse=[k.ts for k in kurz[4:-4:4]],
+            fenster_stunden=1.0,
+            k_bps=1.0,
+        )
+    with pytest.raises(ResolutionError, match="bestaetige"):
+        assess(events=25, trials=12, dispersion=50.0, cost_bps=1.0, oos_share=1.0)
+    assert 25 < MIN_EREIGNISSE
+
+    # (b) Genau an der Grenze des Out-of-Sample-Teils: 57 Ereignisse ergeben 19
+    #     Beobachtungen und werden abgewiesen, 58 ergeben 20 und laufen durch.
+    for kerzenzahl, erwartet_laeuft in ((234, False), (238, True)):
+        kerzen = _gerade_kerzen(kerzenzahl)
+        ereignisse = [k.ts for k in kerzen[4:-4:4]]
+        ergebnis, werte = studie(
+            kandidat="erfunden",
+            instrument="ERFUNDEN",
+            kerzen=kerzen,
+            ereignisse=ereignisse,
+            fenster_stunden=1.0,
+            k_bps=1.0,
+        )
+        beobachtungen = deflation_observations(
+            ergebnis.n_gemessen, oos_share=OOS_ANTEIL
+        )
+        assert (beobachtungen >= MIN_DEFLATIONSBEOBACHTUNGEN) is erwartet_laeuft
+        if erwartet_laeuft:
+            bestaetigung = bestaetige(
+                werte,
+                kerzen=kerzen,
+                ereignisse=ereignisse,
+                fenster_stunden=1.0,
+                k_bps=1.0,
+                saat=7,
+                register_pfad=register,
+            )
+            assert bestaetigung.dsr_n == MIN_DEFLATIONSBEOBACHTUNGEN
+            assert assess(
+                events=ergebnis.n_gemessen,
+                trials=12,
+                dispersion=50.0,
+                cost_bps=1.0,
+                oos_share=OOS_ANTEIL,
+            ).deflation_events == MIN_DEFLATIONSBEOBACHTUNGEN
+        else:
+            with pytest.raises(StudienError, match="Out-of-Sample-Drittel zu klein"):
+                bestaetige(
+                    werte,
+                    kerzen=kerzen,
+                    ereignisse=ereignisse,
+                    fenster_stunden=1.0,
+                    k_bps=1.0,
+                    saat=7,
+                    register_pfad=register,
+                )
+            with pytest.raises(ResolutionError, match="verlangt"):
+                assess(
+                    events=ergebnis.n_gemessen,
+                    trials=12,
+                    dispersion=50.0,
+                    cost_bps=1.0,
+                    oos_share=OOS_ANTEIL,
+                )
+
+
+def test_aufloesbar_ohne_bestaetigungsfaehige_stichprobe_gibt_es_nicht() -> None:
+    """Eichfall. Gegen die vorige Fassung stand hier ein gruenes „aufloesbar".
+
+    ``assess`` hatte eine eigene Untergrenze von ZWEI Beobachtungen -- drei
+    Groessenordnungen unter der, die ``bestaetige`` tatsaechlich verlangt. Damit galt
+    diese Kombination mit einem Verhaeltnis von 0,975 als aufloesbar, obwohl die
+    Bestaetigung fuer dieselben Zahlen „Out-of-Sample-Drittel zu klein: 18" wirft. Die
+    Abweichung zeigte in die schmeichelnde Richtung: sie liess Studien zu, die niemand
+    haette bestaetigen koennen.
+    """
+    with pytest.raises(ResolutionError, match="verlangt 20"):
+        assess(events=52, trials=12, dispersion=3.0, cost_bps=1.0, oos_share=OOS_ANTEIL)
+
+    # Zwei Ereignisse mehr aendern daran nichts -- es fehlt die Stichprobe, nicht ein
+    # Zehntel im Verhaeltnis.
+    with pytest.raises(ResolutionError, match="verlangt 20"):
+        assess(events=57, trials=12, dispersion=3.0, cost_bps=1.0, oos_share=OOS_ANTEIL)
+    assert assess(
+        events=58, trials=12, dispersion=3.0, cost_bps=1.0, oos_share=OOS_ANTEIL
+    ).deflation_events == MIN_DEFLATIONSBEOBACHTUNGEN
 
 
 def test_k3_gbpjpy_war_gegen_die_deflationsstichprobe_nie_aufloesbar() -> None:
@@ -402,11 +639,15 @@ def test_unmoeglicher_oos_anteil_ist_ein_fehler(wert: float) -> None:
 def test_die_echte_aufloesungsdatei_ist_in_sich_stimmig() -> None:
     """Positivtest gegen die gemessene Datei: jede Zeile muss nachrechenbar sein.
 
-    Fehlt ``oos_share``, stammt die Datei aus der Zeit vor der Korrektur; sie wird dann
-    so nachgerechnet, wie sie entstanden ist. Damit sie nicht stillschweigend
-    weiterlebt, darf sie in diesem Zustand nur zusammen mit dem Vorbehalt in
-    ``ABSCHLUSS-3a/01-AUFLOESUNG.md`` existieren. Wer den Vorbehalt streicht, ohne neu
-    zu messen, faellt hier auf.
+    Rechnet die Datei nicht gegen ``OOS_ANTEIL``, stammt sie aus der Zeit vor der
+    Korrektur; sie wird dann so nachgerechnet, wie sie entstanden ist. Damit sie nicht
+    stillschweigend weiterlebt, darf sie in diesem Zustand nur zusammen mit dem
+    Vorbehalt in ``ABSCHLUSS-3a/01-AUFLOESUNG.md`` existieren. Wer den Vorbehalt
+    streicht, ohne neu zu messen, faellt hier auf.
+
+    Massgeblich ist der WERT von ``oos_share``, nicht sein Vorhandensein -- siehe
+    ``_anteil_stimmt``. Ein nachgetragener Schluessel ist keine Messung, und er darf
+    diese Zusicherung nicht abschalten.
     """
     import json
 
@@ -416,8 +657,8 @@ def test_die_echte_aufloesungsdatei_ist_in_sich_stimmig() -> None:
     eintraege = roh["entries"]
     assert eintraege, "Datei ohne Eintraege"
 
-    veraltet = "oos_share" not in roh
-    anteil = 1.0 if veraltet else float(roh["oos_share"])
+    stimmig = _anteil_stimmt(roh)
+    anteil = float(roh["oos_share"]) if stimmig else 1.0
     for e in eintraege:
         nach = assess(
             events=e["events"],
@@ -432,13 +673,14 @@ def test_die_echte_aufloesungsdatei_ist_in_sich_stimmig() -> None:
         )
         assert nach.resolvable == e["resolvable"]
 
-    if veraltet:
+    if not stimmig:
         bericht = (REPO / "ABSCHLUSS-3a" / "01-AUFLOESUNG.md").read_text(
             encoding="utf-8"
         )
         assert VORBEHALT_MARKE in bericht, (
-            "config/aufloesung.json ist gegen die volle Ereigniszahl gerechnet, aber "
-            f"01-AUFLOESUNG.md fuehrt den Vorbehalt „{VORBEHALT_MARKE}\" nicht mehr"
+            "config/aufloesung.json ist nicht gegen die Deflationsstichprobe "
+            "gerechnet, aber 01-AUFLOESUNG.md fuehrt den Vorbehalt "
+            f"„{VORBEHALT_MARKE}\" nicht mehr"
         )
 
 

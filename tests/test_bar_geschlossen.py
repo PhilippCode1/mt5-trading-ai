@@ -7,14 +7,20 @@ Durchschnitt genau auf diesem letzten Element, waehrend der Backtest abgeschloss
 Kerzen aus Dateien liest. Live-Signal und getestetes Signal waren damit nicht dieselbe
 Strategie.
 
-Diese Datei fixiert vier Dinge:
+Diese Datei fixiert fuenf Dinge:
 
 1. Die laufende Kerze ist ``is_closed=False`` (der rote Eichfall).
 2. Eine abgeschlossene Kerze ist ``is_closed=True`` -- sonst waere hier nur alles
    auf False gedreht und der Melder waere per Konstruktion nie gruen.
-3. Die Gegenwart kommt vom PLATZ, nicht von der Rechneruhr. Der Test setzt beide
-   bewusst auseinander; eine Fassung mit ``datetime.now()`` faellt durch.
+3. Die Gegenwart kommt vom PLATZ, nicht von der Rechneruhr -- und zwar in BEIDEN
+   Versatzrichtungen. Welche Richtung ein Broker erzeugt, haengt an seiner
+   Serverzone; ein Eichfall, der nur eine davon kennt, prueft die halbe Aussage.
 4. Ohne Platzzeit wird geworfen, und die laufende Kerze wird nicht still entfernt.
+5. Eine Zeitebene ohne hinterlegte Intervalllaenge wirft im Vertrag, nicht daneben.
+
+Ein bekannter, bewusst NICHT behobener Mangel ist ebenfalls festgenagelt:
+``Timeframe.duration`` ist kalenderblind, D1/H4 gelten ueber einen
+Zeitumstellungstag eine Stunde zu frueh als fertig.
 """
 
 from __future__ import annotations
@@ -23,8 +29,10 @@ from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import pytest
+from mt5_trading_ai.data.quality import TIMEFRAME_SECONDS
 from mt5_trading_ai.venue.catalog import CatalogEntry
 from mt5_trading_ai.venue.mt5 import (
     Mt5Account,
@@ -42,6 +50,8 @@ from mt5_trading_ai.venue.protocol import (
     FeeSchedule,
     Timeframe,
     TradingSession,
+    UnknownInstrumentError,
+    VenueError,
     VenueUnavailableError,
 )
 
@@ -49,12 +59,33 @@ from mt5_trading_ai.venue.protocol import (
 #: 11:00-Stundenkerze: die 10:00er steht, die 11:00er bildet sich noch.
 PLATZZEIT = datetime(2026, 8, 11, 11, 30, tzinfo=UTC)
 
-#: Die Rechneruhr, drei Stunden VOR der Platzzeit. Das ist kein ausgedachter Wert:
-#: genau diesen Versatz misst dieses Repo am realen Broker (Server UTC+3), und genau
-#: er entsteht, wenn Kerzenstempel ungedreht mit dem Etikett UTC weitergereicht
-#: werden. Eine Fassung, die ``datetime.now()`` benutzt, haelt damit die laufende
-#: 11:00-Kerze fuer abgeschlossen (11:00 + 1 h <= 14:30) -- fail-open, unbemerkt.
-RECHNERUHR = PLATZZEIT + timedelta(hours=3)
+#: Rechneruhr, die der Platzzeit drei Stunden VORAUS ist. Diese Richtung entsteht bei
+#: einem Broker, dessen Server HINTER UTC steht (etwa UTC-3): die Kerzenstempel laufen
+#: ungedreht mit dem Etikett UTC durch ``RealMt5Terminal._utc``, tragen also die
+#: Serverwanduhr und liegen damit hinter der echten UTC-Systemzeit. Eine Fassung, die
+#: ``datetime.now()`` befragt, haelt dann die laufende 11:00-Kerze fuer abgeschlossen
+#: (11:00 + 1 h <= 14:30) -- fail-open, unbemerkt. Das ist die gefaehrliche Richtung.
+RECHNERUHR_VORAUS = PLATZZEIT + timedelta(hours=3)
+
+#: Rechneruhr, die der Platzzeit drei Stunden NACHGEHT. Das ist die Richtung DIESES
+#: Brokers, nachgerechnet: die Serverzone ist ``Europe/Helsinki``
+#: (backtest/kalender.py), im Sommer UTC+3, der Server steht also VOR UTC. Ohne
+#: ``server_tz`` gibt ``RealMt5Terminal._utc`` die Serverwanduhr unter dem Etikett
+#: UTC zurueck -- bei echter UTC 11:30 ist das der Stempel 14:30. Platz- und
+#: Kerzenstempel liegen damit drei Stunden VOR der Rechneruhr, nicht dahinter. Eine
+#: ``datetime.now()``-Fassung haelt hier umgekehrt jede laengst fertige Kerze fuer
+#: laufend und der Live-Takt bliebe stehen: fail-closed statt fail-open. Auch
+#: falsch, nur anders herum -- und welche der beiden Richtungen man bekommt,
+#: entscheidet der Broker, nicht der Code.
+RECHNERUHR_NACHGEHEND = PLATZZEIT - timedelta(hours=3)
+
+#: Serverzone dieses Brokers. Nur fuer die Nachrechnung des Zeitumstellungstags.
+SERVER_ZONE = ZoneInfo("Europe/Helsinki")
+
+#: Beginn der D1-Kerze des Rueckstelltags 25.10.2026 (Server-Mitternacht) in echtem
+#: UTC. An diesem Tag schaltet Helsinki von EEST auf EET zurueck, der Servertag hat
+#: 25 Stunden -- die starren 86400 Sekunden aus ``TIMEFRAME_SECONDS`` reichen nicht.
+UMSTELLKERZE_TS = datetime(2026, 10, 24, 21, 0, tzinfo=UTC)
 
 
 def _fees() -> FeeSchedule:
@@ -93,9 +124,13 @@ def _catalog() -> dict[str, CatalogEntry]:
     return {"EURUSD": CatalogEntry(AssetClass.FX_MAJOR, _fees(), sessions)}
 
 
-def _rate(stunde: int) -> Mt5Rate:
+#: Die drei Kerzen des Regelfalls: 09:00, 10:00 (beide fertig) und die laufende 11:00.
+STUNDEN = tuple(datetime(2026, 8, 11, h, 0, tzinfo=UTC) for h in (9, 10, 11))
+
+
+def _rate(ts: datetime) -> Mt5Rate:
     return Mt5Rate(
-        ts=datetime(2026, 8, 11, stunde, 0, tzinfo=UTC),
+        ts=ts,
         open=Decimal("1.10000"),
         high=Decimal("1.10500"),
         low=Decimal("1.09500"),
@@ -115,12 +150,13 @@ class FakeTerminal:
         self,
         *,
         tick_ts: datetime | None = PLATZZEIT,
-        stunden: tuple[int, ...] = (9, 10, 11),
+        zeiten: tuple[datetime, ...] = STUNDEN,
     ) -> None:
         self._connected = False
         self._tick_ts = tick_ts
-        self._stunden = stunden
+        self._zeiten = zeiten
         self.tick_calls = 0
+        self.symbol_calls = 0
 
     def initialize(self) -> bool:
         self._connected = True
@@ -136,6 +172,7 @@ class FakeTerminal:
         return (_symbol(),)
 
     def symbol(self, name: str) -> Mt5Symbol | None:
+        self.symbol_calls += 1
         return _symbol() if name == "EURUSD" else None
 
     def tick(self, name: str) -> Mt5Tick | None:
@@ -150,7 +187,7 @@ class FakeTerminal:
         self, name: str, timeframe: Timeframe, start: datetime, end: datetime
     ) -> tuple[Mt5Rate, ...]:
         # Absteigend geliefert -- der Adapter sortiert selbst.
-        return tuple(_rate(h) for h in reversed(self._stunden))
+        return tuple(_rate(ts) for ts in reversed(self._zeiten))
 
     def order_send(self, request: Mapping[str, Any]) -> Mt5SendResult:
         raise NotImplementedError("Dieser Test fasst den Schreibpfad nicht an")
@@ -182,7 +219,7 @@ class FakeTerminal:
         )
 
 
-def _venue(terminal: FakeTerminal) -> Mt5Venue:
+def _venue(terminal: FakeTerminal, *, uhr: datetime = RECHNERUHR_VORAUS) -> Mt5Venue:
     """Ein verbundenes Venue, dessen Rechneruhr bewusst NEBEN der Platzzeit liegt.
 
     ``clock`` bleibt hier nicht zufaellig ungleich ``PLATZZEIT``: waeren beide gleich,
@@ -192,20 +229,22 @@ def _venue(terminal: FakeTerminal) -> Mt5Venue:
         name="mt5-test",
         terminal=terminal,
         catalog=_catalog(),
-        clock=lambda: RECHNERUHR,
+        clock=lambda: uhr,
     )
     venue.connect()
     return venue
 
 
 def _bars(
-    terminal: FakeTerminal, timeframe: Timeframe = Timeframe.H1
+    terminal: FakeTerminal,
+    timeframe: Timeframe = Timeframe.H1,
+    *,
+    uhr: datetime = RECHNERUHR_VORAUS,
+    start: datetime = datetime(2026, 8, 11, 0, 0, tzinfo=UTC),
+    end: datetime = datetime(2026, 8, 11, 12, 0, tzinfo=UTC),
 ) -> tuple[Bar, ...]:
-    return _venue(terminal).get_bars(
-        "EURUSD",
-        timeframe,
-        start=datetime(2026, 8, 11, 0, 0, tzinfo=UTC),
-        end=datetime(2026, 8, 11, 12, 0, tzinfo=UTC),
+    return _venue(terminal, uhr=uhr).get_bars(
+        "EURUSD", timeframe, start=start, end=end
     )
 
 
@@ -242,19 +281,46 @@ def test_grenze_zaehlt_als_abgeschlossen() -> None:
     assert [bar.is_closed for bar in bars] == [True, True, True]
 
 
-def test_platzzeit_entscheidet_nicht_die_rechneruhr() -> None:
+def test_platzzeit_entscheidet_nicht_die_vorauseilende_rechneruhr() -> None:
     """Der zweite Eichfall -- gegen die naheliegende falsche Reparatur.
 
     Die Rechneruhr steht auf 14:30, die Platzzeit auf 11:30. Wer ``datetime.now()``
     oder ``self._clock`` nimmt, rechnet 11:00 + 1 h <= 14:30 und meldet die laufende
     Kerze als abgeschlossen. Genau diese Fehlerklasse -- eine Pruefung, die per
     Konstruktion die falsche Uhr befragt -- hat dieses Repo schon einmal getroffen.
+
+    Diese Versatzrichtung gehoert zu einem Server HINTER UTC. Sie ist die
+    gefaehrliche: die laufende Kerze gaelte als fertig, fail-open und unbemerkt.
     """
     terminal = FakeTerminal()
-    bars = _bars(terminal)
-    assert RECHNERUHR > bars[-1].ts + Timeframe.H1.duration  # Rechneruhr saehe: fertig
+    bars = _bars(terminal, uhr=RECHNERUHR_VORAUS)
+    # Rechneruhr saehe: fertig.
+    assert RECHNERUHR_VORAUS > bars[-1].ts + Timeframe.H1.duration
     assert bars[-1].is_closed is False  # der Platz sagt: laeuft noch
     assert terminal.tick_calls >= 1  # die Platzzeit wurde wirklich abgefragt
+
+
+def test_platzzeit_entscheidet_auch_nicht_die_nachgehende_rechneruhr() -> None:
+    """Dieselbe Aussage in der Versatzrichtung DIESES Brokers -- der andere Eichfall.
+
+    Der erste Fall allein deckt nur Server hinter UTC ab. Hier steht der Server VOR
+    UTC (``Europe/Helsinki``, im Sommer +3 h): ohne ``server_tz`` tragen Kerzen- und
+    Tickstempel die Serverwanduhr unter dem Etikett UTC und liegen damit VOR der
+    Rechneruhr. Eine ``self._clock``-Fassung rechnet dann ``09:00 + 1 h <= 08:30``,
+    haelt also selbst die laengst fertige 09:00-Kerze fuer laufend und liefert
+    ``[False, False, False]``. Der Live-Treiber bekaeme nie genug abgeschlossene
+    Kerzen und stuende dauerhaft auf FLAT.
+
+    Fail-closed ist die harmlosere Richtung, aber sie ist genauso falsch -- und
+    welche der beiden ein Betrieb bekommt, entscheidet der Broker. Ein Eichfall, der
+    nur eine Richtung kennt, beweist die halbe Aussage.
+    """
+    terminal = FakeTerminal()
+    bars = _bars(terminal, uhr=RECHNERUHR_NACHGEHEND)
+    # Rechneruhr saehe: sogar die erste, laengst fertige Kerze laeuft noch.
+    assert RECHNERUHR_NACHGEHEND < bars[0].ts + Timeframe.H1.duration
+    assert [bar.is_closed for bar in bars] == [True, True, False]
+    assert terminal.tick_calls >= 1
 
 
 def test_ohne_platzzeit_wird_geworfen_statt_geraten() -> None:
@@ -265,6 +331,41 @@ def test_ohne_platzzeit_wird_geworfen_statt_geraten() -> None:
     """
     with pytest.raises(VenueUnavailableError):
         _bars(FakeTerminal(tick_ts=None))
+
+
+def test_vorpruefung_steht_genau_einmal() -> None:
+    """Sitzung und Symbol werden einmal geprueft, nicht zweimal -- ohne Nachlass.
+
+    ``get_bars`` holt die Platzzeit ueber ``get_quote``, und ``get_quote`` prueft
+    Sitzung und Symbol bereits selbst, in genau dieser Reihenfolge. Der zusaetzliche
+    Vorlauf war dieselbe Regel ein zweites Mal: ein zweiter Terminal-Umlauf je Aufruf
+    und zwei Fassungen, die auseinanderlaufen koennen. Gegen die Vorfassung ist die
+    Zaehlung rot (zwei Symbolabfragen).
+
+    Weggefallen ist nur die Wiederholung, nicht die Pruefung: beide Sperren muessen
+    weiter greifen, darum stehen sie hier mit im Fall.
+    """
+    terminal = FakeTerminal()
+    _bars(terminal)
+    assert terminal.symbol_calls == 1
+
+    with pytest.raises(UnknownInstrumentError):
+        _venue(FakeTerminal()).get_bars(
+            "XAUUSD",
+            Timeframe.H1,
+            start=datetime(2026, 8, 11, 0, 0, tzinfo=UTC),
+            end=datetime(2026, 8, 11, 12, 0, tzinfo=UTC),
+        )
+
+    getrennt = _venue(FakeTerminal())
+    getrennt.disconnect()
+    with pytest.raises(VenueUnavailableError):
+        getrennt.get_bars(
+            "EURUSD",
+            Timeframe.H1,
+            start=datetime(2026, 8, 11, 0, 0, tzinfo=UTC),
+            end=datetime(2026, 8, 11, 12, 0, tzinfo=UTC),
+        )
 
 
 def test_laufende_kerze_wird_nicht_still_entfernt() -> None:
@@ -327,6 +428,61 @@ def test_jede_zeitebene_hat_eine_dauer() -> None:
         assert timeframe.duration > timedelta(0)
     assert Timeframe.H1.duration == timedelta(hours=1)
     assert Timeframe.D1.duration == timedelta(days=1)
+
+
+def test_fehlende_dauer_bleibt_im_vertrag(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Roter Eichfall: die Wartungssperre warf ``ValueError`` -- am Vertrag vorbei.
+
+    ``protocol.py`` haelt fest, dass aus dem Handelsplatz ausschliesslich Ableitungen
+    von ``VenueError`` kommen, und beide Live-Treiber fangen genau das
+    (``except VenueError`` -> Signal FLAT). ``Timeframe.duration`` wird mitten in
+    ``get_bars`` ausgewertet: ein ``ValueError`` von dort haette den Live-Takt nicht
+    heruntergefahren, sondern abgerissen -- eine Wartungssperre, die den Vertrag
+    bricht, den sie schuetzen soll.
+
+    Geprueft wird beides: die Eigenschaft selbst und der Weg durch ``get_bars``, weil
+    nur dort der Verbraucher steht.
+    """
+    monkeypatch.delitem(TIMEFRAME_SECONDS, Timeframe.H1.value)
+    with pytest.raises(VenueError):
+        _ = Timeframe.H1.duration
+    with pytest.raises(VenueError):
+        _bars(FakeTerminal())
+
+
+def test_d1_ueber_die_zeitumstellung_gilt_zu_frueh_als_fertig() -> None:
+    """BEKANNTER MANGEL, festgenagelt -- ausdruecklich KEINE Zusicherung.
+
+    ``TIMEFRAME_SECONDS['D1']`` sind starre 86400 Sekunden, die echte Grenze einer
+    Tageskerze liegt aber an der Mitternacht des Handelsservers. Am Rueckstelltag
+    (25.10.2026, ``Europe/Helsinki``) dauert der Servertag 25 Stunden: die Kerze
+    beginnt 21:00 UTC und endet 22:00 UTC am Folgetag. Eine halbe Stunde vor ihrem
+    echten Ende sind die starren 24 h laengst abgelaufen -- die noch laufende
+    Tageskerze wird als abgeschlossen gemeldet, also in die schmeichelnde Richtung.
+
+    Warum das hier steht statt behoben zu sein: die kalenderbewusste Rechnung braucht
+    die Serverzone, und die gehoert nicht in den plattformunabhaengigen Vertrag
+    ``venue/protocol.py`` (Modulkopf: kein Plattformname ausserhalb von ``venues/``).
+    Sie muesste vom Terminal bis in ``Mt5Venue`` durchgereicht werden. Heute ist kein
+    Verbraucher betroffen -- beide Live-Treiber und der Rauchtest holen nur H1, und
+    H1 ist immun, weil die Umstellung ein ganzes Vielfaches einer Stunde ist.
+
+    Wer den Mangel behebt, macht diesen Test rot. Das ist beabsichtigt: dann sind
+    der Docstring bei ``Timeframe.duration`` und dieser Fall gemeinsam zu loeschen.
+    """
+    echtes_ende = datetime(2026, 10, 26, 0, 0, tzinfo=SERVER_ZONE).astimezone(UTC)
+    assert echtes_ende - UMSTELLKERZE_TS == timedelta(hours=25)  # kein 24-h-Tag
+    assert UMSTELLKERZE_TS + Timeframe.D1.duration < echtes_ende  # eine Stunde zu kurz
+
+    kurz_vor_schluss = echtes_ende - timedelta(minutes=30)
+    bars = _bars(
+        FakeTerminal(tick_ts=kurz_vor_schluss, zeiten=(UMSTELLKERZE_TS,)),
+        Timeframe.D1,
+        start=UMSTELLKERZE_TS,
+        end=kurz_vor_schluss,
+    )
+    # Richtig waere hier False: die Kerze laeuft noch dreissig Minuten.
+    assert bars[-1].is_closed is True
 
 
 def test_fake_erfuellt_die_terminal_naht() -> None:

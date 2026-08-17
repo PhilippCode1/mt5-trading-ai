@@ -68,9 +68,35 @@ DEFAULT_DSR_THRESHOLD = 0.95
 #: Vielfaches der Round-Turn-Kosten, das ein Effekt erreichen muss (M6.1).
 DEFAULT_COST_FACTOR = 3.0
 
+#: Die beiden Untergrenzen, unter denen ``ereignisstudie.bestaetige`` gar nicht erst
+#: bestaetigt: ``len(werte) < 30`` und ``len(oos) < 20``, beide ein ``StudienError``.
+#:
+#: Sie stehen hier, weil ``assess`` sonst eine eigene, viel niedrigere Grenze haette --
+#: und die hatte es: zwei Beobachtungen. Damit galt etwa
+#: ``assess(events=52, oos_share=1/3)`` mit 18 Beobachtungen als aufloesbar, waehrend
+#: ``bestaetige`` fuer genau diese Stichprobe „Out-of-Sample-Drittel zu klein: 18"
+#: wirft. Eine Kombination, deren Bestaetigung nicht laufen KANN, ist nicht aufloesbar;
+#: die Abweichung zeigte in die schmeichelnde Richtung.
+#:
+#: Dass die Zahlen hier dieselben sind wie dort, ist nicht zugesichert, sondern
+#: geprueft: ``tests/test_resolution.py`` haelt beide gegen die echte ``bestaetige``,
+#: indem es Stichproben genau an und knapp unter der Grenze durchrechnet.
+MIN_EREIGNISSE = 30
+MIN_DEFLATIONSBEOBACHTUNGEN = 20
+
 
 class ResolutionError(ValueError):
     """Die Aufloesung ist nicht berechenbar. Fail-closed: keine Studie."""
+
+
+class DeflationUnreachableError(ResolutionError):
+    """Die Deflationsschwelle ist bei dieser Stichprobe mit KEINER Sharpe erreichbar.
+
+    Eigener Typ, damit ``min_events_for_resolution`` diesen einen Fall als das lesen
+    kann, was er ist -- die Antwort „nein" in ihrer schaerfsten Form --, ohne dabei
+    einen echten Eingabefehler mitzuverschlucken. Wer breit ``ResolutionError`` faengt,
+    faengt ihn weiterhin mit.
+    """
 
 
 @dataclass(frozen=True)
@@ -154,7 +180,7 @@ def required_sharpe(
     if deflated_sharpe_ratio(
         observed_sharpe=high, observations=observations, trials=trials
     ) < threshold:
-        raise ResolutionError(
+        raise DeflationUnreachableError(
             f"selbst eine Sharpe von {high} erreicht die Schwelle {threshold} nicht "
             f"(N={observations}, T={trials}) — die Deflation ist hier unerfuellbar"
         )
@@ -214,6 +240,11 @@ def assess(
 
     ``oos_share`` ist pflichtig und hat bewusst keinen Vorgabewert -- die Begruendung
     steht im Modulkopf unter „N IST NICHT DIE EREIGNISZAHL".
+
+    Unterhalb der beiden Untergrenzen von ``bestaetige``
+    (``MIN_EREIGNISSE``/``MIN_DEFLATIONSBEOBACHTUNGEN``) gibt es kein Urteil, sondern
+    einen Fehler: dort waere die Bestaetigung, die das ganze Verfahren traegt, gar nicht
+    lauffaehig. „Aufloesbar, aber nicht bestaetigungsfaehig" ist keine Aussage.
     """
     if dispersion <= 0:
         raise ResolutionError(f"Fensterstreuung muss positiv sein: {dispersion}")
@@ -223,11 +254,17 @@ def assess(
         raise ResolutionError(f"cost_factor muss positiv sein: {cost_factor}")
 
     beobachtungen = deflation_observations(events, oos_share=oos_share)
-    if beobachtungen < 2:
+    if events < MIN_EREIGNISSE:
+        raise ResolutionError(
+            f"{events} Ereignisse: unter {MIN_EREIGNISSE} messbaren Werten verweigert "
+            "``ereignisstudie.bestaetige`` die Deflation ueberhaupt -- eine Studie, "
+            "deren Bestaetigung nicht laufen kann, ist nicht aufloesbar"
+        )
+    if beobachtungen < MIN_DEFLATIONSBEOBACHTUNGEN:
         raise ResolutionError(
             f"aus {events} Ereignissen bleiben bei einem Out-of-Sample-Anteil von "
-            f"{oos_share} nur {beobachtungen} Beobachtungen fuer die Deflation -- "
-            "das ist keine Stichprobe"
+            f"{oos_share} nur {beobachtungen} Beobachtungen fuer die Deflation; "
+            f"``bestaetige`` verlangt {MIN_DEFLATIONSBEOBACHTUNGEN} und wirft darunter"
         )
     sharpe = required_sharpe(beobachtungen, trials, threshold=threshold)
     detectable = sharpe * dispersion
@@ -258,7 +295,8 @@ def min_events_for_resolution(
 ) -> int | None:
     """Wie viele Ereignisse braeuchte es, damit diese Kombination aufloesbar wird?
 
-    Gibt ``None``, wenn selbst ``ceiling`` Ereignisse nicht reichen. Die Zahl ist die
+    Gibt ``None``, wenn selbst ``ceiling`` Ereignisse nicht reichen -- auch dann, wenn
+    ``ceiling`` schon die Untergrenzen der Bestaetigung nicht erreicht. Die Zahl ist die
     ehrliche Antwort auf „was fehlt uns?" — sie sagt, ob eine tiefere Historie helfen
     wuerde oder ob das Instrument fuer diese Frage grundsaetzlich zu verrauscht ist.
 
@@ -266,37 +304,57 @@ def min_events_for_resolution(
     beantwortbar sein („so viele Monatsenden brauchen wir"), und ein Aufrufer, der sie
     mit der Beobachtungszahl verwechselt, unterschaetzt den Bedarf um den Kehrwert von
     ``oos_share``.
+
+    Die Rueckgabe ist ``int`` oder ``None``, nie eine Ausnahme aus dem Suchbereich:
+    eine Stichprobe, an der die Deflationsschwelle unerreichbar ist, ist ein „nein"
+    und kein Absturz. Unbrauchbare Eingaben (Streuung <= 0 und dergleichen) werfen
+    weiterhin -- sie sind kein Suchergebnis.
     """
-    high = ceiling
-    if assess(
-        events=high,
-        trials=trials,
-        dispersion=dispersion,
-        cost_bps=cost_bps,
-        oos_share=oos_share,
-        cost_factor=cost_factor,
-        threshold=threshold,
-    ).ratio > 1.0:
+
+    def aufloesbar(kandidat: int) -> bool:
+        try:
+            return assess(
+                events=kandidat,
+                trials=trials,
+                dispersion=dispersion,
+                cost_bps=cost_bps,
+                oos_share=oos_share,
+                cost_factor=cost_factor,
+                threshold=threshold,
+            ).resolvable
+        except DeflationUnreachableError:
+            # Bei dieser Stichprobe erreicht KEINE Sharpe die Schwelle. Das ist die
+            # schaerfste Form von „nicht aufloesbar" und kann nur am unteren Ende
+            # auftreten, weil die noetige Sharpe mit der Beobachtungszahl faellt.
+            return False
+
+    # Die kleinste Ereigniszahl, ueber die ``assess`` ueberhaupt urteilt: sie muss BEIDE
+    # Untergrenzen der Bestaetigung erfuellen. Bei einem Drittel Out-of-Sample sind das
+    # 58 Ereignisse, nicht 30 -- darum wird die Grenze gesucht und nicht gesetzt. Die
+    # frueheren „zwei Beobachtungen" lagen unter dem, was ``assess`` beurteilen kann;
+    # die Suche warf dann an ihrem eigenen Rand, statt eine Zahl zu liefern.
+    if ceiling < MIN_EREIGNISSE:
         return None
-    # Kleinste Ereigniszahl, aus der ueberhaupt zwei Deflationsbeobachtungen werden.
-    # Bei einem Drittel Out-of-Sample sind das vier Ereignisse, nicht zwei. Die Schleife
-    # endet garantiert, weil der Aufruf oben fuer ``ceiling`` bereits durchlief.
-    low = 2
-    while deflation_observations(low, oos_share=oos_share) < 2:
-        low += 1
+    if deflation_observations(ceiling, oos_share=oos_share) < (
+        MIN_DEFLATIONSBEOBACHTUNGEN
+    ):
+        return None
+    low, high = MIN_EREIGNISSE, ceiling
     while low < high:
-        mid = (low + high) // 2
-        verdict = assess(
-            events=mid,
-            trials=trials,
-            dispersion=dispersion,
-            cost_bps=cost_bps,
-            oos_share=oos_share,
-            cost_factor=cost_factor,
-            threshold=threshold,
-        )
-        if verdict.resolvable:
-            high = mid
+        mitte = (low + high) // 2
+        genug = deflation_observations(mitte, oos_share=oos_share)
+        if genug >= MIN_DEFLATIONSBEOBACHTUNGEN:
+            high = mitte
         else:
-            low = mid + 1
+            low = mitte + 1
+
+    if not aufloesbar(ceiling):
+        return None
+    high = ceiling
+    while low < high:
+        mitte = (low + high) // 2
+        if aufloesbar(mitte):
+            high = mitte
+        else:
+            low = mitte + 1
     return low

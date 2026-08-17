@@ -47,6 +47,7 @@ from mt5_trading_ai.backtest.ereignisstudie import OOS_ANTEIL  # noqa: E402
 from mt5_trading_ai.backtest.resolution import (  # noqa: E402
     RESOLUTION_POLICY_VERSION,
     ResolutionError,
+    ResolutionVerdict,
     assess,
     deflation_observations,
     dispersion_bps,
@@ -63,6 +64,11 @@ MANIFESTE = REPO / "config" / "reihen"
 #: Versuchszahl, gegen die deflationiert wird. Budgetobergrenze aus §5 des Auftrags —
 #: die strengste zulaessige Annahme, weil T vorher nicht bekannt ist.
 TRIALS = 12
+
+#: Wie weit der Anteil in der Messdatei von ``OOS_ANTEIL`` abweichen darf. Das ist
+#: Fliesskomma-Spielraum, kein Ermessen: ein Drittel ist als Dezimalzahl nicht
+#: darstellbar, jede andere Abweichung ist ein Befund.
+OOS_TOLERANZ = 1e-9
 
 #: Pruefuniversum. XAUUSD und DE40 sind dabei, obwohl die Naeherung sie als knapp blind
 #: fuehrt (1,36 und 1,07): genau sie koennte die gemessene Streuung kippen.
@@ -331,6 +337,16 @@ def messen() -> int:
                         cost_bps=k,
                         oos_share=OOS_ANTEIL,
                     )
+                    # Gehoert in DENSELBEN try wie ``assess``: die Funktion rechnet mit
+                    # denselben Groessen und weist an denselben Grenzen ab. Stand sie
+                    # ausserhalb (sie stand es), brach ein Messlauf hier ab -- nach der
+                    # gedruckten Tabelle und VOR dem Schreiben von aufloesung.json.
+                    mindest = min_events_for_resolution(
+                        trials=TRIALS,
+                        dispersion=streu,
+                        cost_bps=k,
+                        oos_share=OOS_ANTEIL,
+                    )
                 except ResolutionError as exc:
                     print(f"{symbol:<8} {fenster_name:<8} {freq_name:<10} — {exc}")
                     continue
@@ -357,12 +373,7 @@ def messen() -> int:
                     "needed_bps": round(urteil.needed_bps, 4),
                     "ratio": round(urteil.ratio, 4),
                     "resolvable": urteil.resolvable,
-                    "min_events_for_resolution": min_events_for_resolution(
-                        trials=TRIALS,
-                        dispersion=streu,
-                        cost_bps=k,
-                        oos_share=OOS_ANTEIL,
-                    ),
+                    "min_events_for_resolution": mindest,
                 })
         print()
 
@@ -561,6 +572,74 @@ def gegenprobe(csv_pfad: Path, *, schwelle: float = 2.0) -> int:
     return 0
 
 
+def _kennung(e: Any) -> str:
+    """Wie eine Zeile in einer Fehlermeldung heisst -- auch wenn sie kaputt ist."""
+    if not isinstance(e, dict):
+        return f"Eintrag {e!r}"
+    return f"{e.get('instrument')}/{e.get('window')}/{e.get('frequency')}"
+
+
+def _datei_anteil(roh: dict[str, Any]) -> float | None:
+    """Der Out-of-Sample-Anteil, den die Datei fuehrt -- ``None``, wenn keiner taugt.
+
+    ``bool`` wird ausdruecklich abgewiesen: in Python ist ``True`` ein ``int``, und
+    ``"oos_share": true`` waere sonst klaglos 1,0.
+    """
+    wert = roh.get("oos_share")
+    if isinstance(wert, bool) or not isinstance(wert, int | float):
+        return None
+    return float(wert)
+
+
+def _zeilenfelder(
+    e: dict[str, Any], nach: ResolutionVerdict, *, anteil: float, schema: Any
+) -> list[str]:
+    """Die uebrigen Felder der Zeile gegen den Kopf und gegen die Rechnung halten.
+
+    ``pruefen()`` hat frueher nur ``ratio`` und ``resolvable`` nachgerechnet. Die von
+    ``messen()`` je Zeile geschriebenen ``oos_share`` und ``deflation_events`` blieben
+    ungelesen -- eine Datei, deren Zeilen ihrem eigenen Kopf widersprechen, kam gruen
+    durch, und welche der beiden Zahlen die gedruckte war, stand nirgends. Dasselbe galt
+    fuer die drei abgeleiteten Groessen: ein Verhaeltnis kann stimmen, waehrend der
+    daneben gedruckte nachweisbare Effekt aus einer anderen Rechnung stammt.
+    """
+    out: list[str] = []
+    for feld, nachgerechnet in (
+        ("required_sharpe", nach.required_sharpe),
+        ("detectable_bps", nach.detectable_bps),
+        ("needed_bps", nach.needed_bps),
+    ):
+        if feld not in e:
+            continue
+        zahl = e[feld]
+        if isinstance(zahl, bool) or not isinstance(zahl, int | float):
+            out.append(f"{_kennung(e)}: {feld} ist keine Zahl: {zahl!r}")
+        elif abs(float(zahl) - nachgerechnet) > 1e-3:
+            out.append(
+                f"{_kennung(e)}: Zeile fuehrt {feld} {zahl}, nachgerechnet "
+                f"{nachgerechnet:.4f}"
+            )
+    pflicht = isinstance(schema, int) and not isinstance(schema, bool) and schema >= 2
+    if "oos_share" in e:
+        wert = e["oos_share"]
+        untauglich = isinstance(wert, bool) or not isinstance(wert, int | float)
+        if untauglich or abs(float(wert) - anteil) > OOS_TOLERANZ:
+            out.append(
+                f"{_kennung(e)}: Zeile fuehrt oos_share {wert!r}, der Kopf {anteil}"
+            )
+    elif pflicht:
+        out.append(f"{_kennung(e)}: Schema {schema} verlangt oos_share je Zeile")
+    if "deflation_events" in e:
+        if e["deflation_events"] != nach.deflation_events:
+            out.append(
+                f"{_kennung(e)}: Zeile fuehrt deflation_events "
+                f"{e['deflation_events']!r}, nachgerechnet {nach.deflation_events}"
+            )
+    elif pflicht:
+        out.append(f"{_kennung(e)}: Schema {schema} verlangt deflation_events je Zeile")
+    return out
+
+
 def pruefen(pfad: Path | None = None) -> int:
     """Die abgelegte Messdatei nachrechnen -- ohne MT5, aber mit Urteil.
 
@@ -573,6 +652,21 @@ def pruefen(pfad: Path | None = None) -> int:
     Jetzt wird jede Zeile mit ``resolution.assess`` nachgerechnet. Nachgerechnet, nicht
     nachgebaut: es ist dasselbe Modul, das die Datei erzeugt hat, und ein Auseinander-
     laufen kann nur noch heissen, dass die Datei aelter ist als das Modul.
+
+    ZWEI EIGENE FEHLER DIESER FUNKTION, BEHOBEN
+    -------------------------------------------
+    (1) Die zweite Fassung fragte ``"oos_share" not in roh`` -- also die ANWESENHEIT
+    eines Schluessels statt seinen WERT. Wer der falsch gerechneten Datei die eine
+    Zeile ``"oos_share": 1.0`` nachtrug, drehte diese Pruefung von rot auf gruen, ohne
+    dass eine einzige Zahl neu gemessen worden waere. Das ist wortwoertlich die
+    Fehlerklasse, gegen die diese Pruefung gebaut wurde: ein Melder, der das Falsche
+    misst. Verglichen wird deshalb gegen ``OOS_ANTEIL`` -- den Anteil, auf dem die
+    Deflation tatsaechlich laeuft.
+
+    (2) Im Fehlschlag stand die gruene Zeile „ok — ... aufloesbar" samt Tabelle auf
+    stdout und der Befund erst danach auf stderr. Wer die Ausgabe ueberflog oder stderr
+    verwarf, las Gruen ueber falschen Zahlen. Es gilt jetzt: **kein Wort auf stdout,
+    solange die Datei nicht durch ist.**
     """
     ziel = OUT if pfad is None else pfad
     if not ziel.is_file():
@@ -585,18 +679,41 @@ def pruefen(pfad: Path | None = None) -> int:
         return 1
 
     trials = roh.get("trials_assumed")
-    if not isinstance(trials, int):
+    if not isinstance(trials, int) or isinstance(trials, bool):
         print(f"FEHLGESCHLAGEN — {ziel.name} ohne trials_assumed.", file=sys.stderr)
         return 1
 
-    # Fehlt der Anteil, stammt die Datei aus der Zeit vor der Korrektur. Sie wird dann
-    # so nachgerechnet, wie sie entstanden ist (voller Anteil) -- damit ihre Zahlen
-    # weiter erklaerbar bleiben -- und daneben so, wie es richtig gewesen waere.
-    veraltet = "oos_share" not in roh
-    anteil = 1.0 if veraltet else float(roh["oos_share"])
+    datei_anteil = _datei_anteil(roh)
+    if datei_anteil is None:
+        # Kein brauchbarer Anteil: die Datei stammt aus der Zeit vor der Korrektur. Sie
+        # wird so nachgerechnet, wie sie entstanden ist (voller Anteil) -- damit ihre
+        # Zahlen erklaerbar bleiben -- und faellt trotzdem, mit der Liste der Zeilen,
+        # die bei richtiger Rechnung kippen.
+        anteil = 1.0
+        beanstandung = [
+            f"FEHLGESCHLAGEN — {ziel.name} fuehrt kein brauchbares oos_share und ist "
+            "damit gegen die VOLLE Ereigniszahl gerechnet.",
+            "Die Deflation der Ereignisstudie sieht nur das Out-of-Sample-Drittel; "
+            "die Verhaeltnisse der Datei sind rund Faktor 1,7 zu guenstig.",
+        ]
+    elif abs(datei_anteil - OOS_ANTEIL) > OOS_TOLERANZ:
+        anteil = datei_anteil
+        beanstandung = [
+            f"FEHLGESCHLAGEN — {ziel.name} fuehrt oos_share = {datei_anteil}, die "
+            f"Deflation der Ereignisstudie laeuft aber auf {OOS_ANTEIL}.",
+            "Die Verhaeltnisse sind damit gegen eine Stichprobe gerechnet, die das "
+            "Urteil nie sieht. Ein nachgetragener Schluessel ist keine Messung.",
+        ]
+    else:
+        anteil = datei_anteil
+        beanstandung = []
 
+    schema = roh.get("schema_version")
     abweichungen: list[str] = []
     for e in eintraege:
+        if not isinstance(e, dict):
+            abweichungen.append(f"{_kennung(e)}: kein Objekt, nicht nachrechenbar")
+            continue
         try:
             nach = assess(
                 events=int(e["events"]),
@@ -605,22 +722,25 @@ def pruefen(pfad: Path | None = None) -> int:
                 cost_bps=float(e["cost_bps"]),
                 oos_share=anteil,
             )
+            # Diese beiden Zeilen standen frueher AUSSERHALB des ``try``. Eine Datei
+            # ohne ``ratio`` liess ``pruefen()`` mit KeyError abstuerzen, statt 1 zu
+            # melden -- ein Tor, das nicht rot wird, sondern zerbricht.
+            datei_verhaeltnis = float(e["ratio"])
+            datei_urteil = bool(e["resolvable"])
         except (ResolutionError, KeyError, TypeError, ValueError) as exc:
-            abweichungen.append(
-                f"{e.get('instrument')}/{e.get('window')}/{e.get('frequency')}: "
-                f"nicht nachrechenbar — {exc}"
-            )
+            abweichungen.append(f"{_kennung(e)}: nicht nachrechenbar — {exc}")
             continue
-        if abs(nach.ratio - float(e["ratio"])) > 1e-3:
+        if abs(nach.ratio - datei_verhaeltnis) > 1e-3:
             abweichungen.append(
-                f"{e['instrument']}/{e['window']}/{e['frequency']}: Datei sagt "
-                f"{e['ratio']}, nachgerechnet {nach.ratio:.4f}"
+                f"{_kennung(e)}: Datei sagt {datei_verhaeltnis}, nachgerechnet "
+                f"{nach.ratio:.4f}"
             )
-        elif bool(e["resolvable"]) != nach.resolvable:
+        elif datei_urteil != nach.resolvable:
             abweichungen.append(
-                f"{e['instrument']}/{e['window']}/{e['frequency']}: Urteil in der "
-                f"Datei {e['resolvable']}, nachgerechnet {nach.resolvable}"
+                f"{_kennung(e)}: Urteil in der Datei {datei_urteil}, nachgerechnet "
+                f"{nach.resolvable}"
             )
+        abweichungen.extend(_zeilenfelder(e, nach, anteil=anteil, schema=schema))
 
     if abweichungen:
         print(f"FEHLGESCHLAGEN — {len(abweichungen)} Zeile(n) rechnen sich nicht nach:",
@@ -629,25 +749,21 @@ def pruefen(pfad: Path | None = None) -> int:
             print(f"  {zeile}", file=sys.stderr)
         return 1
 
+    if beanstandung:
+        for zeile in beanstandung:
+            print(zeile, file=sys.stderr)
+        for zeile in _korrigiert(eintraege, trials):
+            print(f"  {zeile}", file=sys.stderr)
+        print("Abhilfe: `python tools/aufloesung.py` neu messen (braucht MT5).",
+              file=sys.stderr)
+        return 1
+
     aufloesbar = [e for e in eintraege if e.get("resolvable")]
     print(f"ok — {ziel.name} nachgerechnet: {len(aufloesbar)} von {len(eintraege)} "
           f"Kombinationen aufloesbar (T = {trials}, Out-of-Sample-Anteil {anteil}).")
     for e in aufloesbar:
         print(f"  {e['instrument']:<8} {e['window']:<4} {e['frequency']:<10} "
               f"N={e['events']:<6} Verhaeltnis {e['ratio']}")
-
-    if veraltet:
-        print(file=sys.stderr)
-        print(f"FEHLGESCHLAGEN — {ziel.name} fuehrt kein oos_share und ist damit gegen "
-              "die VOLLE Ereigniszahl gerechnet.", file=sys.stderr)
-        print("Die Deflation der Ereignisstudie sieht nur das Out-of-Sample-Drittel; "
-              "die Verhaeltnisse oben sind rund Faktor 1,7 zu guenstig.",
-              file=sys.stderr)
-        for zeile in _korrigiert(eintraege, trials):
-            print(f"  {zeile}", file=sys.stderr)
-        print("Abhilfe: `python tools/aufloesung.py` neu messen (braucht MT5).",
-              file=sys.stderr)
-        return 1
     return 0
 
 
@@ -656,6 +772,11 @@ def _korrigiert(eintraege: list[dict[str, Any]], trials: int) -> list[str]:
 
     Steht getrennt, weil diese Liste der eigentliche Befund ist und nicht in einer
     Fehlermeldung untergehen soll.
+
+    Unlesbare Zeilen werden hier uebersprungen und nicht gemeldet -- sie sind an dieser
+    Stelle schon gemeldet: ``pruefen()`` kommt nur hierher, wenn sich zuvor JEDE Zeile
+    nachrechnen liess. Der ganze Rumpf steht deshalb im ``try``; frueher lagen der
+    Vergleich und die Ausgabezeile davor und konnten mit KeyError abstuerzen.
     """
     out: list[str] = []
     for e in eintraege:
@@ -667,18 +788,19 @@ def _korrigiert(eintraege: list[dict[str, Any]], trials: int) -> list[str]:
                 cost_bps=float(e["cost_bps"]),
                 oos_share=OOS_ANTEIL,
             )
+            if nach.resolvable == bool(e["resolvable"]):
+                continue
+            zeile = (
+                f"{e['instrument']:<8} {e['window']:<4} {e['frequency']:<10} "
+                f"N={e['events']:<6} N_defl="
+                f"{deflation_observations(int(e['events']), oos_share=OOS_ANTEIL):<6} "
+                f"{e['ratio']} -> {nach.ratio:.4f}  "
+                f"{'aufloesbar' if e['resolvable'] else 'blind'} -> "
+                f"{'aufloesbar' if nach.resolvable else 'blind'}"
+            )
         except (ResolutionError, KeyError, TypeError, ValueError):
             continue
-        if nach.resolvable == bool(e["resolvable"]):
-            continue
-        out.append(
-            f"{e['instrument']:<8} {e['window']:<4} {e['frequency']:<10} "
-            f"N={e['events']:<6} N_defl="
-            f"{deflation_observations(int(e['events']), oos_share=OOS_ANTEIL):<6} "
-            f"{e['ratio']} -> {nach.ratio:.4f}  "
-            f"{'aufloesbar' if e['resolvable'] else 'blind'} -> "
-            f"{'aufloesbar' if nach.resolvable else 'blind'}"
-        )
+        out.append(zeile)
     return out
 
 
