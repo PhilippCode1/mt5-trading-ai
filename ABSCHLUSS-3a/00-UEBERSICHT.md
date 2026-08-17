@@ -101,3 +101,37 @@ Ereigniszahl blind war.
 
 **Werden die vier Demokonten noch gebraucht? Nein** — ausdrücklich nicht. Begründung in
 [`05-URTEIL.md`](05-URTEIL.md) §6.
+
+---
+
+## Abschlussvermerk (2026-08-17)
+
+Das Vorhaben wird in dieser Auslegung **abgeschlossen**. Nicht, weil die Maschine nicht
+liefe — sie läuft, nachgewiesen im Demo-Betrieb —, sondern weil sie nichts zu tragen hat:
+der größte gemessene Effekt ist um den Faktor 4 bis 39 zu klein, und die Randomisierung
+zeigt, dass er nicht einmal an die Zwangslage gebunden ist, an der er hängen soll.
+
+**Was beim Abschluss noch geändert wurde** (nach dem Urteil, vor der Gegenzeichnung):
+
+| Punkt | Was |
+|---|---|
+| Bedingung 2 | Berichtigt: **nicht** ausgelöst. Der Messzeitpunkt liegt bei 60 Versuchen, das Register hält 7 → [`05-URTEIL.md`](05-URTEIL.md) §3 |
+| Bedingung 1 | Fail-open behoben: die Schwelle verlangte alle **sechs** Instrumente, womit ROT bei dauerhaft nicht bewertbarem BTCUSD nie eintreten konnte |
+| `ABBRUCH.md` | Stand-Zeilen für 2, 3, 5 nachgetragen; **Aufhebungsklausel** ergänzt — das Dokument regelte bis dahin nur die Auslösung |
+| Zeitbasis | `RealMt5Terminal` nimmt jetzt `server_tz` und dreht selbst → [`08-SPAETER.md`](08-SPAETER.md) §1 |
+| Journale | `tools/journal_sichern.py` — Sicherung mit Prüfsummen außerhalb des Repos |
+| Live-Pfad | Im README ausdrücklich als nicht erreichbar benannt, mit den drei unabhängigen Sperren |
+| `ABSCHLUSS/06-ABBRUCHKRITERIUM.md` | Als auf Paket 2 eingefroren gekennzeichnet |
+
+**Was offen bleibt und bewusst offen bleibt:** die drei Fragen aus
+[`../HALAL-VORFRAGE.md`](../HALAL-VORFRAGE.md), die technische Restschuld aus
+[`08-SPAETER.md`](08-SPAETER.md), und **53 von 60** Versuchen des Kampagnenbudgets,
+befristet bis 2027-08-17.
+
+Ein späterer Neuanfang ist zulässig — aber als **neues Vorhaben** mit eigener
+Vorregistrierung, eigenem Register und eigener Frist. `ABBRUCH.md` kennt keine Aufhebung
+durch Zeitablauf.
+
+**Gegenzeichnung steht aus.** Ohne sie ist der Abschluss vorgelegt, nicht angenommen; die
+Unterschriftszeilen stehen in [`05-URTEIL.md`](05-URTEIL.md) §8 und in
+[`../ABBRUCH.md`](../ABBRUCH.md).

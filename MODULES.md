@@ -459,7 +459,7 @@ Der Halal-Screen: das mechanisch Pruefbare erzwingen, die fiqh-Grenze benennen (
 
 ## `mt5_trading_ai/venue/mt5.py`
 
-Zeilen: 1307
+Zeilen: 1333
 
 MT5-Anbindung an das ``TradingVenue``-Protokoll.
 

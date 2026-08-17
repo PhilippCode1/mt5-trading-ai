@@ -27,6 +27,29 @@ Broker gemessen, plus eine Umstellung aller Verbraucher. Vorher: **nicht** anfas
 halb gedrehter Baum ist schlimmer als ein durchgehend ungedrehter, weil `server_zu_utc()`
 einem Zeitstempel nicht ansieht, ob er schon gedreht wurde.
 
+### ERLEDIGT am 2026-08-17 (Abschluss)
+
+`RealMt5Terminal` nimmt jetzt `server_tz`; ist es gesetzt, dreht das Terminal **alle**
+seine Zeitstempel selbst in echtes UTC. Ohne den Wert bleibt es beim alten Verhalten —
+bewusst kein stiller Standardwert, weil eine geratene Zone für jeden anderen Broker falsch
+wäre und ein falscher Versatz schlimmer ist als ein bekannter fehlender.
+Beleg: `tests/test_serverzeit_drehung.py` (6 Fälle).
+
+Umgestellt sind die Werkzeuge, die **Entscheidungen** an Uhrzeiten hängen:
+`tools/live_betrieb.py` und `tools/live_konsole.py`. Beide reichen `server_tz` herein und
+drehen an der Aufrufstelle **nicht** mehr — die zweite Drehung wäre ein zweiter Versatz.
+
+**Bewusst nicht umgestellt: `tools/aufloesung.py`.** Es hat die Belege von Paket 3a
+erzeugt, und die müssen reproduzierbar bleiben. Eine Drehung verschöbe jeden Zeitstempel
+und damit jede Prüfsumme in `config/reihen/`, ohne an einer einzigen Messung etwas zu
+ändern — Streuung und Ereigniszahlen hängen an der Reihenfolge der Kerzen, nicht an ihrer
+Beschriftung. Die Manifeste führen dafür jetzt das Feld `zeitbasis`, damit jeder spätere
+Leser weiß, was er vor sich hat.
+
+Der Anlass war nicht theoretisch: die Höchsthaltedauer im Betrieb rechnete mit Serverzeit
+und meldete für eine 0,77 h alte Position ein Alter von **−2,23 h**. Die Vier-Stunden-Grenze
+hätte erst nach sieben realen Stunden gefeuert.
+
 ---
 
 ## 2. Die Terminal-Obergrenze von 100.000 Balken

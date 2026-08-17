@@ -193,6 +193,14 @@ def _manifest(symbol: str, tf: Timeframe, reihe: tuple[Mt5Rate, ...]) -> dict[st
         "checksum": hasher.hexdigest(),
         "retrieved_at": datetime.now(UTC).isoformat(timespec="seconds"),
         "source": "mt5-terminal-read-only",
+        # Welche Zeitbasis die Stempel tragen. Dieses Werkzeug baut sein Terminal
+        # BEWUSST ohne ``server_tz``: die hier abgelegten Manifeste sind der Beleg
+        # von Paket 3a und muessen reproduzierbar bleiben. Eine Drehung verschoebe
+        # jeden Stempel und damit jede Pruefsumme, ohne an den Messungen etwas zu
+        # aendern (Streuung und Ereigniszahlen haengen an der Reihenfolge der Kerzen,
+        # nicht an ihrer Beschriftung). Wer neu misst, entscheidet neu -- aber dann
+        # sagt dieses Feld, was er vor sich hat.
+        "zeitbasis": "server-etikett",
     }
 
 

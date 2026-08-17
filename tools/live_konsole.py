@@ -56,7 +56,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from mt5_trading_ai.backtest.engine import MarketView, Signal  # noqa: E402
-from mt5_trading_ai.backtest.kalender import server_zu_utc  # noqa: E402
+from mt5_trading_ai.backtest.kalender import SERVER_TZ_NAME  # noqa: E402
 from mt5_trading_ai.backtest.strategies import moving_average_crossover  # noqa: E402
 from mt5_trading_ai.costs.broker_costs import load_broker_costs  # noqa: E402
 from mt5_trading_ai.data.quality import BarRow  # noqa: E402
@@ -124,10 +124,9 @@ def _signal(venue: Mt5Venue, symbol: str) -> tuple[Signal, str]:
     schluesse = [b.close for b in bars[-LANGSAM:]]
     langsam = sum(schluesse) / LANGSAM
     schnell = sum(schluesse[-SCHNELL:]) / SCHNELL
-    # Der Zeitstempel kommt in Serverzeit aus dem Terminal -- gedreht, sonst zeigt die
-    # Konsole eine Uhrzeit, die es nicht gibt (siehe ABSCHLUSS-3a/02-DATENLAGE.md).
-    letzte = server_zu_utc(bars[-1].ts) if bars[-1].ts.tzinfo else None
-    stempel = letzte.strftime("%H:%M UTC") if letzte else "?"
+    # Der Zeitstempel ist bereits echtes UTC: das Terminal wird mit ``server_tz``
+    # gebaut und dreht selbst. Hier nicht noch einmal drehen.
+    stempel = bars[-1].ts.strftime("%H:%M UTC")
     return signal, (
         f"MA{SCHNELL}={schnell:.5f} MA{LANGSAM}={langsam:.5f} "
         f"letzte Kerze {stempel}"
@@ -248,7 +247,7 @@ def main() -> int:
 
     # allow_write ist hier KEIN Schalter. Eine Konsole zum Zusehen darf nicht
     # versehentlich handeln koennen -- auch nicht auf einem Demokonto.
-    terminal = RealMt5Terminal(allow_write=False)
+    terminal = RealMt5Terminal(allow_write=False, server_tz=SERVER_TZ_NAME)
     if not terminal.initialize():
         print("FEHLGESCHLAGEN — MT5-Terminal nicht erreichbar. Laeuft es, und ist es "
               "im Demokonto angemeldet?", file=sys.stderr)

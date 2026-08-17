@@ -1,6 +1,19 @@
-<!-- Wortgleiche Kopie von ABBRUCH.md (Paket 2, §7 des Auftrags). Gepflegt wird die
-     Wurzeldatei; diese Kopie steht hier, weil der Abschlussordner in sich
-     geschlossen sein muss. -->
+<!-- EINGEFROREN AUF DEM STAND VON PAKET 2 (2026-08-17, vor Paket 3a).
+     Bis dahin eine wortgleiche Kopie von ABBRUCH.md. Sie wird bewusst NICHT mehr
+     nachgezogen: dieser Abschlussordner ist der Beleg dessen, was Paket 2 vorlegte,
+     und ein nachtraeglich veraenderter Beleg ist keiner mehr (Kernregel 22).
+
+     Wer den GELTENDEN Stand sucht, liest ../ABBRUCH.md. Dort stehen die Staende nach
+     Paket 3a, die Berichtigung zu Bedingung 2 (nicht ausgeloest -- der Messzeitpunkt
+     bei 60 Versuchen ist nicht erreicht, das Register haelt 7), die entschaerfte
+     Schwelle von Bedingung 1 und die Aufhebungsklausel.
+
+     Diese Kopie behauptet unten unter anderem, Bedingung 6 sei "die einzige zurzeit
+     ausgeloeste". Das war am Tag von Paket 2 richtig und ist es heute nicht mehr. -->
+
+> **Hinweis:** Dieses Dokument ist auf dem Stand von Paket 2 eingefroren. Der geltende
+> Stand steht in [`../ABBRUCH.md`](../ABBRUCH.md).
+
 
 # ABBRUCH.md — wann dieses Vorhaben endet
 

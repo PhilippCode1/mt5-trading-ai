@@ -24,6 +24,7 @@ from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any, Protocol, runtime_checkable
+from zoneinfo import ZoneInfo
 
 from mt5_trading_ai.execution.cost_gate import CostGate, evaluate_cost_gate
 from mt5_trading_ai.execution.freshness import (
@@ -1030,11 +1031,22 @@ class RealMt5Terminal:
         path: str | None = None,
         allow_write: bool = False,
         require_demo: bool = True,
+        server_tz: str | None = None,
     ) -> None:
         self._login = login
         self._password = password
         self._server = server
         self._path = path
+        #: Zeitzone der Broker-Serverzeit, z. B. ``"Europe/Helsinki"``. Ist sie
+        #: gesetzt, werden ALLE Zeitstempel dieses Terminals in echtes UTC gedreht.
+        #: Ist sie ``None``, kommen sie so heraus, wie MetaTrader sie liefert: mit
+        #: dem Etikett UTC, aber der Wanduhr des Servers.
+        #:
+        #: Warum das ueberhaupt eine Wahl ist: die Zone ist eine Eigenschaft des
+        #: BROKERS und laesst sich nicht erraten. Sie muss gemessen werden (siehe
+        #: ABSCHLUSS-3a/02-DATENLAGE.md). Ein fest verdrahteter Wert waere fuer jeden
+        #: anderen Broker falsch, und falsch waere hier schlimmer als unbekannt.
+        self._server_tz = ZoneInfo(server_tz) if server_tz else None
         #: Fail-closed: der Schreibpfad (Orders senden/aendern) ist gesperrt, bis er
         #: bewusst freigegeben wird — nach einem Smoke-Test gegen ein Demo-Terminal.
         self._allow_write = allow_write
@@ -1081,9 +1093,23 @@ class RealMt5Terminal:
     def _d(value: Any) -> Decimal:
         return Decimal(str(value))
 
-    @staticmethod
-    def _utc(epoch_seconds: Any) -> datetime:
-        return datetime.fromtimestamp(int(epoch_seconds), tz=UTC)
+    def _utc(self, epoch_seconds: Any) -> datetime:
+        """Zeitstempel des Terminals -- in echtem UTC, wenn die Serverzone bekannt ist.
+
+        MetaTrader liefert Balken- und Positionszeiten so, dass sie **als UTC gelesen
+        die Server-Ortszeit ergeben**. Wer sie ungedreht weiterreicht, haengt das
+        Etikett ``UTC`` an eine Zeit, die keine ist -- und jeder Verbraucher, der sie
+        mit einer echten UTC-Zeit vergleicht, rechnet falsch. Gemessen an diesem
+        Broker: 2 h im Winter, 3 h im Sommer.
+
+        Ohne ``server_tz`` bleibt es beim alten Verhalten. Das ist bewusst kein
+        stiller Standardwert: eine geratene Zone waere fuer einen anderen Broker
+        falsch, und ein falscher Versatz ist schlimmer als ein bekannter fehlender.
+        """
+        roh = datetime.fromtimestamp(int(epoch_seconds), tz=UTC)
+        if self._server_tz is None:
+            return roh
+        return roh.replace(tzinfo=None).replace(tzinfo=self._server_tz).astimezone(UTC)
 
     def _require_write(self) -> None:
         if not self._allow_write:

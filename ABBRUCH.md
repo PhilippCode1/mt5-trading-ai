@@ -20,7 +20,7 @@ führt.
 
 | | |
 |---|---|
-| **Messbare Schwelle** | Erforderliche Trefferquote p\* > 62 % bei **allen sechs** Prüfinstrumenten bei **allen** erhobenen Brokern, bei S = 1,0 × Median-ATR(14) auf H1 |
+| **Messbare Schwelle** | Erforderliche Trefferquote p\* > 62 % bei **allen bewertbaren** Prüfinstrumenten, mindestens jedoch vier, bei **allen** erhobenen Brokern, bei S = 1,0 × Median-ATR(14) auf H1. Sind weniger als vier Instrumente bewertbar, gilt die Bedingung als **ausgelöst** (Kernregel: eine fehlende Messung ist keine bestandene) |
 | **Messzeitpunkt** | Bei jeder Neuerhebung der Broker-Kosten, mindestens halbjährlich; zusätzlich sofort bei Auslösung von Bedingung 3 |
 | **Wer misst** | `python tools/kostentor.py` gegen `config/broker_costs.json` und `config/atr_measurements.json` |
 | **Beim Auslösen** | Ende des Vorhabens in der jetzigen Auslegung (Stundenhorizont, mehrere Trades je Tag). Keine Strategiearbeit. Die Gegenrechnung aus Tabelle 5 des Werkzeugs benennt dann den Horizont, ab dem es rechnerisch trüge — sie ist die einzige zulässige Fortsetzung |
@@ -29,6 +29,13 @@ führt.
 `ABSCHLUSS/07-AUSGABEN/kostentor.txt`):** nicht ausgelöst. M1 = GRÜN mit 4 grünen
 Instrumenten von 6 (XAUUSD 51,0 %, DE40 51,6 %, NVDA 52,3 %, EURUSD 55,5 %), GBPJPY gelb
 bei 57,8 %, BTCUSD nicht bewertbar.
+
+**Berichtigung vom 2026-08-17 (Abschluss).** Die erste Fassung verlangte p\* > 62 % bei
+**allen sechs** Instrumenten. Da BTCUSD dauerhaft „nicht bewertbar" ist (keine Kostenzeile
+bei keinem der vier Broker), konnte ROT damit **nie** eintreten — eine Ampel, die nicht rot
+werden kann, schützt nicht. Das widersprach der Kernregel dieses Dokuments, dass eine
+fehlende Messung als ausgelöst gilt. Die Schwelle ist darauf umgestellt: alle bewertbaren,
+mindestens vier. Am Stand vom 2026-08-17 ändert das nichts (fünf bewertbar, M1 grün).
 
 **Ausdrücklicher Vorbehalt, der zur Bedingung gehört.** Das grüne Urteil hat **keine
 Reserve**. Unter fünf gleich vertretbaren Lesartenderselben Daten (Tabelle 2b des Werkzeugs)
@@ -77,6 +84,15 @@ nachträgliche Erhöhung wäre genau der Mehrfachvergleich, gegen den die Deflat
 
 ---
 
+**Stand am 2026-08-17 (Abschluss): NICHT AUSGELÖST — gemessen, aber vor dem
+Messzeitpunkt.** Sieben Ereignisstudien aus Paket 3a, höchster Deflated Sharpe **0,686**
+auf dem Out-of-Sample-Drittel gegen die Schwelle 0,95. Der Messzeitpunkt dieser Bedingung
+liegt jedoch bei **60** vorregistrierten Versuchen; das Register hält **7**. Die Bedingung
+ist damit nicht ausgelöst, und es stehen **53 Versuche** offen — befristet durch Bedingung 5.
+Beleg: `ABSCHLUSS-3a/05-URTEIL.md` §3 samt Berichtigung.
+
+---
+
 ## Bedingung 3 — Realisierte Kosten weichen von der Modellannahme ab
 
 | | |
@@ -94,6 +110,18 @@ künstlich rot wird. Genau deshalb muss sie als Erstes gemessen werden — und g
 löst schon eine Abweichung von 50 % den Halt aus. **Rechnung dazu:** eine Slippage von
 2,84 bp statt 0,5 bp lässt DE40 aus dem grünen Block fallen; ab dort wäre nur noch XAUUSD
 grün, und M1 wäre gelb.
+
+---
+
+**Stand am 2026-08-17 (Abschluss): AUSGELÖST mangels Messung.** Es gab bis heute keinen
+Handelsbetrieb mit Echtgeld und damit keine realisierten Kosten, gegen die sich die
+Modellannahme prüfen ließe. Nach der Kernregel dieses Dokuments (eine fehlende Messung gilt
+als ausgelöst, nicht als bestanden) ist die Bedingung ausgelöst.
+
+Was seither hinzukam, ohne die Bedingung zu erfüllen: der Demo-Betrieb vom 2026-08-17 liefert
+**gemessene Spreads** (EURUSD 0,09 bp gegen 0,05 bp modelliert, XAUUSD bis 1,07 bp gegen
+0,18 bp — Faktor 1,7 bis 5,9). Das ist ein Hinweis auf die Richtung, aber keine Messung
+realisierter **Round-Turn**-Kosten mit Slippage, und es stammt von einem Demokonto.
 
 ---
 
@@ -125,6 +153,15 @@ Live-Pfad gesperrt — technisch, nicht nur organisatorisch.
 sauberer Validierung überhaupt durchführbar sind, und kurz genug, dass sie eine Grenze ist.
 Zwölf Monate erlauben rund fünf Versuche im Monat neben einer Berufstätigkeit — genug für
 eine ernsthafte Suche, zu wenig, um sich unbemerkt in eine unbefristete zu verwandeln.
+
+---
+
+**Stand am 2026-08-17 (Abschluss): NICHT AUSGELÖST, die Uhr läuft.** Frist bis
+**2027-08-17**, Zwischenstand ohne Abbruchwirkung am **2027-02-17**. Kein grünes
+Bewertungstor erreicht: bester Deflated Sharpe 0,686 gegen 0,95, Lücke **0,264**.
+
+Zum selben Termin 2027-02-17 wird die halbjährliche Kostentor-Neuerhebung aus Bedingung 1
+fällig. Beide Termine fallen zusammen; wer den einen bedient, bedient den anderen mit.
 
 ---
 
@@ -163,8 +200,41 @@ Damit die Liste nicht in beide Richtungen weich wird:
 - Ein einzelner Verlustmonat oder eine Serie von Verlust-Trades. Dafür sind die
   Verlustgrenzen in `risk/limits.py` da, nicht dieses Dokument.
 - Ein rotes Tor im Prüfstand. Das ist ein Fehler, der behoben wird.
-- Ein einzelnes Instrument, das gelb oder rot wird. Bedingung 1 verlangt **alle sechs**.
+- Ein einzelnes Instrument, das gelb oder rot wird. Bedingung 1 verlangt **alle
+  bewertbaren, mindestens vier** (Fassung vom 2026-08-17).
 - Aufgewendete Zeit oder bereits geschriebener Code. Versunkene Kosten zählen nicht.
+
+---
+
+## Wie eine Bedingung wieder aufgehoben wird
+
+*(Nachgetragen am 2026-08-17. Bis dahin regelte dieses Dokument nur die Auslösung — wer
+eine Aufhebung feststellen wollte, hatte keine Form dafür, und eine Fortsetzung wäre eine
+Auslegungsfrage statt einer Messung gewesen.)*
+
+Eine ausgelöste Bedingung erlischt **nicht von selbst** und **nicht durch Zeitablauf**. Sie
+wird aufgehoben, wenn und nur wenn alle vier Punkte erfüllt sind:
+
+1. **Dieselbe Messung**, die zur Auslösung führte, wird mit demselben Werkzeug erneut
+   gefahren und liefert einen Wert unter der Schwelle. Kein Ersatzmaß, kein anderes
+   Werkzeug, keine andere Bezugsgröße.
+2. **Die Rohausgabe liegt bei** — im selben Muster wie `ABSCHLUSS/07-AUSGABEN/`.
+3. **Ein datierter Absatz in diesem Dokument** hält Auslösung und Aufhebung
+   nebeneinander fest. Der alte Stand wird **nicht** gelöscht (Kernregel 22).
+4. **Der Auftraggeber zeichnet gegen.** Ohne Gegenzeichnung ist eine Aufhebung nicht
+   festgestellt, sondern nur behauptet.
+
+**Eine Schwelle wird dabei nie verschoben.** Wer die Zahl ändert, statt den Wert zu
+erreichen, hebt die Bedingung nicht auf, sondern schafft sie ab — und das ist genau der
+Mehrfachvergleich, gegen den dieses Dokument gebaut ist. Die einzige zulässige Änderung
+einer Schwelle ist ihre **Verschärfung**.
+
+**Bedingung 4 und 6 kennen keine Aufhebung durch Messung allein.** Bedingung 4 verlangt
+eine benannte Gelehrten-Antwort, Bedingung 6 eine Zwangslage, die M6 vollständig besteht.
+
+**Ein Neuanfang ist keine Aufhebung.** Wer nach einem Ende neu beginnt, beginnt ein neues
+Vorhaben mit eigener Vorregistrierung, eigenem Versuchsregister und eigener Frist. Das ist
+ausdrücklich zulässig — es ist nur nicht dieses hier.
 
 ---
 

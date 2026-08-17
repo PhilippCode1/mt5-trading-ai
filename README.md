@@ -40,9 +40,35 @@ Aendert sich der Code, ohne dass diese Zahlen nachgezogen werden, wird der Test 
 
 <!-- KENNZAHLEN-ANFANG (geprueft von tests/test_readme_numbers.py) -->
 - module_count: 38
-- test_function_count: 569
-- source_lines: 9606
+- test_function_count: 575
+- source_lines: 9632
 <!-- KENNZAHLEN-ENDE -->
+
+## Stand des Vorhabens (2026-08-17)
+
+**Es gibt keine zugelassene Strategie, und es wird kein Echtgeld gehandelt.**
+
+Sieben Ereignisstudien aus Paket 3a haben keine tragfaehige Zwangslage gefunden: groesster
+Bruttoeffekt 1,36 bp gegen eine Kostenschwelle von 5,51 bp, alle sieben Nettoeffekte
+negativ, hoechster Deflated Sharpe 0,686 gegen die Schwelle 0,95. Das Urteil steht in
+[ABSCHLUSS-3a/05-URTEIL.md](ABSCHLUSS-3a/05-URTEIL.md), die Abbruchbedingungen in
+[ABBRUCH.md](ABBRUCH.md).
+
+**Der Live-Pfad ist nicht erreichbar**, und zwar auf drei Ebenen unabhaengig voneinander:
+
+1. `RealMt5Terminal` faehrt mit `allow_write=False` als Vorgabe und `require_demo=True`.
+   Ein Schreibzugriff auf ein Live-Konto wird abgelehnt, bevor er den Handelsplatz
+   erreicht.
+2. Die mehrstufige Live-Freigabe in `execution/release.py` ist an **keinen** Aufrufer
+   angeschlossen. Es gibt keinen Weg, sie zu erteilen.
+3. Der Orderpfad prueft als Erstes die §9.3-Zulassung. Sie ist nicht erteilt, weil kein
+   Kandidat das Bewertungstor bestanden hat.
+
+Was **laeuft**, ist ein Demo-Betrieb zur Pruefung der Maschine
+([tools/live_betrieb.py](tools/live_betrieb.py)) mit einer Platzhalterstrategie. Er
+beantwortet, ob die Kette sauber arbeitet — nicht, ob sie Geld verdient.
+
+---
 
 ## Abschluss Paket 3a
 
