@@ -1,5 +1,40 @@
 # ALPHA.md — woher der Vorteil kommen soll
 
+---
+
+# Stand 2026-08-17 (Paket 3a) — nach der Messung
+
+**Frage 3 („Struktur") ist jetzt beantwortet, und die Antwort ist eine andere als die
+unten. Die drei übrigen Antworten bleiben, wie sie waren.** Der alte Stand steht
+vollständig darunter und wird nicht überschrieben (Kernregel 22).
+
+| # | Frage | Stand Paket 2 | Stand Paket 3a |
+|---|---|---|---|
+| 1 | Information | keine haltbare Antwort | **unverändert.** Es sind weiterhin dieselben OHLC-Kerzen wie für jeden anderen Retail-Kunden |
+| 2 | Geschwindigkeit | keine haltbare Antwort | **unverändert.** Drei bis fünf Größenordnungen daneben |
+| 3 | Struktur | keine benannte Zwangslage, kein Datensatz | **benannt und gemessen — und sie trägt nicht.** Fünf Zwangslagen mit benannter Gegenpartei, äußerem Zwang und im Voraus bestimmbarem Zeitpunkt; sieben Studien über bis zu 16 Jahre Stundenhistorie. Größter Bruttoeffekt 1,36 bp gegen eine Kostenschwelle von 5,51 bp. Alle sieben Nettoeffekte negativ |
+| 4 | Nachweis | offen | **beantwortet.** Die Nachweismaschine steht: Auflösungsrechnung vor der Messung, Ereigniskalender in echtem UTC, Studie mit Selbsttest und Gegenprobe, Registrierung jedes Versuchs mit Prüfsumme |
+
+**Was sich damit ändert:** Die dritte Frage lautete „gibt es eine benennbare Zwangslage?".
+Sie ist mit **ja** zu beantworten. Die Folgefrage — trägt sie mehr als ihre Kosten? — ist
+mit **nein** zu beantworten, und zwar nicht knapp: es fehlt der Faktor 4 bis 39.
+
+**Was sich nicht ändert:** Abbruchbedingung 6 bleibt ausgelöst. Eine benennbare
+Vorteilsquelle, die die Kosten nicht trägt, ist keine Vorteilsquelle. Die Bedingung ist
+damit **schärfer** belegt als vorher: früher fehlte die Antwort, jetzt liegt sie vor.
+
+Der entscheidende Zusatzbefund: aus 1.000 zufällig verschobenen Ereignismengen erreichen
+14 % bis 100 % denselben Median wie die echten Ereignisse. Der kleine Effekt, der gemessen
+wurde, ist **nicht an die Zwangslage gebunden** — er ist die allgemeine Eigenschaft der
+Stundenrendite, nach einer Bewegung leicht zurückzukehren.
+
+Belege: [`ABSCHLUSS-3a/04-EREIGNISSTUDIE.md`](ABSCHLUSS-3a/04-EREIGNISSTUDIE.md),
+[`ABSCHLUSS-3a/05-URTEIL.md`](ABSCHLUSS-3a/05-URTEIL.md), Register `docs/trials.jsonl`.
+
+---
+
+# Stand 2026-08-17 (Paket 2) — vor der Messung
+
 *Geschrieben vor der ersten Zeile Strategiecode (Paket 2, A5). Vier Fragen, Klartext.
 Wo es keine haltbare Antwort gibt, steht das da — das ist ein Ergebnis, kein Versagen.*
 

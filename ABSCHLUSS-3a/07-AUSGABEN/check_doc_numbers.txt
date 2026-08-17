@@ -1,1 +1,3 @@
-NICHT GELAUFEN — Platzhalter aus dem ersten Commit des Laufs.
+$ python tools/check_doc_numbers.py
+ok - Code: 38 Module, 557 Testfunktionen, 9435 Quellzeilen; Doku widerspruchsfrei.
+[exit=0]

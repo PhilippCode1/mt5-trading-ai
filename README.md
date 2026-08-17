@@ -39,9 +39,9 @@ Gemessen, nicht behauptet — gegen den Code geprueft von `tests/test_readme_num
 Aendert sich der Code, ohne dass diese Zahlen nachgezogen werden, wird der Test rot.
 
 <!-- KENNZAHLEN-ANFANG (geprueft von tests/test_readme_numbers.py) -->
-- module_count: 36
-- test_function_count: 531
-- source_lines: 8761
+- module_count: 38
+- test_function_count: 557
+- source_lines: 9435
 <!-- KENNZAHLEN-ENDE -->
 
 ## Abschluss Paket 3a
@@ -69,6 +69,9 @@ Rohe Terminalausgaben, eine Datei je Befehl:
 - [ABSCHLUSS-3a/07-AUSGABEN/kostentor.txt](ABSCHLUSS-3a/07-AUSGABEN/kostentor.txt)
 - [ABSCHLUSS-3a/07-AUSGABEN/ereignisstudie_selbsttest.txt](ABSCHLUSS-3a/07-AUSGABEN/ereignisstudie_selbsttest.txt)
 - [ABSCHLUSS-3a/07-AUSGABEN/aufloesung.txt](ABSCHLUSS-3a/07-AUSGABEN/aufloesung.txt)
+- [ABSCHLUSS-3a/07-AUSGABEN/gegenprobe.txt](ABSCHLUSS-3a/07-AUSGABEN/gegenprobe.txt)
+- [ABSCHLUSS-3a/07-AUSGABEN/ereignisstudie.txt](ABSCHLUSS-3a/07-AUSGABEN/ereignisstudie.txt)
+- [ABSCHLUSS-3a/07-AUSGABEN/geheimnis_scan.txt](ABSCHLUSS-3a/07-AUSGABEN/geheimnis_scan.txt)
 
 ## Abschluss Paket 2
 

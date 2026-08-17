@@ -1,0 +1,197 @@
+Ereignisstudie ereignisstudie-v1 — 7 Studien, jede verbraucht einen Versuch
+------------------------------------------------------------------------------------------
+K1 — London-Fixing 16:00 — EURUSD
+------------------------------------------------------------------------------------------
+VOR DER MESSUNG festgezurrt:
+  Hypothese      : umkehr (Vorzeichen = -sign(Rendite der Vorstunde))
+  Fenster        : 1 h ab dem ersten handelbaren Kerzenanfang
+  Zeitpunkt      : 16:00 Europe/London
+  Zeitraum       : 2010-07-07 .. 2026-08-17
+  Ereignisse     : 4204
+  K (guenstigster Broker): 1.10 bp | M6.1-Schwelle 3.30 bp
+  data_checksum  : 3f7474f0dbeff849...
+  code_commit    : a9ed7ad57dac
+
+ERGEBNIS
+  gemessene Ereignisse : 4164 von 4204
+  Bruttoeffekt (Median): +0.53 bp
+  Streuung (25 %/75 %) : -5.55 / +6.32 bp
+  Trefferanteil        : 52.4 %
+  Kosten K             : 1.10 bp
+  NETTOEFFEKT          : -0.57 bp
+
+  M6.1 (Brutto >= 3.30 bp): GESCHEITERT
+  M6.2 Deflation   : DSR 0.154 auf 1388 OoS-Ereignissen -> gescheitert
+  M6.2 Stabilitaet : +0.86 / +0.28 bp -> gescheitert
+  M6.2 Zufall      : 27.6 % der 1.000 verschobenen Mengen -> gescheitert
+
+  URTEIL M6: GESCHEITERT
+
+------------------------------------------------------------------------------------------
+K1 — London-Fixing 16:00 — GBPJPY
+------------------------------------------------------------------------------------------
+VOR DER MESSUNG festgezurrt:
+  Hypothese      : umkehr (Vorzeichen = -sign(Rendite der Vorstunde))
+  Fenster        : 1 h ab dem ersten handelbaren Kerzenanfang
+  Zeitpunkt      : 16:00 Europe/London
+  Zeitraum       : 2010-07-06 .. 2026-08-17
+  Ereignisse     : 4205
+  K (guenstigster Broker): 1.84 bp | M6.1-Schwelle 5.51 bp
+  data_checksum  : f98e4199cc61a8a1...
+  code_commit    : a9ed7ad57dac
+
+ERGEBNIS
+  gemessene Ereignisse : 4174 von 4205
+  Bruttoeffekt (Median): +0.55 bp
+  Streuung (25 %/75 %) : -6.35 / +7.16 bp
+  Trefferanteil        : 52.4 %
+  Kosten K             : 1.84 bp
+  NETTOEFFEKT          : -1.28 bp
+
+  M6.1 (Brutto >= 5.51 bp): GESCHEITERT
+  M6.2 Deflation   : DSR 0.407 auf 1392 OoS-Ereignissen -> gescheitert
+  M6.2 Stabilitaet : +0.53 / +0.57 bp -> gescheitert
+  M6.2 Zufall      : 31.2 % der 1.000 verschobenen Mengen -> gescheitert
+
+  URTEIL M6: GESCHEITERT
+
+------------------------------------------------------------------------------------------
+K2 — Tokioter TTM-Fixing 09:55 JST — GBPJPY
+------------------------------------------------------------------------------------------
+VOR DER MESSUNG festgezurrt:
+  Hypothese      : umkehr (Vorzeichen = -sign(Rendite der Vorstunde))
+  Fenster        : 1 h ab dem ersten handelbaren Kerzenanfang
+  Zeitpunkt      : 09:55 Asia/Tokyo
+  Zeitraum       : 2010-07-06 .. 2026-08-17
+  Ereignisse     : 4205
+  K (guenstigster Broker): 1.84 bp | M6.1-Schwelle 5.51 bp
+  data_checksum  : f98e4199cc61a8a1...
+  code_commit    : a9ed7ad57dac
+
+ERGEBNIS
+  gemessene Ereignisse : 4158 von 4205
+  Bruttoeffekt (Median): +0.14 bp
+  Streuung (25 %/75 %) : -5.67 / +5.22 bp
+  Trefferanteil        : 50.6 %
+  Kosten K             : 1.84 bp
+  NETTOEFFEKT          : -1.70 bp
+
+  M6.1 (Brutto >= 5.51 bp): GESCHEITERT
+  M6.2 Deflation   : DSR 0.168 auf 1386 OoS-Ereignissen -> gescheitert
+  M6.2 Stabilitaet : -0.16 / +0.41 bp -> gescheitert
+  M6.2 Zufall      : 58.3 % der 1.000 verschobenen Mengen -> gescheitert
+
+  URTEIL M6: GESCHEITERT
+
+------------------------------------------------------------------------------------------
+K3 — Monatsende-Fixing — GBPJPY
+------------------------------------------------------------------------------------------
+VOR DER MESSUNG festgezurrt:
+  Hypothese      : umkehr (Vorzeichen = -sign(Rendite der Vorstunde))
+  Fenster        : 1 h ab dem ersten handelbaren Kerzenanfang
+  Zeitpunkt      : 16:00 Europe/London
+  Zeitraum       : 2010-07-06 .. 2026-08-17
+  Ereignisse     : 193
+  K (guenstigster Broker): 1.84 bp | M6.1-Schwelle 5.51 bp
+  data_checksum  : f98e4199cc61a8a1...
+  code_commit    : a9ed7ad57dac
+
+ERGEBNIS
+  gemessene Ereignisse : 192 von 193
+  Bruttoeffekt (Median): +1.36 bp
+  Streuung (25 %/75 %) : -7.32 / +8.24 bp
+  Trefferanteil        : 57.3 %
+  Kosten K             : 1.84 bp
+  NETTOEFFEKT          : -0.48 bp
+
+  M6.1 (Brutto >= 5.51 bp): GESCHEITERT
+  M6.2 Deflation   : DSR 0.180 auf 64 OoS-Ereignissen -> gescheitert
+  M6.2 Stabilitaet : +0.10 / +2.52 bp -> gescheitert
+  M6.2 Zufall      : 22.5 % der 1.000 verschobenen Mengen -> gescheitert
+
+  URTEIL M6: GESCHEITERT
+
+------------------------------------------------------------------------------------------
+K4 — Taeglicher Rollover (Serverzeit-Mitternacht) — EURUSD
+------------------------------------------------------------------------------------------
+VOR DER MESSUNG festgezurrt:
+  Hypothese      : umkehr (Vorzeichen = -sign(Rendite der Vorstunde))
+  Fenster        : 1 h ab dem ersten handelbaren Kerzenanfang
+  Zeitpunkt      : 00:00 Europe/Helsinki
+  Zeitraum       : 2010-07-07 .. 2026-08-17
+  Ereignisse     : 4204
+  K (guenstigster Broker): 1.10 bp | M6.1-Schwelle 3.30 bp
+  data_checksum  : 3f7474f0dbeff849...
+  code_commit    : a9ed7ad57dac
+
+ERGEBNIS
+  gemessene Ereignisse : 3285 von 4204
+  Bruttoeffekt (Median): +0.36 bp
+  Streuung (25 %/75 %) : -1.49 / +2.27 bp
+  Trefferanteil        : 55.1 %
+  Kosten K             : 1.10 bp
+  NETTOEFFEKT          : -0.74 bp
+
+  M6.1 (Brutto >= 3.30 bp): GESCHEITERT
+  M6.2 Deflation   : DSR 0.418 auf 1095 OoS-Ereignissen -> gescheitert
+  M6.2 Stabilitaet : +0.36 / +0.37 bp -> gescheitert
+  M6.2 Zufall      : 38.0 % der 1.000 verschobenen Mengen -> gescheitert
+
+  URTEIL M6: GESCHEITERT
+
+------------------------------------------------------------------------------------------
+K4 — Taeglicher Rollover (Serverzeit-Mitternacht) — GBPJPY
+------------------------------------------------------------------------------------------
+VOR DER MESSUNG festgezurrt:
+  Hypothese      : umkehr (Vorzeichen = -sign(Rendite der Vorstunde))
+  Fenster        : 1 h ab dem ersten handelbaren Kerzenanfang
+  Zeitpunkt      : 00:00 Europe/Helsinki
+  Zeitraum       : 2010-07-06 .. 2026-08-17
+  Ereignisse     : 4205
+  K (guenstigster Broker): 1.84 bp | M6.1-Schwelle 5.51 bp
+  data_checksum  : f98e4199cc61a8a1...
+  code_commit    : a9ed7ad57dac
+
+ERGEBNIS
+  gemessene Ereignisse : 3307 von 4205
+  Bruttoeffekt (Median): +0.74 bp
+  Streuung (25 %/75 %) : -2.97 / +4.11 bp
+  Trefferanteil        : 56.0 %
+  Kosten K             : 1.84 bp
+  NETTOEFFEKT          : -1.09 bp
+
+  M6.1 (Brutto >= 5.51 bp): GESCHEITERT
+  M6.2 Deflation   : DSR 0.686 auf 1103 OoS-Ereignissen -> gescheitert
+  M6.2 Stabilitaet : +0.73 / +0.74 bp -> gescheitert
+  M6.2 Zufall      : 14.0 % der 1.000 verschobenen Mengen -> gescheitert
+
+  URTEIL M6: GESCHEITERT
+
+------------------------------------------------------------------------------------------
+K5 — NASDAQ-Schlussauktion — NVDA
+------------------------------------------------------------------------------------------
+VOR DER MESSUNG festgezurrt:
+  Hypothese      : umkehr (Vorzeichen = -sign(Rendite der Vorstunde))
+  Fenster        : 1 h ab dem ersten handelbaren Kerzenanfang
+  Zeitpunkt      : 16:00 America/New_York
+  Zeitraum       : 2003-09-10 .. 2026-08-14
+  Ereignisse     : 5983
+  K (guenstigster Broker): 4.19 bp | M6.1-Schwelle 12.56 bp
+  data_checksum  : 933a4ed1eaa52389...
+  code_commit    : a9ed7ad57dac
+
+ERGEBNIS
+  gemessene Ereignisse : 472 von 5983
+  Bruttoeffekt (Median): +0.00 bp
+  Streuung (25 %/75 %) : -1.84 / +2.85 bp
+  Trefferanteil        : 36.0 %
+  Kosten K             : 4.19 bp
+  NETTOEFFEKT          : -4.19 bp
+
+  M6.1 (Brutto >= 12.56 bp): GESCHEITERT
+  M6.2 Deflation   : DSR 0.025 auf 158 OoS-Ereignissen -> gescheitert
+  M6.2 Stabilitaet : +0.00 / -0.00 bp -> gescheitert
+  M6.2 Zufall      : 100.0 % der 1.000 verschobenen Mengen -> gescheitert
+
+  URTEIL M6: GESCHEITERT
+

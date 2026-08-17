@@ -41,6 +41,38 @@ Backtest-Maschine: fuehrt Splits, Daten und Kostenmodell zusammen.
 - `def criteria_evidence`
 - `def run_registered_backtest`
 
+## `mt5_trading_ai/backtest/ereignisstudie.py`
+
+Zeilen: 331
+
+Ereignisstudie — traegt eine bekannte Zwangslage mehr als ihre Kosten?
+
+- `class StudienError`
+- `class Kerze`
+- `class Ereigniswert`
+- `class Bestaetigung`
+- `class Ergebnis`
+- `def messe_ereignis`
+- `def balkenstunden`
+- `def studie`
+- `def bestaetige`
+
+## `mt5_trading_ai/backtest/kalender.py`
+
+Zeilen: 343
+
+Ereigniskalender — wann genau ist das Ereignis, in echtem UTC?
+
+- `class KalenderError`
+- `def server_zu_utc`
+- `def utc_zu_server`
+- `class Kandidat`
+- `def ereignisse`
+- `def kandidat`
+- `class Ereigniskalender`
+- `def default_calendar_path`
+- `def load_ereigniskalender`
+
 ## `mt5_trading_ai/backtest/llm_compare.py`
 
 Zeilen: 71

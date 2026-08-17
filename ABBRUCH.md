@@ -137,7 +137,16 @@ eine ernsthafte Suche, zu wenig, um sich unbemerkt in eine unbefristete zu verwa
 | **Wer misst** | Der Auftraggeber gegen `ALPHA.md` |
 | **Beim Auslösen** | **Keine Strategiearbeit.** Zulässig bleibt ausschließlich die Suche nach einer benennbaren strukturellen Zwangslage samt Gegenpartei. Wird binnen der Frist aus Bedingung 5 keine gefunden, endet das Vorhaben |
 
-**Stand am 2026-08-17: AUSGELÖST.** `ALPHA.md` hält fest, dass auf drei der vier Fragen
+**Stand am 2026-08-17, nach Paket 3a: WEITERHIN AUSGELÖST — jetzt gemessen statt
+angenommen.** Fünf Zwangslagen wurden benannt und in sieben Studien gemessen. Sie
+existieren; sie tragen ihre Kosten nicht. Größter Bruttoeffekt 1,36 bp (K3, GBPJPY) gegen
+eine Schwelle von 5,51 bp; alle sieben Nettoeffekte negativ; höchster Deflated Sharpe
+0,686 gegen die Schwelle 0,95. Damit ist auch **Bedingung 2 ausgelöst**, erstmals
+gemessen. Die Bedingung 6 ist nicht aufgehoben, sondern besser belegt: vorher fehlte die
+Antwort, jetzt liegt sie vor und lautet nein. Beleg:
+[`ABSCHLUSS-3a/05-URTEIL.md`](ABSCHLUSS-3a/05-URTEIL.md).
+
+**Stand am 2026-08-17, vor Paket 3a: AUSGELÖST.** `ALPHA.md` hält fest, dass auf drei der vier Fragen
 keine haltbare Antwort steht. Der Grund ist nicht Nachlässigkeit: Information und
 Geschwindigkeit sind für einen Retail-Zugang strukturell verschlossen, und für Struktur
 fehlt eine benannte Zwangslage. Diese Bedingung ist damit die **einzige zurzeit

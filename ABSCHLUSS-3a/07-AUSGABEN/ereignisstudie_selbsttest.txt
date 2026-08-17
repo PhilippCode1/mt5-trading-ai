@@ -1,1 +1,13 @@
-NICHT GELAUFEN — Platzhalter aus dem ersten Commit des Laufs.
+$ python tools/ereignisstudie.py --selbsttest
+==========================================================================================
+SELBSTTEST — synthetische Reihe mit bekanntem Effekt, KEIN Versuch
+==========================================================================================
+Kerzen 24000 | Ereignisse 1000 | gemessen 1000
+Erwarteter Effekt      : 12.00 bp
+Gemessener Bruttoeffekt: 12.00 bp
+Trefferanteil          : 100.0 %
+Netto (K = 1,00 bp)    : 11.00 bp
+Gegenprobe (Fenster 3 h versetzt): -1.63 bp
+
+BESTANDEN — Effekt und Vorzeichen richtig, Gegenprobe leer. Kein Versuch registriert.
+[exit=0]

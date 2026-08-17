@@ -6,7 +6,7 @@ Repo: C:\Users\Acer\mt5_trading_ai
 ------------------------------------------------------------------------------------------
 1) ARBEITSBAUM — detect-secrets (alle eingebauten Detektoren)
 ------------------------------------------------------------------------------------------
-Gepruefte Objekte : 179 von Git verfolgte Dateien
+Gepruefte Objekte : 181 von Git verfolgte Dateien
 Detektoren        : 27
 Funde             : 20
   FUND config\reihen\DE40_D1.manifest.json:7 — Hex High Entropy String
@@ -33,14 +33,14 @@ Funde             : 20
 ------------------------------------------------------------------------------------------
 2) GESAMTER VERLAUF — jedes Blob-Objekt einzeln
 ------------------------------------------------------------------------------------------
-Gepruefte Objekte : 406 Blobs aus 53 Commits
+Gepruefte Objekte : 454 Blobs aus 55 Commits
 Funde (roh)       : 0
 Funde (bereinigt) : 0  [Vorlagen wie .env.example abgezogen]
 
 ------------------------------------------------------------------------------------------
 3) ARBEITSBAUM — zweite Runde auf die vier genannten Gattungen
 ------------------------------------------------------------------------------------------
-Gepruefte Objekte : 179 Dateien
+Gepruefte Objekte : 181 Dateien
 Muster            : 9
 Funde             : 0
 
@@ -54,5 +54,5 @@ weder lokal noch am Remote. Es gibt in diesem Repo keinen Alt-Baum, der
 mitgeprueft werden koennte -- die Pruefung deckt damit alles ab, was da ist.
 
 ==========================================================================================
-ERGEBNIS: 20 Funde bei 179 verfolgten Dateien und 406 Blobs im Verlauf.
+ERGEBNIS: 20 Funde bei 181 verfolgten Dateien und 454 Blobs im Verlauf.
 ==========================================================================================

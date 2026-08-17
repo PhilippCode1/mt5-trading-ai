@@ -1,1 +1,3 @@
-NICHT GELAUFEN â€” Platzhalter aus dem ersten Commit des Laufs.
+$ python tools/gen_docs.py --check
+ok — MODULES.md ist aktuell (510 Zeilen).
+[exit=0]

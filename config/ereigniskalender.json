@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "calendar_id": "kalender-v1",
+  "calendar_version": "2026-08-17",
+  "verified_on": "2026-08-17",
+  "server_tz": "Europe/Helsinki",
+  "server_tz_beleg": "GEMESSEN, nicht angenommen. Stundenrenditen des Terminals gegen Dukascopy (EURUSD und GBPJPY, 2024, je 6.204 Stundenpaare) ueber ganze Stundenverschiebungen abgetastet. Minimum nadelscharf bei -3 h: 0,28 bp gegen 5,08 bp bei 0 h (EURUSD), 0,55 gegen 8,40 (GBPJPY). Monatsweise wechselt der Versatz zwischen -2 h (Nov-Maerz) und -3 h (Apr-Okt). Die Umschalttage sind die der EU-Sommerzeit: am 10.03.2024 (US-Umstellung) aendert sich nichts, am 31.03.2024 (EU) springt es; am 27.10.2024 zurueck, am 03.11.2024 (US) nichts. Als Europe/Helsinki gelesen betraegt die Abweichung in JEDEM Monat des Jahres 0,09 bp. Belege: ABSCHLUSS-3a/02-DATENLAGE.md Abschnitt 3, Rohausgabe ABSCHLUSS-3a/07-AUSGABEN/gegenprobe.txt.",
+  "hinweis": "Diese Datei ist die nachpruefbare Ablage dessen, was in mt5_trading_ai/backtest/kalender.py::KANDIDATEN als Code steht. Die Zeitpunkte selbst stehen NICHT als Liste hier: sie sind ableitbar, und eine Ableitungsregel als Code ist ueberpruefbar, waehrend eine Liste veraltet. Der Loader vergleicht Datei und Code und laedt nicht, wenn sie auseinanderlaufen. Feiertage stehen bewusst nirgends: ein Ereignis ohne Kerze faellt in der Studie heraus, und das ist genauer als ein gepflegter Feiertagskalender.",
+  "kandidaten": [
+    {
+      "schluessel": "K1",
+      "name": "London-Fixing 16:00",
+      "instrumente": [
+        "EURUSD",
+        "GBPJPY"
+      ],
+      "zone": "Europe/London",
+      "uhrzeit": "16:00",
+      "regel": "werktaeglich",
+      "fenster_stunden": 1.0,
+      "art": "abgeleitet",
+      "quelle": "mt5_trading_ai/backtest/kalender.py::ereignisse",
+      "abgerufen_am": "2026-08-17",
+      "konvention": "WM/Reuters-Referenzkurs, taeglich 16:00 Londoner Ortszeit. Indexfonds, Pensionskassen und Unternehmen rechnen gegen diesen Kurs ab und muessen ihn darum handeln.",
+      "beleg": "Konvention, nicht aus den Kursen ableitbar. Nachpruefbar ist nur, dass es zu diesem Zeitpunkt Kerzen gibt: 259 von 261 Handelstagen in 2024."
+    },
+    {
+      "schluessel": "K2",
+      "name": "Tokioter TTM-Fixing 09:55 JST",
+      "instrumente": [
+        "GBPJPY"
+      ],
+      "zone": "Asia/Tokyo",
+      "uhrzeit": "09:55",
+      "regel": "werktaeglich",
+      "fenster_stunden": 1.0,
+      "art": "abgeleitet",
+      "quelle": "mt5_trading_ai/backtest/kalender.py::ereignisse",
+      "abgerufen_am": "2026-08-17",
+      "konvention": "Telegraphic Transfer Middle Rate; japanische Banken stellen um 09:55 JST den Tagesreferenzkurs, gegen den Importeure und Exporteure abrechnen.",
+      "beleg": "Konvention. Asia/Tokyo kennt keine Sommerzeit, der Versatz ist ganzjaehrig UTC+9. 09:55 liegt NICHT auf einer Stundengrenze — das Fenster ist die Kerze, die den Zeitpunkt enthaelt."
+    },
+    {
+      "schluessel": "K3",
+      "name": "Monatsende-Fixing",
+      "instrumente": [
+        "GBPJPY"
+      ],
+      "zone": "Europe/London",
+      "uhrzeit": "16:00",
+      "regel": "monatsende",
+      "fenster_stunden": 1.0,
+      "art": "abgeleitet",
+      "quelle": "mt5_trading_ai/backtest/kalender.py::ereignisse",
+      "abgerufen_am": "2026-08-17",
+      "konvention": "Dieselbe Gruppe wie K1, am letzten Handelstag des Monats zusaetzlich mit Quotenabgleich. Die Ableitungsregel ist der letzte Werktag des Monats.",
+      "beleg": "Abgeleitet, keine Liste. Knappster Kandidat des Feldes: 193 Ereignisse, Aufloesungsverhaeltnis 0,62."
+    },
+    {
+      "schluessel": "K4",
+      "name": "Taeglicher Rollover (Serverzeit-Mitternacht)",
+      "instrumente": [
+        "EURUSD",
+        "GBPJPY"
+      ],
+      "zone": "Europe/Helsinki",
+      "uhrzeit": "00:00",
+      "regel": "werktaeglich",
+      "fenster_stunden": 1.0,
+      "art": "abgeleitet",
+      "quelle": "mt5_trading_ai/backtest/kalender.py::ereignisse",
+      "abgerufen_am": "2026-08-17",
+      "konvention": "Wer ueber den Stichzeitpunkt haelt, zahlt oder erhaelt die Finanzierung. Der Zeitpunkt ist Mitternacht SERVERZEIT und wandert deshalb im Jahr zwischen 21:00 und 22:00 UTC.",
+      "beleg": "An den Kursen nachgewiesen: die Tageskerzen des Terminals beginnen an 150 Tagen um 21:00 und an 111 Tagen um 22:00 echtem UTC — die Tagesgrenze des Servers, nicht die von UTC."
+    },
+    {
+      "schluessel": "K5",
+      "name": "NASDAQ-Schlussauktion",
+      "instrumente": [
+        "NVDA"
+      ],
+      "zone": "America/New_York",
+      "uhrzeit": "16:00",
+      "regel": "werktaeglich",
+      "fenster_stunden": 1.0,
+      "art": "abgeleitet",
+      "quelle": "mt5_trading_ai/backtest/kalender.py::ereignisse",
+      "abgerufen_am": "2026-08-17",
+      "konvention": "Alle, die zum offiziellen Schlusskurs abrechnen — Indexfonds, ETFs, Bewertungsstichtage — muessen in der Schlussauktion handeln.",
+      "beleg": "An den Kursen nachgewiesen: die letzte NVDA-Stundenkerze beginnt an 233 von 252 Handelstagen um 15:00 New Yorker Zeit, deckt also 15:00-16:00 ab. Die 19 Ausnahmen liegen samtlich in den Wochen zwischen amerikanischer und europaeischer Zeitumstellung."
+    }
+  ]
+}
