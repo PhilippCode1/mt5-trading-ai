@@ -81,11 +81,6 @@ from mt5_trading_ai.backtest.engine import MarketView, Signal  # noqa: E402
 from mt5_trading_ai.backtest.strategies import moving_average_crossover  # noqa: E402
 from mt5_trading_ai.data.quality import BarRow  # noqa: E402
 from mt5_trading_ai.execution.cost_gate import CostGate  # noqa: E402
-from mt5_trading_ai.execution.private_sync import (  # noqa: E402
-    PrivateEvent,
-    PrivateEventKind,
-    PrivateSync,
-)
 from mt5_trading_ai.execution.risk_manager import RiskManager  # noqa: E402
 from mt5_trading_ai.execution.runner import RunnerConfig, run_signal  # noqa: E402
 from mt5_trading_ai.execution.scheduler import SyncScheduler  # noqa: E402
@@ -244,34 +239,124 @@ def _eroeffne(
         print(f"  --   {symbol} {sig.name}: {bericht.reject_reason} (bei {wo})")
 
 
+def _verbindung_sichern(
+    venue: Mt5Venue, terminal: RealMt5Terminal, journal: Journal, *, versuche: int = 10
+) -> bool:
+    """Nach einer Stoerung neu verbinden. Gibt False, wenn es endgueltig aus ist.
+
+    Ohne diesen Pfad toetet jeder Terminal-Neustart den Lauf klebrig: ``reconcile``
+    wirft, der Scheduler latcht ``reconcile_unavailable``, und der Halt bleibt die
+    restlichen Stunden stehen, auch wenn das Terminal laengst wieder laeuft.
+    """
+    if venue.is_healthy():
+        return True
+    for i in range(versuche):
+        pause = min(30.0, 5.0 * (i + 1))
+        journal.schreib("reconnect_versuch", nr=i + 1, pause=pause)
+        print(f"  ..   Verbindung weg, Versuch {i + 1}/{versuche} in {pause:.0f}s")
+        time.sleep(pause)
+        try:
+            terminal.shutdown()
+            if not terminal.initialize():
+                continue
+            venue.connect()
+            venue.adopt_book()
+        except (VenueError, OSError) as exc:
+            journal.schreib("reconnect_fehler", nr=i + 1, fehler=str(exc))
+            continue
+        # Nur Halts loesen, die von der Stoerung SELBST kommen. Ein Drawdown-,
+        # Desync- oder Notbremsen-Halt bleibt stehen -- er hat einen anderen Grund.
+        if venue.halt_reason in ("reconcile_unavailable", "account_unavailable"):
+            venue.clear_halt()
+            journal.schreib("halt_geloest", grund=venue.halt_reason)
+        journal.schreib("reconnect_ok", nr=i + 1)
+        print("  OK   Verbindung wieder da")
+        return True
+    journal.schreib("verbindung_verloren", offen_moeglich=True)
+    print("  !!   Verbindung endgueltig verloren. Positionen koennen offen sein.")
+    return False
+
+
+def _buch_abgleichen(
+    venue: Mt5Venue, manager: RiskManager, bekannt: dict[str, Lage],
+    lage: dict[str, Lage], journal: Journal,
+) -> None:
+    """Was der Broker geschlossen hat, muss Manager UND Buch erfahren.
+
+    Nur ``record_close`` zu rufen genuegt nicht: das lokale Positionsbuch der Venue
+    behielte die Position, und der naechste ``reconcile`` saehe die Differenz als
+    Drift. Bei ``max_notional_drift=0`` latcht das den Global-Halt -- ein voellig
+    normales Trade-Ende waere dann bitgleich mit einem katastrophalen Desync.
+    """
+    verschwunden = [s for s in bekannt if s not in lage]
+    if not verschwunden:
+        return
+    for symbol in verschwunden:
+        manager.record_close(symbol)
+        journal.schreib("vom_broker_geschlossen", symbol=symbol)
+        print(f"  WEG  {symbol} (Broker hat geschlossen, vermutlich Stop)")
+    vorher = venue.book_snapshot() if hasattr(venue, "book_snapshot") else None
+    nachher = venue.adopt_book()
+    journal.schreib("buch_uebernommen", vorher=vorher, nachher=nachher)
+
+
+def _notbremse(
+    venue: Mt5Venue, manager: RiskManager, journal: Journal, *,
+    equity_jetzt: Decimal, equity_start: Decimal, grenze: Decimal,
+    lage: dict[str, Lage], jetzt: datetime,
+) -> bool:
+    """Tagesverlustgrenze -- und zwar mit Glattstellung. Gibt True, wenn sie greift.
+
+    Die Grenze aus ``risk/limits.py`` erzeugt nur ``REDUCE_ONLY``: sie sperrt den
+    Einkauf und laesst laufende Verlustpositionen offen. Fuer einen unbeaufsichtigten
+    Lauf ist das zu wenig -- wer nicht zusieht, muss darauf zaehlen koennen, dass bei
+    Erreichen der Grenze wirklich Schluss ist.
+
+    Bezugsgroesse ist die Equity beim START DES LAUFS, nicht der Kalendertag: ein Lauf,
+    der um 14 Uhr beginnt, hat keinen Tagesanfang, den dieses Werkzeug kennen koennte.
+    """
+    if equity_start <= 0:
+        return False
+    verlust = (equity_start - equity_jetzt) / equity_start
+    if verlust < grenze:
+        return False
+    print(f"  !!   NOTBREMSE: {verlust * 100:.2f} % Verlust seit Start "
+          f"(Grenze {grenze * 100:.1f} %). Alles glattstellen.")
+    journal.schreib("notbremse", verlust_anteil=verlust, grenze=grenze,
+                    equity_start=equity_start, equity=equity_jetzt)
+    for offen in lage.values():
+        _schliesse(venue, manager, offen, jetzt, "notbremse", journal)
+    venue.latch_halt(reason="tagesverlust")
+    return True
+
+
 def takt(
     venue: Mt5Venue, manager: RiskManager, scheduler: SyncScheduler,
     symbole: list[str], zulassung: CriteriaVerdict, journal: Journal,
     *, nr: int, max_haltedauer: timedelta, bekannt: dict[str, Lage],
-) -> dict[str, Lage]:
+    equity_start: Decimal, verlustgrenze: Decimal,
+) -> tuple[dict[str, Lage], bool]:
     jetzt = datetime.now(UTC)
 
-    # 1) Herzschlag: beobachtet Equity (sonst feuert der Drawdown-Halt nie) und
-    #    latcht bei Verbindungs- oder Synchronisationsdefekten.
-    tick = scheduler.tick(
-        jetzt,
-        events=[PrivateEvent(seq=nr, ts=jetzt, kind=PrivateEventKind.HEARTBEAT)],
-    )
+    # 1) Herzschlag. Der Scheduler beobachtet die Equity (ohne das feuert die
+    #    Notbremse nie) und latcht bei Verbindungs- oder Reconcile-Defekten.
+    #    KEIN ``events=``: ohne konfigurierten Strom wirft ``apply_private_event``.
+    tick = scheduler.tick(jetzt)
     konto = venue.get_account()
     print(f"[{jetzt.strftime('%H:%M:%S')}] Takt {nr} | Equity {konto.equity} "
           f"{konto.currency} | Halt: {'JA' if tick.halted else 'nein'}")
     journal.schreib("takt", nr=nr, equity=konto.equity, halt=tick.halted,
-                    demo=konto.is_demo)
+                    halt_grund=tick.halt_reason, demo=konto.is_demo)
 
-    # 2) Buchfuehrung gleichziehen: was der Broker geschlossen hat (Stop gefuellt),
-    #    muss der Manager erfahren -- sonst zaehlt die Drossel Positionen, die es
-    #    nicht mehr gibt, und blockiert dauerhaft.
+    # 2) Buchfuehrung gleichziehen -- Manager UND Positionsbuch.
     lage = _lage_lesen(venue)
-    for symbol in list(bekannt):
-        if symbol not in lage:
-            manager.record_close(symbol)
-            journal.schreib("vom_broker_geschlossen", symbol=symbol)
-            print(f"  WEG  {symbol} (Broker hat geschlossen, vermutlich Stop)")
+    _buch_abgleichen(venue, manager, bekannt, lage, journal)
+
+    # 2b) Notbremse. Vor allem anderen, und sie stellt wirklich glatt.
+    if _notbremse(venue, manager, journal, equity_jetzt=konto.equity,
+                  equity_start=equity_start, grenze=verlustgrenze,
+                  lage=lage, jetzt=jetzt):
+        return _lage_lesen(venue), True
 
     # 3) Ausstiege. Laufen AUCH bei Halt -- Schliessen muss immer moeglich bleiben.
     for symbol, offen in list(lage.items()):
@@ -299,7 +384,7 @@ def takt(
                 continue
             journal.schreib("signal", symbol=symbol, signal=sig.name, detail=warum)
             _eroeffne(venue, manager, symbol, sig, jetzt, zulassung, journal)
-    return _lage_lesen(venue)
+    return _lage_lesen(venue), False
 
 
 def _autotrading_an() -> bool:
@@ -329,6 +414,9 @@ def main() -> int:
     ap.add_argument("--scharf", default=None, metavar="BEGRUENDUNG",
                     help="Die §9.3-Zulassung uebergehen und WIRKLICH handeln. "
                          "Begruendung ist Pflicht und geht ins Journal.")
+    ap.add_argument("--verlustgrenze", type=float, default=2.0, metavar="PROZENT",
+                    help="Bei diesem Verlust seit Laufbeginn wird glattgestellt "
+                         "und der Lauf beendet (Vorgabe 2 %%)")
     ap.add_argument("--am-ende-offen-lassen", action="store_true",
                     help="Positionen am Ende NICHT glattstellen (Vorgabe: schliessen)")
     args = ap.parse_args()
@@ -338,9 +426,14 @@ def main() -> int:
         print("FEHLGESCHLAGEN — MT5-Terminal nicht erreichbar.", file=sys.stderr)
         return 2
     manager = RiskManager()
+    # KEIN PrivateSync: es gibt im Repo keine Quelle, die FILL-Ereignisse erzeugt.
+    # Mit konfiguriertem Strom bucht ``submit_order`` den eigenen Fill NICHT (es
+    # wartet auf den autoritativen Strom, der nie kommt), der naechste ``reconcile``
+    # saehe die volle Position als Drift, und bei ``max_notional_drift=0`` latcht das
+    # den Global-Halt. Der Lauf haette genau einen Takt lang gehandelt.
     venue = Mt5Venue(
         name="mt5-betrieb", terminal=terminal, catalog=load_instrument_catalog(),
-        sync=PrivateSync(), risk_manager=manager,
+        risk_manager=manager,
     )
     venue.connect()
     konto = venue.get_account()
@@ -373,6 +466,7 @@ def main() -> int:
     journal = Journal(JOURNALE / f"journal-{start.strftime('%Y%m%dT%H%M%S')}.jsonl")
     symbole = args.symbol or sorted(load_instrument_catalog())
     max_halt = timedelta(hours=args.max_haltedauer)
+    verlustgrenze = Decimal(str(args.verlustgrenze)) / Decimal("100")
 
     if args.scharf:
         print("=" * 78)
@@ -389,6 +483,7 @@ def main() -> int:
         "start", konto=konto.account_id, equity=konto.equity, demo=konto.is_demo,
         symbole=symbole, dauer_stunden=args.dauer, takt_sekunden=args.takt,
         max_haltedauer_stunden=args.max_haltedauer,
+        verlustgrenze_prozent=args.verlustgrenze,
         scharf=bool(args.scharf), zulassung_uebergangen=args.scharf,
         hinweis=("Zum Zeitpunkt dieses Laufs war KEINE Strategie nach §9.3 "
                  "zugelassen. Siehe ABSCHLUSS-3a/05-URTEIL.md."),
@@ -396,9 +491,16 @@ def main() -> int:
     )
     print(f"Journal: {journal.pfad}")
     print(f"Laufzeit {args.dauer} h, Takt {args.takt:g} s, {len(symbole)} Instrumente, "
-          f"Hoechsthaltedauer {args.max_haltedauer} h.\n")
+          f"Hoechsthaltedauer {args.max_haltedauer} h, "
+          f"Notbremse bei {args.verlustgrenze} % Verlust.\n")
 
-    scheduler = SyncScheduler(venue, max_silence=timedelta(minutes=5), started_at=start)
+    # risk_manager MUSS hier hinein: ohne ihn ist ``observe_equity`` im Scheduler
+    # toter Code, der Fenster-Hoechststand bleibt bei der Anfangs-Equity stehen und
+    # die Drawdown-Grenze feuert nie.
+    scheduler = SyncScheduler(
+        venue, max_silence=timedelta(minutes=5), started_at=start,
+        risk_manager=manager,
+    )
     ende = start + timedelta(hours=args.dauer)
     abbruch = {"jetzt": False}
 
@@ -407,24 +509,35 @@ def main() -> int:
         print("\nAbbruch angefordert — laufe den Takt zu Ende.")
 
     signalmodul.signal(signalmodul.SIGINT, _stop)
+    # SIGTERM (und unter Windows SIGBREAK) ebenfalls: sonst laeuft der finally-Block
+    # bei einem geordneten Abschuss gar nicht, und Positionen bleiben offen.
+    for name in ("SIGTERM", "SIGBREAK"):
+        sig_nr = getattr(signalmodul, name, None)
+        if sig_nr is not None:
+            signalmodul.signal(sig_nr, _stop)
 
     bekannt: dict[str, Lage] = {}
     nr = 0
+    gestoppt = False
     try:
-        while datetime.now(UTC) < ende and not abbruch["jetzt"]:
+        while datetime.now(UTC) < ende and not abbruch["jetzt"] and not gestoppt:
             nr += 1
+            if not _verbindung_sichern(venue, terminal, journal):
+                break
             try:
-                bekannt = takt(
+                bekannt, gestoppt = takt(
                     venue, manager, scheduler, symbole, zulassung, journal,
                     nr=nr, max_haltedauer=max_halt, bekannt=bekannt,
+                    equity_start=konto.equity, verlustgrenze=verlustgrenze,
                 )
             except VenueError as exc:
                 # Ein Defekt am Handelsplatz beendet den Lauf NICHT -- er wird
-                # protokolliert, und der naechste Takt versucht es erneut. Was
-                # wirklich gefaehrlich waere, latcht der Scheduler als Halt.
+                # protokolliert, und der naechste Takt versucht es erneut (die
+                # Verbindung wird oben gesichert). Was wirklich gefaehrlich waere,
+                # latcht der Scheduler als Halt.
                 journal.schreib("takt_fehler", nr=nr, fehler=str(exc))
                 print(f"  !! Takt {nr}: {exc}")
-            if datetime.now(UTC) < ende and not abbruch["jetzt"]:
+            if datetime.now(UTC) < ende and not abbruch["jetzt"] and not gestoppt:
                 time.sleep(args.takt)
     finally:
         if not args.am_ende_offen_lassen:

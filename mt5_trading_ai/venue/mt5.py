@@ -1092,7 +1092,18 @@ class RealMt5Terminal:
     def positions(self) -> tuple[Mt5Position, ...]:
         buy = int(getattr(self._mt5, "POSITION_TYPE_BUY", 0))
         out: list[Mt5Position] = []
-        for pos in self._mt5.positions_get() or ():
+        # ``positions_get`` gibt bei einem FEHLER ``None`` zurueck und bei wirklich
+        # leerem Buch ein leeres Tupel. Ein ``or ()`` macht daraus dasselbe -- und ein
+        # Lesefehler saehe dann aus wie „keine Positionen offen". Wer darauf aufbaut,
+        # verbucht bei jeder Verbindungsstoerung alle offenen Positionen als
+        # geschlossen. Fail-closed: der Fehler wird ein Fehler.
+        roh = self._mt5.positions_get()
+        if roh is None:
+            raise VenueUnavailableError(
+                "positions_get() lieferte None — Positionsabfrage fehlgeschlagen. "
+                "Das ist NICHT dasselbe wie ein leeres Buch."
+            )
+        for pos in roh:
             out.append(
                 Mt5Position(
                     ticket=str(pos.ticket),
