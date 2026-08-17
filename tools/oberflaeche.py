@@ -123,7 +123,7 @@ def _lage() -> dict[str, Any]:
                 if modell is None or wert < modell:
                     modell = wert
             preise.append({"symbol": symbol, "bid": q.bid, "ask": q.ask,
-                           "gemessen": gemessen, "modell": modell})
+                           "gemessen": gemessen, "modell": modell, "ts": q.ts})
         stand["preise"] = preise
     except VenueError as exc:
         stand["fehler"] = str(exc)
@@ -153,8 +153,21 @@ def _abschnitt_konto(stand: dict[str, Any]) -> str:
     if konto is None:
         return "<p class='leer'>Kein Kontostand — Terminal nicht erreichbar.</p>"
     jetzt = stand["jetzt"]
+    # Gemessen wird die Frische des juengsten KURSSTEMPELS, nicht die des
+    # Kontoschnappschusses. Zwei Gruende:
+    #   * MetaTrader liefert ueberhaupt keinen Kontozeitstempel; ``account()`` setzt
+    #     ihn selbst auf ``datetime.now(UTC)``. Ihn zu pruefen hiesse, die eigene Uhr
+    #     gegen die eigene Uhr zu halten.
+    #   * Die erste Fassung dieser Kachel tat genau das -- ``snapshot_ts=jetzt,
+    #     now=jetzt``. Das Alter war per Konstruktion null, und die Kachel stand IMMER
+    #     auf gruen. Eine Sicherheitsanzeige, die nicht rot werden kann, ist schlimmer
+    #     als keine.
+    # Der Kursstempel kommt vom Broker und ist damit ein echtes Lebenszeichen.
+    stempel = [p["ts"] for p in (stand.get("preise") or []) if p.get("ts")]
+    juengster = max(stempel) if stempel else None
     frische = evaluate_account_freshness(
-        snapshot_ts=jetzt, now=jetzt, connected=True,
+        snapshot_ts=juengster or jetzt - timedelta(days=1), now=jetzt,
+        connected=juengster is not None,
         max_age=MAX_SNAPSHOT_AGE, future_tolerance=timedelta(seconds=1),
     )
     demo = "Demokonto" if konto.is_demo else "LIVE-KONTO"
@@ -170,10 +183,11 @@ def _abschnitt_konto(stand: dict[str, Any]) -> str:
       <div class="kachel"><span class="etikett">Konto</span>
         <span class="wert {klasse}">{demo}</span>
         <span class="klein">{_e(konto.account_id)}</span></div>
-      <div class="kachel"><span class="etikett">Frische-Latch</span>
+      <div class="kachel"><span class="etikett">Kursfrische</span>
         <span class="wert {'gut' if frische.evaluable else 'krit'}">
           {'ok' if frische.evaluable else _e(frische.reason)}</span>
-        <span class="klein">Grenze {frische.max_age.total_seconds():.0f} s</span></div>
+        <span class="klein">{frische.age.total_seconds():.1f} s alt ·
+          Grenze {frische.max_age.total_seconds():.0f} s</span></div>
       <div class="kachel"><span class="etikett">Serverzeit</span>
         <span class="wert">{_e(SERVER_TZ_NAME)}</span>
         <span class="klein">gemessen, gedreht</span></div>

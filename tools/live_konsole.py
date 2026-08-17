@@ -177,13 +177,22 @@ def takt(
     print("=" * 78)
 
     konto = venue.get_account()
+    # Gemessen wird der juengste KURSSTEMPEL, nicht der Kontoschnappschuss: MT5
+    # liefert keinen Kontozeitstempel, ``account()`` setzt ihn selbst auf jetzt.
+    # Die erste Fassung uebergab ``snapshot_ts=jetzt, now=jetzt`` -- das Alter war
+    # per Konstruktion null und die Anzeige konnte nie rot werden.
+    try:
+        juengster = max(venue.get_quote(s).ts for s in symbole)
+    except VenueError:
+        juengster = None
     frische = evaluate_account_freshness(
-        snapshot_ts=jetzt, now=jetzt, connected=True,
+        snapshot_ts=juengster or jetzt - timedelta(days=1), now=jetzt,
+        connected=juengster is not None,
         max_age=MAX_SNAPSHOT_AGE, future_tolerance=timedelta(seconds=1),
     )
     print(f"Konto {konto.account_id} | Equity {konto.equity} {konto.currency} | "
           f"Demo: {'ja' if konto.is_demo else 'NEIN'} | "
-          f"Frische: {'ok' if frische.evaluable else frische.reason} "
+          f"Kursfrische: {'ok' if frische.evaluable else frische.reason} "
           f"(Alter {frische.age.total_seconds():.1f} s, "
           f"Grenze {frische.max_age.total_seconds():.0f} s)")
     print()
