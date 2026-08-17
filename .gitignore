@@ -19,3 +19,4 @@ TRIALS.jsonl
 .env
 .env.*
 !.env.example
+betrieb/
