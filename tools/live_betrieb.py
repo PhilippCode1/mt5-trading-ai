@@ -464,7 +464,26 @@ def main() -> int:
 
     start = datetime.now(UTC)
     journal = Journal(JOURNALE / f"journal-{start.strftime('%Y%m%dT%H%M%S')}.jsonl")
-    symbole = args.symbol or sorted(load_instrument_catalog())
+    # Nur Symbole, die dieser Broker wirklich fuehrt. Der Katalog ist breiter als
+    # das Angebot eines einzelnen Brokers; ein unbekanntes Symbol wuerde sonst in
+    # JEDEM Takt einen Fehler ins Protokoll schreiben und es unlesbar machen.
+    gewuenscht = args.symbol or sorted(load_instrument_catalog())
+    symbole = []
+    fehlend = []
+    for sym in gewuenscht:
+        try:
+            venue.get_instrument(sym)
+            venue.get_quote(sym)
+        except VenueError:
+            fehlend.append(sym)
+        else:
+            symbole.append(sym)
+    if fehlend:
+        print(f"Nicht beim Broker gefuehrt, uebersprungen: {', '.join(fehlend)}")
+    if not symbole:
+        print("ABBRUCH — kein einziges handelbares Symbol.", file=sys.stderr)
+        terminal.shutdown()
+        return 2
     max_halt = timedelta(hours=args.max_haltedauer)
     verlustgrenze = Decimal(str(args.verlustgrenze)) / Decimal("100")
 
@@ -481,7 +500,8 @@ def main() -> int:
 
     journal.schreib(
         "start", konto=konto.account_id, equity=konto.equity, demo=konto.is_demo,
-        symbole=symbole, dauer_stunden=args.dauer, takt_sekunden=args.takt,
+        symbole=symbole, uebersprungen=fehlend,
+        dauer_stunden=args.dauer, takt_sekunden=args.takt,
         max_haltedauer_stunden=args.max_haltedauer,
         verlustgrenze_prozent=args.verlustgrenze,
         scharf=bool(args.scharf), zulassung_uebergangen=args.scharf,
