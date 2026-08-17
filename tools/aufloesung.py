@@ -78,7 +78,7 @@ INSTRUMENTE: tuple[str, ...] = ("EURUSD", "GBPJPY", "XAUUSD", "DE40", "NVDA")
 ZEITRAHMEN: tuple[tuple[Timeframe, float, int], ...] = (
     (Timeframe.D1, 24.0, 45),
     (Timeframe.H4, 4.0, 45),
-    (Timeframe.H1, 1.0, 11),
+    (Timeframe.H1, 1.0, 45),
 )
 
 #: Frueheste Kerze, die als das Instrument selbst zaehlt. Fehlt ein Eintrag, gilt alles.
@@ -110,33 +110,66 @@ FREQUENZEN: tuple[tuple[str, int], ...] = (
 )
 
 
+#: Groesse einer Abrufscheibe in Jahren. Das Terminal beantwortet eine Anfrage, die zu
+#: viele Kerzen umspannt, mit einer LEEREN Liste statt mit einem Fehler -- und das sieht
+#: von aussen genauso aus wie „es gibt keine Daten".
+#:
+#: Abgetastet: H1 ueber 11 Jahre liefert 68.276 Kerzen, ueber 12 Jahre zweimal nichts.
+#: Dieselbe Reihe stueckweise abgefragt liefert aber Kerzen bis **2010-07-07** --
+#: ein Abruf 2013-2016 gibt 18.505, ein Abruf 2005-2006 klemmt auf den 07.07.2010.
+#: Die Grenze liegt also bei rund 70.000 Kerzen JE ABFRAGE, nicht an der Historie.
+#: Fuenf Jahre H1 sind rund 31.000 Kerzen und damit sicher darunter.
+SCHEIBE_JAHRE = 5
+
+
 def _hole(
     terminal: RealMt5Terminal, symbol: str, tf: Timeframe, jahre: int
 ) -> tuple[tuple[Mt5Rate, ...], list[str]]:
-    """Kerzen holen, mit zweitem Versuch bei leerer Antwort. Gibt (Reihe, Protokoll)."""
+    """Kerzen holen — in Scheiben, mit zweitem Versuch je Scheibe.
+
+    Von jung nach alt, damit das Protokoll zeigt, wo die Historie endet. Eine leere
+    Scheibe wird vermerkt und nicht als Abbruch behandelt: vor dem Anfang des Archivs
+    ist Leere die richtige Antwort. Erst wenn ALLE Scheiben leer sind, ist die
+    Reihe leer.
+    """
     ende = datetime.now(UTC)
-    start = ende - timedelta(days=365 * jahre)
+    beginn = ende - timedelta(days=365 * jahre)
     protokoll: list[str] = []
-    for versuch in (1, 2):
-        zeit = datetime.now(UTC)
-        reihe = terminal.rates(symbol, tf, start, ende)
-        protokoll.append(
-            f"{symbol}/{tf.value} Versuch {versuch} um "
-            f"{zeit.isoformat(timespec='seconds')}"
-            f": {len(reihe)} Kerzen"
-        )
-        if reihe:
-            grenze = FRUEHESTE_KERZE.get(symbol)
-            if grenze is not None:
-                vorher = len(reihe)
-                reihe = tuple(r for r in reihe if r.ts >= grenze)
-                if vorher != len(reihe):
-                    protokoll.append(
-                        f"{symbol}/{tf.value}: {vorher - len(reihe)} Kerzen vor "
-                        f"{grenze.date()} verworfen (Instrument existierte noch nicht)"
-                    )
-            return reihe, protokoll
-    return (), protokoll
+    gesammelt: dict[datetime, Mt5Rate] = {}
+
+    scheibe_ende = ende
+    while scheibe_ende > beginn:
+        scheibe_start = max(beginn, scheibe_ende - timedelta(days=365 * SCHEIBE_JAHRE))
+        for versuch in (1, 2):
+            zeit = datetime.now(UTC)
+            reihe = terminal.rates(symbol, tf, scheibe_start, scheibe_ende)
+            if reihe:
+                for r in reihe:
+                    gesammelt[r.ts] = r
+                protokoll.append(
+                    f"{symbol}/{tf.value} {scheibe_start.date()}.."
+                    f"{scheibe_ende.date()} Versuch {versuch} um "
+                    f"{zeit.isoformat(timespec='seconds')}: {len(reihe)} Kerzen"
+                )
+                break
+        else:
+            protokoll.append(
+                f"{symbol}/{tf.value} {scheibe_start.date()}.."
+                f"{scheibe_ende.date()}: zweimal leer (vor dem Anfang des "
+                f"Archivs oder nicht geladen)"
+            )
+        scheibe_ende = scheibe_start
+
+    grenze = FRUEHESTE_KERZE.get(symbol)
+    if grenze is not None:
+        vorher = len(gesammelt)
+        gesammelt = {ts: r for ts, r in gesammelt.items() if ts >= grenze}
+        if vorher != len(gesammelt):
+            protokoll.append(
+                f"{symbol}/{tf.value}: {vorher - len(gesammelt)} Kerzen vor "
+                f"{grenze.date()} verworfen (Instrument existierte noch nicht)"
+            )
+    return tuple(gesammelt[ts] for ts in sorted(gesammelt)), protokoll
 
 
 def _manifest(symbol: str, tf: Timeframe, reihe: tuple[Mt5Rate, ...]) -> dict[str, Any]:

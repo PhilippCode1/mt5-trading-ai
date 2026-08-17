@@ -1,10 +1,10 @@
 {
   "symbol": "DE40",
   "timeframe": "H1",
-  "bars": 59672,
-  "first": "2015-08-21T00:00:00+00:00",
-  "last": "2026-08-17T12:00:00+00:00",
-  "checksum": "fc69b6e60ae86c48af9ddcc43e81554176be2ec9798b427c1af723c979f5f81f",
-  "retrieved_at": "2026-08-17T12:56:19+00:00",
+  "bars": 60450,
+  "first": "2012-08-06T00:00:00+00:00",
+  "last": "2026-08-17T13:00:00+00:00",
+  "checksum": "e6f2b771d8a1b35d2a812c4b4c204659e7d02585e3131347b94c86ad2af2477d",
+  "retrieved_at": "2026-08-17T13:14:34+00:00",
   "source": "mt5-terminal-read-only"
 }

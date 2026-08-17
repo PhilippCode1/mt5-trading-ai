@@ -1,0 +1,39 @@
+=== Gegenprobe D1 (Auftrag A1.2) ===
+Gegenprobe EURUSD D1: 522 Fremd-, 524 Eigenkerzen
+  Renditeabweichung bei +0 h: Median 3.57 bp | Mittel 4.66 bp | max 57.21 bp  (n=520)
+  URTEIL: ueber der Schwelle von 2.0 bp — der Terminal-Feed ist fuer EURUSD auf D1 NICHT brauchbar.
+
+Gegenprobe GBPJPY D1: 522 Fremd-, 523 Eigenkerzen
+  Renditeabweichung bei +0 h: Median 6.84 bp | Mittel 10.62 bp | max 117.04 bp  (n=519)
+  URTEIL: ueber der Schwelle von 2.0 bp — der Terminal-Feed ist fuer GBPJPY auf D1 NICHT brauchbar.
+
+=== Gegenprobe H1 (der Zeitrahmen der Studien) ===
+Gegenprobe EURUSD H1: 6250 Fremd-, 6274 Eigenkerzen
+  Serverzeit-Versatz abgetastet (Median-Abweichung je Verschiebung):
+    -4 h:     4.85 bp
+    -3 h:     0.28 bp  <- Minimum
+    -2 h:     1.26 bp
+    -1 h:     4.85 bp
+    +0 h:     5.08 bp
+    +1 h:     5.17 bp
+    +2 h:     5.16 bp
+    +3 h:     5.22 bp
+    +4 h:     5.33 bp
+  BEFUND: der Terminal-Feed liegt -3 h gegen UTC. Jede 1h-Fensterstudie auf ungedrehten Zeitstempeln waere falsch.
+  Renditeabweichung bei -3 h: Median 0.28 bp | Mittel 3.64 bp | max 114.83 bp  (n=6205)
+  URTEIL: unter der Schwelle von 2.0 bp — brauchbar.
+
+Gegenprobe GBPJPY H1: 6250 Fremd-, 6273 Eigenkerzen
+  Serverzeit-Versatz abgetastet (Median-Abweichung je Verschiebung):
+    -4 h:     7.86 bp
+    -3 h:     0.55 bp  <- Minimum
+    -2 h:     2.48 bp
+    -1 h:     7.96 bp
+    +0 h:     8.40 bp
+    +1 h:     8.37 bp
+    +2 h:     8.38 bp
+    +3 h:     8.31 bp
+    +4 h:     8.42 bp
+  BEFUND: der Terminal-Feed liegt -3 h gegen UTC. Jede 1h-Fensterstudie auf ungedrehten Zeitstempeln waere falsch.
+  Renditeabweichung bei -3 h: Median 0.55 bp | Mittel 4.77 bp | max 79.88 bp  (n=6204)
+  URTEIL: unter der Schwelle von 2.0 bp — brauchbar.

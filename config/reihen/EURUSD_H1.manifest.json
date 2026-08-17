@@ -1,10 +1,10 @@
 {
   "symbol": "EURUSD",
   "timeframe": "H1",
-  "bars": 68276,
-  "first": "2015-08-20T13:00:00+00:00",
-  "last": "2026-08-17T12:00:00+00:00",
-  "checksum": "994a07a8e196d1dfd7aa574eab3862f814791ded6b9626ffee0074620e4fcc22",
-  "retrieved_at": "2026-08-17T12:56:16+00:00",
+  "bars": 99998,
+  "first": "2010-07-07T04:00:00+00:00",
+  "last": "2026-08-17T13:00:00+00:00",
+  "checksum": "3f7474f0dbeff84991686e9324c0e5326c468d0e4f94a644e496337678b71ab0",
+  "retrieved_at": "2026-08-17T13:14:30+00:00",
   "source": "mt5-terminal-read-only"
 }

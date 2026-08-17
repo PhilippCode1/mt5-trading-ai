@@ -4,7 +4,7 @@
   "bars": 3537,
   "first": "2012-08-06T00:00:00+00:00",
   "last": "2026-08-17T00:00:00+00:00",
-  "checksum": "36829650de79607400163421c19629af226660f9d8de02f6e00b0659b0f51753",
-  "retrieved_at": "2026-08-17T12:56:19+00:00",
+  "checksum": "66556eeeb514bcd7d287381611ac29caa323c698726a6608d77d700fce87e0c3",
+  "retrieved_at": "2026-08-17T13:14:33+00:00",
   "source": "mt5-terminal-read-only"
 }

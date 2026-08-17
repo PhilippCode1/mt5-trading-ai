@@ -34,6 +34,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from mt5_trading_ai.data.loader import (  # noqa: E402
     DUKASCOPY_PRICE_DIVISORS,
     DataLoadError,
+    FxSession,
     WeekdaySession,
     assess_or_raise,
     dataset_manifest,
@@ -44,7 +45,7 @@ from mt5_trading_ai.data.loader import (  # noqa: E402
     parse_yahoo_daily,
     to_csv,
 )
-from mt5_trading_ai.data.quality import BarRow  # noqa: E402
+from mt5_trading_ai.data.quality import BarRow, SessionPredicate  # noqa: E402
 
 _UA = {"User-Agent": "Mozilla/5.0 (mt5-trading-ai data fetch)"}
 
@@ -83,7 +84,7 @@ def fetch_dukascopy_year(instrument: str, year: int) -> list[BarRow]:
 
 
 def fetch_dukascopy_month_hours(
-    instrument: str, year: int, month: int
+    instrument: str, year: int, month: int, cache: Path | None = None
 ) -> list[BarRow]:
     """Stundenkerzen eines Monats. Dukascopy legt sie **monatsweise** ab, nicht wie die
     Tageskerzen jahresweise, und zaehlt den Monat ab 0.
@@ -95,8 +96,20 @@ def fetch_dukascopy_month_hours(
         f"https://datafeed.dukascopy.com/datafeed/{instrument}"
         f"/{year}/{month - 1:02d}/BID_candles_hour_1.bi5"
     )
+    # Ein Jahr Stundenkerzen sind zwoelf Abrufe je Instrument, und Dukascopy sperrt nach
+    # Bursts mit 503. Ohne Zwischenspeicher faengt jeder Wiederanlauf von vorn an und
+    # laeuft in dieselbe Sperre -- das Werkzeug waere dann praktisch nicht ausfuehrbar.
+    roh: bytes | None = None
+    datei = None if cache is None else cache / f"{instrument}_{year}_{month:02d}.bi5"
+    if datei is not None and datei.is_file() and datei.stat().st_size > 0:
+        roh = datei.read_bytes()
+    if roh is None:
+        roh = http_get(url)
+        if datei is not None:
+            datei.parent.mkdir(parents=True, exist_ok=True)
+            datei.write_bytes(roh)
     return decode_dukascopy_candles(
-        http_get(url),
+        roh,
         period_start=datetime(year, month, 1, tzinfo=UTC),
         price_divisor=dukascopy_price_divisor(instrument),
     )
@@ -163,6 +176,10 @@ def main() -> int:
     ap.add_argument("--to-year", type=int, required=True)
     ap.add_argument("--timeframe", default="D1", choices=("D1", "H1"))
     ap.add_argument("--out", type=Path, required=True)
+    ap.add_argument(
+        "--cache", type=Path, default=None,
+        help="Verzeichnis fuer die rohen .bi5-Dateien (spart Abrufe beim Wiederanlauf)",
+    )
     args = ap.parse_args()
 
     tf = args.timeframe.upper()
@@ -186,32 +203,46 @@ def main() -> int:
         else:
             year_bars = []
             for month in range(1, 13):
-                if not erster:
+                name = f"{args.instrument}_{year}_{month:02d}.bi5"
+                zwischen = (
+                    args.cache is not None and (args.cache / name).is_file()
+                )
+                if not erster and not zwischen:
                     time.sleep(3)
                 erster = False
                 year_bars.extend(
-                    fetch_dukascopy_month_hours(args.instrument, year, month)
+                    fetch_dukascopy_month_hours(
+                        args.instrument, year, month, cache=args.cache
+                    )
                 )
         raw_bars.extend(year_bars)
         print(f"  {year}: {len(year_bars)} Rohkerzen")
 
+    # Tageskerzen: Wochentagsfilter genuegt. Intraday NICHT -- die FX-Woche beginnt
+    # Sonntag 17:00 New York, und ``filter_to_weekdays`` wuerde genau diese Kerzen
+    # loeschen und damit eine Luecke erzeugen, die es nicht gibt. Dafuer gibt es
+    # ``FxSession`` (Paket 2), am NY-Anker und sommerzeitfest.
     if tf == "H1":
         vorher = len(raw_bars)
         raw_bars = drop_filler_bars(raw_bars)
         print(f"  handelsfreie Fuellkerzen verworfen: {vorher - len(raw_bars)}")
-    bars = sorted(filter_to_weekdays(raw_bars), key=lambda b: b.ts)
+        bars = sorted(raw_bars, key=lambda b: b.ts)
+        session: SessionPredicate = FxSession()
+    else:
+        bars = sorted(filter_to_weekdays(raw_bars), key=lambda b: b.ts)
+        session = WeekdaySession()
     report = assess_or_raise(
         bars,
         instrument=args.instrument,
         timeframe=tf,
-        session_predicate=WeekdaySession(),
+        session_predicate=session,
     )
     manifest = dataset_manifest(
         instrument=args.instrument,
         timeframe=tf,
         source=f"dukascopy-bid-{'day' if tf == 'D1' else 'hour'}",
         price_divisor=dukascopy_price_divisor(args.instrument),
-        session="weekday-utc",
+        session="fx-ny17" if tf == "H1" else "weekday-utc",
         bars=bars,
         quality_reasons=report.reasons,
     )
