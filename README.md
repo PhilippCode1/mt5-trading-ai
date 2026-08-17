@@ -5,13 +5,27 @@ eines Handelssystems: die **Risiko- und Sperrschicht** (Hebelklammer, Verlustgre
 Positionsgroesse, Stop-Budget), die **Freigabe- und Bewertungstore**, die
 **Validierungs-Splits** fuer Zeitreihen, die vorregistrierten **Kriterien** samt
 **Versuchsregister**, und die **Werkzeuge gegen Dokumentationsdrift**. Alles ist additiv
-aus einem groesseren Altbestand uebernommen worden; der Altbestand liegt unveraendert unter
-dem Git-Tag `archive/pre-extraction`.
+aus einem groesseren Altbestand uebernommen worden. Der Altbestand ist unter dem Git-Tag
+`archive/pre-extraction` gesichert — **im Vorgaenger-Repository, nicht in diesem**.
+Aus diesem Repo ist der Tag nicht nachpruefbar: `git tag -l` und
+`git ls-remote --tags origin` liefern hier beide nichts (gemessen 2026-08-17,
+Paket 2, A4.4). Wer die Isolation gegenpruefen will, braucht den Namen des
+Vorgaenger-Repositorys; er steht bisher nirgends.
 
 Was das Paket **nicht** ist: kein Dienst, kein Server, kein Container, kein Dashboard,
-keine Datenbank. Es haengt an nichts ausser der Python-Standardbibliothek. Die Sperren sind
-standardmaessig zu; ein Schalter kann nur lockern, nie verschaerfen, und nur zusammen mit
-einer Freigabekennung. Eine nicht bewertbare Bedingung gilt als nicht erfuellt.
+keine Datenbank.
+
+**Abhaengigkeiten, genau gesagt:** der *Import* haengt an nichts ausser der
+Python-Standardbibliothek — jedes Modul laesst sich ohne Fremdpaket laden, und die
+gesamte Testsuite laeuft ohne eines. Wer das MT5-Terminal wirklich anspricht, **lesend
+wie schreibend**, braucht zusaetzlich `MetaTrader5` (`pip install MetaTrader5`) und ein
+laufendes, angemeldetes Terminal. Das Paket wird ausschliesslich **lazy** in
+`RealMt5Terminal.initialize()` geladen; fehlt es, scheitert der Verbindungsaufbau laut,
+nicht der Import. Betroffen sind `tools/mt5_smoke.py` und `tools/atr_messung.py`.
+
+Die Sperren sind standardmaessig zu; ein Schalter kann nur lockern, nie verschaerfen, und
+nur zusammen mit einer Freigabekennung. Eine nicht bewertbare Bedingung gilt als nicht
+erfuellt.
 
 Der Aufbau geschieht Paket fuer Paket und wird in `PROGRESS.md` protokolliert — jede Zahl
 gemessen, jede Sperre nach dem Umzug einmal absichtlich beschaedigt, damit belegt ist, dass
@@ -25,9 +39,9 @@ Gemessen, nicht behauptet — gegen den Code geprueft von `tests/test_readme_num
 Aendert sich der Code, ohne dass diese Zahlen nachgezogen werden, wird der Test rot.
 
 <!-- KENNZAHLEN-ANFANG (geprueft von tests/test_readme_numbers.py) -->
-- module_count: 32
-- test_function_count: 406
-- source_lines: 7429
+- module_count: 35
+- test_function_count: 506
+- source_lines: 8540
 <!-- KENNZAHLEN-ENDE -->
 
 ## Abschluss Paket 2

@@ -22,7 +22,12 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 
-MAX_MARKDOWN_FILES = 12
+# Bewusst angehoben (Paket 2): 12 -> 24. Die Grenze soll Doku-Wildwuchs bremsen, nicht
+# einen vorgeschriebenen Abschlussordner verhindern. Neu hinzugekommen sind genau 12
+# Dateien: die neun Dateien aus ABSCHLUSS/ und die drei Wurzeldokumente ABBRUCH.md,
+# ALPHA.md und HALAL-VORFRAGE.md. Jede weitere neue Markdown-Datei laesst das Tor wieder
+# rot werden -- die Bremse bleibt also scharf, sie steht nur ein Stueck weiter.
+MAX_MARKDOWN_FILES = 24
 
 CLAIMS: list[tuple[str, re.Pattern[str]]] = [
     ("Notenbehauptung 10/10", re.compile(r"\b10\s*/\s*10\b")),
@@ -40,7 +45,18 @@ CLAIMS: list[tuple[str, re.Pattern[str]]] = [
     ("betriebsbereit", re.compile(r"betriebsbereit", re.I)),
     ("vollstaendig implementiert", re.compile(r"vollst[aä]ndig\s+implementiert", re.I)),
     ("fully implemented", re.compile(r"fully\s+implemented", re.I)),
+    # Paket 2, A4.2: „abnahmefertig" fehlte in dieser Liste. PROGRESS.md schloss damit
+    # auf „System abnahmefertig." -- eine Reifegrad-Zusicherung ohne jeden Beleg, die
+    # genau dieses Tor haette fangen sollen und durch eine Luecke im Wortschatz lief.
+    ("abnahmefertig", re.compile(r"abnahme(?:fertig|reif|bereit)", re.I)),
 ]
+
+# Eine ausdruecklich WIDERRUFENE Zusicherung ist keine Zusicherung mehr. Ohne diese
+# Ausnahme gaebe es fuer ein anhaengendes Logbuch (Kernregel 22: nie ueberschreiben)
+# keinen Weg, eine falsche Aussage zu korrigieren, ohne die Geschichte zu faelschen:
+# loeschen ist verboten, stehen lassen ist unwahr. Der Widerruf loest beides -- der
+# alte Satz bleibt lesbar, und er behauptet nichts mehr.
+WITHDRAWN = re.compile(r"WIDERRUFEN\b")
 
 # Ein Beleg ist ausfuehrbar, wenn er auf einen Test, einen CI-Job oder ein Skript zeigt.
 PROOF = re.compile(
@@ -70,11 +86,14 @@ def check_file(path: Path) -> list[str]:
         # Ausnahme wuerde `Beleg: git grep -l '10/10' ...` sich selbst ausloesen.
         if PROOF.search(line):
             continue
+        # Ein Widerruf auf derselben Zeile nimmt die Zusicherung zurueck.
+        if WITHDRAWN.search(line):
+            continue
         for label, rx in CLAIMS:
             if not rx.search(line):
                 continue
             following = "\n".join(lines[i + 1 : i + 3])
-            if PROOF.search(following):
+            if PROOF.search(following) or WITHDRAWN.search(following):
                 continue
             problems.append(
                 f"{rel}:{i + 1}: {label} ohne ausfuehrbaren Beleg\n"

@@ -1,1 +1,2 @@
-NICHT GELAUFEN — Platzhalter aus dem ersten Commit des Laufs.
+ok - Code: 35 Module, 506 Testfunktionen, 8540 Quellzeilen; Doku widerspruchsfrei.
+exit=0

@@ -1,1 +1,44 @@
-NICHT GELAUFEN — Platzhalter aus dem ersten Commit des Laufs.
+==========================================================================================
+GEHEIMNISPRUEFUNG — Paket 2, A4.4
+==========================================================================================
+Repo: C:\Users\Acer\mt5_trading_ai
+
+------------------------------------------------------------------------------------------
+1) ARBEITSBAUM — detect-secrets (alle eingebauten Detektoren)
+------------------------------------------------------------------------------------------
+Gepruefte Objekte : 130 von Git verfolgte Dateien
+Detektoren        : 27
+Funde             : 5
+  FUND tests\fixtures\smoke_eurusd_d1.manifest.json:3 — Hex High Entropy String
+  FUND tests\fixtures\smoke_eurusd_h1.manifest.json:3 — Hex High Entropy String
+  FUND tests\test_e2e_smoke.py:40 — Hex High Entropy String
+  FUND tests\test_edge_test_cli.py:26 — Hex High Entropy String
+  FUND tests\test_multi_instrument_edge.py:22 — Hex High Entropy String
+
+------------------------------------------------------------------------------------------
+2) GESAMTER VERLAUF — jedes Blob-Objekt einzeln
+------------------------------------------------------------------------------------------
+Gepruefte Objekte : 342 Blobs aus 50 Commits
+Funde (roh)       : 0
+Funde (bereinigt) : 0  [Vorlagen wie .env.example abgezogen]
+
+------------------------------------------------------------------------------------------
+3) ARBEITSBAUM — zweite Runde auf die vier genannten Gattungen
+------------------------------------------------------------------------------------------
+Gepruefte Objekte : 130 Dateien
+Muster            : 9
+Funde             : 0
+
+------------------------------------------------------------------------------------------
+4) ALT-REPOS / TAGS
+------------------------------------------------------------------------------------------
+Lokale Tags        : 0 []
+Tags am Remote     : 0
+Hinweis: der in README.md genannte Tag 'archive/pre-extraction' existiert
+weder lokal noch am Remote. Es gibt in diesem Repo keinen Alt-Baum, der
+mitgeprueft werden koennte -- die Pruefung deckt damit alles ab, was da ist.
+
+==========================================================================================
+ERGEBNIS: 5 Funde bei 130 verfolgten Dateien und 342 Blobs im Verlauf.
+==========================================================================================
+exit=0

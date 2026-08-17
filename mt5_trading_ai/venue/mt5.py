@@ -19,13 +19,17 @@ Drei Eigenschaften bestimmen den Aufbau:
 from __future__ import annotations
 
 import importlib
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any, Protocol, runtime_checkable
 
 from mt5_trading_ai.execution.cost_gate import CostGate, evaluate_cost_gate
+from mt5_trading_ai.execution.freshness import (
+    MAX_SNAPSHOT_AGE,
+    evaluate_account_freshness,
+)
 from mt5_trading_ai.execution.leverage_preflight import evaluate_leverage_preflight
 from mt5_trading_ai.execution.private_sync import PrivateEvent, PrivateSync
 from mt5_trading_ai.execution.reconcile import (
@@ -186,8 +190,21 @@ class Mt5Venue(TradingVenue):
 
     ``risk_manager`` traegt die Risikoschicht (``execution/risk_manager.py``):
     Kill-Switch (Tagesverlust/Drawdown/Deckel/Gap), Drossel, Stop-Budget und
-    Positionsgroesse. Wie das Kostentor: auf **Live** fuer eroeffnende Orders Pflicht
-    (fehlt es -> fail-closed), auf Demo unerheblich. Drawdown-Halt setzt ``_halted``.
+    Positionsgroesse. **Anders als Kostentor und Halal-Screen ist sie fuer JEDE
+    eroeffnende Order Pflicht, auch auf Demo** (Paket 2, A3): Kostentor und Halal
+    schuetzen vor realem Geld und realer Zinsbelastung — auf einem Demokonto gibt es
+    beides nicht. Die Risikoschicht dagegen prueft, ob der **Mechanismus** traegt, und
+    genau das muss auf dem Demokonto laufen, weil das Demokonto der Beweisplatz vor
+    jedem Live-Pfad ist (Reihenfolge-Regel aus ``FEHLT.md``). Eine Sperre, die nur auf
+    dem Konto laeuft, das man noch nicht benutzt, ist nicht verdrahtet.
+    Fehlt der Manager, wird jede Eroeffnung fail-closed abgelehnt.
+    Drawdown-Halt setzt ``_halted``.
+
+    ``clock`` liefert die Gegenwart fuer den **Frische-Latch** (S2,
+    ``execution/freshness.py``): ein Kontozustand aelter als ``max_account_age`` gilt
+    als nicht bewertbar, und nicht bewertbar heisst nicht erfuellt. Der Latch laeuft
+    als **erste** der fuenf Sperren, weil jede folgende mit Zahlen aus genau diesem
+    Zustand rechnet. Default ist die Systemuhr; Tests spritzen eine feste Uhr ein.
 
     ``demo_readiness`` (Paket 5) ist das Ergebnis des Demo-Reife-Tors
     (``venue/demo_run.py``): eine Live-Eroeffnung verlangt >= 180 Tage Demo-Betrieb
@@ -208,6 +225,8 @@ class Mt5Venue(TradingVenue):
         cost_gate: CostGate | None = None,
         risk_manager: RiskManager | None = None,
         demo_readiness: DemoReadiness | None = None,
+        clock: Callable[[], datetime] | None = None,
+        max_account_age: timedelta = MAX_SNAPSHOT_AGE,
     ) -> None:
         self.name = name
         self._terminal = terminal
@@ -217,6 +236,9 @@ class Mt5Venue(TradingVenue):
         self._cost_gate = cost_gate
         self._risk_manager = risk_manager
         self._demo_readiness = demo_readiness
+        #: Gegenwart fuer den Frische-Latch. Injizierbar, damit die Sperre pruefbar ist.
+        self._clock = clock if clock is not None else (lambda: datetime.now(UTC))
+        self._max_account_age = max_account_age
         self._connected = False
         #: Idempotenz je ``client_order_id`` — nur angenommene Orders.
         self._results: dict[str, OrderResult] = {}
@@ -372,6 +394,10 @@ class Mt5Venue(TradingVenue):
                     reason="missing_stop_loss",
                     retryable=False,
                 )
+            # Sperre 1 von 5 (Paket 2, A3.2): Frische des Kontozustands. Sie laeuft
+            # VOR allem, was aus dem Kontozustand liest -- auch vor der Live-Freigabe,
+            # die ``is_demo`` aus genau diesem Schnappschuss zieht.
+            self._enforce_account_freshness()
             # Live-Freigabe (inkl. Demo-Reife): nur eroeffnende Orders am Live-Konto.
             self._require_live_release_for_opening()
             # Halal-Screen: mechanische Konformitaet + hinterlegte Gelehrten-Freigabe.
@@ -380,7 +406,10 @@ class Mt5Venue(TradingVenue):
             effective_leverage = self._enforce_leverage(instrument, request)
             # Pre-Trade-Kostentor: reale Roundturn-Kosten unter der Backtest-Schwelle?
             self._enforce_cost_gate(instrument, request)
-            # Risikoschicht: Kill-Switch, Drossel, Stop-Budget, Positionsgroesse.
+            # Sperren 2 bis 5 von 5: Kill-Switch (risk/limits.py), Drossel
+            # (gates/evaluation.py), Stop-Budget (risk/stop_budget.py) und
+            # Positionsgroesse (risk/sizing.py) -- alle vier ueber den einen
+            # Aggregator, kontounabhaengig.
             self._enforce_risk(instrument, request, effective_leverage)
 
         send = self._terminal.order_send(self._to_terminal_request(request))
@@ -407,8 +436,10 @@ class Mt5Venue(TradingVenue):
         if self._sync is None:
             # Ohne Strom optimistisch buchen; mit Strom bucht der autoritative Fill.
             self._book.apply_fill(request.symbol, request.side, send.filled_volume)
-        # Akzeptierten Fill an die Risikoschicht melden (Live, mit Manager).
-        if self._risk_manager is not None and not self._terminal.account().is_demo:
+        # Akzeptierten Fill an die Risikoschicht melden. Kontounabhaengig: die
+        # Zaehler der Drossel und der Positionsdeckel muessen auch auf Demo stimmen,
+        # sonst prueft die Sperre dort gegen einen leeren Zustand.
+        if self._risk_manager is not None:
             if not is_reducing:
                 # Eroeffnung: Frequenz-Zaehler + offene Position fortschreiben.
                 self._risk_manager.record_open_fill(request.symbol, send.ts)
@@ -448,6 +479,33 @@ class Mt5Venue(TradingVenue):
         )
         # opposite > 0: Gegenposition da; volume <= opposite: kein Flip/Over-Fill.
         return opposite > 0 and request.volume <= opposite
+
+    def _enforce_account_freshness(self) -> None:
+        """Frische-Latch (S2) fuer eine eroeffnende Order — auf JEDEM Konto.
+
+        Erste der fuenf Sperren aus A3.2. Ein Kontozustand, dessen Alter die Frist
+        reisst, ist nicht bewertbar; nicht bewertbar gilt als nicht erfuellt. Ohne
+        diese Sperre rechnen Tagesverlustdeckel, Drawdown-Halt und Positionsgroesse
+        auf Zahlen, die aussehen wie Messwerte und keine sind.
+
+        Bewusst **nicht** demo-frei: ein veralteter Kontostand ist auf dem Demokonto
+        genauso wenig bewertbar wie auf dem Live-Konto, und das Demokonto ist der Ort,
+        an dem sich die Sperre beweisen muss.
+        """
+        account = self._terminal.account()
+        verdict = evaluate_account_freshness(
+            snapshot_ts=account.ts,
+            now=self._clock(),
+            connected=self._terminal.is_connected(),
+            max_age=self._max_account_age,
+        )
+        if not verdict.evaluable:
+            raise OrderRejectedError(
+                f"Kontozustand nicht bewertbar: {verdict.reason} "
+                f"(Alter {verdict.age}, Frist {verdict.max_age})",
+                reason=verdict.reason or "account_state_unevaluable",
+                retryable=True,
+            )
 
     def _require_live_release_for_opening(self) -> None:
         account = self._terminal.account()
@@ -578,15 +636,22 @@ class Mt5Venue(TradingVenue):
     def _enforce_risk(
         self, instrument: Instrument, request: OrderRequest, leverage: int
     ) -> None:
-        """Risikoschicht fuer eine eroeffnende Order (Live-Pflicht, Demo-frei).
+        """Risikoschicht fuer eine eroeffnende Order — auf JEDEM Konto Pflicht.
 
-        Auf Demo entfaellt sie (kein Echtgeld) -- wie die Live-Freigabe. Auf Live ohne
-        konfigurierten Risiko-Manager wird fail-closed abgelehnt. Ein Drawdown-Halt aus
-        ``evaluate_limits`` setzt den ``_halted``-Latch (loest sich nicht von selbst).
+        Sperren 2 bis 5 der fuenf aus A3.2, gefahren ueber ``RiskManager``:
+        ``risk/limits.py`` (Kill-Switch), ``gates/evaluation.py`` (Drossel),
+        ``risk/stop_budget.py`` (Budgetspanne) und ``risk/sizing.py`` (Groesse).
+
+        **Kein Demo-Ausstieg** (Paket 2, A3): bis hierher lief die Risikoschicht nur
+        am Live-Konto und damit an keinem einzigen real erreichbaren Konto — sie war
+        formal verdrahtet und praktisch tot. Genau diese Fehlerklasse (eine Sperre,
+        die nie laeuft) schliesst dieses Paket.
+
+        Ohne konfigurierten Risiko-Manager wird fail-closed abgelehnt. Ein
+        Drawdown-Halt aus ``evaluate_limits`` setzt den ``_halted``-Latch (loest sich
+        nicht von selbst).
         """
         account = self._terminal.account()
-        if account.is_demo:
-            return  # Demokonto: keine Live-Risikopruefung noetig.
         if self._risk_manager is None:
             raise OrderRejectedError(
                 "Kein Risiko-Manager konfiguriert -- Live-Eroeffnung blockiert",
@@ -724,6 +789,17 @@ class Mt5Venue(TradingVenue):
     def halt_reason(self) -> str | None:
         """Grund des zuletzt via ``latch_halt`` gesetzten Halts (best-effort)."""
         return self._halt_reason
+
+    @property
+    def risk_manager(self) -> RiskManager | None:
+        """Die verdrahtete Risikoschicht — lesbar, damit ein aufrufender Runner
+        erkennt, ob er sich denselben Zustand teilt.
+
+        Zwei getrennte ``RiskManager`` bedeuten zwei getrennte Frequenz- und
+        Positionszaehler, von denen keiner das Ganze sieht. Wer denselben hier
+        wiederfindet, darf den Fill **nicht** ein zweites Mal buchen.
+        """
+        return self._risk_manager
 
     @property
     def has_private_stream(self) -> bool:
@@ -875,6 +951,7 @@ class RealMt5Terminal:
         server: str | None = None,
         path: str | None = None,
         allow_write: bool = False,
+        require_demo: bool = True,
     ) -> None:
         self._login = login
         self._password = password
@@ -883,6 +960,14 @@ class RealMt5Terminal:
         #: Fail-closed: der Schreibpfad (Orders senden/aendern) ist gesperrt, bis er
         #: bewusst freigegeben wird — nach einem Smoke-Test gegen ein Demo-Terminal.
         self._allow_write = allow_write
+        #: Zweite, kontobezogene Klammer (Paket 2, A3): ``order_send`` liegt UNTER dem
+        #: Flaschenhals ``Mt5Venue.submit_order`` und ist oeffentlich aufrufbar — wer
+        #: das Terminal direkt haelt, kaeme an allen fuenf Sperren vorbei. Der
+        #: Schreibpfad des realen Terminals schreibt darum standardmaessig nur auf ein
+        #: **Demokonto**. Ein Live-Schreibpfad ist eine bewusste, getrennte
+        #: Konstruktionsentscheidung (``require_demo=False``) und aendert nichts daran,
+        #: dass die Live-Freigabe im Venue trotzdem vollstaendig sein muss.
+        self._require_demo = require_demo
         self._mt5: Any = None
 
     def initialize(self) -> bool:
@@ -927,6 +1012,16 @@ class RealMt5Terminal:
             raise VenueUnavailableError(
                 "Real-Terminal: Schreibpfad gesperrt (allow_write=False). "
                 "Erst gegen ein Demo-Terminal smoke-testen, dann bewusst freigeben."
+            )
+        if self._mt5 is None:
+            raise VenueUnavailableError(
+                "Real-Terminal: keine Sitzung (initialize() nicht gelaufen)"
+            )
+        if self._require_demo and not self.account().is_demo:
+            raise VenueUnavailableError(
+                "Real-Terminal: Schreibpfad nur auf einem Demokonto "
+                "(require_demo=True). Der direkte Terminalzugriff liegt unter dem "
+                "Order-Pfad und umginge sonst alle fuenf Sperren."
             )
 
     def _to_symbol(self, info: Any) -> Mt5Symbol:

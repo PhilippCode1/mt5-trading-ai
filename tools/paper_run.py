@@ -141,12 +141,23 @@ def _catalog() -> dict[str, CatalogEntry]:
     return {"EURUSD": CatalogEntry(AssetClass.FX_MAJOR, fees, sessions)}
 
 
-def build_paper_venue() -> Mt5Venue:
-    """Ein verbundenes Demo-Venue OHNE verdrahtete Risikoschicht -- der Runner haelt
-    seine eigene (Variante B), damit die Naehte auch auf Demo bindend laufen."""
+def build_paper_venue(
+    risk_manager: RiskManager, *, now: datetime = _TS
+) -> Mt5Venue:
+    """Ein verbundenes Demo-Venue mit verdrahteter Risikoschicht.
+
+    Der Manager wird von aussen hereingereicht und ist **derselbe**, den der Runner
+    benutzt: zwei getrennte Manager haetten zwei getrennte Frequenz- und
+    Positionszaehler, und keiner saehe das Ganze. Gebucht wird genau einmal (das
+    Venue bucht, der Runner quittiert).
+
+    ``now`` setzt die Uhr des Frische-Latches auf die Zeitbasis des Laufs -- das
+    synthetische Terminal stempelt einen festen Kontozustand.
+    """
     venue = Mt5Venue(
         name="paper", terminal=PaperTerminal(), catalog=_catalog(),
         sync=PrivateSync(), max_notional_drift=Decimal("0"),
+        risk_manager=risk_manager, clock=lambda: now,
     )
     venue.connect()
     return venue
@@ -161,9 +172,9 @@ def _demo_admission() -> CriteriaVerdict:
 def run_paper(symbol: str, *, now: datetime | None = None) -> tuple[RunnerReport, bool]:
     """Fahre einen Paper-Lauf: volle Kette + ein Scheduler-Takt -> (Report, halt)."""
     at = now if now is not None else _TS
-    venue = build_paper_venue()
-    venue.adopt_book()  # Buch = Meldung -> ein sauberer erster Reconcile
     risk_manager = RiskManager()
+    venue = build_paper_venue(risk_manager, now=at)
+    venue.adopt_book()  # Buch = Meldung -> ein sauberer erster Reconcile
     config = RunnerConfig(
         cost_gate=CostGate(max_roundturn_cost_fraction=Decimal("0.0005")),
         account_swap_free=True, interest_bearing_margin=False,

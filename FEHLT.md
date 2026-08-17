@@ -10,9 +10,14 @@ Kerns — es ist die bewusst gezogene Grenze. Die vollstaendige Einordnung mit A
 ## Die harte Reihenfolge-Regel
 
 **Kein Ausfuehrungspfad, bevor der Fail-Closed-Apparat und die menschlichen Tore stehen.**
-Die Risiko- und Sperrschicht ist da und geprueft, aber sie ist noch an **keinen** realen
-Order-Pfad angeschlossen. Ein Anschluss ohne die Tore aus „Sicherheitsapparat" unten waere
-genau die falsche Richtung.
+
+*Stand nach Paket 2 (A3), gemessen:* die Risiko- und Sperrschicht ist an den Order-Pfad
+angeschlossen — fuenf Sperren an jeder eroeffnenden Order, auf **jedem** Konto, gezaehlt vom
+Dauertor `tests/test_orderpfad_verdrahtung.py`. Der frueher hier stehende Satz „an **keinen**
+realen Order-Pfad angeschlossen" ist damit ueberholt. Ueberholt ist er allerdings nur fuer
+die Risikoschicht: der uebrige Fail-Closed-Apparat aus §7 (Runtime-Safety-Oracle,
+Exchange-Readiness) steht weiter aus, und die Regel selbst bleibt in Kraft. Ein Live-Konto
+bleibt gesperrt.
 
 ---
 
@@ -41,7 +46,8 @@ genau die falsche Richtung.
   (`apply_private_event`, `check_sync`, geteiltes Buch). Offen bleibt die konkrete **Quelle**
   (Krypto-WS bzw. MT5-Deal-Abfrage, die die Ereignisse erzeugt) — On-Machine-Bindung.
 - **Offen:** geklammerten Hebel am Terminal je Symbol setzen; restlicher Fail-Closed-Apparat
-  (Kill-Switch, Runtime-Safety-Oracle, Exchange-Readiness).
+  (Runtime-Safety-Oracle, Exchange-Readiness). Der **Kill-Switch** ist seit Paket 2 nicht
+  mehr offen — siehe §7.
 - **Hebelklammer-Anschluss: ERLEDIGT** — `execution/leverage_preflight.py`, in
   `Mt5Venue.submit_order` bei jeder eroeffnenden Order verdrahtet. Offen bleibt nur, den
   geklammerten Hebel am realen Terminal je Symbol zu **setzen** (MT5-Symbol-Leverage).
@@ -53,7 +59,15 @@ genau die falsche Richtung.
 
 ## 3. Kosten
 
-- Family-aware Fee-/Funding-/Slippage-/Liquidations-Modell (aus `paper-broker`, neu zu schreiben).
+- **TEILWEISE ERLEDIGT (Paket 2, A1):** `config/broker_costs.json` trägt jetzt Spread,
+  Kommission, Swap, Mindest-Lot, Kontraktgröße und Handelszeiten für sechs Instrumente
+  bei vier EU-regulierten Brokern — jede Zeile mit Quell-URL, Abrufdatum und dem
+  Ergebnis einer unabhängigen Gegenprüfung (`mt5_trading_ai/costs/broker_costs.py`,
+  fail-closed). `config/atr_measurements.json` trägt die gemessene Volatilität.
+  **Offen bleibt** das Liquidationsmodell und ein gemessener Slippage-Wert: die
+  Slippage in der Kostendatei ist eine bezifferte **Annahme** (0,5–2,0 bp je
+  Round-Turn) und der einzige ungemessene Posten in den Round-Turn-Kosten. Sie wird
+  im Demobetrieb nachgemessen — Abbruchbedingung 3 in `ABBRUCH.md`.
 
 ## 4. Universum (Instrumentenkatalog)
 
@@ -77,7 +91,15 @@ Der Altbestand trug diese Fail-Closed-Sperren am Live-Order-Pfad. **Keine** kam 
 haengt am echten Konto/Feed); **jede** muss stehen, bevor ein Ausfuehrungspfad entsteht.
 Vollstaendige Liste mit Ankern in `VERLUST.md` §2b. Kern:
 
-- **Kill-Switch** (arm/release, reduce-only-Pfad) und **Global-Halt-Latch**.
+- **Kill-Switch** (arm/release, reduce-only-Pfad) und **Global-Halt-Latch**: **ERLEDIGT**
+  (Paket 2, A3.5 — gemessen, nicht behauptet). Er existiert, verteilt auf drei Stellen:
+  `risk/limits.py` trägt Kriterium und Zustände (`NORMAL`/`REDUCE_ONLY`/`HALTED`) sowie
+  die Freigabe-Kante (`AccountSnapshot.manual_release_id`); `venue/mt5.py` trägt den
+  Latch und den Griff (`latch_halt()`, `clear_halt()`, `emergency_flatten()`); `execution/
+  risk_manager.py` verbindet beides (`release_drawdown()`). Die Kopfzeile von
+  `risk/limits.py` sagt das jetzt genau so — vorher stand dort pauschal „Kill-Switch",
+  während diese Datei ihn als nicht mitgekommen führte. Beleg: `tests/test_orderpfad_
+  verdrahtung.py::test_kill_switch_latch_haelt_und_loest_nur_von_hand`.
 - **Runtime-Safety-Oracle** (Axiom-Checks → Global-Halt) und **Exchange-Readiness**
   (`WRITE_ORDER_ALLOWED_DEFAULT=False`, Zeitversatz-Deckel).
 - **Live-Preflight** (Owner-Freigabe/Execution-Mode) und **exit_safety** (Reduce-Only).

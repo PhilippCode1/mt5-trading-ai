@@ -1936,4 +1936,32 @@ SPAETER S12. Der Real-Terminal-Strom (seq/ts-Quelle) ist extern zu binden.
 
 **Zeilenstand (gemessen, 2026-08-15):** 7.429 Zeilen, 32 Module, 404 Testfunktionen, 458 Testfälle
 grün; `ruff`, `mypy --strict`, `gen_docs --check`, `check_docs_claims`, `check_doc_numbers` sauber.
-**System abnahmefertig.**
+~~**System abnahmefertig.**~~ — **WIDERRUFEN am 2026-08-17 (Paket 2, A4.2).** Der Satz stand ohne ausfuehrbaren Beleg da und war unwahr: die Risikoschicht lief zu diesem Zeitpunkt nur am Live-Konto und damit an keinem erreichbaren Konto. Der urspruengliche Wortlaut bleibt stehen, weil dieses Logbuch nicht ueberschrieben wird; er behauptet nur nichts mehr. Siehe den Eintrag unten.
+
+
+---
+
+## Paket 2 — Kostentor, Verdrahtung, Wahrheit (2026-08-17)
+
+**Auftrag:** MASTERPROMPT Paket 2. Vollstaendig ausgefuehrt, Ergebnisse in `ABSCHLUSS/`
+(aus `README.md` einzeln verlinkt).
+
+**Was gemessen wurde**
+
+- **Kostentor (A1).** `config/broker_costs.json` mit vier EU-regulierten Brokern
+  (IC Markets EU, Admirals, Tickmill EU, Pepperstone EU), je Zeile Quelle und Abrufdatum,
+  je Broker eine unabhaengige Gegenpruefung. `config/atr_measurements.json` mit ATR(14)
+  auf H1 ueber zwoelf Monate, gemessen ueber den lesenden MT5-Demo-Pfad. Urteil und
+  Zahlen stehen in `ABSCHLUSS/01-KOSTENTOR.md`.
+- **Verdrahtung (A3).** Der Frische-Latch (S2) ist gebaut
+  (`mt5_trading_ai/execution/freshness.py`) und laeuft als erste von fuenf Sperren.
+  Der Demo-Ausstieg der Risikoschicht in `Mt5Venue._enforce_risk` ist **entfernt**: sie
+  lief zuvor ausschliesslich am Live-Konto und damit an keinem erreichbaren Konto.
+  Das Dauertor `tests/test_orderpfad_verdrahtung.py` zaehlt die Sperren an einer echten
+  Order und scheitert laut, wenn es seinen Gegenstand nicht findet.
+- **Doku-Wahrheit (A4).** Die von Hand gefuehrte Spalte „Zeilen" in `MASTERBERICHT.md` §3
+  ist entfernt; die Zahl wird jetzt in `MODULES.md` erzeugt. Regel 5 in
+  `tools/check_doc_numbers.py` blockt ihre Rueckkehr.
+
+**Der eigene Fehler dieses Eintrags** steht oben im Widerruf und ausfuehrlich in
+`ABSCHLUSS/09-EIGENE-FEHLER.md`.

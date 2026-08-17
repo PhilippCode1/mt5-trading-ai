@@ -1,1 +1,49 @@
-NICHT GELAUFEN — Platzhalter aus dem ersten Commit des Laufs.
+============================= test session starts =============================
+platform win32 -- Python 3.11.7, pytest-8.3.4, pluggy-1.6.0 -- C:\Users\Acer\AppData\Local\Programs\Python\Python311\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\Acer\mt5_trading_ai
+configfile: pyproject.toml
+plugins: anyio-4.8.0, base-url-2.1.0, cov-6.0.0, playwright-0.7.2
+collecting ... collected 38 items
+
+tests/test_orderpfad_verdrahtung.py::test_alle_eintrittspunkte_existieren_und_zahl_stimmt PASSED [  2%]
+tests/test_orderpfad_verdrahtung.py::test_kein_unbemerkter_neuer_eintrittspunkt PASSED [  5%]
+tests/test_orderpfad_verdrahtung.py::test_demo_eroeffnung_faehrt_alle_fuenf_sperren PASSED [  7%]
+tests/test_orderpfad_verdrahtung.py::test_live_eroeffnung_faehrt_alle_fuenf_sperren PASSED [ 10%]
+tests/test_orderpfad_verdrahtung.py::test_ohne_risikoschicht_keine_eroeffnung_auch_auf_demo PASSED [ 13%]
+tests/test_orderpfad_verdrahtung.py::test_reduce_only_bleibt_frei PASSED [ 15%]
+tests/test_orderpfad_verdrahtung.py::test_emergency_flatten_kann_nicht_eroeffnen PASSED [ 18%]
+tests/test_orderpfad_verdrahtung.py::test_risikoschicht_hat_keinen_konto_abhaengigen_ausstieg PASSED [ 21%]
+tests/test_orderpfad_verdrahtung.py::test_frische_latch_hat_keinen_konto_abhaengigen_ausstieg PASSED [ 23%]
+tests/test_orderpfad_verdrahtung.py::test_frische_laeuft_vor_allem_was_den_kontozustand_liest PASSED [ 26%]
+tests/test_orderpfad_verdrahtung.py::test_alle_sollsperren_sind_am_benutzungsort_importiert PASSED [ 28%]
+tests/test_orderpfad_verdrahtung.py::test_eintrittspunkte_ausser_dem_venue_laufen_ueber_den_flaschenhals PASSED [ 31%]
+tests/test_orderpfad_verdrahtung.py::test_realterminal_schreibpfad_ist_auf_demo_geklammert PASSED [ 34%]
+tests/test_orderpfad_verdrahtung.py::test_roter_eichfall_frische_latch PASSED [ 36%]
+tests/test_orderpfad_verdrahtung.py::test_roter_eichfall_frische_latch_zukunft PASSED [ 39%]
+tests/test_orderpfad_verdrahtung.py::test_gruener_eichfall_frische_latch PASSED [ 42%]
+tests/test_orderpfad_verdrahtung.py::test_roter_eichfall_verlustgrenzen PASSED [ 44%]
+tests/test_orderpfad_verdrahtung.py::test_roter_eichfall_stop_budget PASSED [ 47%]
+tests/test_orderpfad_verdrahtung.py::test_roter_eichfall_positionsgroesse PASSED [ 50%]
+tests/test_orderpfad_verdrahtung.py::test_roter_eichfall_bewertungstor PASSED [ 52%]
+tests/test_orderpfad_verdrahtung.py::test_gruener_eichfall_alle_sperren PASSED [ 55%]
+tests/test_orderpfad_verdrahtung.py::test_kill_switch_kriterium_liegt_in_limits PASSED [ 57%]
+tests/test_orderpfad_verdrahtung.py::test_kill_switch_griff_und_latch_liegen_am_venue PASSED [ 60%]
+tests/test_orderpfad_verdrahtung.py::test_kill_switch_latch_haelt_und_loest_nur_von_hand PASSED [ 63%]
+tests/test_orderpfad_verdrahtung.py::test_kill_switch_freigabe_liegt_am_risikomanager PASSED [ 65%]
+tests/test_orderpfad_verdrahtung.py::test_die_quote_ist_fuenf_von_fuenf PASSED [ 68%]
+tests/test_freshness.py::test_frischer_zustand_ist_bewertbar PASSED      [ 71%]
+tests/test_freshness.py::test_alter_genau_auf_der_frist_ist_noch_bewertbar PASSED [ 73%]
+tests/test_freshness.py::test_zukunft_innerhalb_der_toleranz_ist_bewertbar PASSED [ 76%]
+tests/test_freshness.py::test_zu_alt_ist_nicht_bewertbar PASSED          [ 78%]
+tests/test_freshness.py::test_zukunft_jenseits_der_toleranz_ist_nicht_bewertbar PASSED [ 81%]
+tests/test_freshness.py::test_getrennte_sitzung_ist_nie_bewertbar PASSED [ 84%]
+tests/test_freshness.py::test_getrennte_sitzung_schlaegt_frische PASSED  [ 86%]
+tests/test_freshness.py::test_naiver_zeitstempel_ist_nicht_bewertbar PASSED [ 89%]
+tests/test_freshness.py::test_naive_gegenwart_ist_ebenfalls_nicht_bewertbar PASSED [ 92%]
+tests/test_freshness.py::test_nicht_positive_frist_ist_ein_fehler_kein_urteil PASSED [ 94%]
+tests/test_freshness.py::test_negative_zukunftstoleranz_ist_ein_fehler PASSED [ 97%]
+tests/test_freshness.py::test_frist_ist_kurz_genug_um_zwischenspeicherung_zu_fangen PASSED [100%]
+
+============================= 38 passed in 0.31s ==============================
+exit=0

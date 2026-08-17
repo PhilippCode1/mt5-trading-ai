@@ -21,6 +21,21 @@ DIE REGELN (Teil 3, Paket 0, A0.4; Kernregel 9: jede Angabe nur an EINER Stelle)
    Live-Dokument sie steht.
 4. Eine hart hingeschriebene Commit-Zahl ist in Live-Dokumenten verboten: sie driftet
    mit dem naechsten Commit. Sie gehoert nicht in eine statische Datei.
+5. Die **Zeilenzahl je Modul** lebt ausschliesslich in ``MODULES.md``, das aus dem Code
+   erzeugt wird (``tools/gen_docs.py``). Eine Tabellenzeile in einem anderen
+   Live-Dokument,
+   die einen Modulpfad mit einer nackten Zahl daneben fuehrt, wird geblockt.
+
+   Warum diese Regel dazukam (Paket 2, A4.1): ``MASTERBERICHT.md`` §3 fuehrte eine
+   Spalte
+   „Zeilen" je Modul, die keine der Regeln 1-4 erfasste -- die Regexe suchten nach
+   „N Module", „N Testfunktionen", „N Zeilen Kerncode", „N Commits" und „N Faelle",
+   nicht
+   nach einer Zahl in einer Tabellenzelle. Gemessen waren **13 von 18** Werten falsch,
+   der groesste Abstand bei ``venue/mt5.py`` (Bericht 818, tatsaechlich ueber 1100).
+   Der Bericht behauptete zugleich, jede seiner Zahlen sei gemessen. Genau diese Luecke
+   schliesst Regel 5 -- und zwar an der Ursache: die Zahl wird nicht mehr an zwei
+   Stellen gefuehrt, sondern an einer erzeugt.
 
 WAS AUSGENOMMEN IST -- UND WARUM
 --------------------------------
@@ -115,6 +130,14 @@ COMMITS = re.compile(r"\b(\d[\d.,]*)\s*Commits?\b", re.I)
 # "N Faelle" zu einer konkreten Testdatei, in beiden Wortstellungen auf einer Zeile.
 PER_FILE = re.compile(r"test_([A-Za-z0-9_]+)\.py")
 N_FAELLE = re.compile(r"\b(\d+)\s*F(?:ä|ae)lle", re.I)
+# Regel 5: eine Tabellenzeile "| `pkg/modul.py` | 253 | ..." -- Modulpfad plus nackte
+# Zahl.
+MODULE_LINES = re.compile(
+    r"\|\s*`?([A-Za-z0-9_]+(?:/[A-Za-z0-9_]+)*\.py)`?\s*\|\s*(\d[\d.,]*)\s*\|"
+)
+#: Die eine Stelle, an der Zeilenzahlen je Modul stehen duerfen -- erzeugt, nicht
+#: gepflegt.
+LINE_COUNT_OWNER = "MODULES.md"
 
 
 def check_readme_block(canon: dict[str, int]) -> list[str]:
@@ -170,6 +193,22 @@ def check_live_doc(path: Path) -> list[str]:
                     f"hingeschrieben -- gehoert in den README-KENNZAHLEN-Block, "
                     f"hier nur verweisen:\n      {line.strip()[:100]}"
                 )
+        # Regel 5: Zeilenzahl je Modul gehoert nur in die erzeugte MODULES.md.
+        if rel != LINE_COUNT_OWNER:
+            modul_hit = MODULE_LINES.search(line)
+            if modul_hit is not None:
+                # Die Berichte schreiben den Modulpfad paketrelativ ("risk/limits.py"),
+                # der Baum fuehrt ihn unter mt5_trading_ai/. Beide Schreibweisen
+                # zaehlen.
+                roh = modul_hit.group(1)
+                if (REPO / roh).is_file() or (PKG / roh).is_file():
+                    problems.append(
+                        f"{rel}:{i}: Zeilenzahl zu {modul_hit.group(1)} von Hand "
+                        f"gefuehrt ({modul_hit.group(2)}) -- sie gehoert erzeugt in "
+                        f"{LINE_COUNT_OWNER}, hier nur verweisen:\n"
+                        f"      {line.strip()[:100]}"
+                    )
+
         # Regel 4: harte Commit-Zahl driftet mit dem naechsten Commit.
         if COMMITS.search(line):
             problems.append(

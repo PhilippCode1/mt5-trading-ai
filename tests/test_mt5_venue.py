@@ -9,6 +9,7 @@ Es laeuft ohne echtes MT5-Terminal: das Fake-Terminal unten liefert die Rohwerte
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
@@ -203,11 +204,17 @@ class FakeMt5Terminal:
         )
 
     def order_send(self, request: object) -> Mt5SendResult:
+        # Der Fill spiegelt das ANGEFORDERTE Volumen -- wie ein echter Broker bei einer
+        # Marktorder unter Mindestgroesse. Ein fester Wert (frueher 0,10) haette das
+        # Buch von der Order entkoppelt und die Reduce-Pruefung stumm falsch gemacht.
+        volume = Decimal("0.10")
+        if isinstance(request, dict):
+            volume = Decimal(str(request["volume"]))
         self.order_send_calls += 1
         return Mt5SendResult(
             accepted=True,
             venue_order_id="V-1",
-            filled_volume=Decimal("0.10"),
+            filled_volume=volume,
             average_price=Decimal("1.10000"),
             ts=TS,
             reason="done",
@@ -243,6 +250,20 @@ def _fresh_risk() -> RiskManager:
     return RiskManager()
 
 
+def _krypto_risk() -> RiskManager:
+    """Risikopolitik fuer die Krypto-Faelle.
+
+    Krypto traegt im Stop-Budget 40 bp angenommene Round-Turn-Kosten; die Kostenuntergrenze
+    liegt damit bei 400 bp. Ein Stop dieser Weite braucht bei 10k Equity den oberen
+    Rand des zulaessigen Risikoanteils (0,5 %), damit das Mindestvolumen von 0,01 ueberhaupt
+    im Budget liegt. Sonst faellt der Fall an ``below_volume_min`` -- was richtig waere,
+    aber nicht das ist, was diese Tests belegen sollen.
+    """
+    return RiskManager(RiskPolicy(risk_fraction=Decimal("0.005")))
+
+
+
+
 def _venue(
     *,
     is_demo: bool,
@@ -253,32 +274,58 @@ def _venue(
     risk_manager: RiskManager | None = None,
     sync: PrivateSync | None = None,
     demo_readiness: DemoReadiness | None = None,
+    clock: Callable[[], datetime] | None = None,
+    ohne_risiko: bool = False,
 ) -> tuple[Mt5Venue, FakeMt5Terminal]:
+    """Ein verbundenes Venue mit Fake-Terminal.
+
+    Zwei Vorgaben, die seit Paket 2 (A3) noetig sind:
+
+    * ``risk_manager`` wird gefuellt, wenn nichts uebergeben wird. Die Risikoschicht
+      ist fuer jede eroeffnende Order Pflicht -- auch auf Demo. Der Ausnahmefall „gar
+      kein Manager" heisst ``ohne_risiko=True`` und ist damit im Test sichtbar, statt
+      sich hinter einem stillen ``None`` zu verstecken.
+    * ``clock`` steht per Default auf ``TS``, der Zeit des Fake-Kontostands. Sonst
+      risse der Frische-Latch bei jedem Testlauf, weil ``TS`` fest in der
+      Vergangenheit liegt.
+    """
     terminal = FakeMt5Terminal(
         is_demo=is_demo, margin_free=margin_free, positions=positions
     )
+    if ohne_risiko:
+        gewaehlt = None
+    else:
+        gewaehlt = risk_manager if risk_manager is not None else _fresh_risk()
     venue = Mt5Venue(
         name="mt5-demo",
         terminal=terminal,
         catalog=_catalog(),
         settings=settings,
         cost_gate=cost_gate,
-        risk_manager=risk_manager,
+        risk_manager=gewaehlt,
         sync=sync,
         demo_readiness=demo_readiness,
+        clock=clock if clock is not None else (lambda: TS),
     )
     venue.connect()
     return venue, terminal
 
 
 def _order(**overrides: object) -> OrderRequest:
+    """Eine eroeffnende Standard-Order.
+
+    Volumen 0,01 statt frueher 0,10: seit A3 faehrt die Risikoschicht auch auf Demo,
+    und 0,10 Lot reissen bei 10k Equity das Risikobudget von 0,25 %. Der Hebel steht
+    fest auf 5, damit die Budget-Obergrenze deterministisch ist.
+    """
     base: dict[str, object] = {
         "client_order_id": "c-1",
         "symbol": "EURUSD",
         "side": OrderSide.BUY,
         "order_type": OrderType.MARKET,
-        "volume": Decimal("0.10"),
+        "volume": Decimal("0.01"),
         "stop_loss": Decimal("1.09000"),
+        "meta": {"requested_leverage": 5},
     }
     base.update(overrides)
     return OrderRequest(**base)  # type: ignore[arg-type]
@@ -537,9 +584,11 @@ def test_reduce_only_close_records_close_in_sync_mode() -> None:
         positions=(_mt5_position("EURUSD", is_buy=True, volume=Decimal("0.10")),),
     )
     assert rm.open_position_count == 1
+    # 0,10 statt 0,01: erst dieser Fill stellt die gestreamte Long netto glatt. Vorher
+    # verdeckte ein festes Fake-Fillvolumen (immer 0,10) den Unterschied.
     venue.submit_order(_order(
         client_order_id="close-sync", side=OrderSide.SELL,
-        reduce_only=True, volume=Decimal("0.01"),
+        reduce_only=True, volume=Decimal("0.10"),
     ))
     assert rm.open_position_count == 0  # record_close feuerte trotz nachlaufendem Buch
 
@@ -548,7 +597,7 @@ def test_live_opening_rejected_when_risk_unconfigured() -> None:
     # Live ohne Risiko-Manager -> fail-closed (auch wenn das Kostentor sitzt).
     venue, terminal = _venue(
         is_demo=False, settings=_released_settings(), cost_gate=_LENIENT_COST_GATE,
-        demo_readiness=_ready_demo(),
+        demo_readiness=_ready_demo(), ohne_risiko=True,
     )
     with pytest.raises(OrderRejectedError) as ex:
         venue.submit_order(_order(volume=Decimal("0.01")))
@@ -623,8 +672,10 @@ def test_missing_scholar_review_rejected() -> None:
 
 def test_demo_opening_skips_compliance_gates() -> None:
     # Demo: kein Echtgeld -> Halal-Screen und Demo-Reife entfallen; Krypto ginge durch.
-    venue, terminal = _venue(is_demo=True)
-    result = venue.submit_order(_order(symbol="BTCUSD", stop_loss=Decimal("59000")))
+    # Die RISIKOschicht entfaellt seit A3 NICHT -- der Stop liegt darum ueber der
+    # Kostenuntergrenze der Klasse (Krypto: 400 bp).
+    venue, terminal = _venue(is_demo=True, risk_manager=_krypto_risk())
+    result = venue.submit_order(_order(symbol="BTCUSD", stop_loss=Decimal("56400")))
     assert result.accepted is True
 
 
@@ -779,7 +830,7 @@ def test_leverage_preflight_insufficient_margin() -> None:
     venue, _ = _venue(is_demo=True, margin_free=Decimal("500"))
     pre = evaluate_leverage_preflight(
         instrument=venue.get_instrument("EURUSD"),
-        request=_order(),
+        request=_order(volume=Decimal("0.10")),
         account=venue.get_account(),
         price=Decimal("1.10"),
         requested_leverage=50,
@@ -790,8 +841,10 @@ def test_leverage_preflight_insufficient_margin() -> None:
 
 def test_venue_opening_allows_crypto_at_class_cap() -> None:
     # E2: Krypto ist handelbar (2:1). Marge reicht -> die Eroeffnung geht durch.
-    venue, terminal = _venue(is_demo=True)
-    result = venue.submit_order(_order(client_order_id="btc-1", symbol="BTCUSD"))
+    venue, terminal = _venue(is_demo=True, risk_manager=_krypto_risk())
+    result = venue.submit_order(
+        _order(client_order_id="btc-1", symbol="BTCUSD", stop_loss=Decimal("56400"))
+    )
     assert result.accepted is True
     assert terminal.order_send_calls == 1
 
@@ -800,7 +853,11 @@ def test_venue_opening_blocks_on_insufficient_margin() -> None:
     venue, terminal = _venue(is_demo=True, margin_free=Decimal("500"))
     with pytest.raises(OrderRejectedError) as excinfo:
         venue.submit_order(
-            _order(client_order_id="m-1", meta={"requested_leverage": 50})
+            _order(
+                client_order_id="m-1",
+                volume=Decimal("0.10"),
+                meta={"requested_leverage": 50},
+            )
         )
     assert excinfo.value.reason == "insufficient_margin"
     assert terminal.order_send_calls == 0
@@ -844,7 +901,7 @@ def test_reconcile_matches_when_book_and_exchange_agree() -> None:
 def test_book_updates_on_fill() -> None:
     venue, _ = _venue(is_demo=True)
     venue.submit_order(_order(client_order_id="b-1"))
-    assert venue.book_snapshot() == {"EURUSD": Decimal("0.10")}
+    assert venue.book_snapshot() == {"EURUSD": Decimal("0.01")}
 
 
 def test_reconcile_drift_halts_and_blocks_opening() -> None:
@@ -909,7 +966,7 @@ def test_adopt_book_empty_clears_prior_book() -> None:
     # ("offline geschlossen"). Adoption muss das Buch leeren, nicht zusammenfuehren.
     venue, _ = _venue(is_demo=True)  # FakeMt5Terminal.positions() == ()
     venue.submit_order(_order(client_order_id="f-1"))
-    assert venue.book_snapshot() == {"EURUSD": Decimal("0.10")}
+    assert venue.book_snapshot() == {"EURUSD": Decimal("0.01")}
     assert venue.adopt_book() == {}
     assert venue.reconcile().matched is True
     assert venue.is_halted() is False

@@ -15,6 +15,7 @@ from mt5_trading_ai.execution.private_sync import (
     PrivateEventKind,
     PrivateSync,
 )
+from mt5_trading_ai.execution.risk_manager import RiskManager
 from mt5_trading_ai.venue.mt5 import Mt5Venue
 from mt5_trading_ai.venue.protocol import OrderRejectedError, OrderSide
 
@@ -102,6 +103,10 @@ def _synced_venue(
         name="mt5",
         terminal=FakeMt5Terminal(is_demo=True, positions=positions),  # type: ignore[arg-type]
         catalog=_catalog(), sync=sync,
+        # Seit A3 Pflicht auf jedem Konto: Risikoschicht + Frische-Latch. Die feste
+        # Uhr entspricht dem Zeitstempel des Fake-Kontostands.
+        risk_manager=RiskManager(),
+        clock=lambda: TS,
     )
     venue.connect()
     return venue, sync

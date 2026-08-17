@@ -1,5 +1,30 @@
-"""Verlustgrenzen und Kill-Switch (Phase 6.4).
+"""Verlustgrenzen und das **Kriterium** des Kill-Switch (Phase 6.4).
 
+WAS DIESES MODUL TRAEGT -- UND WAS NICHT (Paket 2, A3.5)
+--------------------------------------------------------
+Die Kopfzeile hiess frueher schlicht „Verlustgrenzen und Kill-Switch", waehrend
+``FEHLT.md`` §7 den Kill-Switch als **nicht mitgekommen** fuehrte. Gemessen ist beides
+halb richtig, und die Praezisierung steht darum hier:
+
+* **Hier** liegt das *Kriterium* und der *Zustand*: wann gehalten wird
+  (``max_drawdown_fraction``), wann nur noch abgebaut wird
+  (``max_daily_loss_fraction``),
+  und die Zustaende ``NORMAL`` / ``REDUCE_ONLY`` / ``HALTED``. Auch die *Freigabe*-Kante
+  ist hier: ``AccountSnapshot.manual_release_id``. Das Modul ist eine reine Funktion --
+  es **haelt** nichts.
+* **Nicht hier** liegt der *Latch* und der *Griff*: ``Mt5Venue._halted`` mit
+  ``latch_halt()`` (Hand anlegen), ``clear_halt()`` (Freigabe) und
+  ``emergency_flatten()`` (Not-Aus mit Reduce-Only-Glattstellung). Ein Zustand, der
+  sich nicht von selbst loest, braucht einen Halter; der Halter ist das Venue.
+* ``execution/risk_manager.py`` verbindet beides: es ruft ``evaluate_limits``, meldet
+  ``latch_halt=True`` nach oben und traegt die Freigabe (``release_drawdown``).
+
+Der Kill-Switch **existiert** also, verteilt auf diese drei Stellen. Was aus §7 offen
+bleibt, ist der uebrige Fail-Closed-Apparat: Runtime-Safety-Oracle und
+Exchange-Readiness. Belegt von ``tests/test_orderpfad_verdrahtung.py``.
+
+DIE VIER GRENZEN
+----------------
 Vier unabhaengige Grenzen. Jede greift fuer sich; keine hebt eine andere auf.
 
 * **Tagesverlustlimit** — erreicht: keine neuen Positionen, bestehende nur reduzieren.

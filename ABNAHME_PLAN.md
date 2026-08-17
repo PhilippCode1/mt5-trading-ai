@@ -3,8 +3,8 @@
 *Grundlage: Multi-Agenten-Bewertung von Paket 1–5 + der Verdrahtung (7 Prüf-Agenten, hoher
 Effort, Kennzahlen selbst nachgerechnet). Dieser Plan wird später Paket für Paket abgearbeitet.
 Er erhebt keine neue Strategie-Behauptung — das „kein Edge"-Urteil aus `BERICHT_TEIL3.md` bleibt
-unberührt. Es geht ausschließlich um **Härtung + Verdrahtung**, bis das System als komplett
-abnahmefertig gilt.*
+unberührt. Es geht ausschließlich um **Härtung + Verdrahtung**, bis die Abnahme-Bedingungen
+aus §2 belegt erfüllt sind.*
 
 ---
 
@@ -225,7 +225,13 @@ fest.
 **Abnahme:** Ein Kommando führt die volle Kette `Signal → … → Order` auf dem Fixture/Paper-Terminal
 aus, und die Checkliste ist Punkt für Punkt grün. Der Scheduler taktet `check_sync`/`reconcile`
 nachweisbar (Test mit simulierter Drift setzt den Halt automatisch). Gesamt-Testsuite und CI grün,
-keine Doku-Zusage mehr ohne Aufrufer im Pfad. **System komplett abnahmefertig.**
+keine Doku-Zusage mehr ohne Aufrufer im Pfad.
+~~**System komplett abnahmefertig.**~~ — **WIDERRUFEN am 2026-08-17 (Paket 2).**
+Der Satz war unwahr: die Risikoschicht war zwar am Order-Pfad aufgerufen, stieg aber
+bei einem Demokonto sofort wieder aus (`Mt5Venue._enforce_risk`, `if account.is_demo:
+return`) — und ein Live-Konto gab es nicht. Sie lief damit an keinem erreichbaren
+Konto. Eine Abnahme, die das nicht bemerkt, ist keine Abnahme. Paket 2 hat den
+Ausstieg entfernt und ein zaehlendes Dauertor dagegen gestellt.
 
 ---
 

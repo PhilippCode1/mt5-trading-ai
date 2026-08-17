@@ -44,7 +44,9 @@ Drei Dokumente halten diese Herkunft ehrlich:
 - **`PROGRESS.md`** — ein angehängtes, nie überschriebenes Protokoll je Arbeitsschritt, mit
   Befehlen, Ausgaben, eigenen Fehlern und Entscheidungen.
 
-Der Altbaum ist per Tag `archive/pre-extraction` gesichert; die Isolation ist nachgewiesen
+Der Altbaum ist per Tag `archive/pre-extraction` gesichert — im Vorgaenger-Repository,
+nicht in diesem; aus diesem Repo ist der Tag nicht nachpruefbar (gemessen 2026-08-17,
+Paket 2, A4.4). Die Isolation ist nachgewiesen
 (`import mt5_trading_ai` zeigt in den neuen Baum, `import signal_engine` scheitert).
 
 ---
@@ -85,14 +87,21 @@ mt5_trading_ai/
 
 ## 3. Die Schichten im Detail
 
+*Die Zeilenzahl je Modul steht **nicht** hier. Sie lebt in [`MODULES.md`](MODULES.md),
+das `tools/gen_docs.py` aus dem Code erzeugt. Grund (Paket 2, A4.1): die frueher hier
+gefuehrte Spalte „Zeilen" war von keiner Regel des Zahlen-Tors erfasst und driftete
+unbemerkt — gemessen waren 13 von 18 Werten falsch, der groesste Abstand bei
+`venue/mt5.py` (hier stand 818, tatsaechlich ueber 1100). Regel 5 in
+`tools/check_doc_numbers.py` blockt die Rueckkehr.*
+
 ### 3.1 `risk/` — Risiko- und Sperrschicht (das Herz)
 
-| Modul | Zeilen | Aufgabe |
-| --- | --- | --- |
-| `risk/leverage.py` | 253 | **Hebelklammer**: `min(Wunsch, 10, Klassendeckel)`; unbekannte Anlageklasse → `no_trade`. Kein Betriebsminimum (E2): jeder legale Deckel ist handelbar, Krypto 2:1 eingeschlossen. Nicht über 10 konfigurierbar. |
-| `risk/limits.py` | 145 | **Verlustgrenzen**: Tagesverlust, Drawdown-Halt (kein Selbst-Reset), Positionsdeckel. |
-| `risk/sizing.py` | 220 | Positionsgröße aus Risikoanteil und Stop-Abstand; Stop-Floor. |
-| `risk/stop_budget.py` | 160 | Stop-Budget je Anlageklasse. |
+| Modul | Aufgabe |
+| --- | --- |
+| `risk/leverage.py` | **Hebelklammer**: `min(Wunsch, 10, Klassendeckel)`; unbekannte Anlageklasse → `no_trade`. Kein Betriebsminimum (E2): jeder legale Deckel ist handelbar, Krypto 2:1 eingeschlossen. Nicht über 10 konfigurierbar. |
+| `risk/limits.py` | **Verlustgrenzen**: Tagesverlust, Drawdown-Halt (kein Selbst-Reset), Positionsdeckel. |
+| `risk/sizing.py` | Positionsgröße aus Risikoanteil und Stop-Abstand; Stop-Floor. |
+| `risk/stop_budget.py` | Stop-Budget je Anlageklasse. |
 
 Belegt durch `test_asset_class_leverage.py`, `test_loss_limits.py`, `test_risk_sizing.py`,
 `test_stop_budget.py`. Die Hebelklammer und die Verlustgrenzen wurden **negativ gefahren**
@@ -100,34 +109,34 @@ Belegt durch `test_asset_class_leverage.py`, `test_loss_limits.py`, `test_risk_s
 
 ### 3.2 `gates/` — Bewertung, Kriterien, Register, Lernphase
 
-| Modul | Zeilen | Aufgabe |
-| --- | --- | --- |
-| `gates/evaluation.py` | 202 | **Bewertungstor**: „evaluating ≠ trading" — Schwelle, Mindesthaltedauer, Abklingzeit, Korrelationsdeckel. |
-| `gates/criteria.py` | 348 | Vorregistrierte Kriterien und **Deflated Sharpe** (Schutz gegen Überanpassung durch viele Versuche). |
-| `gates/trials.py` | 204 | **Versuchsregister** `TRIALS.jsonl` (anhängend, kein Überschreiben). |
-| `gates/learning_phase.py` | 292 | Lernphase: Rangliste, Schwächenbefunde, Grenzen. |
+| Modul | Aufgabe |
+| --- | --- |
+| `gates/evaluation.py` | **Bewertungstor**: „evaluating ≠ trading" — Schwelle, Mindesthaltedauer, Abklingzeit, Korrelationsdeckel. |
+| `gates/criteria.py` | Vorregistrierte Kriterien und **Deflated Sharpe** (Schutz gegen Überanpassung durch viele Versuche). |
+| `gates/trials.py` | **Versuchsregister** `TRIALS.jsonl` (anhängend, kein Überschreiben). |
+| `gates/learning_phase.py` | Lernphase: Rangliste, Schwächenbefunde, Grenzen. |
 
 Belegt durch `test_evaluation_gate.py`, `test_strategy_criteria.py`, `test_trials_ledger.py`,
 `test_learning_phase.py`.
 
 ### 3.3 `data/` und `backtest/` — Validierungsschicht
 
-| Modul | Zeilen | Aufgabe |
-| --- | --- | --- |
-| `data/quality.py` | 228 | **Datenqualitäts-Tor**: Lückenquote, Zeitstempel-Ordnung, Ausreißer, Handelszeiten — fail-closed bei schlechten Daten. |
-| `backtest/splits.py` | 190 | **Zeitreihen-Splits** mit Purge/Embargo und Walk-Forward bis Datenende. Purge/Embargo sind jetzt **pflichtige** Parameter (kein stiller Null-Default, der wie eine Sperre aussähe). |
+| Modul | Aufgabe |
+| --- | --- |
+| `data/quality.py` | **Datenqualitäts-Tor**: Lückenquote, Zeitstempel-Ordnung, Ausreißer, Handelszeiten — fail-closed bei schlechten Daten. |
+| `backtest/splits.py` | **Zeitreihen-Splits** mit Purge/Embargo und Walk-Forward bis Datenende. Purge/Embargo sind jetzt **pflichtige** Parameter (kein stiller Null-Default, der wie eine Sperre aussähe). |
 
 Belegt durch `test_data_quality.py`, `test_splits.py` (der Fold-Fix bis zum Datenende ist
 negativ gefahren).
 
 ### 3.4 `venue/` — der Handelsplatz (venue-unabhängig)
 
-| Modul | Zeilen | Aufgabe |
-| --- | --- | --- |
-| `venue/protocol.py` | 274 | **`TradingVenue`-Protokoll**: der plattformunabhängige Vertrag (Verbindung, Instrumente, Marktdaten, Ausführung, Zustand). Fail-closed **als Vertrag**: jede Methode, die keine sichere Antwort geben kann, wirft. Kein Modul außerhalb `venue/` kennt einen Plattformnamen. |
-| `venue/mt5.py` | 818 | **`Mt5Venue`** (erfüllt das Protokoll, statisch geprüft) über die injizierbare Naht **`Mt5Terminal`**; dazu **`RealMt5Terminal`** — die dünne MetaTrader5-Bindung mit fail-closed Schreibpfad (`allow_write=False`). |
-| `venue/catalog.py` | 159 | **Instrumentenkatalog-Lader**: Anlageklasse, Kosten, Handelszeiten aus versionierter Datei; jeder Defekt ist ein Fehler, kein Default. |
-| `venue/smoke.py` | 162 | **Demo-Smoke-Orchestrierung** (`run_smoke`): feste Prüffolge gegen einen Venue, harter Demo-Abbruch, optionale abgesicherte Schreib-Probe. |
+| Modul | Aufgabe |
+| --- | --- |
+| `venue/protocol.py` | **`TradingVenue`-Protokoll**: der plattformunabhängige Vertrag (Verbindung, Instrumente, Marktdaten, Ausführung, Zustand). Fail-closed **als Vertrag**: jede Methode, die keine sichere Antwort geben kann, wirft. Kein Modul außerhalb `venue/` kennt einen Plattformnamen. |
+| `venue/mt5.py` | **`Mt5Venue`** (erfüllt das Protokoll, statisch geprüft) über die injizierbare Naht **`Mt5Terminal`**; dazu **`RealMt5Terminal`** — die dünne MetaTrader5-Bindung mit fail-closed Schreibpfad (`allow_write=False`). |
+| `venue/catalog.py` | **Instrumentenkatalog-Lader**: Anlageklasse, Kosten, Handelszeiten aus versionierter Datei; jeder Defekt ist ein Fehler, kein Default. |
+| `venue/smoke.py` | **Demo-Smoke-Orchestrierung** (`run_smoke`): feste Prüffolge gegen einen Venue, harter Demo-Abbruch, optionale abgesicherte Schreib-Probe. |
 
 Belegt durch drei Testdateien (je eine Fallzahl pro Zeile, vom Zahlen-Tor geprüft):
 `test_mt5_venue.py` mit 52 Fällen (der Vertragstest);
@@ -136,12 +145,12 @@ Belegt durch drei Testdateien (je eine Fallzahl pro Zeile, vom Zahlen-Tor geprü
 
 ### 3.5 `execution/` — die Tore am Order-Pfad
 
-| Modul | Zeilen | Aufgabe |
-| --- | --- | --- |
-| `execution/release.py` | 128 | **Live-Freigabe**: vier unabhängige Schalter **und** eine nichtleere Freigabekennung; „nicht bewertbar = nicht erfüllt". |
-| `execution/leverage_preflight.py` | 91 | **Hebelklammer-Anschluss**: verbindet die Klammer mit Instrument/Konto/Auftrag (Klasse handelbar? Hebel geklammert? Marge frei?). |
-| `execution/reconcile.py` | 113 | **Buch ↔ Konto**: lokales Nettobuch + Notional-Drift-Vergleich → Global-Halt; plus **Buch-Adoption** beim Neustart. |
-| `execution/private_sync.py` | 89 | **Private Ereignis-Sync**: der autoritative Kontostrom führt das Buch; fail-closed bei Sequenzlücke oder Stille. |
+| Modul | Aufgabe |
+| --- | --- |
+| `execution/release.py` | **Live-Freigabe**: vier unabhängige Schalter **und** eine nichtleere Freigabekennung; „nicht bewertbar = nicht erfüllt". |
+| `execution/leverage_preflight.py` | **Hebelklammer-Anschluss**: verbindet die Klammer mit Instrument/Konto/Auftrag (Klasse handelbar? Hebel geklammert? Marge frei?). |
+| `execution/reconcile.py` | **Buch ↔ Konto**: lokales Nettobuch + Notional-Drift-Vergleich → Global-Halt; plus **Buch-Adoption** beim Neustart. |
+| `execution/private_sync.py` | **Private Ereignis-Sync**: der autoritative Kontostrom führt das Buch; fail-closed bei Sequenzlücke oder Stille. |
 
 Belegt durch `test_live_release.py`, das Hebel-/Reconcile-/Sync-Verhalten in
 `test_mt5_venue.py`, `test_reconcile.py`, `test_private_sync.py`.
@@ -155,17 +164,33 @@ Fällt eine, wird nicht gesendet. Reduce-Only (Risikoabbau) bleibt bewusst freie
 
 ```
 Eröffnende Order
-  → Idempotenz (dieselbe Kennung erzeugt keine zweite Order)
+  → Idempotenz         (dieselbe Kennung erzeugt keine zweite Order)
   → Global-Halt-Latch  (Reconcile-Drift ODER Private-Sync-Desync → gesperrt)
   → Stop-Pflicht       (ohne gültigen Stop wird nicht eröffnet)
+  → [1] Frische-Latch  (Kontozustand älter als 5 s = nicht bewertbar → abgelehnt)
   → Live-Freigabe      (nur Live-Konto: vier Schalter + Kennung, sonst abgelehnt)
+  → Halal-Screen       (nur Live-Konto: swapfrei + Gelehrten-Freigabe)
   → Hebel-Preflight    (Klasse handelbar? Hebel ≤ 10 geklammert? Marge frei?)
-  → an das Terminal    (RealMt5Terminal: Schreibpfad zusätzlich allow_write=False)
+  → Kostentor          (nur Live-Konto: Roundturn-Kosten unter der Backtest-Schwelle)
+  → [2] Verlustgrenzen (Tagesverlust, Drawdown-Halt, Positionsdeckel, Gap-Sperre)
+  → [5] Drossel        (Cooldown, Mindesthaltedauer, Tageskappen — „bewerten ≠ handeln")
+  → [3] Stop-Budget    (Kostenuntergrenze und Margin-Obergrenze je Klasse und Hebel)
+  → [4] Positionsgröße (angefordertes Volumen gegen das Risikobudget)
+  → an das Terminal    (RealMt5Terminal: allow_write=False UND nur Demokonto)
 ```
 
-Drei unabhängige Sperren stehen so **hintereinander** gegen einen ungewollten Schreibzugriff
-auf ein Live-Konto: die Live-Freigabe im Adapter, `allow_write` im Terminal und der harte
-Demo-Abbruch im Smoke-Runner. Diese Redundanz ist beabsichtigt — beim Demo-Smoke wurde sie
+Die fünf mit **[1]–[5]** bezeichneten Sperren sind die Sollsperren aus Paket 2, A3.2. Sie
+laufen auf **jedem** Konto, auch auf dem Demokonto — anders als Live-Freigabe, Halal-Screen
+und Kostentor, die dort entfallen, weil es kein Echtgeld und keine reale Zinsbelastung gibt.
+Bis Paket 2 stieg die Risikoschicht bei einem Demokonto sofort wieder aus und lief damit an
+keinem erreichbaren Konto; das Dauertor `tests/test_orderpfad_verdrahtung.py` zählt seither
+an einer echten Order nach, dass alle fünf laufen, und wird rot, sobald es weniger sind.
+Reihenfolge-Begründung: der Frische-Latch steht **vor** allem, was aus dem Kontozustand
+liest — auch vor der Live-Freigabe, die `is_demo` aus genau diesem Schnappschuss zieht.
+
+Drei unabhängige Sperren stehen **hintereinander** gegen einen ungewollten Schreibzugriff
+auf ein Live-Konto: die Live-Freigabe im Adapter, `allow_write` im Terminal (seit Paket 2
+zusätzlich an ein Demokonto geklammert) und der harte Demo-Abbruch im Smoke-Runner. Diese Redundanz ist beabsichtigt — beim Demo-Smoke wurde sie
 negativ gefahren: selbst mit ausgehebeltem Demo-Abbruch blockiert die Live-Freigabe.
 
 **Fail-closed-Zustände, die sich nicht selbst lösen** (wie der Drawdown-Halt): der

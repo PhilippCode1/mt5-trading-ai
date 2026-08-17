@@ -6,20 +6,20 @@ in EINEM Durchlauf je Signal zusammen und quittiert jede als Checklisten-Punkt:
     Zulassung(§9.3) -> Signal -> Daten-Tor -> Halal -> Hebel -> Stop-Preis -> Kostentor
     -> Limits -> Evaluation -> Stop-Budget -> Sizing -> submit_order -> Buchung.
 
-**Warum "Variante B" (Tore explizit, nicht nur ueber submit_order):** auf einem
-**Demo**-Konto ueberspringt ``Mt5Venue.submit_order`` Kostentor, Risikoschicht und
-Live-Freigabe (kein Echtgeld) -- nur Halal + Hebel laufen dort immer. Ein Paper-Lauf,
-der sich allein auf ``submit_order`` verliesse, liesse die uebersprungenen Naehte als
-No-op durchgehen. Deshalb faehrt der Runner Kostentor und Risikoschicht **selbst** als
-bindende Vor-Schritte (und ruft danach ``submit_order``, das dieselben Tore auf einem
-Live-Konto ein zweites Mal erzwingt -- Defense-in-Depth).
+**Warum die Tore hier explizit stehen und nicht nur ueber submit_order laufen:** der
+Runner quittiert jede Naht einzeln. ``submit_order`` faellt bei der ersten Sperre mit
+einer Begruendung aus; die Checkliste braucht dagegen je Naht ein Ergebnis, auch fuer
+die Naehte hinter der ersten roten. Ausserdem sind Kostentor und Halal-Screen am Venue
+demo-frei (kein Echtgeld, keine reale Zinsbelastung) -- der Runner faehrt sie trotzdem,
+damit die Nachweisfahrt sie belegt.
 
-**Kein Doppel-Buchen:** der Runner haelt seinen EIGENEN ``RiskManager`` und erwartet ein
-Demo-Venue OHNE verdrahteten ``risk_manager`` -- so bucht ``submit_order`` den Fill
-nicht selbst (nur der Live-Pfad tut das), und der Runner ruft ``record_open_fill``
-einmal. Auf
-einem Live-Konto muss die Risikoschicht dagegen AM VENUE verdrahtet sein (dort ist sie
-Pflicht); dieser Runner ist die Paper/Demo-Nachweisfahrt.
+**Kein Doppel-Buchen:** Runner und Venue teilen **einen** ``RiskManager``. Zwei
+getrennte Manager haetten zwei getrennte Frequenz- und Positionszaehler, von denen
+keiner das Ganze saehe. Seit Paket 2 (A3) faehrt ``Mt5Venue.submit_order`` die
+Risikoschicht auf **jedem** Konto und bucht den akzeptierten Fill selbst; erkennt der
+Runner denselben Manager wieder, quittiert er nur (Schritt 10). Haelt ein Aufrufer
+bewusst zwei getrennte Manager, bucht der Runner -- beides fuehrt zu genau einer
+Buchung.
 
 Fail-closed: jede Naht, die nicht sicher gruen ist, bricht die Kette ab und wird mit
 Begruendung protokolliert; es wird nichts eroeffnet.
@@ -163,17 +163,18 @@ def run_signal(
     ref = quote.ask if side_enum is OrderSide.BUY else quote.bid
     if ref <= 0:
         return report._reject("daten-tor", "price_missing", detail=f"ref={ref}")
-    # Dieser Runner ist Variante B (eigener RiskManager, Demo-Venue ohne verdrahtete
-    # Risikoschicht). Gegen ein NICHT-Demo-Konto wuerde submit_order die Risikoschicht
-    # selbst fahren UND den Fill buchen -> Doppel-Buchung. Deshalb fail-closed: der
-    # Paper-Runner laeuft NUR auf Demo (Echtgeld ohnehin gesperrt).
+    # Der Paper-Runner laeuft ausschliesslich auf Demo -- fail-closed. Er fuehrt eine
+    # Nachweisfahrt und traegt weder Live-Freigabe noch Demo-Reife; ein Live-Konto
+    # gehoert nicht an diesen Pfad. (Die frueher hier begruendete Doppelbuchung ist
+    # seit Paket 2 anders geloest: Runner und Venue teilen einen RiskManager, und
+    # gebucht wird genau einmal -- siehe Schritt 10.)
     if not account.is_demo:
         return report._reject(
             "daten-tor", "runner_requires_demo",
-            detail="Paper-Runner laeuft nur auf Demokonto (Variante B)")
+            detail="Paper-Runner laeuft nur auf einem Demokonto")
     report.add("daten-tor", True, f"ref={ref} spread={quote.spread}")
 
-    # 3) Halal-Screen (auf Demo von submit_order uebersprungen -> hier bindend).
+    # 3) Halal-Screen (am Venue demo-frei -> hier bindend, damit belegt).
     halal = screen_halal(
         asset_class=instrument.asset_class,
         account_swap_free=config.account_swap_free,
@@ -237,7 +238,7 @@ def run_signal(
         meta={"requested_leverage": eff_lev},
     )
 
-    # 7) Kostentor (auf Demo von submit_order uebersprungen -> hier bindend).
+    # 7) Kostentor (am Venue demo-frei -> hier bindend, damit belegt).
     cost = evaluate_cost_gate(
         gate=config.cost_gate, instrument=instrument, fees=instrument.fees,
         side=side_enum, volume=request.volume, bid=quote.bid, ask=quote.ask,
@@ -269,8 +270,9 @@ def run_signal(
         return report._reject("sizing", "risk_sizing_no_volume")
     report.add("sizing", True, f"volume={sized_volume}")
 
-    # 9) Submit: die eigentliche Paper-Order (submit_order erzwingt Halal+Hebel erneut;
-    # auf Live zusaetzlich Kosten+Risiko -- Defense-in-Depth).
+    # 9) Submit: die eigentliche Paper-Order. ``submit_order`` erzwingt Hebel, Frische
+    # und die volle Risikoschicht erneut (auf jedem Konto), auf Live zusaetzlich
+    # Halal-Screen, Live-Freigabe und Kostentor -- Defense-in-Depth.
     request = replace(request, volume=sized_volume)
     try:
         result = venue.submit_order(request)
@@ -281,13 +283,19 @@ def run_signal(
     report.add("submit", result.accepted, f"venue_order_id={result.venue_order_id}")
 
     # 10) Buchung: den akzeptierten Fill der Risikoschicht melden (Frequenz/Deckel).
-    # Nur der Runner bucht (Demo-Venue ohne verdrahteten RiskManager) -> kein Doppel.
+    # Genau EINMAL. Seit Paket 2 (A3) faehrt ``submit_order`` die Risikoschicht auf
+    # jedem Konto und bucht den Fill selbst. Teilt sich der Runner denselben Manager
+    # mit dem Venue -- der Regelfall, weil zwei getrennte Zaehlerstaende keiner
+    # kennt --, dann hat das Venue bereits gebucht und der Runner quittiert nur.
     # NICHT bei einem idempotenten Replay: submit_order gibt bei wiederholter
     # client_order_id accepted=True OHNE zweite Order zurueck -- ein zweites
     # record_open_fill wuerde den Frequenz-/Tagesdeckel-Zaehler verfaelschen (§9).
     if result.accepted and not result.idempotent_replay:
-        risk_manager.record_open_fill(symbol, result.ts)
-        report.add("buchung", True, "record_open_fill")
+        if venue.risk_manager is risk_manager:
+            report.add("buchung", True, "record_open_fill (Venue, geteilter Manager)")
+        else:
+            risk_manager.record_open_fill(symbol, result.ts)
+            report.add("buchung", True, "record_open_fill")
     elif result.idempotent_replay:
         report.add("buchung", True, "idempotenter Replay -- nicht erneut gebucht")
 

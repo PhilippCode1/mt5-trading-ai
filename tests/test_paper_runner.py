@@ -171,6 +171,7 @@ def _venue(
     accept: bool = True,
     sync: PrivateSync | None = None,
     max_notional_drift: Decimal = Decimal("0"),
+    risk_manager: RiskManager | None = None,
 ) -> Mt5Venue:
     terminal = FakeTerminal(
         is_demo=is_demo, equity=equity, positions=positions, accept=accept
@@ -178,6 +179,9 @@ def _venue(
     venue = Mt5Venue(
         name="mt5-demo", terminal=terminal, catalog=_catalog(),
         sync=sync, max_notional_drift=max_notional_drift,
+        # Seit A3 auf jedem Konto Pflicht; feste Uhr passend zum Fake-Kontostand.
+        risk_manager=risk_manager if risk_manager is not None else RiskManager(),
+        clock=lambda: TS,
     )
     venue.connect()
     return venue
@@ -199,9 +203,13 @@ def _config(**overrides: object) -> RunnerConfig:
 
 
 def _run(**overrides: object):
+    # Ein Manager fuer Runner UND Venue -- getrennte Zaehlerstaende saehe keiner.
+    geteilt = overrides.get("risk_manager")
+    if not isinstance(geteilt, RiskManager):
+        geteilt = RiskManager()
     kwargs: dict[str, object] = {
-        "venue": _venue(),
-        "risk_manager": RiskManager(),
+        "venue": _venue(risk_manager=geteilt),
+        "risk_manager": geteilt,
         "admission": _admitted(),
         "symbol": "EURUSD",
         "side": Signal.LONG,
@@ -244,8 +252,9 @@ def test_not_admitted_strategy_does_not_trade() -> None:
 
 
 def test_non_demo_account_is_rejected_variant_b() -> None:
-    # Variante B laeuft nur auf Demo: gegen ein Live-Konto wuerde submit_order die
-    # Risikoschicht selbst fahren + buchen -> Doppelzaehlung; fail-closed davor.
+    # Der Paper-Runner ist die Demo-Nachweisfahrt und traegt weder Live-Freigabe noch
+    # Demo-Reife. Gegen ein Live-Konto bricht er fail-closed ab, bevor irgendetwas
+    # eroeffnet wird.
     report = _run(venue=_venue(is_demo=False))
     assert not report.opened
     assert report.reject_reason == "runner_requires_demo"

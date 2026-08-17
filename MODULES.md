@@ -2,7 +2,14 @@
 
 # MODULES — oeffentliche API je Modul (generiert aus dem Code)
 
+Diese Datei ist die **einzige** Stelle, an der die Zeilenzahl je Modul steht.
+Sie wird erzeugt, nicht gepflegt. Andere Dokumente verweisen hierher; das
+Zahlen-Tor (`tools/check_doc_numbers.py`) blockt eine Wiederholung, weil eine
+von Hand gefuehrte Zeilenzahl mit dem naechsten Commit driftet.
+
 ## `mt5_trading_ai/backtest/edge.py`
+
+Zeilen: 113
 
 Das Sechs-Bedingungen-Tor des Edge-Tests (Paket 4, §7.2).
 
@@ -13,6 +20,8 @@ Das Sechs-Bedingungen-Tor des Edge-Tests (Paket 4, §7.2).
 - `def evaluate_edge`
 
 ## `mt5_trading_ai/backtest/engine.py`
+
+Zeilen: 677
 
 Backtest-Maschine: fuehrt Splits, Daten und Kostenmodell zusammen.
 
@@ -34,6 +43,8 @@ Backtest-Maschine: fuehrt Splits, Daten und Kostenmodell zusammen.
 
 ## `mt5_trading_ai/backtest/llm_compare.py`
 
+Zeilen: 71
+
 Paket 5: das Tor fuer ein LLM im Entscheidungspfad (§8.2-8.4).
 
 - `class LlmGateInputs`
@@ -42,12 +53,16 @@ Paket 5: das Tor fuer ein LLM im Entscheidungspfad (§8.2-8.4).
 
 ## `mt5_trading_ai/backtest/provenance.py`
 
+Zeilen: 117
+
 Herkunft eines Backtest-Laufs: der Codestand aus git (Paket 6).
 
 - `class ProvenanceError`
 - `def code_commit_from_git`
 
 ## `mt5_trading_ai/backtest/splits.py`
+
+Zeilen: 190
 
 Zeitreihen-Splits mit Purge und Embargo — herausgeloest aus learning_engine.
 
@@ -58,13 +73,30 @@ Zeitreihen-Splits mit Purge und Embargo — herausgeloest aus learning_engine.
 
 ## `mt5_trading_ai/backtest/strategies.py`
 
+Zeilen: 123
+
 Einfache, ernsthafte Signallogiken fuer den Edge-Test -- ohne Optimierung.
 
 - `def moving_average_crossover`
 - `def mean_reversion_zscore`
 - `def volatility_breakout`
 
+## `mt5_trading_ai/costs/broker_costs.py`
+
+Zeilen: 454
+
+Broker-Kostentabelle — versioniert, belegt, fail-closed.
+
+- `class BrokerCostsError`
+- `class InstrumentCost`
+- `class Broker`
+- `class BrokerCosts`
+- `def default_costs_path`
+- `def load_broker_costs`
+
 ## `mt5_trading_ai/costs/halal.py`
+
+Zeilen: 50
 
 Der Halal-Pfad: swapfreie Finanzierung ohne Zins (S4, Kernregel 16).
 
@@ -73,6 +105,8 @@ Der Halal-Pfad: swapfreie Finanzierung ohne Zins (S4, Kernregel 16).
 
 ## `mt5_trading_ai/costs/model.py`
 
+Zeilen: 237
+
 Kostenmodell: die realen Kosten einer Order, gemessen statt angenommen.
 
 - `class CostModelError`
@@ -80,7 +114,28 @@ Kostenmodell: die realen Kosten einer Order, gemessen statt angenommen.
 - `def order_roundturn_cost`
 - `def load_cost_fees`
 
+## `mt5_trading_ai/costs/volatility.py`
+
+Zeilen: 385
+
+Gemessene Volatilitaet je Instrument — ATR(14) und die Ablage dafuer.
+
+- `class AtrMeasurementError`
+- `class Candle`
+- `class AtrMeasurement`
+- `def percentile`
+- `def true_ranges`
+- `def gap_count`
+- `def wilder_atr`
+- `def atr_series_bps`
+- `def not_measured`
+- `def default_measurements_path`
+- `def load_atr_measurements`
+- `def load_fx_rates`
+
 ## `mt5_trading_ai/data/loader.py`
+
+Zeilen: 452
 
 Lader fuer historische Bars -- an das Datenqualitaetstor gekettet.
 
@@ -102,6 +157,8 @@ Lader fuer historische Bars -- an das Datenqualitaetstor gekettet.
 
 ## `mt5_trading_ai/data/quality.py`
 
+Zeilen: 246
+
 Datenqualitaet als Gate (Phase 7.2).
 
 - `class BarRow`
@@ -113,13 +170,26 @@ Datenqualitaet als Gate (Phase 7.2).
 
 ## `mt5_trading_ai/execution/cost_gate.py`
 
+Zeilen: 130
+
 Pre-Trade-Kostentor am Order-Pfad.
 
 - `class CostGate`
 - `class CostGateDecision`
 - `def evaluate_cost_gate`
 
+## `mt5_trading_ai/execution/freshness.py`
+
+Zeilen: 144
+
+Frische-Latch fuer den Kontozustand — S2 aus Paket 0.
+
+- `class FreshnessVerdict`
+- `def evaluate_account_freshness`
+
 ## `mt5_trading_ai/execution/leverage_preflight.py`
+
+Zeilen: 92
 
 Anschluss der Hebelklammer an den Order-Pfad.
 
@@ -128,6 +198,8 @@ Anschluss der Hebelklammer an den Order-Pfad.
 
 ## `mt5_trading_ai/execution/private_sync.py`
 
+Zeilen: 89
+
 Private Ereignis-Synchronisation: der Kontostrom haelt das Buch aktuell.
 
 - `class PrivateEventKind`
@@ -135,6 +207,8 @@ Private Ereignis-Synchronisation: der Kontostrom haelt das Buch aktuell.
 - `class PrivateSync`
 
 ## `mt5_trading_ai/execution/reconcile.py`
+
+Zeilen: 113
 
 Order-Lebenszyklus und Reconcile: Konto gegen Buch.
 
@@ -146,6 +220,8 @@ Order-Lebenszyklus und Reconcile: Konto gegen Buch.
 
 ## `mt5_trading_ai/execution/release.py`
 
+Zeilen: 128
+
 Mehrteilige Freigabe fuer Order-Submit an einen echten Markt.
 
 - `class LiveReleaseDecision`
@@ -154,6 +230,8 @@ Mehrteilige Freigabe fuer Order-Submit an einen echten Markt.
 
 ## `mt5_trading_ai/execution/risk_manager.py`
 
+Zeilen: 378
+
 Risikoschicht am Order-Pfad: die vier Grenzen als letzte Verteidigungslinie.
 
 - `class RiskPolicy`
@@ -161,6 +239,8 @@ Risikoschicht am Order-Pfad: die vier Grenzen als letzte Verteidigungslinie.
 - `class RiskManager`
 
 ## `mt5_trading_ai/execution/runner.py`
+
+Zeilen: 302
 
 Integrierender Paper/Dry-Run-Runner (Paket 7): die eine beweisbare Kette.
 
@@ -171,12 +251,16 @@ Integrierender Paper/Dry-Run-Runner (Paket 7): die eine beweisbare Kette.
 
 ## `mt5_trading_ai/execution/scheduler.py`
 
+Zeilen: 123
+
 Treiber-Loop/Scheduler (Paket 7): Frische, Drift und Drawdown-Peak getaktet pruefen.
 
 - `class TickResult`
 - `class SyncScheduler`
 
 ## `mt5_trading_ai/gates/criteria.py`
+
+Zeilen: 348
 
 Vorregistrierte Kriterien und ihre Auswertung (Phase 9.3).
 
@@ -192,6 +276,8 @@ Vorregistrierte Kriterien und ihre Auswertung (Phase 9.3).
 
 ## `mt5_trading_ai/gates/evaluation.py`
 
+Zeilen: 207
+
 Bewerten ist nicht handeln (Phase 8.3).
 
 - `class ThrottlePolicy`
@@ -204,6 +290,8 @@ Bewerten ist nicht handeln (Phase 8.3).
 - `def trade_rate`
 
 ## `mt5_trading_ai/gates/learning_phase.py`
+
+Zeilen: 302
 
 Lernphase: bewerten und ordnen (Phase 9.5).
 
@@ -223,6 +311,8 @@ Lernphase: bewerten und ordnen (Phase 9.5).
 
 ## `mt5_trading_ai/gates/trials.py`
 
+Zeilen: 222
+
 Trials-Ledger (Phase 9.4) — ``TRIALS.jsonl``, ausschliesslich anhaengend.
 
 - `class TrialsLedgerError`
@@ -238,6 +328,8 @@ Trials-Ledger (Phase 9.4) — ``TRIALS.jsonl``, ausschliesslich anhaengend.
 
 ## `mt5_trading_ai/risk/leverage.py`
 
+Zeilen: 253
+
 Gesetzlicher Hebeldeckel je Anlageklasse — geladen aus einer versionierten Datei.
 
 - `class LeveragePolicyError`
@@ -251,7 +343,9 @@ Gesetzlicher Hebeldeckel je Anlageklasse — geladen aus einer versionierten Dat
 
 ## `mt5_trading_ai/risk/limits.py`
 
-Verlustgrenzen und Kill-Switch (Phase 6.4).
+Zeilen: 173
+
+Verlustgrenzen und das **Kriterium** des Kill-Switch (Phase 6.4).
 
 - `class TradingState`
 - `class LossLimits`
@@ -260,6 +354,8 @@ Verlustgrenzen und Kill-Switch (Phase 6.4).
 - `def evaluate_limits`
 
 ## `mt5_trading_ai/risk/sizing.py`
+
+Zeilen: 224
 
 Risiko je Trade, ausfuehrbarer Stop-Floor und Positionsgroesse (Phase 6.2/6.3).
 
@@ -273,6 +369,8 @@ Risiko je Trade, ausfuehrbarer Stop-Floor und Positionsgroesse (Phase 6.2/6.3).
 
 ## `mt5_trading_ai/risk/stop_budget.py`
 
+Zeilen: 163
+
 Stop-Budget je Anlageklasse — hergeleitet, nicht uebertragen (Phase 6.5).
 
 - `class StopBudget`
@@ -283,6 +381,8 @@ Stop-Budget je Anlageklasse — hergeleitet, nicht uebertragen (Phase 6.5).
 
 ## `mt5_trading_ai/venue/catalog.py`
 
+Zeilen: 159
+
 Instrumentenkatalog — die Metadaten, die MT5 nicht liefert.
 
 - `class InstrumentCatalogError`
@@ -291,6 +391,8 @@ Instrumentenkatalog — die Metadaten, die MT5 nicht liefert.
 - `def load_instrument_catalog`
 
 ## `mt5_trading_ai/venue/demo_run.py`
+
+Zeilen: 88
 
 Paket 5: Registrierung und Fortschritts-Tor des Demo-Betriebs (§8.5).
 
@@ -302,12 +404,16 @@ Paket 5: Registrierung und Fortschritts-Tor des Demo-Betriebs (§8.5).
 
 ## `mt5_trading_ai/venue/halal.py`
 
+Zeilen: 64
+
 Der Halal-Screen: das mechanisch Pruefbare erzwingen, die fiqh-Grenze benennen (S4).
 
 - `class HalalVerdict`
 - `def screen_halal`
 
 ## `mt5_trading_ai/venue/mt5.py`
+
+Zeilen: 1215
 
 MT5-Anbindung an das ``TradingVenue``-Protokoll.
 
@@ -322,6 +428,8 @@ MT5-Anbindung an das ``TradingVenue``-Protokoll.
 - `class RealMt5Terminal`
 
 ## `mt5_trading_ai/venue/protocol.py`
+
+Zeilen: 280
 
 Plattformunabhaengiger Handelsplatz-Vertrag.
 
@@ -345,6 +453,8 @@ Plattformunabhaengiger Handelsplatz-Vertrag.
 - `class TradingVenue`
 
 ## `mt5_trading_ai/venue/smoke.py`
+
+Zeilen: 215
 
 Demo-Smoke-Test der MT5-Bindung — die Orchestrierung, terminalunabhaengig.
 

@@ -52,13 +52,21 @@ def render() -> str:
         "",
         "# MODULES — oeffentliche API je Modul (generiert aus dem Code)",
         "",
+        "Diese Datei ist die **einzige** Stelle, an der die Zeilenzahl je Modul steht.",
+        "Sie wird erzeugt, nicht gepflegt. Andere Dokumente verweisen hierher; das",
+        "Zahlen-Tor (`tools/check_doc_numbers.py`) blockt eine Wiederholung, weil eine",
+        "von Hand gefuehrte Zeilenzahl mit dem naechsten Commit driftet.",
+        "",
     ]
     for path in sorted(PKG.rglob("*.py")):
         if path.name == "__init__.py":
             continue
-        tree = ast.parse(path.read_text(encoding="utf-8"))
+        text = path.read_text(encoding="utf-8")
+        tree = ast.parse(text)
         rel = path.relative_to(REPO).as_posix()
         out.append(f"## `{rel}`")
+        out.append("")
+        out.append(f"Zeilen: {len(text.splitlines())}")
         out.append("")
         out.append(_module_summary(tree))
         out.append("")

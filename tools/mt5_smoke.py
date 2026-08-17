@@ -24,6 +24,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from mt5_trading_ai.execution.risk_manager import RiskManager  # noqa: E402
 from mt5_trading_ai.venue.catalog import load_instrument_catalog  # noqa: E402
 from mt5_trading_ai.venue.mt5 import Mt5Venue, RealMt5Terminal  # noqa: E402
 from mt5_trading_ai.venue.smoke import run_smoke  # noqa: E402
@@ -48,7 +49,16 @@ def main(argv: list[str] | None = None) -> int:
         path=args.path,
         allow_write=args.allow_write,
     )
-    venue = Mt5Venue(name="mt5", terminal=terminal, catalog=load_instrument_catalog())
+    # Die Risikoschicht ist seit Paket 2 fuer JEDE eroeffnende Order Pflicht -- auch
+    # auf dem Demokonto. Ohne Manager lehnt der Order-Pfad fail-closed ab; die
+    # Schreib-Probe wuerde also gar nicht erst laufen. Standard-Politik: die Probe
+    # soll unter denselben Grenzen laufen wie der spaetere Betrieb.
+    venue = Mt5Venue(
+        name="mt5",
+        terminal=terminal,
+        catalog=load_instrument_catalog(),
+        risk_manager=RiskManager(),
+    )
 
     report = run_smoke(venue, symbol=args.symbol, allow_write=args.allow_write)
     for step in report.steps:

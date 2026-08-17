@@ -1,1 +1,488 @@
-NICHT GELAUFEN — Platzhalter aus dem ersten Commit des Laufs.
+====================================================================================================
+KOSTENTOR — Paket 2, A1.3/A1.4
+====================================================================================================
+Kostendatei : broker-costs-paket2 (geprueft 2026-08-17), 4 Broker
+Messdatei   : ATR(14) H1, 12 Monate, gemessen ueber den lesenden MT5-Demo-Pfad
+Umrechnung  : {'EURUSD': 1.15704, 'GBPUSD': 1.3534, 'USDJPY': 159.317}
+
+Kostenzeilen: 18 von 24 rechenbar (6 Instrumente x 4 Broker)
+
+----------------------------------------------------------------------------------------------------
+TABELLE 1 — Round-Turn-Kosten K in Basispunkten des Nominals
+----------------------------------------------------------------------------------------------------
+Instrument Broker              Spread     Komm.   Slip.         K    ATR50    ATR25
+EURUSD     ic_markets_eu         0.05      0.60    0.50      1.15    10.04     8.64
+EURUSD     admirals_eu           0.77      0.00    0.50      1.27    10.04     8.64
+EURUSD     tickmill_eu           0.09      0.52    0.50      1.10    10.04     8.64
+EURUSD     pepperstone_eu        0.09      0.60    0.50      1.19    10.04     8.64
+GBPJPY     ic_markets_eu         0.31      0.53    1.00      1.84    11.72     9.76
+GBPJPY     admirals_eu           2.60      0.00    1.00      3.60    11.72     9.76
+GBPJPY     tickmill_eu           0.47      0.45    1.00      1.93    11.72     9.76
+GBPJPY     pepperstone_eu        0.57      0.53    1.00      2.10    11.72     9.76
+XAUUSD     ic_markets_eu         0.19      0.16    0.50      0.85    41.80    33.70
+XAUUSD     admirals_eu           1.13      0.00    0.50      1.63    41.80    33.70
+XAUUSD     tickmill_eu           0.21      0.14    0.50      0.85    41.80    33.70
+XAUUSD     pepperstone_eu        0.28      0.16    0.50      0.94    41.80    33.70
+DE40       ic_markets_eu         0.60      0.00    0.50      1.10    26.81    21.09
+DE40       admirals_eu           0.49      0.00    0.50      0.99    26.81    21.09
+DE40       tickmill_eu           0.37      0.00    0.50      0.87    26.81    21.09
+DE40       pepperstone_eu        0.62      0.00    0.50      1.12    26.81    21.09
+BTCUSD     ic_markets_eu    NICHT RECHENBAR — Volatilitaet nicht gemessen: Symbol 'BTCUSD' auf dem erreichbaren Terminal nicht vorhanden
+BTCUSD     admirals_eu      NICHT RECHENBAR — Volatilitaet nicht gemessen: Symbol 'BTCUSD' auf dem erreichbaren Terminal nicht vorhanden
+BTCUSD     tickmill_eu      NICHT RECHENBAR — Volatilitaet nicht gemessen: Symbol 'BTCUSD' auf dem erreichbaren Terminal nicht vorhanden
+BTCUSD     pepperstone_eu   NICHT RECHENBAR — Volatilitaet nicht gemessen: Symbol 'BTCUSD' auf dem erreichbaren Terminal nicht vorhanden
+NVDA       ic_markets_eu         2.07     20.00    1.00     23.07    91.18    77.38
+NVDA       admirals_eu           1.06      2.13    1.00      4.19    91.18    77.38
+NVDA       tickmill_eu      NICHT RECHENBAR — spread_nicht_veroeffentlicht: Tickmill EU fuehrt den Aktien-CFD ('NVDA.NAS -- Nvidia Corp CFD', 'No Commissions.'), veroeffentlicht fuer Aktien-CFDs aber keinerlei Spreadtabelle. Ohne Spread und ohne Kommission waere die Kostenzeile Null -- und Null waere falsch, denn die Kosten stecken laut Broker vollstaendig im Spread.
+NVDA       pepperstone_eu   NICHT RECHENBAR — spread_nicht_veroeffentlicht: Pepperstone EU fuehrt den Aktien-CFD und veroeffentlicht die Kommission (0,02 USD je Aktie je Seite), aber KEINE Spreadtabelle fuer Aktien-CFDs: 'Share CFD trades are charged a commission in addition with any spread which differs by underlying exchange.' Ohne Spread bliebe nur die Kommission -- und das waere zu niedrig.
+
+----------------------------------------------------------------------------------------------------
+TABELLE 2 — erforderliche Trefferquote p* bei CRV 1:1
+            S = Vielfaches x Median-ATR(14) H1. Zweite Zeile je Fall: das
+            25. Perzentil (ruhige Marktphase) -- dort beissen die Kosten am staerksten.
+----------------------------------------------------------------------------------------------------
+Instrument Broker                 S=1.0xATR       S=1.5xATR       S=2.0xATR
+EURUSD     ic_markets_eu         55.7% GRUE      53.8% GRUE      52.9% GRUE   (Median)
+                                 56.7% GELB      54.5% GRUE      53.3% GRUE   (25. Perzentil)
+EURUSD     admirals_eu           56.3% GELB      54.2% GRUE      53.2% GRUE   (Median)
+                                 57.4% GELB      54.9% GRUE      53.7% GRUE   (25. Perzentil)
+EURUSD     tickmill_eu           55.5% GRUE      53.7% GRUE      52.7% GRUE   (Median)
+                                 56.4% GELB      54.3% GRUE      53.2% GRUE   (25. Perzentil)
+EURUSD     pepperstone_eu        55.9% GRUE      53.9% GRUE      53.0% GRUE   (Median)
+                                 56.9% GELB      54.6% GRUE      53.4% GRUE   (25. Perzentil)
+GBPJPY     ic_markets_eu         57.8% GELB      55.2% GRUE      53.9% GRUE   (Median)
+                                 59.4% GELB      56.3% GELB      54.7% GRUE   (25. Perzentil)
+GBPJPY     admirals_eu           65.4%  ROT      60.2% GELB      57.7% GELB   (Median)
+                                 68.5%  ROT      62.3%  ROT      59.2% GELB   (25. Perzentil)
+GBPJPY     tickmill_eu           58.2% GELB      55.5% GRUE      54.1% GRUE   (Median)
+                                 59.9% GELB      56.6% GELB      54.9% GRUE   (25. Perzentil)
+GBPJPY     pepperstone_eu        58.9% GELB      56.0% GRUE      54.5% GRUE   (Median)
+                                 60.7% GELB      57.2% GELB      55.4% GRUE   (25. Perzentil)
+XAUUSD     ic_markets_eu         51.0% GRUE      50.7% GRUE      50.5% GRUE   (Median)
+                                 51.3% GRUE      50.8% GRUE      50.6% GRUE   (25. Perzentil)
+XAUUSD     admirals_eu           52.0% GRUE      51.3% GRUE      51.0% GRUE   (Median)
+                                 52.4% GRUE      51.6% GRUE      51.2% GRUE   (25. Perzentil)
+XAUUSD     tickmill_eu           51.0% GRUE      50.7% GRUE      50.5% GRUE   (Median)
+                                 51.3% GRUE      50.8% GRUE      50.6% GRUE   (25. Perzentil)
+XAUUSD     pepperstone_eu        51.1% GRUE      50.7% GRUE      50.6% GRUE   (Median)
+                                 51.4% GRUE      50.9% GRUE      50.7% GRUE   (25. Perzentil)
+DE40       ic_markets_eu         52.0% GRUE      51.4% GRUE      51.0% GRUE   (Median)
+                                 52.6% GRUE      51.7% GRUE      51.3% GRUE   (25. Perzentil)
+DE40       admirals_eu           51.9% GRUE      51.2% GRUE      50.9% GRUE   (Median)
+                                 52.4% GRUE      51.6% GRUE      51.2% GRUE   (25. Perzentil)
+DE40       tickmill_eu           51.6% GRUE      51.1% GRUE      50.8% GRUE   (Median)
+                                 52.1% GRUE      51.4% GRUE      51.0% GRUE   (25. Perzentil)
+DE40       pepperstone_eu        52.1% GRUE      51.4% GRUE      51.0% GRUE   (Median)
+                                 52.6% GRUE      51.8% GRUE      51.3% GRUE   (25. Perzentil)
+NVDA       ic_markets_eu         62.7%  ROT      58.4% GELB      56.3% GELB   (Median)
+                                 64.9%  ROT      59.9% GELB      57.5% GELB   (25. Perzentil)
+NVDA       admirals_eu           52.3% GRUE      51.5% GRUE      51.1% GRUE   (Median)
+                                 52.7% GRUE      51.8% GRUE      51.4% GRUE   (25. Perzentil)
+
+====================================================================================================
+URTEIL GEGEN M1 — Kennzahl: p* bei CRV 1:1 und S = 1,0 x Median-ATR(14) H1
+====================================================================================================
+  EURUSD   Haupt-Waehrungspaar        bestes p* = 55.5 % -> GRUEN (ESMA-Deckel 30:1)
+  GBPJPY   Nebenpaar                  bestes p* = 57.8 % -> GELB  (ESMA-Deckel 20:1)
+  XAUUSD   Edelmetall                 bestes p* = 51.0 % -> GRUEN (ESMA-Deckel 20:1)
+  DE40     Hauptindex (DAX40)         bestes p* = 51.6 % -> GRUEN (ESMA-Deckel 20:1)
+  BTCUSD   Krypto                     NICHT BEWERTBAR (siehe Tabelle 1)
+  NVDA     Einzelaktie (Technik/KI)   bestes p* = 52.3 % -> GRUEN (ESMA-Deckel 5:1)
+
+  gruen: 4 von 6 Instrumenten ['EURUSD', 'XAUUSD', 'DE40', 'NVDA']
+  gelb : 1 von 6 Instrumenten ['GBPJPY']
+  rot  : 0 von 6 Instrumenten []
+  nicht bewertbar: 1 von 6 ['BTCUSD']
+
+  Strenge Lesart ('bei mindestens einem Broker') — gruene Instrumente je Broker:
+    admirals_eu      3 ['DE40', 'NVDA', 'XAUUSD']
+    ic_markets_eu    3 ['DE40', 'EURUSD', 'XAUUSD']
+    pepperstone_eu   3 ['DE40', 'EURUSD', 'XAUUSD']
+    tickmill_eu      3 ['DE40', 'EURUSD', 'XAUUSD']
+    -> bester einzelner Broker: ic_markets_eu mit 3 gruenen Instrumenten (gefordert: mindestens 3)
+
+  M1-AMPEL: GRUEN — p* <= 56 % bei 4 Instrumenten, und ic_markets_eu allein traegt 3 davon (gefordert: mindestens 3).
+
+  ZUR AMPEL SELBST, ausdruecklich: solange ein Instrument nicht bewertbar
+  ist (['BTCUSD']), kann ROT nach dem Wortlaut von M1 gar nicht
+  eintreten -- ROT verlangt 'bei allen sechs Instrumenten'. Die Ampel ist
+  in dieser Richtung fail-open, und das widerspricht der Kernregel 'nicht
+  bewertbar = nicht erfuellt'. Das nicht bewertbare Instrument zaehlt hier
+  darum als NICHT gruen; ein ROT-Urteil waere mit dieser Datenlage nicht
+  feststellbar und wird auch nicht behauptet.
+
+----------------------------------------------------------------------------------------------------
+TABELLE 2b — ROBUSTHEIT: p* bei S = 1,0 x ATR unter fuenf Lesarten
+----------------------------------------------------------------------------------------------------
+  A  wie gerechnet: veroeffentlichter Spread, Median-ATR, ohne Swap
+  B  GEMESSENER Median-Spread des Demo-Feeds statt des veroeffentlichten
+  C  Slippage-Annahme verdoppelt (sie ist der einzige ungemessene Posten in K)
+  D  Swap eingerechnet: 25 % der Trades kreuzen den Rollover (4 RT/Tag)
+  E  25. Perzentil der Volatilitaet statt des Medians (ruhige Marktphase)
+  F  B, C, D und E zusammen -- die unguenstige, aber vertretbare Lesart
+
+Instrument Broker                   A         B         C         D         E         F
+EURUSD     ic_markets_eu        55.7*     56.3      58.2      55.7*     56.7      60.3 
+EURUSD     admirals_eu          56.3      53.3*     58.8      57.9      57.4      58.6 
+EURUSD     tickmill_eu          55.5*     55.9*     58.0      55.5*     56.4      59.8 
+EURUSD     pepperstone_eu       55.9*     56.3      58.4      55.9*     56.9      60.3 
+GBPJPY     ic_markets_eu        57.8      59.9      62.1      57.8      59.4      67.1 
+GBPJPY     admirals_eu          65.4      57.7      69.6      65.4      68.5      64.4 
+GBPJPY     tickmill_eu          58.2      59.6      62.5      58.2      59.9      66.7 
+GBPJPY     pepperstone_eu       58.9      59.9      63.2      58.9      60.7      67.1 
+XAUUSD     ic_markets_eu        51.0*     50.9*     51.6*     51.0*     51.3*     51.9*
+XAUUSD     admirals_eu          52.0*     50.7*     52.6*     52.5*     52.4*     52.3*
+XAUUSD     tickmill_eu          51.0*     50.9*     51.6*     51.0*     51.3*     51.8*
+XAUUSD     pepperstone_eu       51.1*     50.9*     51.7*     51.1*     51.4*     51.9*
+DE40       ic_markets_eu        52.0*     51.5*     53.0*     52.0*     52.6*     53.1*
+DE40       admirals_eu          51.9*     51.5*     52.8*     52.5*     52.4*     53.8*
+DE40       tickmill_eu          51.6*     51.5*     52.6*     51.6*     52.1*     53.1*
+DE40       pepperstone_eu       52.1*     51.5*     53.0*     52.1*     52.6*     53.1*
+NVDA       ic_markets_eu        62.7      61.8      63.2      62.7      64.9      64.6 
+NVDA       admirals_eu          52.3*     52.0*     52.8*     52.6*     52.7*     53.3*
+  * = unter der 56-%-Schwelle
+
+  Zahl der gruenen Instrumente je Lesart (gefordert: mindestens 3):
+    A: 4 von 6 -> GRUEN       ['DE40', 'EURUSD', 'NVDA', 'XAUUSD']
+    B: 4 von 6 -> GRUEN       ['DE40', 'EURUSD', 'NVDA', 'XAUUSD']
+    C: 3 von 6 -> GRUEN       ['DE40', 'NVDA', 'XAUUSD']
+    D: 4 von 6 -> GRUEN       ['DE40', 'EURUSD', 'NVDA', 'XAUUSD']
+    E: 3 von 6 -> GRUEN       ['DE40', 'NVDA', 'XAUUSD']
+    F: 3 von 6 -> GRUEN       ['DE40', 'NVDA', 'XAUUSD']
+
+  Ausgangslage (Lesart A): 4 gruene Instrumente ['DE40', 'EURUSD', 'NVDA', 'XAUUSD'].
+
+----------------------------------------------------------------------------------------------------
+TABELLE 3 — Jahreskostenlast L = N x H x k auf das Eigenkapital
+            N = Round-Turns/Jahr (250 Handelstage), H = Hebel, k = K/10000
+            M2: ueber 50 % ist die Betriebsauslegung zu aendern, nicht der Massstab.
+----------------------------------------------------------------------------------------------------
+Instrument Broker            RT/Tag  Hebel   L in % des Eigenkapitals
+EURUSD     ic_markets_eu          2      1                       5.8 %
+EURUSD     ic_markets_eu          2      2                      11.5 %
+EURUSD     ic_markets_eu          2      5                      28.8 %
+EURUSD     ic_markets_eu          4      1                      11.5 %
+EURUSD     ic_markets_eu          4      2                      23.1 %
+EURUSD     ic_markets_eu          4      5                      57.6 %  <-- M2 gerissen
+EURUSD     ic_markets_eu          8      1                      23.1 %
+EURUSD     ic_markets_eu          8      2                      46.1 %
+EURUSD     ic_markets_eu          8      5                     115.3 %  <-- M2 gerissen
+EURUSD     admirals_eu            2      1                       6.4 %
+EURUSD     admirals_eu            2      2                      12.7 %
+EURUSD     admirals_eu            2      5                      31.8 %
+EURUSD     admirals_eu            4      1                      12.7 %
+EURUSD     admirals_eu            4      2                      25.5 %
+EURUSD     admirals_eu            4      5                      63.7 %  <-- M2 gerissen
+EURUSD     admirals_eu            8      1                      25.5 %
+EURUSD     admirals_eu            8      2                      50.9 %  <-- M2 gerissen
+EURUSD     admirals_eu            8      5                     127.3 %  <-- M2 gerissen
+EURUSD     tickmill_eu            2      1                       5.5 %
+EURUSD     tickmill_eu            2      2                      11.0 %
+EURUSD     tickmill_eu            2      5                      27.5 %
+EURUSD     tickmill_eu            4      1                      11.0 %
+EURUSD     tickmill_eu            4      2                      22.0 %
+EURUSD     tickmill_eu            4      5                      55.1 %  <-- M2 gerissen
+EURUSD     tickmill_eu            8      1                      22.0 %
+EURUSD     tickmill_eu            8      2                      44.1 %
+EURUSD     tickmill_eu            8      5                     110.1 %  <-- M2 gerissen
+EURUSD     pepperstone_eu         2      1                       5.9 %
+EURUSD     pepperstone_eu         2      2                      11.9 %
+EURUSD     pepperstone_eu         2      5                      29.7 %
+EURUSD     pepperstone_eu         4      1                      11.9 %
+EURUSD     pepperstone_eu         4      2                      23.7 %
+EURUSD     pepperstone_eu         4      5                      59.4 %  <-- M2 gerissen
+EURUSD     pepperstone_eu         8      1                      23.7 %
+EURUSD     pepperstone_eu         8      2                      47.5 %
+EURUSD     pepperstone_eu         8      5                     118.7 %  <-- M2 gerissen
+GBPJPY     ic_markets_eu          2      1                       9.2 %
+GBPJPY     ic_markets_eu          2      2                      18.4 %
+GBPJPY     ic_markets_eu          2      5                      45.9 %
+GBPJPY     ic_markets_eu          4      1                      18.4 %
+GBPJPY     ic_markets_eu          4      2                      36.7 %
+GBPJPY     ic_markets_eu          4      5                      91.8 %  <-- M2 gerissen
+GBPJPY     ic_markets_eu          8      1                      36.7 %
+GBPJPY     ic_markets_eu          8      2                      73.4 %  <-- M2 gerissen
+GBPJPY     ic_markets_eu          8      5                     183.5 %  <-- M2 gerissen
+GBPJPY     admirals_eu            2      1                      18.0 %
+GBPJPY     admirals_eu            2      2                      36.0 %
+GBPJPY     admirals_eu            2      5                      90.0 %  <-- M2 gerissen
+GBPJPY     admirals_eu            4      1                      36.0 %
+GBPJPY     admirals_eu            4      2                      72.0 %  <-- M2 gerissen
+GBPJPY     admirals_eu            4      5                     180.1 %  <-- M2 gerissen
+GBPJPY     admirals_eu            8      1                      72.0 %  <-- M2 gerissen
+GBPJPY     admirals_eu            8      2                     144.1 %  <-- M2 gerissen
+GBPJPY     admirals_eu            8      5                     360.2 %  <-- M2 gerissen
+GBPJPY     tickmill_eu            2      1                       9.6 %
+GBPJPY     tickmill_eu            2      2                      19.3 %
+GBPJPY     tickmill_eu            2      5                      48.1 %
+GBPJPY     tickmill_eu            4      1                      19.3 %
+GBPJPY     tickmill_eu            4      2                      38.5 %
+GBPJPY     tickmill_eu            4      5                      96.3 %  <-- M2 gerissen
+GBPJPY     tickmill_eu            8      1                      38.5 %
+GBPJPY     tickmill_eu            8      2                      77.0 %  <-- M2 gerissen
+GBPJPY     tickmill_eu            8      5                     192.5 %  <-- M2 gerissen
+GBPJPY     pepperstone_eu         2      1                      10.5 %
+GBPJPY     pepperstone_eu         2      2                      21.0 %
+GBPJPY     pepperstone_eu         2      5                      52.4 %  <-- M2 gerissen
+GBPJPY     pepperstone_eu         4      1                      21.0 %
+GBPJPY     pepperstone_eu         4      2                      41.9 %
+GBPJPY     pepperstone_eu         4      5                     104.8 %  <-- M2 gerissen
+GBPJPY     pepperstone_eu         8      1                      41.9 %
+GBPJPY     pepperstone_eu         8      2                      83.8 %  <-- M2 gerissen
+GBPJPY     pepperstone_eu         8      5                     209.5 %  <-- M2 gerissen
+XAUUSD     ic_markets_eu          2      1                       4.2 %
+XAUUSD     ic_markets_eu          2      2                       8.5 %
+XAUUSD     ic_markets_eu          2      5                      21.2 %
+XAUUSD     ic_markets_eu          4      1                       8.5 %
+XAUUSD     ic_markets_eu          4      2                      16.9 %
+XAUUSD     ic_markets_eu          4      5                      42.3 %
+XAUUSD     ic_markets_eu          8      1                      16.9 %
+XAUUSD     ic_markets_eu          8      2                      33.9 %
+XAUUSD     ic_markets_eu          8      5                      84.7 %  <-- M2 gerissen
+XAUUSD     admirals_eu            2      1                       8.2 %
+XAUUSD     admirals_eu            2      2                      16.3 %
+XAUUSD     admirals_eu            2      5                      40.8 %
+XAUUSD     admirals_eu            4      1                      16.3 %
+XAUUSD     admirals_eu            4      2                      32.7 %
+XAUUSD     admirals_eu            4      5                      81.7 %  <-- M2 gerissen
+XAUUSD     admirals_eu            8      1                      32.7 %
+XAUUSD     admirals_eu            8      2                      65.3 %  <-- M2 gerissen
+XAUUSD     admirals_eu            8      5                     163.3 %  <-- M2 gerissen
+XAUUSD     tickmill_eu            2      1                       4.2 %
+XAUUSD     tickmill_eu            2      2                       8.5 %
+XAUUSD     tickmill_eu            2      5                      21.2 %
+XAUUSD     tickmill_eu            4      1                       8.5 %
+XAUUSD     tickmill_eu            4      2                      16.9 %
+XAUUSD     tickmill_eu            4      5                      42.3 %
+XAUUSD     tickmill_eu            8      1                      16.9 %
+XAUUSD     tickmill_eu            8      2                      33.9 %
+XAUUSD     tickmill_eu            8      5                      84.7 %  <-- M2 gerissen
+XAUUSD     pepperstone_eu         2      1                       4.7 %
+XAUUSD     pepperstone_eu         2      2                       9.4 %
+XAUUSD     pepperstone_eu         2      5                      23.5 %
+XAUUSD     pepperstone_eu         4      1                       9.4 %
+XAUUSD     pepperstone_eu         4      2                      18.8 %
+XAUUSD     pepperstone_eu         4      5                      47.0 %
+XAUUSD     pepperstone_eu         8      1                      18.8 %
+XAUUSD     pepperstone_eu         8      2                      37.6 %
+XAUUSD     pepperstone_eu         8      5                      93.9 %  <-- M2 gerissen
+DE40       ic_markets_eu          2      1                       5.5 %
+DE40       ic_markets_eu          2      2                      11.0 %
+DE40       ic_markets_eu          2      5                      27.5 %
+DE40       ic_markets_eu          4      1                      11.0 %
+DE40       ic_markets_eu          4      2                      22.0 %
+DE40       ic_markets_eu          4      5                      55.0 %  <-- M2 gerissen
+DE40       ic_markets_eu          8      1                      22.0 %
+DE40       ic_markets_eu          8      2                      44.0 %
+DE40       ic_markets_eu          8      5                     109.9 %  <-- M2 gerissen
+DE40       admirals_eu            2      1                       5.0 %
+DE40       admirals_eu            2      2                       9.9 %
+DE40       admirals_eu            2      5                      24.8 %
+DE40       admirals_eu            4      1                       9.9 %
+DE40       admirals_eu            4      2                      19.8 %
+DE40       admirals_eu            4      5                      49.6 %
+DE40       admirals_eu            8      1                      19.8 %
+DE40       admirals_eu            8      2                      39.7 %
+DE40       admirals_eu            8      5                      99.2 %  <-- M2 gerissen
+DE40       tickmill_eu            2      1                       4.4 %
+DE40       tickmill_eu            2      2                       8.7 %
+DE40       tickmill_eu            2      5                      21.8 %
+DE40       tickmill_eu            4      1                       8.7 %
+DE40       tickmill_eu            4      2                      17.5 %
+DE40       tickmill_eu            4      5                      43.7 %
+DE40       tickmill_eu            8      1                      17.5 %
+DE40       tickmill_eu            8      2                      34.9 %
+DE40       tickmill_eu            8      5                      87.3 %  <-- M2 gerissen
+DE40       pepperstone_eu         2      1                       5.6 %
+DE40       pepperstone_eu         2      2                      11.2 %
+DE40       pepperstone_eu         2      5                      27.9 %
+DE40       pepperstone_eu         4      1                      11.2 %
+DE40       pepperstone_eu         4      2                      22.3 %
+DE40       pepperstone_eu         4      5                      55.8 %  <-- M2 gerissen
+DE40       pepperstone_eu         8      1                      22.3 %
+DE40       pepperstone_eu         8      2                      44.6 %
+DE40       pepperstone_eu         8      5                     111.6 %  <-- M2 gerissen
+NVDA       ic_markets_eu          2      1                     115.4 %  <-- M2 gerissen
+NVDA       ic_markets_eu          2      2                     230.7 %  <-- M2 gerissen
+NVDA       ic_markets_eu          2      5                     576.8 %  <-- M2 gerissen
+NVDA       ic_markets_eu          4      1                     230.7 %  <-- M2 gerissen
+NVDA       ic_markets_eu          4      2                     461.4 %  <-- M2 gerissen
+NVDA       ic_markets_eu          4      5                    1153.6 %  <-- M2 gerissen
+NVDA       ic_markets_eu          8      1                     461.4 %  <-- M2 gerissen
+NVDA       ic_markets_eu          8      2                     922.9 %  <-- M2 gerissen
+NVDA       ic_markets_eu          8      5                    2307.2 %  <-- M2 gerissen
+NVDA       admirals_eu            2      1                      20.9 %
+NVDA       admirals_eu            2      2                      41.9 %
+NVDA       admirals_eu            2      5                     104.7 %  <-- M2 gerissen
+NVDA       admirals_eu            4      1                      41.9 %
+NVDA       admirals_eu            4      2                      83.8 %  <-- M2 gerissen
+NVDA       admirals_eu            4      5                     209.4 %  <-- M2 gerissen
+NVDA       admirals_eu            8      1                      83.8 %  <-- M2 gerissen
+NVDA       admirals_eu            8      2                     167.5 %  <-- M2 gerissen
+NVDA       admirals_eu            8      5                     418.8 %  <-- M2 gerissen
+
+  M2 ueber alle Kombinationen: 52 von 162 reissen die Grenze.
+
+  URTEIL GEGEN M2 — geplante Auslegung: 4 RT/Tag, 250 Tage, Hebel 5 (Krypto 2)
+    REISST  EURUSD   ic_markets_eu        57.6 %
+    REISST  EURUSD   admirals_eu          63.7 %
+    REISST  EURUSD   tickmill_eu          55.1 %
+    REISST  EURUSD   pepperstone_eu       59.4 %
+    REISST  GBPJPY   ic_markets_eu        91.8 %
+    REISST  GBPJPY   admirals_eu         180.1 %
+    REISST  GBPJPY   tickmill_eu          96.3 %
+    REISST  GBPJPY   pepperstone_eu      104.8 %
+    REISST  XAUUSD   admirals_eu          81.7 %
+    REISST  DE40     ic_markets_eu        55.0 %
+    REISST  DE40     pepperstone_eu       55.8 %
+    REISST  NVDA     ic_markets_eu      1153.6 %
+    REISST  NVDA     admirals_eu         209.4 %
+    haelt   XAUUSD   ic_markets_eu        42.3 %
+    haelt   XAUUSD   tickmill_eu          42.3 %
+    haelt   XAUUSD   pepperstone_eu       47.0 %
+    haelt   DE40     admirals_eu          49.6 %
+    haelt   DE40     tickmill_eu          43.7 %
+
+  M2-URTEIL: 13 von 18 Kostenzeilen reissen die 50-%-Grenze
+  bei der geplanten Auslegung. Betroffen: ['DE40', 'EURUSD', 'GBPJPY', 'NVDA', 'XAUUSD'].
+  Folge nach M2: die BETRIEBSAUSLEGUNG wird geaendert -- Umschlag runter
+  oder Horizont hoch. Nicht der Maszstab. Die Gegenrechnung steht unten.
+
+  GEGENRECHNUNG: welche Auslegung haelt M2?
+  Gerechnet je Instrument mit dem GUENSTIGSTEN Broker -- wer ein
+  Instrument handelt, waehlt dafuer nicht den teuersten Anbieter.
+    8 RT/Tag, Hebel 5: hoechste Last    418.8 %  -> reisst ['DE40', 'EURUSD', 'GBPJPY', 'NVDA', 'XAUUSD']
+    8 RT/Tag, Hebel 2: hoechste Last    167.5 %  -> reisst ['GBPJPY', 'NVDA']
+    8 RT/Tag, Hebel 1: hoechste Last     83.8 %  -> reisst ['NVDA']
+    4 RT/Tag, Hebel 5: hoechste Last    209.4 %  -> reisst ['EURUSD', 'GBPJPY', 'NVDA']
+    4 RT/Tag, Hebel 2: hoechste Last     83.8 %  -> reisst ['NVDA']
+    4 RT/Tag, Hebel 1: hoechste Last     41.9 %  -> haelt  []
+    2 RT/Tag, Hebel 5: hoechste Last    104.7 %  -> reisst ['NVDA']
+    2 RT/Tag, Hebel 2: hoechste Last     41.9 %  -> haelt  []
+    2 RT/Tag, Hebel 1: hoechste Last     20.9 %  -> haelt  []
+    1 RT/Tag, Hebel 5: hoechste Last     52.3 %  -> reisst ['NVDA']
+    1 RT/Tag, Hebel 2: hoechste Last     20.9 %  -> haelt  []
+    1 RT/Tag, Hebel 1: hoechste Last     10.5 %  -> haelt  []
+
+----------------------------------------------------------------------------------------------------
+TABELLE 4 — Swap, GETRENNT ausgewiesen (nicht in K enthalten)
+----------------------------------------------------------------------------------------------------
+  Der Anteil der Positionen, die den Rollover kreuzen, ist eine SCHAETZUNG,
+  keine Messung. Herleitung: bei gleichverteiltem Einstieg ueber den Handelstag
+  und einer mittleren Haltedauer von 24/RT Stunden kreuzt ein Anteil von
+  Haltedauer/24 den taeglichen Rollover-Zeitpunkt. Bei 4 RT/Tag sind das 6 h
+  Haltedauer und damit 25 % der Trades.
+
+Instrument Broker             bp/Nacht (long)  Kreuzanteil    Swap-Last/Jahr in %
+EURUSD     admirals_eu                 -1.239        50.0 %                  3.1 %
+EURUSD     admirals_eu                 -1.239        25.0 %                  3.1 %
+EURUSD     admirals_eu                 -1.239        12.5 %                  3.1 %
+GBPJPY     admirals_eu                 -0.010        50.0 %                  0.0 %
+GBPJPY     admirals_eu                 -0.010        25.0 %                  0.0 %
+GBPJPY     admirals_eu                 -0.010        12.5 %                  0.0 %
+XAUUSD     admirals_eu                 -1.764        50.0 %                  4.4 %
+XAUUSD     admirals_eu                 -1.764        25.0 %                  4.4 %
+XAUUSD     admirals_eu                 -1.764        12.5 %                  4.4 %
+DE40       admirals_eu                 -1.302        50.0 %                  3.3 %
+DE40       admirals_eu                 -1.302        25.0 %                  3.3 %
+DE40       admirals_eu                 -1.302        12.5 %                  3.3 %
+NVDA       ic_markets_eu               -0.165        50.0 %                  0.4 %
+NVDA       ic_markets_eu               -0.165        25.0 %                  0.4 %
+NVDA       ic_markets_eu               -0.165        12.5 %                  0.4 %
+NVDA       admirals_eu                 -2.081        50.0 %                  5.2 %
+NVDA       admirals_eu                 -2.081        25.0 %                  5.2 %
+NVDA       admirals_eu                 -2.081        12.5 %                  5.2 %
+
+  Ohne Swap in Basispunkten: 12 Zeilen — die Quelle veroeffentlicht den Satz in 'Punkten je Lot' und den dafuer
+  noetigen Pip-Wert NICHT. Ein geratener Pip-Wert waere die stille Annahme,
+  die dieses Paket ausschliesst. Betroffen:
+    - EURUSD/ic_markets_eu
+    - EURUSD/tickmill_eu
+    - EURUSD/pepperstone_eu
+    - GBPJPY/ic_markets_eu
+    - GBPJPY/tickmill_eu
+    - GBPJPY/pepperstone_eu
+    - XAUUSD/ic_markets_eu
+    - XAUUSD/tickmill_eu
+    - XAUUSD/pepperstone_eu
+    - DE40/ic_markets_eu
+    - DE40/tickmill_eu
+    - DE40/pepperstone_eu
+
+  Slippage-Annahme (beziffert, keine Messung): ANNAHME, keine Messung. 0,5 bp des Nominals je Round-Turn fuer Instrumente mit tiefem Buch (Haupt-Waehrungspaar, Gold, Hauptindex), 1,0 bp fuer Nebenpaar und Einzelaktie, 2,0 bp fuer Krypto. Herleitung: eine Marktorder in Mindestgroesse laeuft bei diesen Instrumenten typischerweise innerhalb des ersten Buchlevels, sodass der Ausfuehrungsnachteil in der Groessenordnung eines halben bis ganzen Spreads liegt; die genannten Spreads liegen bei 0,5-2 bp (FX/Index/Gold) bzw. 1-20 bp (Aktie/Krypto). Die Annahme ist bewusst am unteren Rand gewaehlt, damit das Kostentor nicht durch eine grosszuegige Slippage-Annahme kuenstlich rot wird -- faellt das Urteil trotzdem rot aus, liegt es nicht an dieser Zahl. Ein Aufschlag fuer Nachrichtenlagen ist NICHT enthalten; Stress-Spreads veroeffentlicht kein Broker. Zu ersetzen durch eine Messung aus dem Demobetrieb (Abbruchbedingung 3 in ABBRUCH.md).
+
+----------------------------------------------------------------------------------------------------
+TABELLE 5 — Gegenrechnung: ab welchem Stopabstand faellt p* unter die Schwellen?
+----------------------------------------------------------------------------------------------------
+  Aufgeloest nach S: p* <= x  <=>  S >= K / (2 x (x - 0,5))
+Fuer x = 0.56 gilt S >= 8,33 x K; fuer x = 0.62 gilt S >= 4,17 x K.
+
+Instrument Broker             K (bp)  S fuer 56 %  als xATR50  S fuer 62 %  als xATR50
+EURUSD     ic_markets_eu        1.15         9.61       0.957         4.80       0.479
+EURUSD     admirals_eu          1.27        10.61       1.057         5.31       0.529
+EURUSD     tickmill_eu          1.10         9.18       0.915         4.59       0.457
+EURUSD     pepperstone_eu       1.19         9.89       0.986         4.95       0.493
+GBPJPY     ic_markets_eu        1.84        15.29       1.304         7.65       0.652
+GBPJPY     admirals_eu          3.60        30.02       2.560        15.01       1.280
+GBPJPY     tickmill_eu          1.93        16.04       1.368         8.02       0.684
+GBPJPY     pepperstone_eu       2.10        17.46       1.489         8.73       0.745
+XAUUSD     ic_markets_eu        0.85         7.06       0.169         3.53       0.084
+XAUUSD     admirals_eu          1.63        13.61       0.326         6.81       0.163
+XAUUSD     tickmill_eu          0.85         7.06       0.169         3.53       0.084
+XAUUSD     pepperstone_eu       0.94         7.83       0.187         3.91       0.094
+DE40       ic_markets_eu        1.10         9.16       0.342         4.58       0.171
+DE40       admirals_eu          0.99         8.27       0.308         4.14       0.154
+DE40       tickmill_eu          0.87         7.28       0.271         3.64       0.136
+DE40       pepperstone_eu       1.12         9.30       0.347         4.65       0.173
+NVDA       ic_markets_eu       23.07       192.27       2.109        96.13       1.054
+NVDA       admirals_eu          4.19        34.90       0.383        17.45       0.191
+
+  Zur Einordnung: ein Stopabstand von n x ATR(14) auf H1 entspricht bei
+  Wurzel-t-Skalierung rund n^2 Stunden Haltedauer. S = 2 x ATR(H1) ist damit
+  ein Horizont von rund vier Stunden, S = 4 x ATR(H1) rund sechzehn.
+
+  KONTROLLE GEGEN DIE EIGENE RISIKOSCHICHT — der wichtigste Nebenbefund:
+  `risk/stop_budget.py` setzt `max_cost_drag = 0,05`, laesst die Kosten den
+  Nulldurchgang also um hoechstens 5 Prozentpunkte anheben (p <= 55 %). Daraus
+  folgt eine Kostenuntergrenze von 10 x K. Liegt sie UEBER dem gemessenen
+  Median-ATR, ist ein Stop von 1,0 x ATR nach der Politik des Systems selbst
+  unzulaessig -- unabhaengig davon, was M1 mit seiner lockereren 56-%-Schwelle
+  sagt. Das ist kein Widerspruch im Maszstab, sondern einer im Vorhaben.
+
+Instrument   K (bp)  Kostenfloor     ATR50   1,0 x ATR zulaessig?
+EURUSD         1.10        11.01     10.04                   NEIN
+GBPJPY         1.84        18.35     11.72                   NEIN
+XAUUSD         0.85         8.47     41.80                     ja
+DE40           0.87         8.73     26.81                     ja
+NVDA           4.19        41.88     91.18                     ja
+
+  BEFUND: bei 2 von 5 gerechneten
+  Instrumenten ['EURUSD', 'GBPJPY'] liegt die Kostenuntergrenze der eigenen
+  Risikoschicht ueber dem gemessenen Median-ATR. Fuer diese Instrumente
+  ist der Stopabstand, auf dem M1 gemessen wird, nach der hauseigenen
+  Politik nicht handelbar. M1 bleibt davon unberuehrt -- der Maszstab
+  wird nicht nachtraeglich verschoben --, aber das gruene Urteil dieser
+  Instrumente ist ohne eine Verlaengerung des Horizonts nicht umsetzbar.
+
+  Kontrolle der Randbedingung (Stop-Budget der Risikoschicht):
+Instrument  Hebel  Kostenuntergrenze  Margin-Obergrenze
+EURUSD          1              11.53            1666.67
+EURUSD          2              11.53             833.33
+EURUSD          5              11.53             333.33
+GBPJPY          1              18.35            1666.67
+GBPJPY          2              18.35             833.33
+GBPJPY          5              18.35             333.33
+XAUUSD          1               8.47            1666.67
+XAUUSD          2               8.47             833.33
+XAUUSD          5               8.47             333.33
+DE40            1              10.99            1666.67
+DE40            2              10.99             833.33
+DE40            5              10.99             333.33
+NVDA            1             230.72            1666.67
+NVDA            2             230.72             833.33
+NVDA            5             230.72             333.33
+
+====================================================================================================
+ERGEBNIS: M1 = GRUEN. Bezugsgroesse: 18 rechenbare Kostenzeilen aus 6 Instrumenten x 4 Brokern.
+====================================================================================================
+exit=0

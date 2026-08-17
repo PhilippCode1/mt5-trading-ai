@@ -11,6 +11,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 
 from mt5_trading_ai.backtest.edge import EdgeVerdict
+from mt5_trading_ai.execution.risk_manager import RiskManager
 from mt5_trading_ai.venue.mt5 import Mt5Venue
 from mt5_trading_ai.venue.smoke import DemoRunInputs, _probe_stop, run_smoke
 
@@ -28,6 +29,10 @@ def _venue(*, is_demo: bool, positions: tuple[object, ...] = ()) -> Mt5Venue:
         name="mt5-demo",
         terminal=FakeMt5Terminal(is_demo=is_demo, positions=positions),  # type: ignore[arg-type]
         catalog=_catalog(),
+        # Seit A3 faehrt die Schreib-Probe durch dieselben fuenf Sperren wie jede andere
+        # Eroeffnung -- auch auf Demo. Ohne Manager wuerde sie fail-closed abgelehnt.
+        risk_manager=RiskManager(),
+        clock=lambda: TS,
     )
 
 
