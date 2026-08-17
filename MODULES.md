@@ -151,7 +151,7 @@ Der Halal-Pfad: swapfreie Finanzierung ohne Zins (S4, Kernregel 16).
 
 ## `mt5_trading_ai/costs/model.py`
 
-Zeilen: 237
+Zeilen: 238
 
 Kostenmodell: die realen Kosten einer Order, gemessen statt angenommen.
 

@@ -134,8 +134,9 @@ def order_roundturn_cost(
         rate = Decimal("1")
     elif quote_to_account_rate is None:
         raise CostModelError(
-            f"Notierungswaehrung {quote_currency} != Kontowaehrung "
-            f"{fees.currency}: quote_to_account_rate noetig"
+            f"Notierungswaehrung {quote_currency} != Gebuehrenwaehrung "
+            f"{fees.currency} (aus dem Instrumentenkatalog, NICHT die Waehrung des "
+            f"Kontos): quote_to_account_rate noetig"
         )
     else:
         rate = quote_to_account_rate

@@ -41,8 +41,26 @@ Aendert sich der Code, ohne dass diese Zahlen nachgezogen werden, wird der Test 
 <!-- KENNZAHLEN-ANFANG (geprueft von tests/test_readme_numbers.py) -->
 - module_count: 38
 - test_function_count: 575
-- source_lines: 9632
+- source_lines: 9633
 <!-- KENNZAHLEN-ENDE -->
+
+## Oberflaeche
+
+Alles auf einer Seite im Browser, **nur lesend**:
+
+```
+python tools/oberflaeche.py
+```
+
+Zeigt Konto und Frische-Latch, offene Positionen mit Stop und Alter, den laufenden
+Betrieb aus dem Journal (Takte, Eroeffnungen, Ablehnungen mit Grund), die Orderkette
+Naht fuer Naht und die gemessenen Spreads gegen das Kostenmodell. Laedt alle 10 s neu,
+laeuft nur auf 127.0.0.1, gebaut aus der Standardbibliothek.
+
+Das Terminal wird dort mit `allow_write=False` geoeffnet — das ist kein Schalter des
+Werkzeugs. Die Seite hat keinen Knopf, kein Formular und keinen Schreibpfad.
+
+---
 
 ## Stand des Vorhabens (2026-08-17)
 
