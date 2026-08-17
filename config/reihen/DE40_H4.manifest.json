@@ -1,0 +1,10 @@
+{
+  "symbol": "DE40",
+  "timeframe": "H4",
+  "bars": 16739,
+  "first": "2012-08-06T00:00:00+00:00",
+  "last": "2026-08-17T12:00:00+00:00",
+  "checksum": "d8db672c0f7ccdc3eef282b3c5f794cf552f19f13f3efb17e60e6e94bf3575ab",
+  "retrieved_at": "2026-08-17T12:56:19+00:00",
+  "source": "mt5-terminal-read-only"
+}

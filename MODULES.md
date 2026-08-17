@@ -60,6 +60,20 @@ Herkunft eines Backtest-Laufs: der Codestand aus git (Paket 6).
 - `class ProvenanceError`
 - `def code_commit_from_git`
 
+## `mt5_trading_ai/backtest/resolution.py`
+
+Zeilen: 221
+
+Aufloesung einer Ereignisstudie — kann sie den Effekt ueberhaupt sehen?
+
+- `class ResolutionError`
+- `class ResolutionVerdict`
+- `def required_sharpe`
+- `def window_returns_bps`
+- `def dispersion_bps`
+- `def assess`
+- `def min_events_for_resolution`
+
 ## `mt5_trading_ai/backtest/splits.py`
 
 Zeilen: 190

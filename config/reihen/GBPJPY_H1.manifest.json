@@ -1,0 +1,10 @@
+{
+  "symbol": "GBPJPY",
+  "timeframe": "H1",
+  "bars": 68264,
+  "first": "2015-08-20T13:00:00+00:00",
+  "last": "2026-08-17T12:00:00+00:00",
+  "checksum": "f63590d70b6b7380e9eee395eff5618160ac7fcf763b078d1506eafad617fe31",
+  "retrieved_at": "2026-08-17T12:56:18+00:00",
+  "source": "mt5-terminal-read-only"
+}

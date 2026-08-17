@@ -1,1 +1,87 @@
-NICHT GELAUFEN — Platzhalter aus dem ersten Commit des Laufs.
+Terminal verbunden. Demokonto: ja. Waehrung: EUR
+Deflation gegen T = 12 Versuche (Budgetobergrenze aus §5).
+
+------------------------------------------------------------------------------------------------
+A1.1 HISTORIENTIEFE  /  A1.2 HERKUNFT
+------------------------------------------------------------------------------------------------
+Symbol   TF     Kerzen          von          bis  Jahre  Pruefsumme
+EURUSD   D1       7181   1999-01-04   2026-08-17   27.6  6183ca086af2ded4...
+EURUSD   H4      43012   1999-01-04   2026-08-17   27.6  3b17bc61e55e372d...
+EURUSD   H1      68276   2015-08-20   2026-08-17   11.0  994a07a8e196d1df...
+GBPJPY   D1       8658   1993-04-19   2026-08-17   33.3  233853ac438d6663...
+GBPJPY   H4      44470   1993-04-19   2026-08-17   33.3  3ff75e9fc7db8de7...
+GBPJPY   H1      68264   2015-08-20   2026-08-17   11.0  f63590d70b6b7380...
+XAUUSD   D1       5699   2004-06-11   2026-08-17   22.2  1bff243cb9eb3fa0...
+XAUUSD   H4      33976   2004-06-11   2026-08-17   22.2  7f5ba1ce37ba92e8...
+XAUUSD   H1      64670   2015-08-20   2026-08-17   11.0  3a624013653d11bf...
+DE40     D1       3537   2012-08-06   2026-08-17   14.0  36829650de796074...
+DE40     H4      16739   2012-08-06   2026-08-17   14.0  d8db672c0f7ccdc3...
+DE40     H1      59672   2015-08-21   2026-08-17   11.0  fc69b6e60ae86c48...
+NVDA     D1       5760   2003-09-10   2026-08-14   22.9  0713efc1f08455ca...
+NVDA     H4      11539   2003-09-10   2026-08-14   22.9  86fdf0f993ab6bad...
+NVDA     H1      19556   2015-08-20   2026-08-14   11.0  5d7338401a8663c3...
+
+15 Manifeste geschrieben nach config/reihen/
+
+----------------------------------------------------------------------------------------------------
+A1.3 FENSTERSTREUUNG — gemessen, nicht aus dem ATR skaliert
+----------------------------------------------------------------------------------------------------
+Die Streuung kommt aus ALLEN nicht ueberlappenden Fenstern der Reihe.
+Die Ereigniszahl N kommt aus der Kandidatenfrequenz — ein taegliches Ereignis
+liefert je Handelstag EIN Ereignis, auch wenn der Tag sechs 4h-Fenster hat.
+
+Symbol   Fenster    Streuung   Fenster       K     3xK   Frequenz         N  nachweisb.   Verh.  Urteil
+                        (bp)    (Anz.)    (bp)    (bp)                             (bp)
+EURUSD   1h             9.84     68275    1.10    3.30   taeglich      2769        0.62    0.19  AUFLOESBAR
+EURUSD   1h             9.84     68275    1.10    3.30   monatlich      131        2.92    0.88  AUFLOESBAR
+EURUSD   4h            23.69     43011    1.10    3.30   taeglich      6959        0.94    0.28  AUFLOESBAR
+EURUSD   4h            23.69     43011    1.10    3.30   monatlich      331        4.35    1.32  blind
+EURUSD   1d            57.58      7168    1.10    3.30   taeglich      6959        2.29    0.69  AUFLOESBAR
+EURUSD   1d            57.58      7168    1.10    3.30   monatlich      331       10.58    3.20  blind
+
+GBPJPY   1h            14.29     68263    1.84    5.51   taeglich      2769        0.90    0.16  AUFLOESBAR
+GBPJPY   1h            14.29     68263    1.84    5.51   monatlich      131        4.24    0.77  AUFLOESBAR
+GBPJPY   4h            34.10     44469    1.84    5.51   taeglich      8398        1.23    0.22  AUFLOESBAR
+GBPJPY   4h            34.10     44469    1.84    5.51   monatlich      399        5.70    1.03  blind
+GBPJPY   1d            83.22      7411    1.84    5.51   taeglich      8398        3.01    0.55  AUFLOESBAR
+GBPJPY   1d            83.22      7411    1.84    5.51   monatlich      399       13.90    2.53  blind
+
+XAUUSD   1h            20.87     64669    0.85    2.54   taeglich      2769        1.31    0.52  AUFLOESBAR
+XAUUSD   1h            20.87     64669    0.85    2.54   monatlich      131        6.19    2.44  blind
+XAUUSD   4h            44.63     33975    0.85    2.54   taeglich      5589        1.98    0.78  AUFLOESBAR
+XAUUSD   4h            44.63     33975    0.85    2.54   monatlich      266        9.17    3.61  blind
+XAUUSD   1d           110.14      5662    0.85    2.54   taeglich      5589        4.88    1.92  blind
+XAUUSD   1d           110.14      5662    0.85    2.54   monatlich      266       22.63    8.91  blind
+
+DE40     1h            26.17     59671    0.87    2.62   taeglich      2769        1.65    0.63  AUFLOESBAR
+DE40     1h            26.17     59671    0.87    2.62   monatlich      131        7.76    2.96  blind
+DE40     4h            54.73     16738    0.87    2.62   taeglich      3535        3.05    1.16  blind
+DE40     4h            54.73     16738    0.87    2.62   monatlich      168       14.25    5.44  blind
+DE40     1d           129.05      2789    0.87    2.62   taeglich      3535        7.19    2.74  blind
+DE40     1d           129.05      2789    0.87    2.62   monatlich      168       33.61   12.83  blind
+
+NVDA     1h           111.40     19555    4.19   12.56   taeglich      2768        7.02    0.56  AUFLOESBAR
+NVDA     1h           111.40     19555    4.19   12.56   monatlich      131       33.04    2.63  blind
+NVDA     4h           236.22     11538    4.19   12.56   taeglich      5777       10.29    0.82  AUFLOESBAR
+NVDA     4h           236.22     11538    4.19   12.56   monatlich      275       47.71    3.80  blind
+NVDA     1d           541.38      1923    4.19   12.56   taeglich      5777       23.59    1.88  blind
+NVDA     1d           541.38      1923    4.19   12.56   monatlich      275      109.34    8.70  blind
+
+================================================================================================
+ERGEBNIS: 13 von 30 Kombinationen aus Instrument und Fensterlaenge sind aufloesbar.
+================================================================================================
+  EURUSD   1h   taeglich   N=2769   Verhaeltnis 0.1875
+  EURUSD   1h   monatlich  N=131    Verhaeltnis 0.8831
+  EURUSD   4h   taeglich   N=6959   Verhaeltnis 0.2846
+  EURUSD   1d   taeglich   N=6959   Verhaeltnis 0.6917
+  GBPJPY   1h   taeglich   N=2769   Verhaeltnis 0.1635
+  GBPJPY   1h   monatlich  N=131    Verhaeltnis 0.7699
+  GBPJPY   4h   taeglich   N=8398   Verhaeltnis 0.2238
+  GBPJPY   1d   taeglich   N=8398   Verhaeltnis 0.5462
+  XAUUSD   1h   taeglich   N=2769   Verhaeltnis 0.5173
+  XAUUSD   4h   taeglich   N=5589   Verhaeltnis 0.7781
+  DE40     1h   taeglich   N=2769   Verhaeltnis 0.6288
+  NVDA     1h   taeglich   N=2768   Verhaeltnis 0.5584
+  NVDA     4h   taeglich   N=5777   Verhaeltnis 0.8192
+
+Geschrieben: config/aufloesung.json

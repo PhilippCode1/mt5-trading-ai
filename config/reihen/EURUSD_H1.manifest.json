@@ -1,0 +1,10 @@
+{
+  "symbol": "EURUSD",
+  "timeframe": "H1",
+  "bars": 68276,
+  "first": "2015-08-20T13:00:00+00:00",
+  "last": "2026-08-17T12:00:00+00:00",
+  "checksum": "994a07a8e196d1dfd7aa574eab3862f814791ded6b9626ffee0074620e4fcc22",
+  "retrieved_at": "2026-08-17T12:56:16+00:00",
+  "source": "mt5-terminal-read-only"
+}

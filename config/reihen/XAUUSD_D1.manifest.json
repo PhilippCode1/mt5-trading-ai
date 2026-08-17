@@ -1,0 +1,10 @@
+{
+  "symbol": "XAUUSD",
+  "timeframe": "D1",
+  "bars": 5699,
+  "first": "2004-06-11T00:00:00+00:00",
+  "last": "2026-08-17T00:00:00+00:00",
+  "checksum": "1bff243cb9eb3fa09da279e485e200ad8180d484fb1a5295646760ef096cedae",
+  "retrieved_at": "2026-08-17T12:56:18+00:00",
+  "source": "mt5-terminal-read-only"
+}

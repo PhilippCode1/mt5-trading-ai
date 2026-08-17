@@ -82,6 +82,42 @@ def fetch_dukascopy_year(instrument: str, year: int) -> list[BarRow]:
     )
 
 
+def fetch_dukascopy_month_hours(
+    instrument: str, year: int, month: int
+) -> list[BarRow]:
+    """Stundenkerzen eines Monats. Dukascopy legt sie **monatsweise** ab, nicht wie die
+    Tageskerzen jahresweise, und zaehlt den Monat ab 0.
+
+    Gebraucht werden sie fuer die Gegenprobe auf dem Zeitrahmen, auf dem die Studien
+    tatsaechlich laufen: eine Pruefung nur auf D1 sagt nichts ueber 1h- und 4h-Fenster.
+    """
+    url = (
+        f"https://datafeed.dukascopy.com/datafeed/{instrument}"
+        f"/{year}/{month - 1:02d}/BID_candles_hour_1.bi5"
+    )
+    return decode_dukascopy_candles(
+        http_get(url),
+        period_start=datetime(year, month, 1, tzinfo=UTC),
+        price_divisor=dukascopy_price_divisor(instrument),
+    )
+
+
+def drop_filler_bars(bars: list[BarRow]) -> list[BarRow]:
+    """Wirf Kerzen ohne Umsatz weg — Dukascopy fuellt handelsfreie Stunden flach auf.
+
+    Sie stehen in der Datei wie echte Kerzen, tragen aber keinen Handel. Behielte man
+    sie, saehe die Reihe vollstaendiger aus, als sie ist, und die Streuung kleiner —
+    also der Fehler in der schmeichelnden Richtung.
+    """
+    ohne = [b for b in bars if b.volume is None]
+    if ohne:
+        raise DataLoadError(
+            f"{len(ohne)} Kerzen ohne Umsatzangabe — handelsfreie Stunden sind damit "
+            "nicht erkennbar; fail-closed statt raten"
+        )
+    return [b for b in bars if b.volume is not None and b.volume > 0.0]
+
+
 def fetch_yahoo_daily(instrument: str, start: datetime, end: datetime) -> list[BarRow]:
     p1 = int(start.timestamp())
     p2 = int(end.timestamp())
@@ -125,35 +161,55 @@ def main() -> int:
     )
     ap.add_argument("--from-year", type=int, required=True)
     ap.add_argument("--to-year", type=int, required=True)
-    ap.add_argument("--timeframe", default="D1")
+    ap.add_argument("--timeframe", default="D1", choices=("D1", "H1"))
     ap.add_argument("--out", type=Path, required=True)
     args = ap.parse_args()
 
-    print(f"Dukascopy {args.instrument} {args.from_year}-{args.to_year} ...")
-    raw_bars: list[BarRow] = []
-    for year in range(args.from_year, args.to_year + 1):
-        if year > args.from_year:
-            time.sleep(3)  # hoeflich: Dukascopy rate-limitet schnelle Mehrfachabrufe
-        year_bars = fetch_dukascopy_year(args.instrument, year)
-        if len(year_bars) < 300:
-            raise DataLoadError(
-                f"Jahr {year} unvollstaendig: nur {len(year_bars)} Kalendertag-Bars "
-                f"(abgeschnittene Datei? -- vollstaendige Jahre erwartet)"
-            )
-        raw_bars.extend(year_bars)
-        print(f"  {year}: {len(year_bars)} Kalendertag-Bars")
+    tf = args.timeframe.upper()
+    if tf not in ("D1", "H1"):
+        raise DataLoadError(f"Zeitrahmen {tf} wird nicht abgerufen (D1 oder H1)")
 
+    print(f"Dukascopy {args.instrument} {tf} {args.from_year}-{args.to_year} ...")
+    raw_bars: list[BarRow] = []
+    erster = True
+    for year in range(args.from_year, args.to_year + 1):
+        if tf == "D1":
+            if not erster:
+                time.sleep(3)  # hoeflich: Dukascopy rate-limitet schnelle Abrufe
+            erster = False
+            year_bars = fetch_dukascopy_year(args.instrument, year)
+            if len(year_bars) < 300:
+                raise DataLoadError(
+                    f"Jahr {year} unvollstaendig: nur {len(year_bars)} "
+                    f"Kalendertag-Bars (abgeschnittene Datei?)"
+                )
+        else:
+            year_bars = []
+            for month in range(1, 13):
+                if not erster:
+                    time.sleep(3)
+                erster = False
+                year_bars.extend(
+                    fetch_dukascopy_month_hours(args.instrument, year, month)
+                )
+        raw_bars.extend(year_bars)
+        print(f"  {year}: {len(year_bars)} Rohkerzen")
+
+    if tf == "H1":
+        vorher = len(raw_bars)
+        raw_bars = drop_filler_bars(raw_bars)
+        print(f"  handelsfreie Fuellkerzen verworfen: {vorher - len(raw_bars)}")
     bars = sorted(filter_to_weekdays(raw_bars), key=lambda b: b.ts)
     report = assess_or_raise(
         bars,
         instrument=args.instrument,
-        timeframe=args.timeframe,
+        timeframe=tf,
         session_predicate=WeekdaySession(),
     )
     manifest = dataset_manifest(
         instrument=args.instrument,
-        timeframe=args.timeframe,
-        source="dukascopy-bid-day",
+        timeframe=tf,
+        source=f"dukascopy-bid-{'day' if tf == 'D1' else 'hour'}",
         price_divisor=dukascopy_price_divisor(args.instrument),
         session="weekday-utc",
         bars=bars,
@@ -162,9 +218,9 @@ def main() -> int:
     mchk = manifest_checksum(manifest)
 
     args.out.mkdir(parents=True, exist_ok=True)
-    csv_path = args.out / f"{args.instrument}_{args.timeframe}.csv"
+    csv_path = args.out / f"{args.instrument}_{tf}.csv"
     csv_path.write_text(to_csv(bars), encoding="utf-8")
-    (args.out / f"{args.instrument}_{args.timeframe}.manifest.json").write_text(
+    (args.out / f"{args.instrument}_{tf}.manifest.json").write_text(
         json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8"
     )
 

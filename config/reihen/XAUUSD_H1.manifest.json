@@ -1,0 +1,10 @@
+{
+  "symbol": "XAUUSD",
+  "timeframe": "H1",
+  "bars": 64670,
+  "first": "2015-08-20T13:00:00+00:00",
+  "last": "2026-08-17T12:00:00+00:00",
+  "checksum": "3a624013653d11bf4bb65241c114dcd769da82874e126355e943170a1c098e28",
+  "retrieved_at": "2026-08-17T12:56:19+00:00",
+  "source": "mt5-terminal-read-only"
+}

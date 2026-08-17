@@ -1,0 +1,10 @@
+{
+  "symbol": "NVDA",
+  "timeframe": "D1",
+  "bars": 5760,
+  "first": "2003-09-10T00:00:00+00:00",
+  "last": "2026-08-14T00:00:00+00:00",
+  "checksum": "0713efc1f08455cae6aefed73e1e2bf5f3b6f6f8e8d2fca4fdd720ca657ecd33",
+  "retrieved_at": "2026-08-17T12:56:20+00:00",
+  "source": "mt5-terminal-read-only"
+}
