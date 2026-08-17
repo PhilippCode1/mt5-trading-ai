@@ -115,3 +115,31 @@ zweiter Quelle geprüft abgelegt werden soll.
 
 **Was es bräuchte.** Eine `UsEquitySession` nach dem Muster von `FxSession`, am
 NY-Handelskalender verankert, samt Halbtagsliste.
+
+---
+
+## 7. Die drei Nachgänge aus Paket 2
+
+Der Auftrag hält fest, dass aus Paket 2 **nichts** in den Rahmen von 3a fällt: alle drei
+offenen Punkte brauchen einen Handelsbetrieb oder eine Kostenerhebung. Sie stehen hier,
+damit sie nicht verloren gehen — angefangen wurde keiner.
+
+**S2-1 — BTCUSD.** Braucht eine Kostenerhebung bei den vier Brokern. Krypto bleibt
+außerdem hart bei Hebel 2:1; die Zeile im Kostentor fehlt bislang ganz.
+
+**S2-3 — Slippage messen.** Der Kern der Sache: die Slippage steht in
+`config/broker_costs.json` als **bezifferte Annahme** (0,5 bp für EURUSD, 1,0 bp für
+GBPJPY), nicht als Messung. Sie zu messen verlangt Demobetrieb an vier Konten über zwei
+Wochen — das war der Inhalt von Paket 3b.
+
+Nach dem Urteil dieses Pakets ist die Messung **nicht mehr dringlich**, und das ist eine
+Aussage mit Zahl: selbst bei Slippage null bliebe K für GBPJPY bei 0,84 bp gegen die
+nötigen 0,45 bp. Die Messung könnte das Urteil nicht drehen. Sie bleibt richtig für den
+Tag, an dem es eine Frage gibt, die daran hängt — Slippage ist eine Eigenschaft des
+Brokers und lässt sich zwischen Brokern nicht übertragen.
+
+**S2-7 — US500.** Fällt aus einem harten Grund aus: **keiner der vier Broker führt in
+`config/broker_costs.json` eine US500-Kostenzeile.** Ohne K ist US500 in keiner
+M6-Rechnung verwendbar — auch nicht als Zusammenlegungspartner für DE40, dessen
+Historientiefe von 14 Jahren die kürzeste im Feld ist. Zuerst die Kostenzeile, dann alles
+Weitere.
