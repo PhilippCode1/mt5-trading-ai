@@ -40,7 +40,7 @@ Aendert sich der Code, ohne dass diese Zahlen nachgezogen werden, wird der Test 
 
 <!-- KENNZAHLEN-ANFANG (geprueft von tests/test_readme_numbers.py) -->
 - module_count: 39
-- test_function_count: 613
+- test_function_count: 624
 - source_lines: 9984
 <!-- KENNZAHLEN-ENDE -->
 
@@ -58,7 +58,16 @@ Naht fuer Naht und die gemessenen Spreads gegen das Kostenmodell. Laedt alle 10 
 laeuft nur auf 127.0.0.1, gebaut aus der Standardbibliothek.
 
 Das Terminal wird dort mit `allow_write=False` geoeffnet — das ist kein Schalter des
-Werkzeugs. Die Seite hat keinen Knopf, kein Formular und keinen Schreibpfad.
+Werkzeugs. Die Seite kann **nicht handeln**.
+
+Sie hat genau **eine** Handlung: einen Knopf, der `betrieb/STOP` anlegt. Das ist ein
+`Path.touch()` — kein Schreibrecht auf Orders, keine Terminalverbindung. Der Lauf sieht
+die Datei im naechsten Takt, stellt glatt und beendet sich. Der Knopf verlangt POST und
+ein beim Start erzeugtes Token, damit ihn keine fremde Seite im selben Browser ausloest.
+
+Ueber die Laufliste laesst sich jeder fruehere Lauf ansehen (`?lauf=<datei>`); Konto,
+Positionen und Kurse bleiben dabei live, und ein Hinweis sagt, dass man in die
+Vergangenheit sieht.
 
 Auswertung eines Laufs und aller Laeufe:
 

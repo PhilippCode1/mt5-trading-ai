@@ -170,3 +170,101 @@ def test_zahlformatierung_vertraegt_alles(wert: Any) -> None:
 def test_html_wird_maskiert() -> None:
     """Ein Broker-Kommentar mit spitzen Klammern darf die Seite nicht zerlegen."""
     assert "<script>" not in OB._e("<script>alert(1)</script>")
+
+
+# --- Laufauswahl (Historie) -----------------------------------------------
+def _lauf(name: str, *, beendet: bool) -> Any:
+    """Ein Minimallauf, der nur so viel kann, wie die Auswahl anfasst."""
+    from datetime import timedelta
+
+    from mt5_trading_ai.betrieb.journal import Lauf, Satz
+    t0 = datetime(2026, 8, 17, 12, 0, tzinfo=UTC)
+    saetze = [
+        Satz(ts=t0, art="start", lauf=name, version="abc", felder={"scharf": True}),
+        Satz(ts=t0, art="takt", lauf=name, version="abc", felder={"equity": "100"}),
+        Satz(ts=t0 + timedelta(minutes=1), art="takt", lauf=name, version="abc",
+             felder={"equity": "110"}),
+    ]
+    if beendet:
+        saetze.append(Satz(ts=t0 + timedelta(minutes=2), art="ende", lauf=name,
+                           version="abc", felder={}))
+    return Lauf(pfad=Path(f"betrieb/{name}.jsonl"), saetze=saetze)
+
+
+def test_ohne_wahl_wird_der_laufende_gezeigt() -> None:
+    alt, neu = _lauf("alt", beendet=True), _lauf("neu", beendet=False)
+    stand = _leer(lauf=neu, alle_laeufe=[alt, neu])
+    assert OB._waehle_lauf(stand, None) is neu
+
+
+def test_eine_wahl_aus_der_adresszeile_gewinnt() -> None:
+    alt, neu = _lauf("alt", beendet=True), _lauf("neu", beendet=False)
+    stand = _leer(lauf=neu, alle_laeufe=[alt, neu])
+    assert OB._waehle_lauf(stand, "alt.jsonl") is alt
+
+
+def test_eine_unbekannte_wahl_faellt_auf_den_laufenden_zurueck() -> None:
+    """Eine alte Verknuepfung darf nicht ins Leere zeigen."""
+    neu = _lauf("neu", beendet=False)
+    stand = _leer(lauf=neu, alle_laeufe=[neu])
+    assert OB._waehle_lauf(stand, "gibtsnicht.jsonl") is neu
+
+
+def test_beim_blick_in_die_vergangenheit_steht_ein_hinweis() -> None:
+    """Wer einen alten Lauf ansieht, muss es sehen -- Konto und Kurse bleiben live."""
+    alt, neu = _lauf("alt", beendet=True), _lauf("neu", beendet=False)
+    stand = _leer(lauf=neu, alle_laeufe=[alt, neu])
+    aus = OB._abschnitt_laufwahl(stand, alt)
+    assert "anderen</b> Lauf" in aus or "anderen Lauf" in aus
+    assert "Zum laufenden Betrieb" in aus
+
+
+def test_beim_laufenden_lauf_steht_kein_hinweis() -> None:
+    neu = _lauf("neu", beendet=False)
+    stand = _leer(lauf=neu, alle_laeufe=[neu])
+    assert "Zum laufenden Betrieb" not in OB._abschnitt_laufwahl(stand, neu)
+
+
+def test_das_skript_nimmt_die_adresszeile_mit() -> None:
+    """Sonst faellt die Laufwahl beim naechsten Nachladen wieder weg."""
+    assert "window.location.search" in OB.huelle("x")
+
+
+# --- Der Not-Halt-Knopf ---------------------------------------------------
+def test_ohne_laufenden_betrieb_gibt_es_nichts_zu_stoppen() -> None:
+    assert "notknopf" not in OB._stopp_knopf("t", False)
+
+
+def test_bei_laufendem_betrieb_gibt_es_den_knopf() -> None:
+    aus = OB._stopp_knopf("geheim", True)
+    assert "notknopf" in aus
+    assert 'method="post"' in aus, "Ein GET waere schon durch Vorausladen ausloesbar"
+    assert "geheim" in aus, "Ohne Token koennte eine fremde Seite ihn ausloesen"
+    assert "confirm(" in aus
+
+
+def test_der_knopf_sagt_dass_die_seite_nicht_handelt() -> None:
+    assert "handelt nicht" in OB._stopp_knopf("t", True)
+
+
+def test_der_knopf_zielt_nur_auf_die_stoppdatei() -> None:
+    """Die Handlung darf den Handelspfad nicht beruehren.
+
+    ``type="submit"`` ist HTML und kein Orderpfad -- geprueft wird das Ziel des
+    Formulars und dass keine Handelsbegriffe darin vorkommen.
+    """
+    import re
+    aus = OB._stopp_knopf("t", True)
+    assert "betrieb/STOP" in aus
+    ziele = re.findall(r'action="([^"]+)"', aus)
+    assert ziele == ["/stopp"], f"Das Formular zielt woanders hin: {ziele}"
+    # Nur Code-Bezeichner sind verboten. Das Wort "Positionen" steht im
+    # Bestaetigungstext und gehoert dorthin -- es sagt, was passieren wird.
+    for verboten in ("allow_write", "order_send", "reduce_only", "submit_order"):
+        assert verboten not in aus.lower(), f"{verboten} hat hier nichts zu suchen"
+
+
+def test_der_knopf_warnt_vor_der_folge() -> None:
+    """Wer ihn drueckt, muss vorher wissen, dass Positionen glattgestellt werden."""
+    aus = OB._stopp_knopf("t", True)
+    assert "glattgestellt" in aus

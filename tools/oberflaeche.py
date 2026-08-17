@@ -37,9 +37,11 @@ from __future__ import annotations
 
 import argparse
 import html
+import secrets
 import sys
 import threading
 import time
+import urllib.parse
 import webbrowser
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
@@ -288,6 +290,102 @@ def _linienzug(
               fill="var(--matt)">{bis:%H:%M} UTC</text>
       </svg>
     </div>""".replace(",", " ")
+
+
+STOPPDATEI = JOURNALE / "STOP"
+
+
+def _stopp_knopf(token: str, laeuft: bool) -> str:
+    """Die EINZIGE Handlung dieser Seite -- und sie fasst den Handelspfad nicht an.
+
+    Der Knopf legt ``betrieb/STOP`` an. Das ist ein ``Path.touch()``: kein
+    Schreibrecht auf Orders, kein ``allow_write``, keine Verbindung zum Terminal. Der
+    Betriebslauf sieht die Datei im naechsten Takt, stellt glatt und beendet sich
+    geordnet. Alles andere -- eine Position schliessen, ein Not-Aus -- verlangte
+    ``allow_write=True`` im Webserver, und dann waere die Sperre keine Struktur mehr,
+    sondern eine Einstellung.
+
+    **Warum ein Token und warum POST.** Die Seite haengt auf ``127.0.0.1``, und
+    localhost ist fuer jede andere Seite im selben Browser erreichbar. Ein GET waere
+    schon durch einen Vorauslade-Hinweis ausloesbar, ein formloses POST durch ein
+    verstecktes Formular auf einer fremden Seite. Das Token wird beim Start erzeugt,
+    steht nur in dieser Seite und muss mitgeschickt werden. Kein Ersatz fuer eine
+    Anmeldung -- aber der Unterschied zwischen "kann versehentlich passieren" und
+    "muss absichtlich passieren".
+    """
+    if STOPPDATEI.exists():
+        return ("<div class='hinweis krit-rand'><b>Stoppdatei liegt.</b> "
+                "Der Lauf beendet sich im nächsten Takt und stellt glatt.</div>")
+    if not laeuft:
+        return ("<p class='klein'>Kein laufender Betrieb — nichts zu stoppen.</p>")
+    return f"""<form method="post" action="/stopp" class="stoppform"
+      onsubmit="return confirm('Den laufenden Betrieb geordnet beenden? Alle
+offenen Positionen werden glattgestellt.');">
+      <input type="hidden" name="token" value="{_e(token)}">
+      <button type="submit" class="notknopf">Betrieb geordnet beenden</button>
+      <span class="klein">legt <span class="mono">betrieb/STOP</span> an —
+        der Lauf stellt glatt und beendet sich. Diese Seite handelt nicht.</span>
+    </form>"""
+
+
+def _waehle_lauf(stand: dict[str, Any], wahl: str | None) -> Lauf | None:
+    """Welcher Lauf soll gezeigt werden? Vorgabe ist der laufende.
+
+    ``wahl`` ist der Dateiname aus der Adresszeile. Ist er unbekannt -- eine alte
+    Verknuepfung, eine geloeschte Datei --, faellt die Anzeige auf den laufenden
+    zurueck und **sagt es**, statt stillschweigend etwas anderes zu zeigen.
+    """
+    laeufe: list[Lauf] = stand.get("alle_laeufe") or []
+    if wahl:
+        for lauf in laeufe:
+            if lauf.pfad.name == wahl:
+                return lauf
+    return stand.get("lauf")
+
+
+def _abschnitt_laufwahl(stand: dict[str, Any], gewaehlt: Lauf | None) -> str:
+    """Die Liste der Laeufe, neueste zuerst. Ohne sie ist die Seite ein Monitor.
+
+    Ein Werkzeug, mit dem man gestern nicht ansehen kann, beantwortet nur die Frage
+    "was ist jetzt" -- und die ist selten die interessante.
+    """
+    laeufe: list[Lauf] = stand.get("alle_laeufe") or []
+    if not laeufe:
+        return ""
+    zeilen = []
+    for lauf in reversed(laeufe[-25:]):
+        reihe = lauf.equity_reihe()
+        von = reihe[0][0] if reihe else (lauf.saetze[0].ts if lauf.saetze else None)
+        delta = (reihe[-1][1] - reihe[0][1]) if len(reihe) >= 2 else Decimal("0")
+        trades = [t for t in lauf.trades() if not t.offen]
+        ist = gewaehlt is not None and lauf.pfad == gewaehlt.pfad
+        marken = []
+        if not lauf.beendet:
+            marken.append("<span class='marke gut'>läuft</span>")
+        if lauf.scharf:
+            marken.append("<span class='marke krit'>scharf</span>")
+        zeilen.append(f"""<tr class="{'gewaehlt' if ist else ''}">
+          <td><a href="?lauf={_e(lauf.pfad.name)}">{von:%d.%m %H:%M}</a></td>
+          <td class="zahl">{len(lauf.art('takt'))}</td>
+          <td class="zahl">{len(trades)}</td>
+          <td class="zahl {'gut' if delta >= 0 else 'krit'}">{float(delta):+.2f}</td>
+          <td class="klein">{' '.join(marken)}</td>
+          <td class="klein mono">{_e(lauf.version or '—')}</td></tr>""")
+    hinweis = ""
+    laufender = stand.get("lauf")
+    anderer = (gewaehlt is not None and laufender is not None
+               and gewaehlt.pfad != laufender.pfad)
+    if anderer:
+        hinweis = ("<p class='hinweis krit-rand'>Sie sehen einen <b>anderen</b> Lauf. "
+                   "Konto, Positionen und Kurse oben bleiben live. "
+                   "<a href='?'>Zum laufenden Betrieb</a></p>")
+    return f"""{hinweis}
+    <details{' open' if hinweis else ''}><summary class="klein">
+      {len(laeufe)} Läufe — anderen wählen</summary>
+      <table><thead><tr><th>Beginn</th><th class="zahl">Takte</th>
+        <th class="zahl">Trades</th><th class="zahl">Equity</th><th></th>
+        <th>Codestand</th></tr></thead>
+        <tbody>{''.join(zeilen)}</tbody></table></details>"""
 
 
 def _kennzahlen(stand: dict[str, Any]) -> str:
@@ -623,13 +721,23 @@ table{display:block;overflow-x:auto;white-space:nowrap}
 .diagramm{background:var(--feld);border:1px solid var(--haar);border-radius:8px;
 padding:.7rem .8rem}
 .diagramm h3{margin:0 0 .3rem}
+.stoppform{margin:.8rem 0;display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
+.notknopf{background:var(--krit);color:#fff;border:0;border-radius:6px;
+padding:.45rem .9rem;font-size:.85rem;font-weight:600;cursor:pointer;
+font-family:inherit}
+.notknopf:hover{filter:brightness(1.1)}
+tr.gewaehlt{background:var(--feld2);font-weight:600}
+details summary{cursor:pointer;padding:.3rem 0}
 .verbindung{color:var(--krit);font-size:.8rem;min-height:1rem;margin:0 0 .3rem}
 .fuss{margin-top:2rem;padding-top:.8rem;border-top:1px solid var(--haar);
 color:var(--matt);font-size:.75rem}
 """
 
 
-def seite(stand: dict[str, Any], *, jetzt: datetime | None = None) -> str:
+def seite(
+    stand: dict[str, Any], *, jetzt: datetime | None = None,
+    wahl: str | None = None,
+) -> str:
     """Das Inhaltsfragment. ``jetzt`` ist die RENDERZEIT, nicht die Sammelzeit.
 
     Der Unterschied ist der Punkt: das Alter eines Schnappschusses misst sich daran,
@@ -652,6 +760,15 @@ def seite(stand: dict[str, Any], *, jetzt: datetime | None = None) -> str:
         f"<div class='hinweis krit-rand'><b>{etikett}:</b> {_e(text)}</div>"
         for etikett, text in stoerungen
     )
+    # Die laufbezogenen Abschnitte sehen den GEWAEHLTEN Lauf; Konto, Positionen und
+    # Kurse bleiben live. Ein Blick in die Vergangenheit soll die Gegenwart nicht
+    # verfaelschen -- deshalb zwei Staende und nicht einer.
+    gewaehlt = _waehle_lauf(stand, wahl)
+    gezeigt = dict(stand)
+    gezeigt["lauf"] = gewaehlt
+    laufender = stand.get("lauf")
+    laeuft = laufender is not None and not laufender.beendet
+
     alter = ""
     if stand.get("gebaut") is not None:
         sekunden = ((jetzt or datetime.now(UTC)) - stand["gebaut"]).total_seconds()
@@ -670,10 +787,12 @@ def seite(stand: dict[str, Any], *, jetzt: datetime | None = None) -> str:
   </div>
   <h2>Konto und Verbindung</h2>{_abschnitt_konto(stand)}
   <h2>Offene Positionen</h2>{_abschnitt_positionen(stand)}
-  <h2>Kennzahlen</h2>{_kennzahlen(stand)}
-  <h2>Verlauf</h2>{_abschnitt_verlauf(stand)}
-  <h2>Der laufende Betrieb</h2>{_abschnitt_lauf(stand)}
-  <h2>Die Orderkette, Naht für Naht</h2>{_abschnitt_sperren(stand)}
+  {_stopp_knopf(stand.get("token", ""), laeuft)}
+  <h2>Läufe</h2>{_abschnitt_laufwahl(stand, gewaehlt)}
+  <h2>Kennzahlen</h2>{_kennzahlen(gezeigt)}
+  <h2>Verlauf</h2>{_abschnitt_verlauf(gezeigt)}
+  <h2>Der Betrieb</h2>{_abschnitt_lauf(gezeigt)}
+  <h2>Die Orderkette, Naht für Naht</h2>{_abschnitt_sperren(gezeigt)}
   <h2>Kurse gegen Kostenmodell</h2>{_abschnitt_preise(stand)}
   <p class="fuss">Gebaut aus der Standardbibliothek, ohne Webframework.
     Das Terminal wird mit <span class="mono">allow_write=False</span> geöffnet —
@@ -699,7 +818,7 @@ SKRIPT = """
   function hole() {
     if (laeuft || document.hidden) { return; }
     laeuft = true;
-    fetch('/inhalt', {cache: 'no-store'})
+    fetch('/inhalt' + window.location.search, {cache: 'no-store'})
       .then(function (a) { if (!a.ok) { throw new Error(a.status); } return a.text(); })
       .then(function (t) { ziel.innerHTML = t; marke.textContent = ''; })
       .catch(function (e) {
@@ -736,7 +855,9 @@ class Griff(BaseHTTPRequestHandler):
 
     sammler: Sammler
 
-    def _inhalt(self) -> str:
+    token: str = ""
+
+    def _inhalt(self, wahl: str | None) -> str:
         stand, gebaut, dauer = self.sammler.hole()
         if stand is None:
             return ("<p class='leer'>Noch kein Schnappschuss — der Sammler "
@@ -744,7 +865,38 @@ class Griff(BaseHTTPRequestHandler):
         kopie = dict(stand)
         kopie["gebaut"] = gebaut
         kopie["dauer_ms"] = dauer
-        return seite(kopie)
+        kopie["token"] = self.token
+        return seite(kopie, wahl=wahl)
+
+    def _wahl(self) -> str | None:
+        frage = urllib.parse.urlparse(self.path).query
+        werte = urllib.parse.parse_qs(frage).get("lauf")
+        return werte[0] if werte else None
+
+    def do_POST(self) -> None:  # noqa: N802 - von BaseHTTPRequestHandler vorgegeben
+        """Die einzige schreibende Handlung: die Stoppdatei anlegen.
+
+        Sie fasst den Handelspfad nicht an -- kein ``allow_write``, keine
+        Terminalverbindung, nur eine leere Datei. Das Token muss stimmen, sonst
+        koennte eine fremde Seite im selben Browser sie ausloesen.
+        """
+        if urllib.parse.urlparse(self.path).path != "/stopp":
+            self.send_error(404)
+            return
+        laenge = int(self.headers.get("Content-Length") or 0)
+        felder = urllib.parse.parse_qs(self.rfile.read(laenge).decode("utf-8"))
+        if (felder.get("token") or [""])[0] != self.token:
+            self.send_error(403, "Falsches oder fehlendes Token")
+            return
+        STOPPDATEI.parent.mkdir(parents=True, exist_ok=True)
+        stempel = datetime.now(UTC).isoformat(timespec="seconds")
+        STOPPDATEI.write_text(
+            f"angelegt ueber die Oberflaeche am {stempel}\n", encoding="utf-8"
+        )
+        print(f"Stoppdatei angelegt: {STOPPDATEI}")
+        self.send_response(303)
+        self.send_header("Location", "/")
+        self.end_headers()
 
     def do_GET(self) -> None:  # noqa: N802 - von BaseHTTPRequestHandler vorgegeben
         weg = self.path.split("?")[0]
@@ -752,7 +904,7 @@ class Griff(BaseHTTPRequestHandler):
             self.send_error(404)
             return
         try:
-            text = self._inhalt()
+            text = self._inhalt(self._wahl())
             roh = (text if weg == "/inhalt" else huelle(text)).encode("utf-8")
         except Exception as exc:  # noqa: BLE001 - die Seite soll den Fehler zeigen
             roh = (f"<div class='hinweis krit-rand'>Fehler beim Bauen der Seite: "
@@ -783,6 +935,10 @@ def main() -> int:
     sammler = Sammler(takt=args.takt)
     sammler.start()
     Griff.sammler = sammler
+    # Beim Start erzeugt, nur in dieser Seite sichtbar. Es macht aus "kann
+    # versehentlich passieren" ein "muss absichtlich passieren" -- kein Ersatz fuer
+    # eine Anmeldung, aber localhost ist fuer jede andere Seite im Browser erreichbar.
+    Griff.token = secrets.token_urlsafe(16)
 
     # Bewusst nur 127.0.0.1: die Seite zeigt Kontostand und Positionen und hat im
     # Netz nichts verloren.
@@ -791,7 +947,8 @@ def main() -> int:
     url = f"http://{adresse[0]}:{adresse[1]}/"
     print(f"Oberflaeche laeuft: {url}")
     print(f"Sammeltakt {args.takt:g} s, Anzeige laedt alle {NEULADEN} s nach.")
-    print("Nur lesend. Beenden mit Strg-C.")
+    print("Lesend, mit genau einer Handlung: die Stoppdatei anlegen.")
+    print("Beenden mit Strg-C.")
     if not args.kein_browser:
         webbrowser.open(url)
     try:
