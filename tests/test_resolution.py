@@ -5,19 +5,27 @@ Ergebnis: eine Studie, die als aufloesbar gilt und es nicht ist, misst Rauschen 
 berichtet es als Befund. Die Tests unten pruefen darum besonders die Richtungen, in die
 ein Fehler schmeicheln wuerde -- ueberlappende Fenster, zu grosse Ereigniszahl, zu
 kleine Streuung.
+
+Genau so ein Fehler stand hier: gerechnet wurde gegen die volle Ereigniszahl, gemessen
+wird der DSR aber auf dem Out-of-Sample-Drittel. Die Faelle unter „Gegen die
+Deflationsstichprobe" sind dazu die Eichfaelle -- sie waeren gegen die alte Fassung
+allesamt fehlgeschlagen.
 """
 
 from __future__ import annotations
 
 import math
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
+from mt5_trading_ai.backtest.ereignisstudie import OOS_ANTEIL, Kerze, bestaetige, studie
 from mt5_trading_ai.backtest.resolution import (
     DEFAULT_COST_FACTOR,
     DEFAULT_DSR_THRESHOLD,
     ResolutionError,
     assess,
+    deflation_observations,
     dispersion_bps,
     min_events_for_resolution,
     required_sharpe,
@@ -26,6 +34,19 @@ from mt5_trading_ai.backtest.resolution import (
 
 REPO = Path(__file__).resolve().parents[1]
 ECHTE_DATEI = REPO / "config" / "aufloesung.json"
+
+#: Die Zeile, an der der Fehler aufgefallen ist: K3 (Monatsende-Fixing) auf GBPJPY im
+#: 1h-Fenster. Zahlen aus ``config/aufloesung.json`` und
+#: ``ABSCHLUSS-3a/07-AUSGABEN/ereignisstudie.txt``.
+K3_EREIGNISSE = 193
+K3_GEMESSEN = 192
+K3_STREUUNG = 14.1517
+K3_KOSTEN = 1.8351
+K3_VERSUCHE = 12
+
+#: Ueberschrift des Vorbehalts in ``ABSCHLUSS-3a/01-AUFLOESUNG.md``. Solange
+#: ``config/aufloesung.json`` ohne ``oos_share`` dasteht, muss dieser Text dort stehen.
+VORBEHALT_MARKE = "Vorbehalt zur gesamten Tabelle"
 
 
 # --- required_sharpe ------------------------------------------------------
@@ -120,28 +141,39 @@ def test_streuung_braucht_mindestens_zwei_fenster() -> None:
 
 
 # --- Das Urteil -----------------------------------------------------------
+# ``oos_share=1.0`` heisst hier ausdruecklich: in diesen Faellen IST die Ereigniszahl
+# die Stichprobe der Deflation. Die Faelle pruefen die reinen Zusammenhaenge des
+# Verhaeltnisses; der Anteil selbst hat weiter unten seinen eigenen Abschnitt.
 def test_aufloesbar_wenn_nachweisbarer_effekt_unter_der_schwelle_liegt() -> None:
-    urteil = assess(events=6000, trials=12, dispersion=23.0, cost_bps=1.10)
+    urteil = assess(
+        events=6000, trials=12, dispersion=23.0, cost_bps=1.10, oos_share=1.0
+    )
     assert urteil.resolvable is True
     assert urteil.ratio < 1.0
     assert urteil.needed_bps == pytest.approx(DEFAULT_COST_FACTOR * 1.10)
 
 
 def test_blind_wenn_die_streuung_zu_gross_ist() -> None:
-    urteil = assess(events=60, trials=12, dispersion=200.0, cost_bps=0.85)
+    urteil = assess(
+        events=60, trials=12, dispersion=200.0, cost_bps=0.85, oos_share=1.0
+    )
     assert urteil.resolvable is False
     assert urteil.ratio > 1.0
 
 
 def test_mehr_ereignisse_machen_es_nie_schlechter() -> None:
-    schlecht = assess(events=100, trials=8, dispersion=50.0, cost_bps=1.0)
-    besser = assess(events=10_000, trials=8, dispersion=50.0, cost_bps=1.0)
+    schlecht = assess(
+        events=100, trials=8, dispersion=50.0, cost_bps=1.0, oos_share=1.0
+    )
+    besser = assess(
+        events=10_000, trials=8, dispersion=50.0, cost_bps=1.0, oos_share=1.0
+    )
     assert besser.ratio < schlecht.ratio
 
 
 def test_groessere_streuung_macht_es_nie_besser() -> None:
-    eng = assess(events=1000, trials=8, dispersion=10.0, cost_bps=1.0)
-    weit = assess(events=1000, trials=8, dispersion=100.0, cost_bps=1.0)
+    eng = assess(events=1000, trials=8, dispersion=10.0, cost_bps=1.0, oos_share=1.0)
+    weit = assess(events=1000, trials=8, dispersion=100.0, cost_bps=1.0, oos_share=1.0)
     assert weit.ratio > eng.ratio
 
 
@@ -153,17 +185,27 @@ def test_hoehere_kosten_verlangen_einen_groesseren_effekt_und_helfen_der_aufloes
     groesser und damit leichter von Null zu trennen. Der Preis dafuer steht woanders --
     ein solcher Effekt muss erst einmal existieren.
     """
-    billig = assess(events=1000, trials=8, dispersion=50.0, cost_bps=1.0)
-    teuer = assess(events=1000, trials=8, dispersion=50.0, cost_bps=10.0)
+    billig = assess(events=1000, trials=8, dispersion=50.0, cost_bps=1.0, oos_share=1.0)
+    teuer = assess(events=1000, trials=8, dispersion=50.0, cost_bps=10.0, oos_share=1.0)
     assert teuer.ratio < billig.ratio
 
 
 @pytest.mark.parametrize(
     "feld,wert",
-    [("dispersion", 0.0), ("dispersion", -1.0), ("cost_bps", 0.0), ("cost_factor", 0.0)],
+    [
+        ("dispersion", 0.0),
+        ("dispersion", -1.0),
+        ("cost_bps", 0.0),
+        ("cost_factor", 0.0),
+        ("oos_share", 0.0),
+        ("oos_share", -0.5),
+        ("oos_share", 1.5),
+    ],
 )
 def test_nicht_positive_eingaben_sind_fehler(feld: str, wert: float) -> None:
-    basis = dict(events=100, trials=8, dispersion=50.0, cost_bps=1.0)
+    basis = dict(
+        events=100, trials=8, dispersion=50.0, cost_bps=1.0, oos_share=1.0
+    )
     basis[feld] = wert  # type: ignore[assignment]
     with pytest.raises(ResolutionError):
         assess(**basis)  # type: ignore[arg-type]
@@ -171,22 +213,201 @@ def test_nicht_positive_eingaben_sind_fehler(feld: str, wert: float) -> None:
 
 # --- Wie viele Ereignisse braeuchte es? -----------------------------------
 def test_mindestereigniszahl_liegt_an_der_kippstelle() -> None:
-    n = min_events_for_resolution(trials=8, dispersion=50.0, cost_bps=1.0)
+    n = min_events_for_resolution(
+        trials=8, dispersion=50.0, cost_bps=1.0, oos_share=1.0
+    )
     assert n is not None
-    assert assess(events=n, trials=8, dispersion=50.0, cost_bps=1.0).resolvable
-    assert not assess(events=n - 1, trials=8, dispersion=50.0, cost_bps=1.0).resolvable
+    assert assess(
+        events=n, trials=8, dispersion=50.0, cost_bps=1.0, oos_share=1.0
+    ).resolvable
+    assert not assess(
+        events=n - 1, trials=8, dispersion=50.0, cost_bps=1.0, oos_share=1.0
+    ).resolvable
 
 
 def test_mindestereigniszahl_ist_none_wenn_es_nie_reicht() -> None:
     """Eine Streuung, die auch bei einer Million Ereignissen nicht reicht."""
     assert min_events_for_resolution(
-        trials=8, dispersion=100_000.0, cost_bps=0.01, ceiling=10_000
+        trials=8,
+        dispersion=100_000.0,
+        cost_bps=0.01,
+        oos_share=1.0,
+        ceiling=10_000,
     ) is None
+
+
+def test_mindestereigniszahl_zaehlt_ereignisse_nicht_beobachtungen() -> None:
+    """Wer nur ein Drittel deflationiert, braucht rund dreimal so viele Ereignisse.
+
+    Die Zahl soll direkt beantwortbar sein („so viele Monatsenden brauchen wir"). Gaebe
+    sie Deflationsbeobachtungen zurueck, unterschaetzte jeder Leser den Bedarf um genau
+    den Kehrwert des Anteils -- und zwar in der schmeichelnden Richtung.
+    """
+    voll = min_events_for_resolution(
+        trials=8, dispersion=50.0, cost_bps=1.0, oos_share=1.0
+    )
+    drittel = min_events_for_resolution(
+        trials=8, dispersion=50.0, cost_bps=1.0, oos_share=OOS_ANTEIL
+    )
+    assert voll is not None and drittel is not None
+    assert drittel > voll
+    assert 2.5 < drittel / voll < 3.5
+    assert deflation_observations(drittel, oos_share=OOS_ANTEIL) >= voll
+
+
+# --- Gegen die Deflationsstichprobe ---------------------------------------
+def _gerade_kerzen(anzahl: int) -> list[Kerze]:
+    """Stundenkerzen mit abwechselndem Vorzeichen -- erfunden, aber messbar.
+
+    Abwechselnd, weil ``messe_ereignis`` ein Ereignis ohne Richtung in der Vorstunde
+    verwirft: eine Reihe aus lauter Nullrenditen ergaebe keine einzige Beobachtung.
+    """
+    start = datetime(2020, 1, 6, tzinfo=UTC)
+    kerzen: list[Kerze] = []
+    kurs = 100.0
+    for i in range(anzahl):
+        zu = kurs * (1.0 + (0.001 if i % 2 == 0 else -0.0008))
+        kerzen.append(Kerze(ts=start + timedelta(hours=i), open=kurs, close=zu))
+        kurs = zu
+    return kerzen
+
+
+def test_deflationsstichprobe_deckt_sich_mit_der_ereignisstudie() -> None:
+    """Die Umrechnung wird nicht nachgebaut, sondern gegen die Studie gehalten.
+
+    ``bestaetige`` meldet in ``Bestaetigung.dsr_n``, wie viele Beobachtungen der DSR
+    tatsaechlich gesehen hat. Genau diese Zahl muss ``deflation_observations`` liefern.
+    Waere hier nur die Formel aus der Studie abgeschrieben, pruefte der Fall die
+    Abschrift und nicht die Uebereinstimmung -- und ein Abriss zwischen beiden Modulen
+    bliebe unsichtbar.
+    """
+    kerzen = _gerade_kerzen(320)
+    ereignisse = [k.ts for k in kerzen[4:-4:4]]
+    ergebnis, werte = studie(
+        kandidat="erfunden",
+        instrument="ERFUNDEN",
+        kerzen=kerzen,
+        ereignisse=ereignisse,
+        fenster_stunden=1.0,
+        k_bps=1.0,
+    )
+    bestaetigung = bestaetige(
+        werte,
+        kerzen=kerzen,
+        ereignisse=ereignisse,
+        fenster_stunden=1.0,
+        k_bps=1.0,
+        saat=7,
+    )
+    assert bestaetigung.dsr_n == deflation_observations(
+        ergebnis.n_gemessen, oos_share=OOS_ANTEIL
+    )
+    assert bestaetigung.dsr_n < ergebnis.n_gemessen
+
+
+def test_k3_gbpjpy_war_gegen_die_deflationsstichprobe_nie_aufloesbar() -> None:
+    """Der Eichfall. Gegen die alte Fassung waere er fehlgeschlagen.
+
+    K3 (Monatsende-Fixing, GBPJPY) galt mit einem Verhaeltnis von 0,62 als aufloesbar
+    und bekam deshalb das 1h-Fenster zugewiesen. Gerechnet war das gegen N = 193, den
+    ganzen Ereignisvorrat. Der DSR lief dann auf 64 Ereignissen -- fuer die war dasselbe
+    Modul schon damals bei 1,12, also blind. Die Studie wurde auf einer Frage gefahren,
+    die sie nicht beantworten konnte, und hat einen der zwoelf Versuche gekostet.
+
+    Die drei Zahlen unten halten das fest: was dastand, was richtig gewesen waere, und
+    was fuer die tatsaechlich gemessenen 192 Ereignisse gilt.
+    """
+    voll = assess(
+        events=K3_EREIGNISSE,
+        trials=K3_VERSUCHE,
+        dispersion=K3_STREUUNG,
+        cost_bps=K3_KOSTEN,
+        oos_share=1.0,
+    )
+    assert voll.ratio == pytest.approx(0.6229, abs=1e-3)
+    assert voll.resolvable, "die alte, zu guenstige Lesart -- hier nur als Beleg"
+
+    geplant = assess(
+        events=K3_EREIGNISSE,
+        trials=K3_VERSUCHE,
+        dispersion=K3_STREUUNG,
+        cost_bps=K3_KOSTEN,
+        oos_share=OOS_ANTEIL,
+    )
+    assert geplant.deflation_events == 65
+    assert geplant.ratio == pytest.approx(1.1121, abs=1e-3)
+    assert not geplant.resolvable
+
+    gemessen = assess(
+        events=K3_GEMESSEN,
+        trials=K3_VERSUCHE,
+        dispersion=K3_STREUUNG,
+        cost_bps=K3_KOSTEN,
+        oos_share=OOS_ANTEIL,
+    )
+    assert gemessen.deflation_events == 64, "die Zahl aus 07-AUSGABEN/ereignisstudie.txt"
+    assert gemessen.ratio == pytest.approx(1.1217, abs=1e-3)
+    assert not gemessen.resolvable
+
+
+def test_ein_kleinerer_oos_anteil_macht_es_nie_besser() -> None:
+    """Je weniger die Deflation sieht, desto hoeher die Huerde. Nie umgekehrt."""
+    vorher = None
+    for anteil in (1.0, 0.75, 0.5, OOS_ANTEIL, 0.2):
+        urteil = assess(
+            events=3000, trials=12, dispersion=50.0, cost_bps=1.0, oos_share=anteil
+        )
+        if vorher is not None:
+            assert urteil.ratio > vorher
+        vorher = urteil.ratio
+
+
+def test_der_oos_anteil_hat_keinen_vorgabewert() -> None:
+    """Ein Vorgabewert waere der stille Rueckfall auf genau diesen Fehler.
+
+    Solange ``assess`` ohne Angabe des Anteils rechnet, sieht jeder Aufruf richtig aus
+    und ist es nicht. Der Aufrufer muss sich aeussern.
+    """
+    with pytest.raises(TypeError, match="oos_share"):
+        assess(events=193, trials=12, dispersion=14.15, cost_bps=1.84)  # type: ignore[call-arg]
+
+
+def test_zu_kleine_deflationsstichprobe_ist_ein_fehler_kein_ergebnis() -> None:
+    """Fail-closed: aus drei Ereignissen wird bei einem Drittel keine Stichprobe."""
+    with pytest.raises(ResolutionError, match="Deflation"):
+        assess(
+            events=3, trials=12, dispersion=50.0, cost_bps=1.0, oos_share=OOS_ANTEIL
+        )
+
+
+def test_deflationsstichprobe_schneidet_ab_statt_zu_runden() -> None:
+    """``int`` statt ``round`` -- und zwar wie in der Studie, nicht wie es huebsch ist.
+
+    Bei kleinen Stichproben macht das einen ganzen Wert Unterschied, und der Wert zaehlt:
+    er geht in die Wurzel der noetigen Sharpe ein.
+    """
+    assert deflation_observations(192, oos_share=OOS_ANTEIL) == 64
+    assert deflation_observations(193, oos_share=OOS_ANTEIL) == 65
+    assert deflation_observations(472, oos_share=OOS_ANTEIL) == 158
+    assert deflation_observations(100, oos_share=1.0) == 100
+
+
+@pytest.mark.parametrize("wert", [0.0, -0.1, 1.0001, 2.0])
+def test_unmoeglicher_oos_anteil_ist_ein_fehler(wert: float) -> None:
+    with pytest.raises(ResolutionError, match="oos_share"):
+        deflation_observations(100, oos_share=wert)
 
 
 # --- Gegen die echte Messdatei --------------------------------------------
 def test_die_echte_aufloesungsdatei_ist_in_sich_stimmig() -> None:
-    """Positivtest gegen die gemessene Datei: jede Zeile muss nachrechenbar sein."""
+    """Positivtest gegen die gemessene Datei: jede Zeile muss nachrechenbar sein.
+
+    Fehlt ``oos_share``, stammt die Datei aus der Zeit vor der Korrektur; sie wird dann
+    so nachgerechnet, wie sie entstanden ist. Damit sie nicht stillschweigend
+    weiterlebt, darf sie in diesem Zustand nur zusammen mit dem Vorbehalt in
+    ``ABSCHLUSS-3a/01-AUFLOESUNG.md`` existieren. Wer den Vorbehalt streicht, ohne neu
+    zu messen, faellt hier auf.
+    """
     import json
 
     if not ECHTE_DATEI.is_file():
@@ -194,18 +415,31 @@ def test_die_echte_aufloesungsdatei_ist_in_sich_stimmig() -> None:
     roh = json.loads(ECHTE_DATEI.read_text(encoding="utf-8"))
     eintraege = roh["entries"]
     assert eintraege, "Datei ohne Eintraege"
+
+    veraltet = "oos_share" not in roh
+    anteil = 1.0 if veraltet else float(roh["oos_share"])
     for e in eintraege:
         nach = assess(
             events=e["events"],
             trials=roh["trials_assumed"],
             dispersion=e["dispersion_bps"],
             cost_bps=e["cost_bps"],
+            oos_share=anteil,
         )
         assert nach.ratio == pytest.approx(e["ratio"], abs=1e-3), (
             f"{e['instrument']}/{e['window']}/{e['frequency']}: "
             f"Datei sagt {e['ratio']}, nachgerechnet {nach.ratio}"
         )
         assert nach.resolvable == e["resolvable"]
+
+    if veraltet:
+        bericht = (REPO / "ABSCHLUSS-3a" / "01-AUFLOESUNG.md").read_text(
+            encoding="utf-8"
+        )
+        assert VORBEHALT_MARKE in bericht, (
+            "config/aufloesung.json ist gegen die volle Ereigniszahl gerechnet, aber "
+            f"01-AUFLOESUNG.md fuehrt den Vorbehalt „{VORBEHALT_MARKE}\" nicht mehr"
+        )
 
 
 def test_monatliche_kandidaten_loesen_nur_im_stundenfenster_auf() -> None:

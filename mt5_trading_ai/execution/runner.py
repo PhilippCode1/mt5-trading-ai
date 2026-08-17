@@ -3,8 +3,18 @@
 Die Naehte aus Paket 3-5 sind einzeln verdrahtet und getestet; dieser Runner fuehrt sie
 in EINEM Durchlauf je Signal zusammen und quittiert jede als Checklisten-Punkt:
 
-    Zulassung(§9.3) -> Signal -> Daten-Tor -> Halal -> Hebel -> Stop-Preis -> Kostentor
+    Zulassung(§9.3) -> Signal -> Daten-Tor -> Halal -> Hebel -> Kostentor -> Stop-Preis
     -> Limits -> Evaluation -> Stop-Budget -> Sizing -> submit_order -> Buchung.
+
+**Warum das Kostentor vor dem Stop-Preis steht.** Die Budget-Untergrenze ist eine
+Kostenrechnung (``R >= C / (2 * max_cost_drag)``), und das Kostentor ist die Stelle,
+die ``C`` am Live-Bid/Ask **misst**. Solange es hinter dem Stop-Preis stand, rechnete
+das Budget mit der Annahmetabelle, obwohl die Messung dreissig Zeilen weiter unten
+bereits vorlag: fuer ``fx_major`` 0,65 bp angenommen gegen 1,55 bp gemessen, ein Stop
+ueber Faktor 2,4 zu eng, und die Zusage ``max_cost_drag`` bei jedem eroeffneten Trade
+gerissen. Die Reihenfolge ist damit keine Kosmetik, sondern der Unterschied zwischen
+gemessen und behauptet. Das Tor selbst prueft unveraendert dasselbe; nur seine Zahl
+wird jetzt weiterverwendet, statt nur protokolliert zu werden.
 
 **Warum die Tore hier explizit stehen und nicht nur ueber submit_order laufen:** der
 Runner quittiert jede Naht einzeln. ``submit_order`` faellt bei der ersten Sperre mit
@@ -33,11 +43,14 @@ from decimal import ROUND_DOWN, ROUND_UP, Decimal
 
 from mt5_trading_ai.backtest.engine import Signal
 from mt5_trading_ai.execution.cost_gate import CostGate, evaluate_cost_gate
-from mt5_trading_ai.execution.risk_manager import RiskManager
+from mt5_trading_ai.execution.risk_manager import (
+    MEASURED_COST_BPS_META_KEY,
+    RiskManager,
+)
 from mt5_trading_ai.gates.criteria import CriteriaVerdict
 from mt5_trading_ai.risk.leverage import clamp_leverage
 from mt5_trading_ai.risk.sizing import StopFloorInputs, executable_stop_floor
-from mt5_trading_ai.risk.stop_budget import stop_budget
+from mt5_trading_ai.risk.stop_budget import cost_bps_from_fraction, stop_budget
 from mt5_trading_ai.venue.halal import screen_halal
 from mt5_trading_ai.venue.mt5 import Mt5Venue
 from mt5_trading_ai.venue.protocol import (
@@ -64,9 +77,15 @@ class RunnerConfig:
     ``account_swap_free``/``interest_bearing_margin``/``scholar_review_id`` speisen den
     Halal-Screen (Defaults konservativ = nicht konform, wie am Venue). ``cost_gate``
     traegt die im Backtest vorausgesetzte Kostenobergrenze; ``requested_leverage`` den
-    Hebelwunsch (fehlt er -> konservativer Klassendefault). ``measured_cost_bps`` sind
-    die je Klasse gemessenen Round-Turn-Kosten fuer die Stop-Budget-Spanne (leer ->
-    Annahmetabelle).
+    Hebelwunsch (fehlt er -> konservativer Klassendefault).
+
+    Ein Feld ``measured_cost_bps`` gibt es hier bewusst **nicht** mehr. Es stand hier,
+    wurde von keinem Aufrufer je gefuellt, und daneben mass der Runner die Kosten
+    ohnehin selbst am Live-Bid/Ask. Zwei Wahrheiten fuer dieselbe Zahl -- eine
+    vorkonfigurierte und eine gemessene -- koennen nur auseinanderlaufen, und die
+    vorkonfigurierte waere die aeltere. Die Kostenlage kommt jetzt aus dem Kostentor
+    dieses Laufs; wer eine Messkampagne je Klasse hinterlegen will, tut das in
+    ``RiskPolicy.measured_cost_bps``, wo sie auch fuer Auftraege ohne Runner gilt.
     """
 
     cost_gate: CostGate
@@ -74,7 +93,6 @@ class RunnerConfig:
     interest_bearing_margin: bool = True
     scholar_review_id: str = ""
     requested_leverage: object | None = None
-    measured_cost_bps: dict[str, Decimal] = field(default_factory=dict)
     #: Gleichzeitig erlaubte Positionen -- Bezugsgroesse des Margendeckels. Gleich
     #: der Vorgabe in ``ThrottlePolicy``/``LossLimits``, damit die erste Position
     #: nicht die Marge der uebrigen aufbraucht.
@@ -231,7 +249,33 @@ def run_signal(
     eff_lev = lev.leverage
     report.add("hebel", True, f"eff_lev={eff_lev} ({lev.binding})")
 
-    # 5) Stop-Distanz (bps) -> Stop-PREIS. Floor gegen Budget-Spanne je Klasse/Hebel.
+    # 5) Kostentor (am Venue demo-frei -> hier bindend, damit belegt). Es steht VOR dem
+    # Stop-Preis, weil seine Kostenquote die Budget-Untergrenze traegt (s. Docstring).
+    # Gemessen wird am Mindestvolumen, obwohl die endgueltige Groesse erst in Schritt 8
+    # feststeht: die Quote ist volumeninvariant -- Spread, Kommission und Slippage sind
+    # alle linear im Volumen, das Notional ebenso, das Volumen kuerzt sich heraus.
+    cost = evaluate_cost_gate(
+        gate=config.cost_gate, instrument=instrument, fees=instrument.fees,
+        side=side_enum, volume=instrument.volume_min, bid=quote.bid, ask=quote.ask,
+    )
+    if not cost.approved:
+        return report._reject("kostentor", cost.reason or "cost_gate",
+                              detail=cost.detail or "")
+    if cost.cost_fraction is None:
+        # Freigabe ohne Zahl ist ein Widerspruch im Werkzeug selbst, kein Marktzustand.
+        # Ein Defekt wirft; er faellt nicht auf die Annahmetabelle zurueck -- sonst
+        # eroeffnete der Runner ausgerechnet dann ungemessen, wenn die Messung kaputt
+        # ist.
+        raise ValueError(
+            "Kostentor hat freigegeben, ohne eine Kostenquote zu liefern -- "
+            "die Stop-Budget-Untergrenze haette keine gemessene Grundlage"
+        )
+    gemessene_kosten_bps = cost_bps_from_fraction(cost.cost_fraction)
+    report.add("kostentor", True,
+               f"cost_fraction={cost.cost_fraction} "
+               f"({gemessene_kosten_bps:.2f} bp roundturn, gemessen)")
+
+    # 6) Stop-Distanz (bps) -> Stop-PREIS. Floor gegen Budget-Spanne je Klasse/Hebel.
     floor = executable_stop_floor(
         StopFloorInputs(
             spread_bps=_spread_bps(quote.bid, quote.ask),
@@ -245,7 +289,11 @@ def run_signal(
     budget = stop_budget(
         asset_class=instrument.asset_class.value,
         leverage=eff_lev,
-        measured_cost_bps=config.measured_cost_bps.get(instrument.asset_class.value),
+        measured_cost_bps=gemessene_kosten_bps,
+        # Der Runner hat gerade gemessen; ein Rueckfall auf die Annahme waere hier
+        # nicht bequem, sondern falsch. Der Schalter macht das bindend, statt es zu
+        # behaupten: eine kuenftige Umbau-Fassung ohne Messung wird rot, nicht mild.
+        require_measured_cost=True,
     )
     if not budget.tradeable:
         return report._reject(
@@ -260,7 +308,11 @@ def run_signal(
         return report._reject("stop-preis", "stop_price_nonpositive")
     report.add("stop-preis", True, f"{stop_bps:.1f}bps -> stop={stop_loss}")
 
-    # 6) Kandidaten-OrderRequest (vorlaeufiges Volumen = Mindestvolumen).
+    # 7) Kandidaten-OrderRequest (vorlaeufiges Volumen = Mindestvolumen). Die gemessene
+    # Kostenlage reist im ``meta`` mit: ``submit_order`` faehrt die Risikoschicht ein
+    # zweites Mal, und diese zweite Pruefung darf nicht milder rechnen als die erste --
+    # ohne die Zahl griffe sie zur Annahmetabelle und liesse einen Stop durch, den der
+    # Runner selbst schon verworfen haette.
     request = OrderRequest(
         client_order_id=client_order_id,
         symbol=symbol,
@@ -268,23 +320,17 @@ def run_signal(
         order_type=OrderType.MARKET,
         volume=instrument.volume_min,
         stop_loss=stop_loss,
-        meta={"requested_leverage": eff_lev},
+        meta={
+            "requested_leverage": eff_lev,
+            MEASURED_COST_BPS_META_KEY: gemessene_kosten_bps,
+        },
     )
-
-    # 7) Kostentor (am Venue demo-frei -> hier bindend, damit belegt).
-    cost = evaluate_cost_gate(
-        gate=config.cost_gate, instrument=instrument, fees=instrument.fees,
-        side=side_enum, volume=request.volume, bid=quote.bid, ask=quote.ask,
-    )
-    if not cost.approved:
-        return report._reject("kostentor", cost.reason or "cost_gate",
-                              detail=cost.detail or "")
-    report.add("kostentor", True, f"cost_fraction={cost.cost_fraction}")
 
     # 8) Risikoschicht: Limits -> Evaluation -> Stop-Budget -> Sizing (fusioniert).
     auth = risk_manager.authorize_opening(
         instrument=instrument, request=request, account=account, price=ref,
         spread_bps=_spread_bps(quote.bid, quote.ask), leverage=eff_lev, now=now,
+        measured_cost_bps=gemessene_kosten_bps,
     )
     if not auth.approved:
         if auth.latch_halt:
@@ -296,8 +342,11 @@ def run_signal(
     report.add("limits", True, "Kill-Switch: NORMAL")
     report.add("evaluation", True, "Drossel: ausgewaehlt")
     if auth.budget is not None:
+        # Die Kostenbasis steht in der Checkliste, nicht nur im Kopf des Programms:
+        # wer sie liest, sieht, ob die Untergrenze gemessen oder behauptet ist.
         report.add("stop-budget", True,
-                   f"[{auth.budget.lower_bps:.1f}, {auth.budget.upper_bps:.1f}]bps")
+                   f"[{auth.budget.lower_bps:.1f}, {auth.budget.upper_bps:.1f}]bps "
+                   f"(Kosten {auth.budget.cost_bps:.2f}bp {auth.budget.cost_basis})")
     sized_volume = auth.sizing.volume if auth.sizing is not None else None
     if sized_volume is None:
         return report._reject("sizing", "risk_sizing_no_volume")

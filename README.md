@@ -40,8 +40,8 @@ Aendert sich der Code, ohne dass diese Zahlen nachgezogen werden, wird der Test 
 
 <!-- KENNZAHLEN-ANFANG (geprueft von tests/test_readme_numbers.py) -->
 - module_count: 39
-- test_function_count: 639
-- source_lines: 9984
+- test_function_count: 725
+- source_lines: 10804
 <!-- KENNZAHLEN-ENDE -->
 
 ## Oberflaeche
@@ -97,8 +97,13 @@ negativ, hoechster Deflated Sharpe 0,686 gegen die Schwelle 0,95. Das Urteil ste
 1. `RealMt5Terminal` faehrt mit `allow_write=False` als Vorgabe und `require_demo=True`.
    Ein Schreibzugriff auf ein Live-Konto wird abgelehnt, bevor er den Handelsplatz
    erreicht.
-2. Die mehrstufige Live-Freigabe in `execution/release.py` ist an **keinen** Aufrufer
-   angeschlossen. Es gibt keinen Weg, sie zu erteilen.
+2. Die mehrstufige Live-Freigabe in `execution/release.py` haengt im Orderpfad
+   (`venue/mt5.py:447` ruft sie vor jeder eroeffnenden Order an einem Konto, das kein
+   Demokonto ist). Sie verlangt mehrere gesetzte Schalter **und** eine hinterlegte
+   Freigabekennung; **kein** Modul ausserhalb der Tests setzt auch nur eines davon, und
+   fehlt eines, lehnt sie fail-closed ab. Die Sperre ist also verdrahtet und trotzdem
+   unpassierbar — das ist staerker als „nicht angeschlossen", was hier bis 2026-08-17
+   stand und schlicht falsch war: eine nicht angeschlossene Sperre schuetzt gar nicht.
 3. Der Orderpfad prueft als Erstes die §9.3-Zulassung. Sie ist nicht erteilt, weil kein
    Kandidat das Bewertungstor bestanden hat.
 

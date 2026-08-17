@@ -24,6 +24,16 @@ mit Eroeffnungszeit. Die Venue meldet akzeptierte Eroeffnungen (``record_open_fi
 und Schliessungen (``record_close``) zurueck; der Betreiber beobachtet Equity
 (``observe_equity``, von der Venue je Order automatisch aufgerufen).
 
+**Kostenbasis der dritten Grenze.** Die Budget-Untergrenze ist eine Kostenrechnung; sie
+taugt nur so viel wie die Kostenzahl, die hineingeht. Diese Schicht sucht sie in dieser
+Reihenfolge: das Argument ``measured_cost_bps`` (die Messung DIESER Order, die der
+Runner am Live-Bid/Ask genommen hat) -> ``request.meta[MEASURED_COST_BPS_META_KEY]``
+(dieselbe Messung, mitgereist am Auftrag, damit die zweite Pruefung im Venue dieselbe
+Zahl sieht und nicht eine mildere) -> ``RiskPolicy.measured_cost_bps`` je Klasse (eine
+Messkampagne) -> Annahmetabelle. Der letzte Schritt ist der einzige ungedeckte; er
+steht deshalb als ``cost_basis`` in jeder Autorisierung, und ``require_measured_cost``
+macht ihn auf Wunsch zur Sperre (Begruendung: ``risk/stop_budget.py``).
+
 Fail-closed: jede nicht sicher zulaessige Order wird abgelehnt, ohne Default. Die
 **Politik** (Grenzen, Schwellen, Risikoanteil) traegt der ``RiskPolicy``; die Venue
 erzwingt sie am Order-Pfad (siehe ``venue/mt5.py``).
@@ -62,6 +72,13 @@ from mt5_trading_ai.venue.protocol import (
     OrderRequest,
 )
 
+#: Schluessel, unter dem eine eroeffnende Order ihre **gemessene** Roundturn-Kostenlage
+#: (in bp) mitfuehrt. Der Runner legt sie hinein, diese Schicht liest sie -- damit die
+#: zweite, unabhaengige Pruefung in ``venue/mt5.py::submit_order`` dieselbe Messung
+#: sieht wie die erste. Ohne diesen Kanal rechnete die Venue-Pruefung gegen die
+#: Annahmetabelle und waere milder als die Pruefung, die sie absichern soll.
+MEASURED_COST_BPS_META_KEY = "measured_cost_bps"
+
 
 @dataclass(frozen=True)
 class RiskPolicy:
@@ -72,6 +89,14 @@ class RiskPolicy:
     ``size_position``); ``max_cost_drag``/``safety`` steuern die Budgetspanne;
     ``measured_cost_bps`` erlaubt gemessene Round-Turn-Kosten je Klasse (schlagen die
     Annahmen im Stop-Budget).
+
+    ``require_measured_cost`` macht eine fehlende Messung zur Sperre statt zum Griff in
+    die Annahmetabelle. Die Vorgabe ist ``False``, und das ist kein Versehen: es gibt
+    heute noch eroeffnende Aufrufer ohne Messung (von Hand gebaute ``OrderRequest`` am
+    Venue, die Schreibprobe in ``venue/smoke.py``), die eine Umstellung ersatzlos
+    sperren wuerde. Bis die nachgezogen sind, gilt sichtbar statt still: die Basis
+    steht als ``cost_basis`` in jeder Autorisierung. Der Pfad, der heute wirklich
+    eroeffnet (``execution/runner.py``), misst und setzt den Schalter selbst.
     """
 
     loss_limits: LossLimits = field(default_factory=LossLimits)
@@ -80,6 +105,7 @@ class RiskPolicy:
     max_cost_drag: Decimal = Decimal("0.05")
     safety: Decimal = Decimal("3")
     measured_cost_bps: dict[str, Decimal] = field(default_factory=dict)
+    require_measured_cost: bool = False
 
 
 @dataclass(frozen=True)
@@ -88,7 +114,11 @@ class RiskAuthorization:
 
     ``latch_halt`` ist wahr, wenn ein Drawdown-Halt greift -- die Venue setzt dann ihren
     ``_halted``-Latch (der sich nicht von selbst loest). ``detail`` traegt die
-    Zwischenergebnisse fuer den Nachweis (Limit-Zustand, Budgetspanne, Sizing).
+    Zwischenergebnisse fuer den Nachweis (Limit-Zustand, Budgetspanne, Sizing) und --
+    sobald ein Budget gerechnet wurde -- unter ``cost_basis``, worauf die
+    Budget-Untergrenze beruht: ``gemessen <bp>`` oder ``annahme <bp>``. Der Eintrag ist
+    nicht schmueckend: er ist die Stelle, an der ein Aufrufer sieht, dass er gerade auf
+    einer ungemessenen Kostenlage handeln wuerde.
     """
 
     approved: bool
@@ -97,6 +127,25 @@ class RiskAuthorization:
     sizing: SizingResult | None = None
     budget: StopBudget | None = None
     detail: dict[str, str] = field(default_factory=dict)
+
+
+def measured_cost_from_meta(request: OrderRequest) -> Decimal | None:
+    """Hole die mitgereiste Kostenmessung aus ``request.meta``. Fail-closed.
+
+    Ein falscher Typ ist ein **Defekt des Aufrufers**, kein fehlender Wert: ein Float
+    (oder ein String) an dieser Stelle hiesse, dass jemand die Messung ungenau oder
+    ungeprueft weiterreicht. Er wirft, statt auf die Annahmetabelle zurueckzufallen --
+    sonst waere ein Tippfehler im Schluessel eine stille Rueckstufung der Sperre.
+    """
+    roh = request.meta.get(MEASURED_COST_BPS_META_KEY)
+    if roh is None:
+        return None
+    if not isinstance(roh, Decimal):
+        raise ValueError(
+            f"{MEASURED_COST_BPS_META_KEY} in OrderRequest.meta muss ein Decimal sein, "
+            f"ist {type(roh).__name__} ({roh!r})"
+        )
+    return roh
 
 
 class RiskManager:
@@ -207,12 +256,17 @@ class RiskManager:
         spread_bps: Decimal,
         leverage: int,
         now: datetime,
+        measured_cost_bps: Decimal | None = None,
     ) -> RiskAuthorization:
         """Fahre die vier Grenzen in vorgeschriebener Reihenfolge fuer eine Eroeffnung.
 
         Reihenfolge: Kill-Switch (Limits) -> Drossel -> Stop-Floor/Budget -> Groesse.
         Der erste Verstoss lehnt fail-closed ab. ``latch_halt=True`` bei einem
         Drawdown-Halt (die Venue setzt dann ihren ``_halted``-Latch).
+
+        ``measured_cost_bps`` sind die am Live-Bid/Ask gemessenen Roundturn-Kosten
+        DIESER Order in bp. Wer sie hat, gibt sie her: sie bestimmt die
+        Budget-Untergrenze und schlaegt jede Tabelle (Rangfolge im Modul-Docstring).
         """
         self.observe_equity(now, account.equity)
         # Frequenz-Tageszaehler auch auf dem LESEpfad rollen (nicht nur beim Fill),
@@ -307,20 +361,29 @@ class RiskManager:
                 depth_ratio=None,
             )
         )
+        # Kostenbasis in der Rangfolge Messung dieser Order -> mitgereiste Messung ->
+        # Messkampagne je Klasse -> Annahme. Die ersten drei sind gemessen; nur die
+        # letzte ist eine Behauptung, und sie steht unten sichtbar im ``detail``.
+        kosten = measured_cost_bps
+        if kosten is None:
+            kosten = measured_cost_from_meta(request)
+        if kosten is None:
+            kosten = self._policy.measured_cost_bps.get(instrument.asset_class.value)
         budget = stop_budget(
             asset_class=instrument.asset_class.value,
             leverage=leverage,
-            measured_cost_bps=self._policy.measured_cost_bps.get(
-                instrument.asset_class.value
-            ),
+            measured_cost_bps=kosten,
             max_cost_drag=self._policy.max_cost_drag,
             safety=self._policy.safety,
+            require_measured_cost=self._policy.require_measured_cost,
         )
+        kostenbasis = f"{budget.cost_basis} {budget.cost_bps} bp"
         if not budget.tradeable:
             return RiskAuthorization(
                 approved=False,
                 reason=f"stop_budget_{budget.reason or 'untradeable'}",
                 budget=budget,
+                detail={"cost_basis": kostenbasis},
             )
         # Der effektive Stopabstand muss die Budget-UNTERgrenze (Kostenfloor) einhalten.
         # Ein zu enger Stop ist rechnerisch unhandelbar -- die Kosten heben den
@@ -332,6 +395,11 @@ class RiskManager:
                 approved=False,
                 reason="stop_budget_below_cost_floor",
                 budget=budget,
+                detail={
+                    "cost_basis": kostenbasis,
+                    "effective_stop_bps": str(effective_stop_bps),
+                    "cost_floor_bps": str(budget.lower_bps),
+                },
             )
 
         # 4) Positionsgroesse: angefordertes Volumen darf das Budget nicht reissen.
@@ -355,6 +423,7 @@ class RiskManager:
                 reason=f"risk_sizing_{first}",
                 sizing=sizing,
                 budget=budget,
+                detail={"cost_basis": kostenbasis},
             )
         if sizing.volume is not None and request.volume > sizing.volume:
             # Das angeforderte Volumen liegt ueber dem risikobudgetierten Maximum.
@@ -366,6 +435,7 @@ class RiskManager:
                 detail={
                     "requested_volume": str(request.volume),
                     "budget_volume": str(sizing.volume),
+                    "cost_basis": kostenbasis,
                 },
             )
 
@@ -374,5 +444,5 @@ class RiskManager:
             reason=None,
             sizing=sizing,
             budget=budget,
-            detail={"budget_volume": str(sizing.volume)},
+            detail={"budget_volume": str(sizing.volume), "cost_basis": kostenbasis},
         )

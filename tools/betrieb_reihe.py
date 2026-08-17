@@ -36,6 +36,7 @@ import argparse
 import statistics
 import sys
 from collections import Counter
+from dataclasses import dataclass
 from decimal import Decimal
 from pathlib import Path
 
@@ -70,11 +71,35 @@ def _kopfzeile(lauf: Lauf) -> str:
     )
 
 
-def _ergebnisse(trades: list[Trade]) -> tuple[list[Decimal], int, int]:
-    """(rechenbare Ergebnisse in bp, geschlossen gesamt, davon unvollstaendig)."""
+@dataclass(frozen=True)
+class Bilanz:
+    """Was sich ueber eine Menge Trades sagen laesst -- nach Belastbarkeit getrennt.
+
+    ``preis`` sind gemessene Preisdifferenzen und nur sie gehoeren in einen Median.
+    ``beurteilt`` ist die groessere Menge: dort kommt das Vorzeichen notfalls aus dem
+    zuletzt beobachteten Buchwert. Ohne diese Trennung stuende hinterher eine
+    Trefferquote da, der man nicht ansieht, wie viel Schaetzung in ihr steckt.
+    """
+
+    preis: list[Decimal]
+    beurteilt: list[Trade]
+    nur_geld: list[Trade]
+    stumm: list[Trade]
+    geschlossen: int
+
+
+def _ergebnisse(trades: list[Trade]) -> Bilanz:
+    """Trades in die vier Toepfe sortieren. Ein stummer Trade bleibt stumm."""
     zu = [t for t in trades if not t.offen]
     werte = [t.ergebnis_bps for t in zu if t.ergebnis_bps is not None]
-    return [w for w in werte if w is not None], len(zu), len(zu) - len(werte)
+    beurteilt = [t for t in zu if t.beurteilbar]
+    return Bilanz(
+        preis=[w for w in werte if w is not None],
+        beurteilt=beurteilt,
+        nur_geld=[t for t in beurteilt if t.urteilsquelle == "geld"],
+        stumm=[t for t in zu if not t.beurteilbar],
+        geschlossen=len(zu),
+    )
 
 
 def auswerten(laeufe: list[Lauf], *, nur_scharf: bool) -> int:
@@ -124,29 +149,41 @@ def auswerten(laeufe: list[Lauf], *, nur_scharf: bool) -> int:
 
     # --- Trades ------------------------------------------------------------
     alle = [t for lauf in laeufe for t in lauf.trades()]
-    werte, geschlossen, unvollstaendig = _ergebnisse(alle)
+    b = _ergebnisse(alle)
     print("-" * 100)
     print("TRADES")
     print("-" * 100)
-    print(f"  gesamt           : {len(alle)}")
-    print(f"  davon geschlossen: {geschlossen}")
-    print(f"  davon rechenbar  : {len(werte)}   (unvollstaendig: {unvollstaendig})")
-    if unvollstaendig:
-        print("    Unvollstaendig heisst: mindestens ein Preis fehlt -- meist ein")
-        print("    broker-seitiger Schluss, dessen Ausstiegspreis das Journal nicht")
-        print("    kennt. Solche Trades gehen NICHT als Ergebnis null durch.")
+    print(f"  gesamt                : {len(alle)}")
+    print(f"  davon geschlossen     : {b.geschlossen}")
+    print(f"  mit Preisergebnis (bp): {len(b.preis)}")
+    print(f"  nur mit Geldergebnis  : {len(b.nur_geld)}")
+    print(f"  ohne jedes Ergebnis   : {len(b.stumm)}")
+    if b.nur_geld:
+        print("    Ein broker-seitiger Schluss hat keinen Fuellpreis. Was das Journal")
+        print("    traegt, ist der zuletzt beobachtete Buchwert vor dem Verschwinden:")
+        print("    der BETRAG ist eine Schaetzung und geht in keinen Median, das")
+        print("    VORZEICHEN geht in den Trefferanteil. Ohne das fielen genau die")
+        print("    Stop-Outs -- die Verlierer -- aus jeder Statistik heraus.")
+    if b.stumm:
+        print("    Ohne jedes Ergebnis heisst UNBEKANNT. Solche Trades gehen NICHT als")
+        print("    Ergebnis null durch und zaehlen in keine Zahl unten hinein.")
     if alle:
         nach_grund = Counter(str(t.grund) for t in alle if not t.offen)
         for grund, n in nach_grund.most_common():
             print(f"    {n:>4}x  {grund}")
     print()
 
-    if werte:
-        median = statistics.median(werte)
-        treffer = sum(1 for w in werte if w > 0) / len(werte)
-        print(f"  Median-Ergebnis  : {median:+.2f} bp")
-        print(f"  Trefferanteil    : {treffer * 100:.1f} %")
-        print(f"  Spanne           : {min(werte):+.2f} .. {max(werte):+.2f} bp")
+    if b.preis:
+        print(f"  Median-Preisergebnis : {statistics.median(b.preis):+.2f} bp "
+              f"ueber {len(b.preis)}")
+        print(f"  Spanne               : {min(b.preis):+.2f} .. "
+              f"{max(b.preis):+.2f} bp")
+    if b.beurteilt:
+        treffer = sum(1 for t in b.beurteilt if t.gewinn) / len(b.beurteilt)
+        print(f"  Trefferanteil        : {treffer * 100:.1f} % ueber "
+              f"{len(b.beurteilt)} beurteilbare "
+              f"(davon {len(b.nur_geld)} per Geldschaetzung)")
+    if b.preis or b.beurteilt:
         print()
         print("  ACHTUNG, was diese Zahlen NICHT sind: sie rechnen die Preisdifferenz")
         print("  und lassen Kommission und Swap aussen vor. Sie sind das BRUTTO einer")
@@ -154,7 +191,7 @@ def auswerten(laeufe: list[Lauf], *, nur_scharf: bool) -> int:
         print("  es die Kontohistorie des Brokers (history_deals_get), die dieses Repo")
         print("  nicht abruft.")
     else:
-        print("  Kein einziger Trade ist rechenbar. Ueber ein Ergebnis laesst sich")
+        print("  Kein einziger Trade ist beurteilbar. Ueber ein Ergebnis laesst sich")
         print("  nichts sagen -- auch nicht, dass es null war.")
     return 0
 

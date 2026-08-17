@@ -276,12 +276,24 @@ def expected_max_sharpe(trials: int, sharpe_variance: float) -> float:
 
     Wer hundert Varianten testet, findet zufaellig eine mit hoher Sharpe. Diese
     Funktion sagt, wie hoch „zufaellig" ist.
+
+    ``sharpe_variance`` muss endlich und **echt positiv** sein. Frueher stand hier
+    ``math.sqrt(max(0.0, sharpe_variance))``: eine negative oder eine Null-Varianz
+    wurde stillschweigend zu ``sigma = 0``, die Huerde damit exakt 0 und die
+    Deflation vollstaendig aufgehoben -- der Aufruf sah unveraendert richtig aus und
+    lieferte die unkorrigierte Sharpe zurueck. Ein Rueckfall auf einen Vorgabewert
+    genau in der schmeichelnden Richtung; deshalb jetzt ein Fehler.
     """
     if trials < 1:
         raise ValueError("trials muss >= 1 sein")
+    if not math.isfinite(sharpe_variance) or sharpe_variance <= 0.0:
+        raise ValueError(
+            f"sharpe_variance muss endlich und > 0 sein, nicht {sharpe_variance!r} — "
+            "sonst ist die Deflationshuerde 0 und die Korrektur still aufgehoben"
+        )
     if trials == 1:
         return 0.0
-    sigma = math.sqrt(max(0.0, sharpe_variance))
+    sigma = math.sqrt(sharpe_variance)
     n = float(trials)
     return sigma * (
         (1.0 - _EULER_MASCHERONI) * _norm_ppf(1.0 - 1.0 / n)
@@ -302,30 +314,60 @@ def deflated_sharpe_ratio(
 
     ``observed_sharpe`` ist die **nicht annualisierte** Sharpe je Beobachtung.
     ``trials`` ist der ehrliche Versuchszaehler aus dem Trials-Ledger — jeder
-    Lauf zaehlt, auch Fehlversuche.
+    Lauf zaehlt, auch Fehlversuche. Er kommt aus
+    ``gates/trials.py::deflation_trials`` und nie aus einer Konstante: eine fest
+    verdrahtete Zahl sagt nichts darueber, wie viel tatsaechlich gesucht wurde.
+
+    WAS DIE VOREINSTELLUNG VON ``sharpe_variance`` IST -- UND WAS NICHT
+    -------------------------------------------------------------------
+    ``sharpe_variance`` ist bei Bailey/Lopez de Prado die Varianz der Sharpe-Werte
+    **ueber die Versuche**. Ohne Angabe setzt diese Funktion dafuer die
+    Stichprobenvarianz eines einzelnen Schaetzers ein, ``denom / (observations - 1)``.
+    Das ist der Wert, den die Versuchs-Sharpes unter der Nullhypothese haetten, wenn
+    alle auf gleich vielen Beobachtungen geschaetzt werden und keiner einen Vorteil
+    hat; die Deflation reduziert sich damit exakt auf „ziehe vom z-Wert das erwartete
+    Maximum aus ``trials`` Standardnormalen ab".
+
+    Diese Voreinstellung ist damit **nicht konservativ**, wie hier frueher stand,
+    sondern das **untere Ende** des vertretbaren Bereichs: streuen die Versuche
+    staerker als reines Schaetzrauschen -- verschiedene Merkmale, verschiedene
+    Parameter --, ist die wahre Varianz groesser, die Huerde hoeher und die DSR
+    kleiner. Die Richtung ist gemessen und einseitig: bei ``observed_sharpe=0.2759``,
+    ``observations=64``, ``trials=8`` liefert die Voreinstellung (Sigma 0,128) eine
+    DSR von 0,755, eine gemessene Versuchsstreuung von Sigma 0,5 dagegen 0,0002.
+    Wer die Sharpes seiner Versuche kennt, reicht ihre Varianz herein; das kann die
+    DSR nur senken, nie heben.
+
+    Nicht geaendert wurde der Wert selbst. Ein groesserer Vorgabewert (etwa 1,0)
+    waere keine Verschaerfung, sondern ein Einheitenfehler -- 1,0 ist die Streuung
+    **annualisierter** Sharpes, und gegen die nicht annualisierte Sharpe gehalten
+    ergaebe sie eine Huerde, die kein Kandidat je nehmen kann. Eine Ampel, die nie
+    gruen wird, prueft so wenig wie eine, die nie rot wird.
     """
     if observations < 2:
         raise ValueError("observations muss >= 2 sein")
     if trials < 1:
         raise ValueError("trials muss >= 1 sein")
-
-    if sharpe_variance is None:
-        # Varianz der Sharpe-Schaetzer ueber die Versuche, falls nicht gemessen:
-        # konservativ aus der asymptotischen Varianz eines einzelnen Schaetzers.
-        sharpe_variance = (
-            1.0
-            - skewness * observed_sharpe
-            + (kurtosis - 1.0) / 4.0 * observed_sharpe**2
-        ) / (observations - 1)
-        sharpe_variance = max(sharpe_variance, 1e-12)
-
-    sr0 = expected_max_sharpe(trials, sharpe_variance)
+    if sharpe_variance is not None and (
+        not math.isfinite(sharpe_variance) or sharpe_variance <= 0.0
+    ):
+        raise ValueError(
+            f"sharpe_variance muss endlich und > 0 sein, nicht {sharpe_variance!r} — "
+            "ein nicht positiver Wert hob die Deflation frueher still auf"
+        )
 
     denom = (
         1.0 - skewness * observed_sharpe + (kurtosis - 1.0) / 4.0 * observed_sharpe**2
     )
     if denom <= 0:
+        # Die Momente widersprechen sich (die Varianz der Sharpe-Schaetzung waere
+        # negativ). Kein Urteil moeglich -> 0, die fehlschlagende Seite.
         return 0.0
+
+    if sharpe_variance is None:
+        sharpe_variance = denom / (observations - 1)
+
+    sr0 = expected_max_sharpe(trials, sharpe_variance)
     z = (observed_sharpe - sr0) * math.sqrt(observations - 1) / math.sqrt(denom)
     return _norm_cdf(z)
 

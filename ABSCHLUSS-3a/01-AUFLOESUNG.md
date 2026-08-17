@@ -8,11 +8,78 @@ Bedingung, wie in `mt5_trading_ai/backtest/resolution.py` umgesetzt:
 
     nötige_Sharpe(N, T) × Fensterstreuung  ≤  3 × K
 
-Beleg: `tests/test_resolution.py` (25 Fälle), Rohausgabe in
+Beleg: `tests/test_resolution.py` (33 Fälle), Rohausgabe in
 [`07-AUSGABEN/aufloesung.txt`](07-AUSGABEN/aufloesung.txt), Messdatei
 `config/aufloesung.json`, Reihen-Manifeste in `config/reihen/`.
+Das messende Werkzeug selbst: `tests/test_aufloesung_werkzeug.py` (11 Fälle).
 
 Parameter des Laufs: T = 12 Versuche, Deflationsschwelle 0,95, Kostenfaktor 3,0.
+
+---
+
+## 0. Vorbehalt zur gesamten Tabelle (nachgetragen)
+
+**Jedes Verhältnis in dieser Datei ist gegen die volle Ereigniszahl N gerechnet. Die
+Deflation, die die Rechnung umkehrt, sieht aber nur ein Drittel davon. Alle Zahlen unten
+sind damit rund Faktor √3 ≈ 1,7 zu günstig — ausnahmslos in der schmeichelnden
+Richtung.**
+
+Der Zusammenhang: `required_sharpe(N, T)` beantwortet genau eine Frage — „welche Sharpe je
+Beobachtung erreicht die Deflationsschwelle?". Gestellt wird diese Frage nur an einer
+Stelle, in M6.2, und dort läuft der DSR auf dem Out-of-Sample-Teil der Ereignisse
+(`backtest/ereignisstudie.py`, `OOS_ANTEIL = 1/3`). Für N gehört also die Zahl der
+Beobachtungen eingesetzt, die der DSR **sieht**, nicht die Zahl der Ereignisse, die es
+gibt.
+
+Mit demselben Modul nachgerechnet kippen **6 der 30 Kombinationen**, alle sechs von
+„auflösbar" auf „blind". Auflösbar bleiben 7 statt 13:
+
+| Instrument | Fenster | Frequenz | N | Beobachtungen | Verh. gedruckt | Verh. nachgerechnet |
+|---|---|---|---:|---:|---:|---:|
+| DE40 | 1h | täglich | 3.535 | 1.179 | 0,61 | **1,05** |
+| GBPJPY | 1h | monatlich | 193 | 65 | 0,62 | **1,11** |
+| EURUSD | 1d | täglich | 6.959 | 2.320 | 0,69 | **1,20** |
+| XAUUSD | 4h | täglich | 5.589 | 1.863 | 0,78 | **1,35** |
+| EURUSD | 1h | monatlich | 193 | 65 | 0,78 | **1,40** |
+| NVDA | 4h | täglich | 5.777 | 1.926 | 0,82 | **1,42** |
+
+**Für K3 ist das keine Korrektur an der zweiten Stelle, sondern der Wegfall der
+Begründung.** §4 gibt K3 das 1h-Fenster, weil dort 0,62 steht. Gegen die
+Deflationsstichprobe lautet die Zahl 1,11 — und in den beiden anderen Fenstern 1,82 (4h)
+und 4,45 (1d). K3 war in **keinem** Fenster auflösbar und hätte nach M6.0 vor der Messung
+ausgesondert gehört, kostenfrei. Die Studie lief trotzdem, und die widerlegende Zahl stand
+in ihrem eigenen Protokoll: [`07-AUSGABEN/ereignisstudie.txt`](07-AUSGABEN/ereignisstudie.txt)
+meldet für K3 „DSR 0,180 auf 64 OoS-Ereignissen" — für 64 Beobachtungen rechnet dasselbe
+Modul 1,12. Festgehalten in
+`tests/test_resolution.py::test_k3_gbpjpy_war_gegen_die_deflationsstichprobe_nie_aufloesbar`.
+
+**Das ist die zweite Ausprägung von Fehler 6** aus
+[`09-EIGENE-FEHLER.md`](09-EIGENE-FEHLER.md). Dort lief M6.0 gegen die geplante statt die
+messbare Ereigniszahl, hier gegen die gemessene statt die deflationierte; beide Male ist
+die eingesetzte Stichprobe größer als die, auf der das Urteil fällt. Beide zusammen treffen
+K5 doppelt: von 5.983 geplanten Ereignissen waren 472 messbar, davon sieht die Deflation
+158 — das Verhältnis für NVDA/1h steigt damit von 0,49 auf **3,02**. Die Kosten sind
+dieselben wie bei Fehler 6: Versuche, verbraucht für Fragen, die nicht zu beantworten
+waren. Sie werden nicht stillschweigend gestrichen.
+
+**Was behoben ist und was nicht.** Behoben ist die Maschine: `resolution.assess` verlangt
+`oos_share` als pflichtiges Argument ohne Vorgabewert — ein Vorgabewert wäre der stille
+Rückfall auf ebendiesen Fehler —, `tools/aufloesung.py` liest den Anteil aus
+`ereignisstudie.py`, statt ihn zu wiederholen, und `python tools/aufloesung.py --check`
+rechnet jetzt jede Zeile nach, statt nur zu zählen, ob welche da sind. Gegen die abgelegte
+`config/aufloesung.json` fällt dieses Tor rot, mit der Liste der kippenden Zeilen.
+
+**Nicht behoben sind die Zahlen in dieser Datei und in `config/aufloesung.json`.** Sie
+stammen aus einem Lauf über den lesenden MT5-Pfad und werden nicht nachträglich
+überschrieben; die Spalte oben ist die Nachrechnung, keine zweite Messung. Solange die
+Messdatei kein `oos_share` führt, verlangt
+`tests/test_resolution.py::test_die_echte_aufloesungsdatei_ist_in_sich_stimmig`, dass
+dieser Vorbehalt hier steht — er kann nicht verschwinden, ohne dass neu gemessen wurde.
+
+**Am Urteil ändert das nichts.** Alle sieben Studien sind schon an M6.1 gescheitert,
+Abbruchbedingung 6 ist ausgelöst ([`05-URTEIL.md`](05-URTEIL.md)). Der Vorbehalt macht das
+Ergebnis nicht schlechter, sondern die Begründung ehrlich: mindestens einer der sieben
+Versuche lief auf eine Frage, die vorher als beantwortbar galt und es nie war.
 
 ---
 
@@ -97,13 +164,16 @@ Zwei Zeilen kippen, in entgegengesetzte Richtungen:
   Streuung. §1 hatte XAUUSD als „knapp blind" geführt — zu Unrecht.
 - **GBPJPY/4h/monatlich wird blind** (0,77 → 1,03). Das ist der Kandidat **K3
   (Monatsende-Fixing)**. Er fällt knapp, um 3 %, und die Schwelle ist die Schwelle. Im
-  **1h-Fenster** löst dieselbe Frage jedoch auf (0,62) — dazu Abschnitt 4.
+  **1h-Fenster** löst dieselbe Frage jedoch auf (0,62) — dazu Abschnitt 4. Auch diese
+  0,62 stehen unter dem Vorbehalt aus §0: gegen die Stichprobe, die die Deflation
+  wirklich sieht, sind es 1,11, und K3 löst dann in keinem Fenster auf.
 
 Die 1h-Zeilen weichen am stärksten ab (−68 bis −72 %), und das liegt nicht an der
 Streuung, sondern an N: §1 rechnete mit 252 Ereignissen aus einem Jahr, tatsächlich
 verfügbar sind gut sechzehn Jahre H1-Historie und damit 4.060.
 
-**Die vollständige Messung: 13 von 30 Kombinationen sind auflösbar.**
+**Die vollständige Messung: 13 von 30 Kombinationen sind auflösbar.** (Gegen die
+Deflationsstichprobe sind es 7 von 30 — §0.)
 
 | Instrument | Fenster | Frequenz | N | Streuung (bp) | K (bp) | 3×K (bp) | nachweisbar (bp) | Verhältnis |
 |---|---|---|---:|---:|---:|---:|---:|---:|
@@ -235,6 +305,15 @@ Auflösungsrechnung kennt nur N, Streuung und K und weiß nichts über den gesuc
 (0,62). K3 ist damit der knappste Kandidat im Feld und der einzige, der auf nur 193
 Ereignissen steht — gut sechzehn Jahre H1-Historie mal zwölf Monatsenden. Fällt in der Datenlage
 etwas an der H1-Reihe aus, fällt K3 zuerst.
+
+**Genau dieser Zuschnitt trägt nicht.** Nach dem Vorbehalt aus §0 lautet K3s Verhältnis im
+1h-Fenster 1,11 statt 0,62; blind ist er dort ebenso wie im 4h- und im Tagesfenster. Die
+Regel „je Kandidat das Fenster mit dem niedrigsten Verhältnis" bleibt richtig, nur führt
+sie für K3 zu keinem Fenster mehr — er hätte nach M6.0 vor der Messung ausgesondert
+gehört. Die übrigen sechs Zeilen dieser Tabelle bleiben auch gegen die
+Deflationsstichprobe auflösbar (0,23 bis 0,85) — für K5 allerdings nur, solange man die
+geplante Ereigniszahl einsetzt; mit den 472 tatsächlich messbaren Ereignissen aus Fehler 6
+sind es 3,02.
 
 **Zu XAUUSD und DE40:** §5 hält die fünf Reserveversuche ausdrücklich für den Fall bereit,
 „falls die gemessene Streuung aus A1 sie doch auflösbar macht". Genau das ist eingetreten

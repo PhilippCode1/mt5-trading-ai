@@ -47,6 +47,19 @@ Zeitpunkt des Laufs keine Strategie zugelassen war. Alle anderen Sperren bleiben
 Ohne ``--scharf`` laeuft alles gleich, nur bleibt die Kette an der Zulassung stehen und
 es wird nichts gesendet. Das ist die Vorgabe.
 
+AUF WELCHER KERZE GERECHNET WIRD
+---------------------------------
+Auf der **letzten abgeschlossenen** -- nie auf der laufenden. Der Handelsplatz liefert
+bei ``end=jetzt`` die noch in Bildung befindliche Kerze mit; ihr ``close`` ist der
+momentane Kurs und wandert weiter. Wer darauf rechnet, faehrt live eine andere
+Strategie als die getestete, denn der Backtest kennt nur fertige Kerzen aus Dateien.
+
+Die Entscheidung faellt in ``_signal`` ueber ``Bar.is_closed`` (gemessen in
+``venue/mt5.py:get_bars`` gegen die Platzzeit) und wird in **jedem** Takt als
+``signalbasis``-Satz protokolliert: welche Kerze, wie viele verwendet, wie viele als
+laufend verworfen. Ohne diesen Satz war beim letzten Zweifel nicht feststellbar, was
+die Maschine wirklich gerechnet hat -- die Auskunft war nie geschrieben worden.
+
 WAS DER LAUF NICHT BEANTWORTET
 -------------------------------
 Ob die Strategie taugt. Ein Tag sind bei diesen Grenzen hoechstens zehn Trades. Das ist
@@ -171,28 +184,103 @@ def _jsonfaehig(wert: Any) -> Any:
     return wert
 
 
-def _signal(venue: Mt5Venue, symbol: str, jetzt: datetime) -> tuple[Signal, str]:
-    """Trendfolge auf den Live-Stundenkerzen."""
+@dataclass(frozen=True)
+class Signallage:
+    """Ein Signal samt der Kerze, auf der es entstanden ist.
+
+    ``_signal`` gab frueher nur ``(Signal, str)`` zurueck; welche Kerze gerechnet
+    wurde, blieb im Verfahren. Als sich zeigte, dass live auf der noch in Bildung
+    befindlichen Kerze gerechnet wurde, war an keinem Journal nachweisbar, seit wann
+    und wie oft -- die Auskunft war nie geschrieben worden. Darum reist sie jetzt mit
+    und landet in jedem Takt im Protokoll.
+    """
+
+    signal: Signal
+    detail: str
+    #: Beginn der JUENGSTEN ABGESCHLOSSENEN Kerze, auf der gerechnet wurde. ``None``
+    #: heisst: es wurde gar nicht gerechnet (keine Kerzen, zu wenige abgeschlossene).
+    kerze_ts: datetime | None
+    kerzen_verwendet: int
+    #: Wie viele gelieferte Kerzen als noch laufend verworfen wurden. Steht im
+    #: Protokoll, weil eine Null hier der Hinweis waere, dass die Kennzeichnung nicht
+    #: mehr ankommt -- und dann rechnete der Live-Treiber wieder auf dem Kurs statt
+    #: auf einem Schlusskurs, ohne dass es jemandem auffiele.
+    kerzen_laufend: int
+
+
+def _signal(venue: Mt5Venue, symbol: str, jetzt: datetime) -> Signallage:
+    """Trendfolge auf den ABGESCHLOSSENEN Live-Stundenkerzen.
+
+    Bis hierher lief der gleitende Durchschnitt ueber ``MarketView(reihe,
+    len(reihe) - 1)``, also ueber die letzte gelieferte Kerze -- und die ist bei
+    ``end=jetzt`` die noch in Bildung befindliche. Ihr ``close`` ist der momentane
+    Kurs und wandert bis zum Intervallende weiter. Der Backtest kennt diese Zahl
+    nicht; dort kommen die Kerzen fertig aus Dateien. Live-Signal und getestetes
+    Signal waren damit **nicht dieselbe Strategie**, und kein Demolauf haette das
+    klaeren koennen, gleichgueltig wie er ausgeht.
+
+    ``is_closed`` kommt vom Handelsplatz (``venue/mt5.py:get_bars`` misst es gegen die
+    Platzzeit) und wird hier **nicht nachgerechnet**. Eine zweite Rechnung waere eine
+    zweite Wahrheit, und die faellt beim naechsten Zeitraster still auseinander. Fehlt
+    das Feld, wirft der Zugriff -- das ist gewollt: ohne die Auskunft ist nicht
+    entscheidbar, worauf gerechnet wird, und nicht entscheidbar heisst nicht handeln.
+
+    Zu wenige abgeschlossene Kerzen ergeben ``FLAT``. Das ist kein Vorgabewert,
+    sondern die Aussage "kein Signal": FLAT eroeffnet nichts und schliesst nichts.
+    """
     try:
         bars = venue.get_bars(
             symbol, Timeframe.H1,
             start=jetzt - timedelta(hours=KERZEN_STUNDEN), end=jetzt,
         )
     except VenueError as exc:
-        return Signal.FLAT, f"keine Kerzen: {exc}"
-    if len(bars) < LANGSAM:
-        return Signal.FLAT, f"nur {len(bars)} Kerzen"
+        return Signallage(Signal.FLAT, f"keine Kerzen: {exc}", None, 0, 0)
+    fertig = [b for b in bars if b.is_closed]
+    laufend = len(bars) - len(fertig)
+    if len(fertig) < LANGSAM:
+        return Signallage(
+            Signal.FLAT,
+            f"nur {len(fertig)} abgeschlossene von {len(bars)} Kerzen",
+            None, len(fertig), laufend,
+        )
     reihe = [
         BarRow(ts=b.ts, open=float(b.open), high=float(b.high), low=float(b.low),
                close=float(b.close), volume=None)
-        for b in bars
+        for b in fertig
     ]
     sig = moving_average_crossover(SCHNELL, LANGSAM)(MarketView(reihe, len(reihe) - 1))
     schluesse = [b.close for b in reihe[-LANGSAM:]]
-    return sig, (
-        f"MA{SCHNELL}={sum(schluesse[-SCHNELL:]) / SCHNELL:.5f} "
-        f"MA{LANGSAM}={sum(schluesse) / LANGSAM:.5f}"
+    return Signallage(
+        signal=sig,
+        detail=(
+            f"MA{SCHNELL}={sum(schluesse[-SCHNELL:]) / SCHNELL:.5f} "
+            f"MA{LANGSAM}={sum(schluesse) / LANGSAM:.5f}"
+        ),
+        kerze_ts=reihe[-1].ts,
+        kerzen_verwendet=len(fertig),
+        kerzen_laufend=laufend,
     )
+
+
+def _signal_mit_protokoll(
+    venue: Mt5Venue, symbol: str, jetzt: datetime, journal: Journal, *, zweck: str
+) -> Signallage:
+    """Signal ableiten UND festhalten, worauf gerechnet wurde.
+
+    Geschrieben wird bei JEDER Ableitung, auch bei ``FLAT`` und auch im Ausstiegspfad.
+    Der bisherige ``signal``-Satz entstand nur, wenn ein Eintrittssignal anlag -- an
+    einem Takt ohne Satz war darum nicht unterscheidbar, ob kein Signal vorlag, ob das
+    Instrument schon offen war oder ob die Kerzenabfrage gescheitert ist. Und die
+    Kerze, auf der gerechnet wurde, stand nirgends. Genau diese Luecke hat den Befund
+    "der Live-Treiber rechnet auf der laufenden Kerze" so lange verdeckt.
+    """
+    lage = _signal(venue, symbol, jetzt)
+    journal.schreib(
+        "signalbasis", symbol=symbol, zweck=zweck, signal=lage.signal.name,
+        kerze_ts=lage.kerze_ts, kerzen_verwendet=lage.kerzen_verwendet,
+        kerzen_laufend_verworfen=lage.kerzen_laufend, detail=lage.detail,
+    )
+    return lage
 
 
 def _lage_lesen(venue: Mt5Venue) -> dict[str, Lage]:
@@ -222,7 +310,7 @@ def _lage_lesen(venue: Mt5Venue) -> dict[str, Lage]:
 
 def _schliesse(
     venue: Mt5Venue, manager: RiskManager, lage: Lage, jetzt: datetime, grund: str,
-    journal: Journal,
+    journal: Journal, *, waehrung: str,
 ) -> bool:
     """Glattstellen ueber ``reduce_only``. Gibt True bei Erfolg."""
     anfrage = OrderRequest(
@@ -245,6 +333,13 @@ def _schliesse(
     # Preis, Volumen und Positions-ID gehoeren ins Protokoll. Ohne sie laesst sich
     # nicht sagen, was ein einzelner Trade gemacht hat -- ``order_id`` ist die Kennung
     # der SCHLIESSENDEN Order und verbindet nichts mit der Eroeffnung.
+    #
+    # Das Geldergebnis steht AUCH hier, obwohl bei einem selbst gesetzten Schluss
+    # beide Preise vorliegen und das Preisergebnis das bessere ist. Grund: traegen es
+    # nur die broker-seitigen Schluesse, dann besteht jede Geldstatistik ausschliesslich
+    # aus Stop-Outs, also aus Verlierern -- derselbe blinde Fleck wie zuvor, nur mit
+    # umgekehrtem Vorzeichen. Der Leser gibt dem Preisergebnis den Vorrang
+    # (``Trade.urteilsquelle``), das Geld ist die Rueckfallebene.
     journal.schreib("geschlossen", symbol=lage.symbol, grund=grund,
                     volumen=lage.volumen, war_kauf=lage.ist_kauf,
                     order_id=ergebnis.venue_order_id,
@@ -253,7 +348,11 @@ def _schliesse(
                     ausstiegspreis=ergebnis.average_price,
                     gefuellt=ergebnis.filled_volume,
                     einstiegspreis=lage.einstiegspreis,
-                    seit=lage.seit)
+                    seit=lage.seit,
+                    ergebnis_geld=lage.unrealisiert,
+                    ergebnis_geld_waehrung=waehrung,
+                    ergebnis_geld_quelle="zuletzt_beobachtet",
+                    zuletzt_swap=lage.swap)
     print(f"  ZU   {lage.symbol} {lage.volumen} ({grund})")
     return True
 
@@ -348,7 +447,7 @@ def _verbindung_sichern(
 
 def _buch_abgleichen(
     venue: Mt5Venue, manager: RiskManager, bekannt: dict[str, Lage],
-    lage: dict[str, Lage], journal: Journal,
+    lage: dict[str, Lage], journal: Journal, *, waehrung: str,
 ) -> bool:
     """Was der Broker geschlossen hat, muss Manager UND Buch erfahren.
 
@@ -368,13 +467,44 @@ def _buch_abgleichen(
         # Was wir noch wissen, gehoert ins Protokoll: der Satz trug frueher NUR das
         # Symbol. Stop, Margin Call oder Handeingriff waren damit ununterscheidbar.
         weg = bekannt[symbol]
+        # KEIN rekonstruierter Ausstiegspreis. Aus Buchwert, Volumen und
+        # Kontraktgroesse liesse sich einer ausrechnen -- und genau das waere die
+        # Sorte Zahl, die dieses Repo sonst ablehnt: sie stuende in
+        # ``ausstiegspreis``, ununterscheidbar von einem gemessenen Fill, und der
+        # Leser rechnete daraus ein ``ergebnis_bps`` in denselben Median wie die
+        # echten. Drei Annahmen steckten in der Umkehrung (Kontraktgroesse,
+        # Umrechnung in die Kontowaehrung, dass der Buchwert Swap und Kommission
+        # wirklich draussen laesst), und die schwerste waere die vierte: der Buchwert
+        # stammt vom ENDE DES VORIGEN TAKTS -- bis zu einen Takt vor dem wirklichen
+        # Schluss --, und ein Stop fuellt ueblicherweise schlechter als der zuletzt
+        # gesehene Kurs. Der Betrag traefe also systematisch zu guenstig.
+        #
+        # Belastbar ist dagegen das VORZEICHEN. Darum geht der Wert als ERGEBNIS IN
+        # KONTOWAEHRUNG ins Protokoll: unter eigenem Namen, mit Waehrung und Herkunft
+        # daneben, und ausdruecklich nicht als Preis. So bleibt der Betrag als
+        # Schaetzung lesbar, waehrend die Ja/Nein-Frage beantwortbar wird. Ohne diese
+        # Auskunft fielen genau die Stop-Outs -- also die Verlierer -- aus jedem
+        # Trefferanteil heraus; gemessen am Lauf vom 17.08.2026: "Trades mit
+        # rechenbarem Ergebnis: 0 von 1".
+        #
+        # Der Kurs zum Zeitpunkt der Erkennung wird hier NICHT zusaetzlich geholt: er
+        # steht als ``kurs``-Satz desselben Takts bereits im Journal (Schritt 1b), und
+        # er ist ohnehin der Preis der Erkennung, nicht der des Schlusses.
         journal.schreib(
             "vom_broker_geschlossen", symbol=symbol, volumen=weg.volumen,
             war_kauf=weg.ist_kauf, position_id=weg.position_id,
             einstiegspreis=weg.einstiegspreis, seit=weg.seit,
             zuletzt_unrealisiert=weg.unrealisiert,
+            zuletzt_swap=weg.swap,
+            ergebnis_geld=weg.unrealisiert,
+            ergebnis_geld_waehrung=waehrung,
+            ergebnis_geld_quelle="zuletzt_beobachtet",
             hinweis=("Zeitpunkt ist der Takt, in dem das Verschwinden auffiel -- "
-                     "bis zu einen Takt spaeter als der wirkliche Schluss."),
+                     "bis zu einen Takt spaeter als der wirkliche Schluss. "
+                     "ergebnis_geld ist der zuletzt beobachtete Buchwert VOR dem "
+                     "Verschwinden, brutto ohne Swap und Kommission: eine "
+                     "Schaetzung des Betrags, keine Messung -- und kein Preis. "
+                     "Ein Ausstiegspreis wird bewusst NICHT rekonstruiert."),
         )
         print(f"  WEG  {symbol} (Broker hat geschlossen, vermutlich Stop)")
     nachher = venue.adopt_book()
@@ -386,7 +516,7 @@ def _buch_abgleichen(
 def _notbremse(
     venue: Mt5Venue, manager: RiskManager, journal: Journal, *,
     equity_jetzt: Decimal, equity_start: Decimal, grenze: Decimal,
-    lage: dict[str, Lage], jetzt: datetime,
+    lage: dict[str, Lage], jetzt: datetime, waehrung: str,
 ) -> bool:
     """Tagesverlustgrenze -- und zwar mit Glattstellung. Gibt True, wenn sie greift.
 
@@ -408,7 +538,8 @@ def _notbremse(
     journal.schreib("notbremse", verlust_anteil=verlust, grenze=grenze,
                     equity_start=equity_start, equity=equity_jetzt)
     for offen in lage.values():
-        _schliesse(venue, manager, offen, jetzt, "notbremse", journal)
+        _schliesse(venue, manager, offen, jetzt, "notbremse", journal,
+                   waehrung=waehrung)
     venue.latch_halt(reason="tagesverlust")
     return True
 
@@ -461,7 +592,8 @@ def takt(
         journal.schreib("kurs", symbol=symbol, bid=q.bid, ask=q.ask, ts_kurs=q.ts)
 
     # 2) Buchfuehrung gleichziehen -- Manager UND Positionsbuch.
-    erklaert = _buch_abgleichen(venue, manager, bekannt, lage, journal)
+    erklaert = _buch_abgleichen(venue, manager, bekannt, lage, journal,
+                                waehrung=konto.currency)
 
     # Der Scheduler laeuft VOR diesem Abgleich und sieht die vom Broker geschlossene
     # Position noch im Buch -- bei max_notional_drift=0 latcht das den Global-Halt.
@@ -485,21 +617,24 @@ def takt(
     # 2b) Notbremse. Vor allem anderen, und sie stellt wirklich glatt.
     if _notbremse(venue, manager, journal, equity_jetzt=konto.equity,
                   equity_start=equity_start, grenze=verlustgrenze,
-                  lage=lage, jetzt=jetzt):
+                  lage=lage, jetzt=jetzt, waehrung=konto.currency):
         return _lage_lesen(venue), True
 
     # 3) Ausstiege. Laufen AUCH bei Halt -- Schliessen muss immer moeglich bleiben.
     for symbol, offen in list(lage.items()):
-        sig, _ = _signal(venue, symbol, jetzt)
+        basis = _signal_mit_protokoll(venue, symbol, jetzt, journal, zweck="ausstieg")
+        sig = basis.signal
         alter = jetzt - offen.seit
         gegen = (offen.ist_kauf and sig is Signal.SHORT) or (
             not offen.ist_kauf and sig is Signal.LONG
         )
         if gegen:
-            _schliesse(venue, manager, offen, jetzt, "signalwechsel", journal)
+            _schliesse(venue, manager, offen, jetzt, "signalwechsel", journal,
+                       waehrung=konto.currency)
         elif alter >= max_haltedauer:
             _schliesse(venue, manager, offen, jetzt,
-                       f"haltedauer_{alter.total_seconds() / 3600:.1f}h", journal)
+                       f"haltedauer_{alter.total_seconds() / 3600:.1f}h", journal,
+                       waehrung=konto.currency)
 
     # 4) Eintritte. Nur wenn kein Halt und noch keine Position im Symbol.
     lage = _lage_lesen(venue)
@@ -509,11 +644,14 @@ def takt(
                 continue
             if not venue.is_trading_open(symbol, at=jetzt):
                 continue
-            sig, warum = _signal(venue, symbol, jetzt)
-            if sig is Signal.FLAT:
+            basis = _signal_mit_protokoll(
+                venue, symbol, jetzt, journal, zweck="eintritt"
+            )
+            if basis.signal is Signal.FLAT:
                 continue
-            journal.schreib("signal", symbol=symbol, signal=sig.name, detail=warum)
-            _eroeffne(venue, manager, symbol, sig, jetzt, zulassung, journal)
+            journal.schreib("signal", symbol=symbol, signal=basis.signal.name,
+                            detail=basis.detail, kerze_ts=basis.kerze_ts)
+            _eroeffne(venue, manager, symbol, basis.signal, jetzt, zulassung, journal)
     return _lage_lesen(venue), False
 
 
@@ -737,7 +875,8 @@ def main() -> int:
                 jetzt = datetime.now(UTC)
                 for offen in _lage_lesen(venue).values():
                     if not _schliesse(venue, manager, offen, jetzt,
-                                      "lauf_beendet", journal):
+                                      "lauf_beendet", journal,
+                                      waehrung=konto.currency):
                         offen_geblieben.append(offen.symbol)
                 offen_geblieben += list(_lage_lesen(venue))
         except VenueError as exc:

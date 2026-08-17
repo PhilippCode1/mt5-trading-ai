@@ -342,8 +342,46 @@ class Mt5Venue(TradingVenue):
         start: datetime,
         end: datetime,
     ) -> tuple[Bar, ...]:
+        """Bars im Fenster, aufsteigend -- und jede mit dem Vermerk, ob sie steht.
+
+        ``copy_rates_range`` liefert bei ``end=jetzt`` die noch **in Bildung**
+        befindliche Kerze mit. Deren ``close`` ist der momentane Kurs. Ungekennzeichnet
+        weitergereicht rechnet der Live-Treiber seinen gleitenden Durchschnitt auf einer
+        Zahl, die es im Backtest nicht gibt -- dort kommen die Kerzen abgeschlossen aus
+        Dateien. Darum traegt jede Bar hier ``is_closed``.
+
+        **Woher die Gegenwart kommt, ist die ganze Frage.** Sie kommt vom Platz
+        (``get_quote(...).ts``, also der Zeitstempel des letzten Ticks), nicht von
+        ``self._clock`` und nicht aus ``end``:
+
+        * Die Rechneruhr waere genau der Fehler, den dieses Repo schon einmal gemacht
+          hat -- eine Sperre, die per Konstruktion nie ausloest, weil sie Systemzeit
+          gegen Systemzeit haelt. Hier waere er sogar schlimmer als dort: Kerzen- und
+          Tick-Stempel laufen beide durch ``RealMt5Terminal._utc``. Ist ``server_tz``
+          nicht gesetzt, tragen sie die Wanduhr des Servers unter dem Etikett UTC. Ein
+          Vergleich gegen echte UTC-Systemzeit haette dann den vollen Serverversatz
+          (an diesem Broker 2-3 Stunden) drin und wuerde -- bei einem Server hinter UTC
+          -- die laufende Kerze als abgeschlossen ausweisen. Fail-open, unbemerkt.
+        * ``end`` ist Wunsch des Aufrufers, keine Messung. Ein zu grosses ``end``
+          erklaerte jede Kerze fuer offen, ein zu kleines die laufende fuer fertig.
+        * Der Tick-Stempel dagegen kommt durch **dieselbe** Umrechnung wie ``rate.ts``.
+          Beide stehen damit in derselben Zeitrechnung, egal ob gedreht wird oder
+          nicht -- der Vergleich traegt in beiden Faellen.
+
+        Der Tick wird **vor** den Rates geholt. Vergeht zwischen beiden Abrufen eine
+        Intervallgrenze, ist die Gegenwart dann eher zu alt als zu neu: eine bereits
+        fertige Kerze gilt einmal zu Unrecht als laufend (verschenkt), statt eine
+        laufende als fertig (falsch gerechnet). Nur eine der beiden Richtungen ist
+        verzeihlich.
+
+        ``get_quote`` wirft ohne Tick :class:`VenueUnavailableError` -- ohne Platzzeit
+        ist nicht entscheidbar, welche Kerze steht, und nicht entscheidbar heisst hier
+        nicht abgeschlossen genug zum Handeln. Fail-closed statt raten.
+        """
         self._require_healthy()
         self.get_instrument(symbol)
+        jetzt = self.get_quote(symbol).ts
+        dauer = timeframe.duration
         rates = self._terminal.rates(symbol, timeframe, start, end)
         bars = [
             Bar(
@@ -355,6 +393,10 @@ class Mt5Venue(TradingVenue):
                 low=rate.low,
                 close=rate.close,
                 tick_volume=rate.tick_volume,
+                # Abgeschlossen ist das Intervall erst, wenn seine Grenze erreicht ist.
+                # ``<=`` und nicht ``<``: zum Zeitpunkt ``ts + dauer`` laeuft bereits
+                # die naechste Kerze, die vorige ist fertig.
+                is_closed=rate.ts + dauer <= jetzt,
                 volume=rate.real_volume,
                 spread_avg_points=rate.spread_points,
             )

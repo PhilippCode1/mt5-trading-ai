@@ -11,7 +11,11 @@ A1.1  Historientiefe je Instrument und Zeitrahmen.
 A1.2  Herkunft: die gelesene Reihe wird gehasht und mit Manifest abgelegt. Die
       Pruefsumme ist die ``data_checksum``, die ``gates/trials.py`` verlangt.
 A1.3  Fensterstreuung, **gemessen** statt aus dem ATR skaliert, und daraus die
-      Aufloesung je Kombination aus Instrument und Fensterlaenge.
+      Aufloesung je Kombination aus Instrument und Fensterlaenge. Gerechnet wird gegen
+      die Stichprobe, die das Deflationsurteil sieht -- das Out-of-Sample-Drittel der
+      Ereignisstudie --, nicht gegen die volle Ereigniszahl. ``OOS_ANTEIL`` wird dafuer
+      aus ``backtest/ereignisstudie.py`` GELESEN und nicht hier wiederholt: eine Zahl,
+      die an zwei Stellen steht, geht an einer davon irgendwann falsch.
 
 LAUT SCHEITERN, NIE STILL
 -------------------------
@@ -39,10 +43,12 @@ REPO = Path(__file__).resolve().parents[1]
 if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
 
+from mt5_trading_ai.backtest.ereignisstudie import OOS_ANTEIL  # noqa: E402
 from mt5_trading_ai.backtest.resolution import (  # noqa: E402
     RESOLUTION_POLICY_VERSION,
     ResolutionError,
     assess,
+    deflation_observations,
     dispersion_bps,
     min_events_for_resolution,
     window_returns_bps,
@@ -101,9 +107,14 @@ FENSTER: tuple[tuple[str, float], ...] = (
 )
 
 #: Ereignisfrequenzen der Kandidaten aus §5 des Auftrags, je Jahr.
-#: DIES ist die Ereigniszahl, gegen die deflationiert wird -- nicht die Zahl der
-#: verfuegbaren Fenster. Ein taegliches Ereignis liefert je Handelstag EIN Ereignis,
-#: auch wenn der Tag sechs Vier-Stunden-Fenster enthaelt.
+#: DIES ist die Ereigniszahl des Kandidaten -- nicht die Zahl der verfuegbaren Fenster.
+#: Ein taegliches Ereignis liefert je Handelstag EIN Ereignis, auch wenn der Tag sechs
+#: Vier-Stunden-Fenster enthaelt.
+#:
+#: Es ist auch NICHT die Zahl, gegen die deflationiert wird: die Deflation der
+#: Ereignisstudie laeuft auf dem Out-of-Sample-Drittel. Die Umrechnung macht
+#: ``resolution.assess`` selbst, es muss ihr nur der Anteil genannt werden -- siehe
+#: ``OOS_ANTEIL``.
 FREQUENZEN: tuple[tuple[str, int], ...] = (
     ("taeglich", 252),
     ("monatlich", 12),
@@ -273,12 +284,16 @@ def messen() -> int:
         "Die Ereigniszahl N kommt aus der Kandidatenfrequenz — ein taegliches Ereignis"
     )
     print("liefert je Handelstag EIN Ereignis, auch wenn der Tag sechs 4h-Fenster hat.")
+    print(
+        f"Gerechnet wird gegen N_defl: die Deflation der Ereignisstudie laeuft auf dem "
+        f"Out-of-Sample-Anteil von {OOS_ANTEIL:.4f}, nicht auf allen Ereignissen."
+    )
     print()
     print(f"{'Symbol':<8} {'Fenster':<8} {'Streuung':>10} {'Fenster':>9} {'K':>7} "
-          f"{'3xK':>7}   {'Frequenz':<10} {'N':>7} {'nachweisb.':>11} {'Verh.':>7}  "
-          f"Urteil")
+          f"{'3xK':>7}   {'Frequenz':<10} {'N':>7} {'N_defl':>7} {'nachweisb.':>11} "
+          f"{'Verh.':>7}  Urteil")
     print(f"{'':<8} {'':<8} {'(bp)':>10} {'(Anz.)':>9} {'(bp)':>7} {'(bp)':>7}   "
-          f"{'':<10} {'':>7} {'(bp)':>11}")
+          f"{'':<10} {'':>7} {'':>7} {'(bp)':>11}")
 
     eintraege: list[dict[str, Any]] = []
     for symbol in INSTRUMENTE:
@@ -310,7 +325,11 @@ def messen() -> int:
                     continue
                 try:
                     urteil = assess(
-                        events=ereignisse, trials=TRIALS, dispersion=streu, cost_bps=k
+                        events=ereignisse,
+                        trials=TRIALS,
+                        dispersion=streu,
+                        cost_bps=k,
+                        oos_share=OOS_ANTEIL,
                     )
                 except ResolutionError as exc:
                     print(f"{symbol:<8} {fenster_name:<8} {freq_name:<10} — {exc}")
@@ -318,7 +337,7 @@ def messen() -> int:
                 marke = "AUFLOESBAR" if urteil.resolvable else "blind"
                 print(f"{symbol:<8} {fenster_name:<8} {streu:>10.2f} "
                       f"{len(renditen):>9} {k:>7.2f} {urteil.needed_bps:>7.2f}   "
-                      f"{freq_name:<10} {ereignisse:>7} "
+                      f"{freq_name:<10} {ereignisse:>7} {urteil.deflation_events:>7} "
                       f"{urteil.detectable_bps:>11.2f} {urteil.ratio:>7.2f}  {marke}")
                 eintraege.append({
                     "instrument": symbol,
@@ -329,6 +348,8 @@ def messen() -> int:
                     "frequency": freq_name,
                     "events_per_year": pro_jahr,
                     "events": ereignisse,
+                    "oos_share": OOS_ANTEIL,
+                    "deflation_events": urteil.deflation_events,
                     "dispersion_bps": round(streu, 4),
                     "cost_bps": round(k, 4),
                     "required_sharpe": round(urteil.required_sharpe, 6),
@@ -337,7 +358,10 @@ def messen() -> int:
                     "ratio": round(urteil.ratio, 4),
                     "resolvable": urteil.resolvable,
                     "min_events_for_resolution": min_events_for_resolution(
-                        trials=TRIALS, dispersion=streu, cost_bps=k
+                        trials=TRIALS,
+                        dispersion=streu,
+                        cost_bps=k,
+                        oos_share=OOS_ANTEIL,
                     ),
                 })
         print()
@@ -349,16 +373,22 @@ def messen() -> int:
     print("=" * 96)
     for e in aufloesbar:
         print(f"  {e['instrument']:<8} {e['window']:<4} {e['frequency']:<10} "
-              f"N={e['events']:<6} Verhaeltnis {e['ratio']}")
+              f"N={e['events']:<6} N_defl={e['deflation_events']:<6} "
+              f"Verhaeltnis {e['ratio']}")
     print()
 
     dokument: dict[str, Any] = {
-        "schema_version": 1,
+        # 2 (Paket 3b, E2): jede Zeile fuehrt jetzt ``oos_share`` und
+        # ``deflation_events``. Eine Datei nach Schema 1 traegt Verhaeltnisse, die
+        # gegen die volle Ereigniszahl gerechnet sind, und ist damit zu guenstig --
+        # ``pruefen()`` faellt darauf ausdruecklich rot.
+        "schema_version": 2,
         "resolution_id": RESOLUTION_POLICY_VERSION,
         "measured_on": datetime.now(UTC).date().isoformat(),
         "trials_assumed": TRIALS,
         "dsr_threshold": 0.95,
         "cost_factor": 3.0,
+        "oos_share": OOS_ANTEIL,
         "note": (
             "Fensterstreuung als Standardabweichung nicht ueberlappender "
             "Fensterrenditen, gemessen ueber den lesenden MT5-Demo-Pfad. K je "
@@ -367,7 +397,10 @@ def messen() -> int:
             "Historientiefe, NICHT aus der Zahl verfuegbarer Fenster: ein taegliches "
             "Ereignis liefert je Handelstag ein Ereignis, auch wenn der Tag sechs "
             "Vier-Stunden-Fenster enthaelt. Die Fensterzahl steht daneben und dient "
-            "nur der Streuungsmessung."
+            "nur der Streuungsmessung. Gerechnet wird nicht gegen N, sondern gegen "
+            "deflation_events: die Deflation der Ereignisstudie laeuft auf dem "
+            "Out-of-Sample-Anteil (oos_share), und nur diese Beobachtungen sieht das "
+            "Urteil, das die Aufloesungsrechnung umkehrt."
         ),
         "retrieval_log": protokolle,
         "entries": eintraege,
@@ -528,22 +561,125 @@ def gegenprobe(csv_pfad: Path, *, schwelle: float = 2.0) -> int:
     return 0
 
 
-def pruefen() -> int:
-    if not OUT.is_file():
-        print(f"FEHLGESCHLAGEN — {OUT.name} fehlt.", file=sys.stderr)
+def pruefen(pfad: Path | None = None) -> int:
+    """Die abgelegte Messdatei nachrechnen -- ohne MT5, aber mit Urteil.
+
+    Diese Pruefung hat frueher nur gezaehlt, ob ueberhaupt Eintraege dastehen. Damit war
+    sie eine Ampel, die nicht rot werden konnte: eine Datei mit falschen Verhaeltnissen
+    haette sie genauso bestanden wie eine richtige -- und genau das ist passiert. Die
+    abgelegten Verhaeltnisse waren gegen die volle Ereigniszahl gerechnet, obwohl die
+    Deflation nur das Out-of-Sample-Drittel sieht.
+
+    Jetzt wird jede Zeile mit ``resolution.assess`` nachgerechnet. Nachgerechnet, nicht
+    nachgebaut: es ist dasselbe Modul, das die Datei erzeugt hat, und ein Auseinander-
+    laufen kann nur noch heissen, dass die Datei aelter ist als das Modul.
+    """
+    ziel = OUT if pfad is None else pfad
+    if not ziel.is_file():
+        print(f"FEHLGESCHLAGEN — {ziel.name} fehlt.", file=sys.stderr)
         return 1
-    roh = json.loads(OUT.read_text(encoding="utf-8"))
+    roh = json.loads(ziel.read_text(encoding="utf-8"))
     eintraege = roh.get("entries", [])
     if not eintraege:
         print("FEHLGESCHLAGEN — Datei ohne Eintraege.", file=sys.stderr)
         return 1
+
+    trials = roh.get("trials_assumed")
+    if not isinstance(trials, int):
+        print(f"FEHLGESCHLAGEN — {ziel.name} ohne trials_assumed.", file=sys.stderr)
+        return 1
+
+    # Fehlt der Anteil, stammt die Datei aus der Zeit vor der Korrektur. Sie wird dann
+    # so nachgerechnet, wie sie entstanden ist (voller Anteil) -- damit ihre Zahlen
+    # weiter erklaerbar bleiben -- und daneben so, wie es richtig gewesen waere.
+    veraltet = "oos_share" not in roh
+    anteil = 1.0 if veraltet else float(roh["oos_share"])
+
+    abweichungen: list[str] = []
+    for e in eintraege:
+        try:
+            nach = assess(
+                events=int(e["events"]),
+                trials=trials,
+                dispersion=float(e["dispersion_bps"]),
+                cost_bps=float(e["cost_bps"]),
+                oos_share=anteil,
+            )
+        except (ResolutionError, KeyError, TypeError, ValueError) as exc:
+            abweichungen.append(
+                f"{e.get('instrument')}/{e.get('window')}/{e.get('frequency')}: "
+                f"nicht nachrechenbar — {exc}"
+            )
+            continue
+        if abs(nach.ratio - float(e["ratio"])) > 1e-3:
+            abweichungen.append(
+                f"{e['instrument']}/{e['window']}/{e['frequency']}: Datei sagt "
+                f"{e['ratio']}, nachgerechnet {nach.ratio:.4f}"
+            )
+        elif bool(e["resolvable"]) != nach.resolvable:
+            abweichungen.append(
+                f"{e['instrument']}/{e['window']}/{e['frequency']}: Urteil in der "
+                f"Datei {e['resolvable']}, nachgerechnet {nach.resolvable}"
+            )
+
+    if abweichungen:
+        print(f"FEHLGESCHLAGEN — {len(abweichungen)} Zeile(n) rechnen sich nicht nach:",
+              file=sys.stderr)
+        for zeile in abweichungen:
+            print(f"  {zeile}", file=sys.stderr)
+        return 1
+
     aufloesbar = [e for e in eintraege if e.get("resolvable")]
-    print(f"ok — {OUT.name} ladbar: {len(aufloesbar)} von {len(eintraege)} "
-          f"Kombinationen aufloesbar (T = {roh.get('trials_assumed')}).")
+    print(f"ok — {ziel.name} nachgerechnet: {len(aufloesbar)} von {len(eintraege)} "
+          f"Kombinationen aufloesbar (T = {trials}, Out-of-Sample-Anteil {anteil}).")
     for e in aufloesbar:
         print(f"  {e['instrument']:<8} {e['window']:<4} {e['frequency']:<10} "
               f"N={e['events']:<6} Verhaeltnis {e['ratio']}")
+
+    if veraltet:
+        print(file=sys.stderr)
+        print(f"FEHLGESCHLAGEN — {ziel.name} fuehrt kein oos_share und ist damit gegen "
+              "die VOLLE Ereigniszahl gerechnet.", file=sys.stderr)
+        print("Die Deflation der Ereignisstudie sieht nur das Out-of-Sample-Drittel; "
+              "die Verhaeltnisse oben sind rund Faktor 1,7 zu guenstig.",
+              file=sys.stderr)
+        for zeile in _korrigiert(eintraege, trials):
+            print(f"  {zeile}", file=sys.stderr)
+        print("Abhilfe: `python tools/aufloesung.py` neu messen (braucht MT5).",
+              file=sys.stderr)
+        return 1
     return 0
+
+
+def _korrigiert(eintraege: list[dict[str, Any]], trials: int) -> list[str]:
+    """Welche Zeilen einer Schema-1-Datei ihr Urteil wechseln, wenn richtig gerechnet.
+
+    Steht getrennt, weil diese Liste der eigentliche Befund ist und nicht in einer
+    Fehlermeldung untergehen soll.
+    """
+    out: list[str] = []
+    for e in eintraege:
+        try:
+            nach = assess(
+                events=int(e["events"]),
+                trials=trials,
+                dispersion=float(e["dispersion_bps"]),
+                cost_bps=float(e["cost_bps"]),
+                oos_share=OOS_ANTEIL,
+            )
+        except (ResolutionError, KeyError, TypeError, ValueError):
+            continue
+        if nach.resolvable == bool(e["resolvable"]):
+            continue
+        out.append(
+            f"{e['instrument']:<8} {e['window']:<4} {e['frequency']:<10} "
+            f"N={e['events']:<6} N_defl="
+            f"{deflation_observations(int(e['events']), oos_share=OOS_ANTEIL):<6} "
+            f"{e['ratio']} -> {nach.ratio:.4f}  "
+            f"{'aufloesbar' if e['resolvable'] else 'blind'} -> "
+            f"{'aufloesbar' if nach.resolvable else 'blind'}"
+        )
+    return out
 
 
 def main() -> int:
@@ -553,7 +689,9 @@ def main() -> int:
         description="A1: Historientiefe, Herkunft und Fensterstreuung messen."
     )
     parser.add_argument(
-        "--check", action="store_true", help="nur die vorhandene Datei pruefen"
+        "--check",
+        action="store_true",
+        help="die vorhandene Datei Zeile fuer Zeile nachrechnen (ohne MT5)",
     )
     parser.add_argument(
         "--gegenprobe",

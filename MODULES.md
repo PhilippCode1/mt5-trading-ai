@@ -43,7 +43,7 @@ Backtest-Maschine: fuehrt Splits, Daten und Kostenmodell zusammen.
 
 ## `mt5_trading_ai/backtest/ereignisstudie.py`
 
-Zeilen: 331
+Zeilen: 500
 
 Ereignisstudie — traegt eine bekannte Zwangslage mehr als ihre Kosten?
 
@@ -52,6 +52,10 @@ Ereignisstudie — traegt eine bekannte Zwangslage mehr als ihre Kosten?
 - `class Ereigniswert`
 - `class Bestaetigung`
 - `class Ergebnis`
+- `def reihen_pruefsumme`
+- `def friere_reihe_ein`
+- `def lade_reihe`
+- `def pruefe_deckung`
 - `def messe_ereignis`
 - `def balkenstunden`
 - `def studie`
@@ -59,13 +63,14 @@ Ereignisstudie — traegt eine bekannte Zwangslage mehr als ihre Kosten?
 
 ## `mt5_trading_ai/backtest/kalender.py`
 
-Zeilen: 343
+Zeilen: 373
 
 Ereigniskalender — wann genau ist das Ereignis, in echtem UTC?
 
 - `class KalenderError`
 - `def server_zu_utc`
 - `def utc_zu_server`
+- `def verlange_echtes_utc`
 - `class Kandidat`
 - `def ereignisse`
 - `def kandidat`
@@ -94,12 +99,13 @@ Herkunft eines Backtest-Laufs: der Codestand aus git (Paket 6).
 
 ## `mt5_trading_ai/backtest/resolution.py`
 
-Zeilen: 221
+Zeilen: 302
 
 Aufloesung einer Ereignisstudie — kann sie den Effekt ueberhaupt sehen?
 
 - `class ResolutionError`
 - `class ResolutionVerdict`
+- `def deflation_observations`
 - `def required_sharpe`
 - `def window_returns_bps`
 - `def dispersion_bps`
@@ -129,7 +135,7 @@ Einfache, ernsthafte Signallogiken fuer den Edge-Test -- ohne Optimierung.
 
 ## `mt5_trading_ai/betrieb/journal.py`
 
-Zeilen: 315
+Zeilen: 442
 
 Betriebsjournale lesen -- die eine Stelle, an der aus Zeilen Aussagen werden.
 
@@ -290,17 +296,18 @@ Mehrteilige Freigabe fuer Order-Submit an einen echten Markt.
 
 ## `mt5_trading_ai/execution/risk_manager.py`
 
-Zeilen: 378
+Zeilen: 448
 
 Risikoschicht am Order-Pfad: die vier Grenzen als letzte Verteidigungslinie.
 
 - `class RiskPolicy`
 - `class RiskAuthorization`
+- `def measured_cost_from_meta`
 - `class RiskManager`
 
 ## `mt5_trading_ai/execution/runner.py`
 
-Zeilen: 362
+Zeilen: 411
 
 Integrierender Paper/Dry-Run-Runner (Paket 7): die eine beweisbare Kette.
 
@@ -320,7 +327,7 @@ Treiber-Loop/Scheduler (Paket 7): Frische, Drift und Drawdown-Peak getaktet prue
 
 ## `mt5_trading_ai/gates/criteria.py`
 
-Zeilen: 348
+Zeilen: 390
 
 Vorregistrierte Kriterien und ihre Auswertung (Phase 9.3).
 
@@ -371,7 +378,7 @@ Lernphase: bewerten und ordnen (Phase 9.5).
 
 ## `mt5_trading_ai/gates/trials.py`
 
-Zeilen: 222
+Zeilen: 263
 
 Trials-Ledger (Phase 9.4) — ``TRIALS.jsonl``, ausschliesslich anhaengend.
 
@@ -383,6 +390,7 @@ Trials-Ledger (Phase 9.4) — ``TRIALS.jsonl``, ausschliesslich anhaengend.
 - `def iter_trials`
 - `def trial_count`
 - `def total_trials`
+- `def deflation_trials`
 - `class LedgerIntegrity`
 - `def check_integrity`
 
@@ -429,11 +437,12 @@ Risiko je Trade, ausfuehrbarer Stop-Floor und Positionsgroesse (Phase 6.2/6.3).
 
 ## `mt5_trading_ai/risk/stop_budget.py`
 
-Zeilen: 163
+Zeilen: 269
 
 Stop-Budget je Anlageklasse — hergeleitet, nicht uebertragen (Phase 6.5).
 
 - `class StopBudget`
+- `def cost_bps_from_fraction`
 - `def cost_floor_bps`
 - `def margin_ceiling_bps`
 - `def stop_budget`
@@ -473,7 +482,7 @@ Der Halal-Screen: das mechanisch Pruefbare erzwingen, die fiqh-Grenze benennen (
 
 ## `mt5_trading_ai/venue/mt5.py`
 
-Zeilen: 1365
+Zeilen: 1407
 
 MT5-Anbindung an das ``TradingVenue``-Protokoll.
 
@@ -489,7 +498,7 @@ MT5-Anbindung an das ``TradingVenue``-Protokoll.
 
 ## `mt5_trading_ai/venue/protocol.py`
 
-Zeilen: 285
+Zeilen: 348
 
 Plattformunabhaengiger Handelsplatz-Vertrag.
 

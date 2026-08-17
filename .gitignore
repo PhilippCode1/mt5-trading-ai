@@ -27,4 +27,10 @@ htmlcov/
 .env
 .env.*
 !.env.example
-betrieb/
+# Die Journale der Betriebslaeufe im Wurzelverzeichnis -- Laufzeitdaten, kein Quellcode.
+# Der fuehrende Schraegstrich ist zwingend: ohne ihn greift die Regel in JEDEM
+# Verzeichnis und hat das komplette Paket mt5_trading_ai/betrieb/ (den Journal-Leser
+# samt seiner 22 Tests) aus der Versionierung geworfen -- unbemerkt, weil es lokal ja
+# vorhanden war. Ein frischer Klon konnte tools/betrieb_auswerten.py,
+# tools/betrieb_reihe.py, tools/oberflaeche.py und drei Testdateien nicht importieren.
+/betrieb/

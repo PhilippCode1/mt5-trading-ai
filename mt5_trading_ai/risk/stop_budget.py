@@ -39,6 +39,38 @@ Liquidationsangst.
 Ist die Untergrenze groesser als die Obergrenze, ist die Kombination aus Klasse
 und Hebel nicht handelbar: ``no_trade``, keine Aufweichung.
 
+**Kostenbasis -- warum die Annahmetabelle nicht stillschweigend einspringt.**
+Die Untergrenze ist nur so belastbar wie die Zahl ``C``. Die Werte in
+``ASSUMED_ROUND_TURN_COST_BPS`` sind ausdruecklich Annahmen, und sie sind nicht
+konservativ, sondern **schmeichelnd**: fuer ``fx_major`` stehen dort 0,65 bp,
+waehrend das Kostentor am Live-Bid/Ask des scharfen Laufs 1,55 bp gemessen hat.
+Die Untergrenze faellt damit auf 6,5 statt 15,5 bp -- Faktor 2,4 zugunsten des
+Handels, und die Zusage ``max_cost_drag`` (Nulldurchgang hoechstens 55 %) waere
+bei jedem so eroeffneten Trade gerissen, ohne dass es jemand saehe.
+
+Ein Rueckfall auf die Tabelle ist deshalb **kein sicherer Vorgabewert**: er
+senkt die Sperre, statt sie zu halten. Daraus folgen drei Regeln, und sie sind
+der Grund fuer die Form der Schnittstelle:
+
+1. Liegt eine Messung vor, schlaegt sie die Tabelle **immer**.
+2. Liegt keine vor, traegt das Ergebnis ``cost_is_measured=False`` und
+   ``cost_basis == "annahme"``. Die Basis reist mit dem Ergebnis mit, damit sie
+   kein Aufrufer uebersehen kann; ``execution/risk_manager.py`` reicht sie als
+   ``cost_basis`` in die Autorisierung durch, der Runner druckt sie in die
+   Checkliste. Still ist der Rueckfall an keiner Stelle.
+3. Wer nicht auf Annahmen handeln darf, setzt ``require_measured_cost=True``:
+   dann ist die fehlende Messung ``no_trade`` (``cost_not_measured``) und nicht
+   Tabelle. Der Order-Pfad des Runners misst die Kosten im Schritt "Kostentor"
+   selbst und setzt den Schalter; die Tabelle bleibt fuer Herleitung, Doku und
+   Backtest, wo keine Order entsteht.
+
+Warum ``require_measured_cost`` nicht schon per Vorgabe gilt: es gibt Aufrufer
+am Order-Pfad, die heute noch keine Messung mitfuehren (eine von Hand gebaute
+``OrderRequest`` am Venue, die Schreibprobe in ``venue/smoke.py``). Die Vorgabe
+umzustellen wuerde sie ohne Ersatz sperren, und ihre Dateien gehoeren nicht zu
+diesem Auftrag. Bis dahin gilt: sichtbar statt still — und der einzige Pfad, der
+heute wirklich eroeffnet (``execution/runner.py``), misst.
+
 **Aufrufer (Paket 4):** ``execution/risk_manager.py`` fahrt ``stop_budget`` fuer jede
 eroeffnende Live-Order; ein untradeables Budget lehnt die Order fail-closed ab.
 """
@@ -48,11 +80,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from decimal import Decimal
 
-STOP_BUDGET_POLICY_VERSION = "stop-budget-v2-per-class"
+STOP_BUDGET_POLICY_VERSION = "stop-budget-v3-measured-cost"
 
 #: Round-Turn-Kosten je Klasse in Basispunkten. **Annahmen**, keine Messungen —
 #: vor dem ersten Backtest gegen den Demo-Feed des gewaehlten Brokers zu ersetzen
-#: (Phase 7.3, geschichtete Stichprobe).
+#: (Phase 7.3, geschichtete Stichprobe). Die Schluessel sind zugleich das
+#: Verzeichnis der bekannten Anlageklassen (deckungsgleich mit ``AssetClass``):
+#: eine Klasse, die hier fehlt, ist unbekannt und damit ``no_trade`` -- auch dann,
+#: wenn eine Messung vorliegt. Eine Messung ersetzt die Kostenzahl, nicht das
+#: Wissen darueber, was da gehandelt werden soll.
 ASSUMED_ROUND_TURN_COST_BPS: dict[str, Decimal] = {
     "fx_major": Decimal("0.65"),
     "fx_minor": Decimal("4.0"),
@@ -83,6 +119,37 @@ class StopBudget:
     def allows(self, stop_bps: Decimal) -> bool:
         return self.tradeable and self.lower_bps <= stop_bps <= self.upper_bps
 
+    @property
+    def cost_basis(self) -> str:
+        """Woher ``cost_bps`` stammt: ``gemessen`` oder ``annahme``.
+
+        Ein Wort statt eines Wahrheitswerts, weil diese Zeile in Protokolle und
+        Checklisten wandert und dort gelesen wird. Die Basis gehoert zum
+        Ergebnis, nicht in den Kopf des Aufrufers.
+        """
+        return "gemessen" if self.cost_is_measured else "annahme"
+
+
+def cost_bps_from_fraction(cost_fraction: Decimal) -> Decimal:
+    """Kostenquote des Kostentors (Anteil am Notional) in Basispunkte.
+
+    Die **eine** Umrechnung zwischen ``execution/cost_gate.py`` (rechnet einen
+    Anteil) und dieser Datei (rechnet in bp). Sie steht hier, damit der Faktor
+    10000 nicht an jeder Aufrufstelle neu auftaucht -- an zwei Orten ist er
+    einmal zu oft.
+
+    Fail-closed: eine nicht endliche oder nicht positive Quote ist ein Defekt der
+    Messung und keine Zahl. Roundturn-Kosten sind Spread + Kommission + Slippage
+    und damit echt positiv; eine 0 hiesse kostenloses Handeln und wuerde die
+    Untergrenze auf 0 druecken -- genau der Rueckfall, den dieses Modul
+    verhindert.
+    """
+    if not cost_fraction.is_finite() or cost_fraction <= 0:
+        raise ValueError(
+            f"gemessene Kostenquote muss endlich und positiv sein, ist {cost_fraction}"
+        )
+    return cost_fraction * Decimal("10000")
+
 
 def cost_floor_bps(
     cost_bps: Decimal, *, max_cost_drag: Decimal = Decimal("0.05")
@@ -111,13 +178,31 @@ def stop_budget(
     measured_cost_bps: Decimal | None = None,
     max_cost_drag: Decimal = Decimal("0.05"),
     safety: Decimal = Decimal("3"),
+    require_measured_cost: bool = False,
 ) -> StopBudget:
-    """Budgetspanne je Klasse und Hebel. Gemessene Kosten schlagen Annahmen."""
-    key = str(asset_class).strip().lower()
-    measured = measured_cost_bps is not None
-    cost = measured_cost_bps if measured else ASSUMED_ROUND_TURN_COST_BPS.get(key)
+    """Budgetspanne je Klasse und Hebel. Gemessene Kosten schlagen Annahmen.
 
-    if cost is None:
+    ``measured_cost_bps`` sind die am Markt gemessenen Roundturn-Kosten dieser
+    Order (aus ``execution/cost_gate.py`` ueber ``cost_bps_from_fraction``).
+    ``require_measured_cost=True`` macht ihr Fehlen zu ``no_trade`` statt zum
+    Griff in die Annahmetabelle -- die Begruendung steht im Modul-Docstring
+    unter "Kostenbasis"; kurz: die Tabelle ist schmeichelnd, nicht konservativ,
+    und ein schmeichelnder Vorgabewert ist kein fail-closed.
+
+    Die Klasse wird **vor** der Kostenbasis geprueft. Eine Messung liefert die
+    Kostenzahl, aber sie macht eine unbekannte Anlageklasse nicht bekannt --
+    sonst haette das Durchreichen der Messung die Klassensperre still entwertet.
+    """
+    key = str(asset_class).strip().lower()
+    if measured_cost_bps is not None and (
+        not measured_cost_bps.is_finite() or measured_cost_bps <= 0
+    ):
+        raise ValueError(
+            f"measured_cost_bps muss endlich und positiv sein, ist {measured_cost_bps}"
+        )
+    measured = measured_cost_bps is not None
+
+    if key not in ASSUMED_ROUND_TURN_COST_BPS:
         return StopBudget(
             lower_bps=Decimal("0"),
             upper_bps=Decimal("0"),
@@ -128,6 +213,27 @@ def stop_budget(
             reason="unknown_asset_class",
             cost_is_measured=False,
         )
+
+    if not measured and require_measured_cost:
+        # Kein stiller Rueckfall auf die Annahme: der Aufrufer hat erklaert, dass
+        # er die Zusage ``max_cost_drag`` belegen muss, und ohne Messung kann er
+        # das nicht. Nicht handeln ist die einzige Antwort, die nicht luegt.
+        return StopBudget(
+            lower_bps=Decimal("0"),
+            upper_bps=Decimal("0"),
+            cost_bps=Decimal("0"),
+            asset_class=key,
+            leverage=leverage,
+            tradeable=False,
+            reason="cost_not_measured",
+            cost_is_measured=False,
+        )
+
+    cost = (
+        measured_cost_bps
+        if measured_cost_bps is not None
+        else ASSUMED_ROUND_TURN_COST_BPS[key]
+    )
 
     lower = cost_floor_bps(cost, max_cost_drag=max_cost_drag)
     upper = margin_ceiling_bps(leverage, safety=safety)

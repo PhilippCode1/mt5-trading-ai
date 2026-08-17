@@ -12,7 +12,8 @@ Die Bedingung hat drei Zutaten und lautet::
 
     noetige_Sharpe(N, T) x Fensterstreuung  <=  wirtschaftlich noetiger Effekt
 
-* **N** ist die Ereigniszahl. Sie folgt aus Ereignisfrequenz und Historientiefe.
+* **N** ist die Zahl der Beobachtungen, die das Deflationsurteil TATSAECHLICH sieht --
+  nicht die Ereigniszahl des Kandidaten. Siehe den naechsten Abschnitt.
 * **T** ist die Zahl der Versuche, gegen die deflationiert wird. Sie treibt die noetige
   Sharpe nach oben — wer viel sucht, muss mehr finden.
 * **Fensterstreuung** ist die Standardabweichung der Fensterrendite, in Basispunkten.
@@ -23,11 +24,31 @@ Ist die Bedingung verletzt, wird der Kandidat **vor** der Messung ausgesondert. 
 kostet keinen Versuch und ist selbst ein Ergebnis: „diese Frage ist mit diesen Daten
 nicht beantwortbar, und hier ist die Rechnung dazu."
 
+N IST NICHT DIE EREIGNISZAHL
+----------------------------
+Der einzige Grund, warum ``required_sharpe`` ueberhaupt eine Beobachtungszahl braucht,
+ist das Deflationsurteil -- und das laeuft in der Ereignisstudie nicht auf allen
+Ereignissen, sondern auf dem **Out-of-Sample-Teil**
+(``ereignisstudie.bestaetige``: ``bereinigt[int(n * (1 - OOS_ANTEIL)):]``, also einem
+Drittel). Wer die volle Ereigniszahl einsetzt, rechnet die Huerde um Wurzel(3), also
+rund Faktor 1,7, zu klein -- und damit in genau der Richtung, die schmeichelt.
+
+Darum ist ``oos_share`` in ``assess`` ein **pflichtiges** Argument ohne Vorgabewert.
+Ein Vorgabewert von 1,0 waere ein stiller Rueckfall auf ebenjenen Fehler: der Aufruf
+saehe unveraendert richtig aus und rechnete unveraendert falsch. Wer die Deflation auf
+der ganzen Stichprobe fuehrt, sagt das mit ``oos_share=1.0`` ausdruecklich.
+
+Diese Stelle ist die zweite Auspraegung des Fehlers, der in
+``ABSCHLUSS-3a/09-EIGENE-FEHLER.md`` unter Nr. 6 steht: dort lief die Rechnung gegen die
+geplante statt die messbare Ereigniszahl, hier gegen die gemessene statt die
+deflationierte. Beide Male ist die eingesetzte Stichprobe groesser als die, auf der das
+Urteil faellt.
+
 DIE UMKEHRUNG, DIE DEN AUSSCHLAG GIBT
 --------------------------------------
-Die noetige Sharpe faellt mit der Wurzel der Ereigniszahl, die Fensterstreuung waechst
-mit der Wurzel der Fensterlaenge. Beides zusammen heisst: **haeufige Ereignisse in
-kurzen Fenstern** sind aufloesbar, seltene Ereignisse in langen Fenstern nicht —
+Die noetige Sharpe faellt mit der Wurzel der Beobachtungszahl, die Fensterstreuung
+waechst mit der Wurzel der Fensterlaenge. Beides zusammen heisst: **haeufige Ereignisse
+in kurzen Fenstern** sind aufloesbar, seltene Ereignisse in langen Fenstern nicht —
 unabhaengig davon, wie plausibel die zugrundeliegende Zwangslage ist. Plausibilitaet und
 Nachweisbarkeit sind zwei verschiedene Dinge.
 """
@@ -59,9 +80,16 @@ class ResolutionVerdict:
     ``ratio`` ist das Verhaeltnis aus nachweisbarem und wirtschaftlich noetigem Effekt.
     Werte ueber 1 heissen: die Studie ist fuer genau den Effekt blind, auf den es
     ankommt.
+
+    ``events`` und ``deflation_events`` stehen beide hier, weil sie auseinanderfallen
+    und der Unterschied der ganze Punkt ist: gerechnet wird mit ``deflation_events``,
+    berichtet wird gern mit ``events``. Wer nur eine der beiden Zahlen ablegt, laedt
+    genau die Verwechslung wieder ein, die diese Felder trennen sollen.
     """
 
     events: int
+    oos_share: float
+    deflation_events: int
     trials: int
     dispersion_bps: float
     cost_bps: float
@@ -73,6 +101,31 @@ class ResolutionVerdict:
     @property
     def resolvable(self) -> bool:
         return self.ratio <= 1.0
+
+
+def deflation_observations(events: int, *, oos_share: float) -> int:
+    """Wie viele Beobachtungen das Deflationsurteil von ``events`` Ereignissen sieht.
+
+    Die Arithmetik ist absichtlich Zeichen fuer Zeichen die aus
+    ``ereignisstudie.bestaetige``::
+
+        schnitt = int(len(bereinigt) * (1.0 - OOS_ANTEIL))
+        oos = bereinigt[schnitt:]
+
+    ``int`` schneidet ab statt zu runden, und bei kleinen Stichproben macht das einen
+    ganzen Wert Unterschied. Eine „saubere" Rundung hier waere eine zweite Umsetzung
+    derselben Rechnung -- die Fehlerklasse, an der dieses Vorhaben schon zweimal haengen
+    geblieben ist. ``tests/test_resolution.py`` haelt die Zahl gegen das, was
+    ``bestaetige`` in ``Bestaetigung.dsr_n`` tatsaechlich meldet.
+    """
+    if events < 2:
+        raise ResolutionError(f"events muss >= 2 sein (bekommen: {events})")
+    if not 0.0 < oos_share <= 1.0:
+        raise ResolutionError(
+            f"oos_share ausserhalb (0, 1]: {oos_share} -- ein Anteil von 1,0 heisst "
+            "„die Deflation sieht die ganze Stichprobe\", alles darueber ist sinnlos"
+        )
+    return events - int(events * (1.0 - oos_share))
 
 
 def required_sharpe(
@@ -153,10 +206,15 @@ def assess(
     trials: int,
     dispersion: float,
     cost_bps: float,
+    oos_share: float,
     cost_factor: float = DEFAULT_COST_FACTOR,
     threshold: float = DEFAULT_DSR_THRESHOLD,
 ) -> ResolutionVerdict:
-    """Das Urteil: ist diese Kombination aus Kandidat und Instrument aufloesbar?"""
+    """Das Urteil: ist diese Kombination aus Kandidat und Instrument aufloesbar?
+
+    ``oos_share`` ist pflichtig und hat bewusst keinen Vorgabewert -- die Begruendung
+    steht im Modulkopf unter „N IST NICHT DIE EREIGNISZAHL".
+    """
     if dispersion <= 0:
         raise ResolutionError(f"Fensterstreuung muss positiv sein: {dispersion}")
     if cost_bps <= 0:
@@ -164,11 +222,20 @@ def assess(
     if cost_factor <= 0:
         raise ResolutionError(f"cost_factor muss positiv sein: {cost_factor}")
 
-    sharpe = required_sharpe(events, trials, threshold=threshold)
+    beobachtungen = deflation_observations(events, oos_share=oos_share)
+    if beobachtungen < 2:
+        raise ResolutionError(
+            f"aus {events} Ereignissen bleiben bei einem Out-of-Sample-Anteil von "
+            f"{oos_share} nur {beobachtungen} Beobachtungen fuer die Deflation -- "
+            "das ist keine Stichprobe"
+        )
+    sharpe = required_sharpe(beobachtungen, trials, threshold=threshold)
     detectable = sharpe * dispersion
     needed = cost_factor * cost_bps
     return ResolutionVerdict(
         events=events,
+        oos_share=oos_share,
+        deflation_events=beobachtungen,
         trials=trials,
         dispersion_bps=dispersion,
         cost_bps=cost_bps,
@@ -184,6 +251,7 @@ def min_events_for_resolution(
     trials: int,
     dispersion: float,
     cost_bps: float,
+    oos_share: float,
     cost_factor: float = DEFAULT_COST_FACTOR,
     threshold: float = DEFAULT_DSR_THRESHOLD,
     ceiling: int = 1_000_000,
@@ -193,17 +261,29 @@ def min_events_for_resolution(
     Gibt ``None``, wenn selbst ``ceiling`` Ereignisse nicht reichen. Die Zahl ist die
     ehrliche Antwort auf „was fehlt uns?" — sie sagt, ob eine tiefere Historie helfen
     wuerde oder ob das Instrument fuer diese Frage grundsaetzlich zu verrauscht ist.
+
+    Gezaehlt werden **Ereignisse**, nicht Deflationsbeobachtungen: die Zahl soll direkt
+    beantwortbar sein („so viele Monatsenden brauchen wir"), und ein Aufrufer, der sie
+    mit der Beobachtungszahl verwechselt, unterschaetzt den Bedarf um den Kehrwert von
+    ``oos_share``.
     """
-    low, high = 2, ceiling
+    high = ceiling
     if assess(
         events=high,
         trials=trials,
         dispersion=dispersion,
         cost_bps=cost_bps,
+        oos_share=oos_share,
         cost_factor=cost_factor,
         threshold=threshold,
     ).ratio > 1.0:
         return None
+    # Kleinste Ereigniszahl, aus der ueberhaupt zwei Deflationsbeobachtungen werden.
+    # Bei einem Drittel Out-of-Sample sind das vier Ereignisse, nicht zwei. Die Schleife
+    # endet garantiert, weil der Aufruf oben fuer ``ceiling`` bereits durchlief.
+    low = 2
+    while deflation_observations(low, oos_share=oos_share) < 2:
+        low += 1
     while low < high:
         mid = (low + high) // 2
         verdict = assess(
@@ -211,6 +291,7 @@ def min_events_for_resolution(
             trials=trials,
             dispersion=dispersion,
             cost_bps=cost_bps,
+            oos_share=oos_share,
             cost_factor=cost_factor,
             threshold=threshold,
         )

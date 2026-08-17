@@ -12,10 +12,12 @@ Methode, die eine Antwort nicht sicher geben kann, wirft. ``None`` als
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 from enum import Enum
 from typing import Any, Protocol, runtime_checkable
+
+from mt5_trading_ai.data.quality import TIMEFRAME_SECONDS
 
 VENUE_PROTOCOL_VERSION = "trading-venue-v1"
 
@@ -51,6 +53,27 @@ class Timeframe(str, Enum):
     H1 = "H1"
     H4 = "H4"
     D1 = "D1"
+
+    @property
+    def duration(self) -> timedelta:
+        """Laenge eines Intervalls dieser Zeitebene.
+
+        Bewusst aus ``data.quality.TIMEFRAME_SECONDS`` gezogen statt hier noch einmal
+        aufgeschrieben: dieselbe Tabelle bestimmt im Qualitaetstor die erwartete
+        Bar-Zahl. Zwei Tabellen waeren zwei Wahrheiten, und die zweite faellt beim
+        naechsten neuen Zeitraster still auseinander -- genau die Sorte Abweichung,
+        die niemand bemerkt, weil beide Seiten fuer sich plausibel aussehen.
+
+        Fehlt ein Eintrag, wird geworfen. Ein geratener Vorgabewert waere hier
+        besonders teuer: er entscheidet mit, welche Kerze als abgeschlossen gilt.
+        """
+        seconds = TIMEFRAME_SECONDS.get(self.value)
+        if seconds is None:
+            raise ValueError(
+                f"Keine Intervalllaenge fuer Zeitebene {self.value} hinterlegt "
+                "(data/quality.py: TIMEFRAME_SECONDS)"
+            )
+        return timedelta(seconds=seconds)
 
 
 class VenueError(RuntimeError):
@@ -150,6 +173,34 @@ class Quote:
 
 @dataclass(frozen=True)
 class Bar:
+    """Eine Kerze -- und die Auskunft, ob sie ueberhaupt schon eine ist.
+
+    ``is_closed`` ist **Pflichtfeld ohne Vorgabewert**, und das ist die eigentliche
+    Aussage dieser Klasse. Ein Handelsplatz liefert auf die Frage nach dem Zeitraum
+    bis "jetzt" die noch in Bildung befindliche Kerze mit; deren ``close`` ist der
+    momentane Kurs, kein Schlusskurs. Wer beides nicht unterscheiden kann, rechnet
+    live auf einer Zahl, die es im Backtest nicht gibt -- dort kommen die Kerzen
+    abgeschlossen aus Dateien. Live-Signal und getestetes Signal waeren dann nicht
+    dieselbe Strategie, und kein Demo- oder Lernphasenlauf koennte das noch klaeren,
+    gleichgueltig wie er ausgeht.
+
+    Warum kein Vorgabewert:
+
+    * ``True`` waere die schmeichelnde Richtung. Jede Bauweise, die das Feld
+      vergisst, saehe aus wie geprueft -- der Melder waere per Konstruktion nie rot.
+    * ``False`` waere zwar die sichere Richtung, wuerde aber echte abgeschlossene
+      Kerzen falsch etikettieren und dieselbe Vergesslichkeit nur leiser bestrafen.
+    * Ohne Vorgabewert muss jede Bauweise die Frage beantworten. ``grep`` ueber das
+      Repo zeigt genau **eine** Stelle, die dieses ``Bar`` baut
+      (``venue/mt5.py:get_bars``) -- der Backtest arbeitet mit
+      ``data.quality.BarRow``, einer anderen Klasse. Die Pflicht kostet hier also
+      nichts und wirkt auf jede kuenftige Stelle.
+
+    Aus demselben Grund wird die laufende Kerze **nicht** stillschweigend
+    abgeschnitten: dann stuende die Entscheidung an zwei Orten, und der naechste
+    Verbraucher wuesste wieder nicht, was er vor sich hat.
+    """
+
     symbol: str
     timeframe: Timeframe
     #: Beginn des Intervalls (open time), UTC.
@@ -159,6 +210,10 @@ class Bar:
     low: Decimal
     close: Decimal
     tick_volume: int
+    #: Ist das Intervall ``[ts, ts + timeframe.duration)`` vorbei? Nur dann ist
+    #: ``close`` ein Schlusskurs. ``False`` heisst: Kerze in Bildung, ``close`` ist
+    #: der aktuelle Kurs und aendert sich noch.
+    is_closed: bool
     volume: Decimal | None = None
     spread_avg_points: Decimal | None = None
 
@@ -257,7 +312,15 @@ class TradingVenue(Protocol):
         start: datetime,
         end: datetime,
     ) -> tuple[Bar, ...]:
-        """Bars mit ``ts`` = Intervallbeginn, aufsteigend, ohne stille Interpolation."""
+        """Bars mit ``ts`` = Intervallbeginn, aufsteigend, ohne stille Interpolation.
+
+        Reicht ``end`` bis in die Gegenwart, ist die letzte Bar in aller Regel noch
+        in Bildung. Sie wird **mitgeliefert und als** ``is_closed=False``
+        **gekennzeichnet**, nicht entfernt: wer nur abgeschlossene Kerzen rechnen
+        will, filtert sichtbar; wer den laufenden Kurs braucht, hat ihn. Eine
+        Implementierung, die das Feld nicht sicher bestimmen kann, wirft --
+        "vermutlich abgeschlossen" gibt es nicht.
+        """
         ...
 
     # --- Ausfuehrung ------------------------------------------------------

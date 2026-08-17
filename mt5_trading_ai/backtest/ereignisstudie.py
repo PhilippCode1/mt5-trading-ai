@@ -35,15 +35,42 @@ Rendite wird von der **Eroeffnung** dieser Kerze bis zu ihrem Schluss gerechnet.
 ist die Bewegung, die jemand haette mitnehmen koennen, der erst zum Ereignis handeln
 darf. Wer statt der Eroeffnung den vorigen Schluss nimmt, verdient am Sprung ueber die
 Kerzengrenze mit — an einem Kurs also, den es zum Einstiegszeitpunkt nicht mehr gab.
+
+DIE VERSUCHSZAHL STEHT NICHT HIER
+---------------------------------
+Die Deflation rechnete frueher gegen eine Konstante ``VERSUCHE_ANGENOMMEN = 12``, die
+Budgetobergrenze aus §5 des Auftrags. Eine Konstante sagt aber nichts darueber, wie
+viel tatsaechlich gesucht wurde — sie ist genau dann falsch, wenn es darauf ankommt:
+zu streng, solange wenig gemessen wurde, und zu milde, sobald mehr gemessen wird als
+geplant war. Die Zahl kommt jetzt aus dem Register
+(``gates/trials.py::deflation_trials``), und ein fehlendes Register ist ein Fehler.
+
+DIE PRUEFSUMME DECKT, WAS GEMESSEN WURDE
+-----------------------------------------
+Die Herkunftsangabe einer Studie stammte aus den Manifesten in ``config/reihen``. Die
+tragen ausweislich ihres eigenen Feldes ``zeitbasis`` die **ungedrehten** Serverstempel
+und den Datenstand ihres Abrufs; gemessen wird dagegen auf **gedrehten** und bei jedem
+Lauf neu geholten Kerzen. Diese Pruefsumme konnte die gemessenen Daten also von Bauart
+her nicht decken — ein Etikett, das nichts deckt, ist schlechter als keines, weil es
+Nachpruefbarkeit vortaeuscht. Darum leitet :func:`reihen_pruefsumme` die Pruefsumme aus
+genau der Kerzenreihe ab, die gemessen wird, :func:`friere_reihe_ein` legt diese Reihe
+fest, und :func:`lade_reihe` holt sie zurueck. Erst beides zusammen ergibt eine
+nachpruefbare Herkunft: eine Pruefsumme ueber Daten, die es nachher nicht mehr gibt,
+belegt nichts.
 """
 
 from __future__ import annotations
 
+import hashlib
 import random
 import statistics
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from pathlib import Path
 
+from mt5_trading_ai.backtest.kalender import ZEITBASIS_ECHT_UTC, verlange_echtes_utc
+from mt5_trading_ai.data.loader import MIN_CHECKSUM_PREFIX
+from mt5_trading_ai.gates import trials as register
 from mt5_trading_ai.gates.criteria import deflated_sharpe_ratio
 
 STUDY_POLICY_VERSION = "ereignisstudie-v1"
@@ -61,10 +88,12 @@ M62_DSR_SCHWELLE = 0.95
 #: M6.2, Randomisierung: so viele verschobene Ereignismengen, so viel darf durchkommen.
 M62_ZIEHUNGEN = 1000
 M62_ZUFALL_ANTEIL = 0.05
-#: Budgetobergrenze aus §5 — die strengste zulaessige Annahme fuer die Deflation.
-VERSUCHE_ANGENOMMEN = 12
 #: Erste zwei Drittel In-Sample, letztes Drittel Out-of-Sample. Einmal gezogen.
 OOS_ANTEIL = 1.0 / 3.0
+#: Kanonische Form einer eingefrorenen Reihe. Die Kopfzeile nennt die Zeitbasis, weil
+#: dieselbe Kursreihe unter zwei Zeitbasen zwei verschiedene Datensaetze sind.
+REIHEN_FORMAT_VERSION = "ereignisreihe-v1"
+_REIHEN_SPALTEN = "ts,open,close"
 
 
 class StudienError(ValueError):
@@ -99,6 +128,10 @@ class Bestaetigung:
 
     dsr_oos: float
     dsr_n: int
+    #: Versuchszahl, gegen die deflationiert wurde — aus dem Register. Sie steht im
+    #: Ergebnis, weil eine DSR ohne ihre Versuchszahl nicht nachvollziehbar ist: 0,755
+    #: bei acht Versuchen und 0,984 bei einem sind dieselbe Messung.
+    dsr_versuche: int
     dsr_bestanden: bool
     haelfte_frueh_bps: float
     haelfte_spaet_bps: float
@@ -128,10 +161,123 @@ class Ergebnis:
     k_bps: float
     netto_bps: float
     m61_schwelle_bps: float
+    #: Pruefsumme der Reihe, auf der GEMESSEN wurde — abgeleitet, nicht mitgebracht.
+    #: Das ist der Wert, der als ``data_checksum`` ins Register gehoert; ein aus einem
+    #: Manifest gelesener deckt eine andere Reihe (siehe Modulkopf). Pflichtfeld ohne
+    #: Vorgabewert: ein leeres Herkunftsfeld waere wieder ein Etikett ohne Deckung.
+    reihen_pruefsumme: str
 
     @property
     def m61_bestanden(self) -> bool:
         return self.brutto_bps >= self.m61_schwelle_bps
+
+
+# ---------------------------------------------------------------------------
+# Herkunft: Pruefsumme und Einfrieren der gemessenen Reihe
+# ---------------------------------------------------------------------------
+
+
+def _kanonische_reihe(kerzen: list[Kerze]) -> str:
+    """Textform der Reihe, ueber die gehasht und die eingefroren wird.
+
+    Gehasht wird nicht die Datei, sondern die Reihe: dieselben Kerzen ergeben
+    dieselbe Pruefsumme, gleich wie sie abgelegt sind. Aufgenommen sind genau die
+    Felder, die in die Messung eingehen — Zeitstempel, Eroeffnung, Schluss. Hoch und
+    Tief stehen bewusst nicht dabei: ``Kerze`` fuehrt sie nicht, und sie zum Hashen zu
+    erfinden hiesse, eine Pruefsumme ueber erfundene Werte zu bilden. Aus demselben
+    Grund wird ``data/loader.py::bars_checksum`` hier nicht aufgerufen — es hasht die
+    kanonische CSV eines ``BarRow`` mit OHLCV, den es hier nicht gibt.
+    """
+    if not kerzen:
+        raise StudienError("Leere Reihe — es gibt nichts zu pruefsummen")
+    zeilen = [
+        f"{REIHEN_FORMAT_VERSION} zeitbasis={ZEITBASIS_ECHT_UTC}",
+        _REIHEN_SPALTEN,
+    ]
+    for k in kerzen:
+        ts = verlange_echtes_utc(k.ts, "Kerze der Studienreihe")
+        zeilen.append(f"{ts.isoformat()},{k.open!r},{k.close!r}")
+    return "\n".join(zeilen) + "\n"
+
+
+def reihen_pruefsumme(kerzen: list[Kerze]) -> str:
+    """SHA-256 ueber die Reihe, auf der tatsaechlich gemessen wird.
+
+    Was diese Zahl belegt und was nicht: sie bindet einen Befund an genau die Kerzen,
+    aus denen er entstanden ist. Ob diese Kerzen richtig gedreht sind, kann sie nicht
+    sagen — das sieht man einem Zeitstempel nicht an (``kalender.py``). Sie sagt aber,
+    dass zwei Laeufe mit gleichem Ergebnis dieselben Daten gesehen haben, und mit der
+    eingefrorenen Reihe daneben laesst sich das spaeter nachrechnen.
+    """
+    return hashlib.sha256(_kanonische_reihe(kerzen).encode("utf-8")).hexdigest()
+
+
+def friere_reihe_ein(kerzen: list[Kerze], pfad: Path | str) -> str:
+    """Lege die gemessene Reihe fest und gib ihre Pruefsumme zurueck.
+
+    Ohne diesen Schritt ist die Pruefsumme wertlos: die Kerzen kommen bei jedem Lauf
+    frisch aus dem Terminal, mit jeder neuen Stunde waechst die Reihe, und was einmal
+    gemessen wurde, laesst sich nachher nicht mehr herstellen. Eine Pruefsumme ueber
+    verschwundene Daten prueft nichts.
+    """
+    text = _kanonische_reihe(kerzen)
+    ziel = Path(pfad)
+    ziel.parent.mkdir(parents=True, exist_ok=True)
+    ziel.write_text(text, encoding="utf-8", newline="\n")
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def lade_reihe(pfad: Path | str) -> list[Kerze]:
+    """Lies eine eingefrorene Reihe zurueck. Jeder Formfehler ist ein Fehler."""
+    quelle = Path(pfad)
+    try:
+        text = quelle.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise StudienError(f"{quelle} nicht lesbar: {exc}") from exc
+    zeilen = text.splitlines()
+    kopf = f"{REIHEN_FORMAT_VERSION} zeitbasis={ZEITBASIS_ECHT_UTC}"
+    if len(zeilen) < 3 or zeilen[0] != kopf or zeilen[1] != _REIHEN_SPALTEN:
+        raise StudienError(
+            f"{quelle}: Kopf passt nicht ({zeilen[:2]!r}), erwartet {kopf!r} und "
+            f"{_REIHEN_SPALTEN!r} — eine Reihe mit anderer Zeitbasis oder anderem "
+            "Format ist nicht dieselbe Reihe"
+        )
+    kerzen: list[Kerze] = []
+    for nummer, zeile in enumerate(zeilen[2:], start=3):
+        teile = zeile.split(",")
+        if len(teile) != 3:
+            raise StudienError(f"{quelle}:{nummer}: {len(teile)} Felder statt 3")
+        kerzen.append(
+            Kerze(
+                ts=datetime.fromisoformat(teile[0]),
+                open=float(teile[1]),
+                close=float(teile[2]),
+            )
+        )
+    return kerzen
+
+
+def pruefe_deckung(erwartet: str, kerzen: list[Kerze]) -> str:
+    """Deckt eine mitgebrachte Pruefsumme die gemessene Reihe? Sonst fail-closed.
+
+    Praefixe sind erlaubt und ab ``MIN_CHECKSUM_PREFIX`` Hexzeichen lang — dieselbe
+    Regel wie in ``backtest/engine.py::run_backtest``, damit „gedeckt" im ganzen Repo
+    dasselbe heisst.
+    """
+    gemessen = reihen_pruefsumme(kerzen)
+    if len(erwartet) < MIN_CHECKSUM_PREFIX:
+        raise StudienError(
+            f"Erwartete Pruefsumme zu kurz ({len(erwartet)} < {MIN_CHECKSUM_PREFIX} "
+            "Hex) — ein kurzes Praefix deckt beliebige Datenstaende"
+        )
+    if not gemessen.startswith(erwartet):
+        raise StudienError(
+            f"Erwartete Pruefsumme {erwartet[:16]}... deckt die gemessene Reihe nicht "
+            f"({gemessen[:16]}...). Eine Pruefsumme aus einem Reihen-Manifest kann das "
+            "auch nicht: die Manifeste tragen die ungedrehten Stempel ihres eigenen "
+            "Abrufs, gemessen wird auf gedrehten und neu geholten Kerzen."
+        )
+    return gemessen
 
 
 def _kerzen_index(kerzen: list[Kerze]) -> list[datetime]:
@@ -221,12 +367,24 @@ def studie(
     ereignisse: list[datetime],
     fenster_stunden: float,
     k_bps: float,
+    erwartete_pruefsumme: str | None = None,
 ) -> tuple[Ergebnis, list[Ereigniswert]]:
-    """Die Messung. Brutto, Streuung, Trefferanteil, Netto — alles in einem Zug."""
+    """Die Messung. Brutto, Streuung, Trefferanteil, Netto — alles in einem Zug.
+
+    Die berichtete Herkunft (``Ergebnis.reihen_pruefsumme``) wird aus den
+    tatsaechlich gefahrenen Kerzen **abgeleitet**, nie vom Aufrufer geglaubt. Wer eine
+    Erwartung mitbringt, bekommt sie geprueft: deckt sie die Reihe nicht, bricht die
+    Studie ab, statt eine fremde Zahl als eigene Herkunft auszugeben.
+    """
     if k_bps <= 0:
         raise StudienError(f"K muss positiv sein: {k_bps}")
     if not kerzen:
         raise StudienError("Keine Kerzen")
+    pruefsumme = (
+        reihen_pruefsumme(kerzen)
+        if erwartete_pruefsumme is None
+        else pruefe_deckung(erwartete_pruefsumme, kerzen)
+    )
     stempel = _kerzen_index(kerzen)
     bs = balkenstunden(kerzen)
     werte = [
@@ -259,6 +417,7 @@ def studie(
             k_bps=k_bps,
             netto_bps=brutto - k_bps,
             m61_schwelle_bps=M61_FAKTOR * k_bps,
+            reihen_pruefsumme=pruefsumme,
         ),
         werte,
     )
@@ -272,8 +431,16 @@ def bestaetige(
     fenster_stunden: float,
     k_bps: float,
     saat: int,
+    register_pfad: Path | str | None = None,
 ) -> Bestaetigung:
-    """M6.2 — die drei Pruefungen. Keine davon ist ein Versuch (M7)."""
+    """M6.2 — die drei Pruefungen. Keine davon ist ein Versuch (M7).
+
+    Die Versuchszahl der Deflation kommt aus dem Register (``register_pfad``, ohne
+    Angabe das Register des Repos) und nicht aus einer Konstante; der gerade laufende
+    Versuch zaehlt mit, weil das Register erst nach der Messung geschrieben wird.
+    Fehlt das Register, wirft ``TrialsLedgerError`` und die Bestaetigung faellt aus —
+    das ist Absicht: eine Deflation gegen eine unbekannte Versuchszahl ist keine.
+    """
     if len(werte) < 30:
         raise StudienError("Zu wenige Werte fuer die Bestaetigung")
     geordnet = sorted(werte, key=lambda w: w.ts)
@@ -287,8 +454,9 @@ def bestaetige(
         raise StudienError(f"Out-of-Sample-Drittel zu klein: {len(oos)}")
     streuung = statistics.stdev(oos)
     sharpe = statistics.fmean(oos) / streuung if streuung > 0 else 0.0
+    versuche = register.deflation_trials(register_pfad)
     dsr = deflated_sharpe_ratio(
-        observed_sharpe=sharpe, observations=len(oos), trials=VERSUCHE_ANGENOMMEN
+        observed_sharpe=sharpe, observations=len(oos), trials=versuche
     )
 
     # (2) Zeitliche Stabilitaet: beide Haelften.
@@ -322,6 +490,7 @@ def bestaetige(
     return Bestaetigung(
         dsr_oos=dsr,
         dsr_n=len(oos),
+        dsr_versuche=versuche,
         dsr_bestanden=dsr >= M62_DSR_SCHWELLE,
         haelfte_frueh_bps=frueh,
         haelfte_spaet_bps=spaet,

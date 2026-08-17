@@ -181,7 +181,48 @@ def trial_count(
 
 
 def total_trials(path: Path | str | None = None) -> int:
+    """Wie viele Zeilen stehen im Register. Fehlt die Datei, sind es null.
+
+    Fuer die Deflation ist diese Funktion die falsche: null wird beim Aufrufer zur
+    eins, und bei einem Versuch deflationiert nichts. Dafuer gibt es
+    :func:`deflation_trials`.
+    """
     return sum(1 for _ in iter_trials(path))
+
+
+def deflation_trials(
+    path: Path | str | None = None,
+    *,
+    include_running: bool = True,
+) -> int:
+    """Versuchszahl fuer die Deflation — aus dem Register, fail-closed.
+
+    Warum das nicht ``total_trials`` sein darf: ein fehlendes Register liefert dort
+    null, und der uebliche Aufruf ``max(1, ...)`` macht daraus eins. Bei einem
+    Versuch ist ``expected_max_sharpe`` exakt null — die Mehrfachvergleichs-Korrektur
+    ist dann vollstaendig aufgehoben, und zwar lautlos. Gemessen an einem echten Fall
+    dieses Repos (Sharpe 0,2759 auf 64 Out-of-Sample-Ereignissen): mit dem
+    Registerstand acht ergibt sich eine DSR von 0,755, ueber die stille Eins dagegen
+    0,984 — dieselbe Messung faellt einmal durch und besteht einmal die Schwelle
+    0,95. Ein fehlendes Register ist deshalb hier ein Fehler und kein Vorgabewert.
+
+    ``include_running`` zaehlt den gerade laufenden Versuch mit. Das Register ist
+    anhaengend und wird erst **nach** der Messung geschrieben; ohne diesen Zuschlag
+    saehe ein Lauf sich selbst nicht, und untertreiben heisst hier schmeicheln.
+
+    Ein leeres Register ist kein Fehler: dann ist dies der erste Versuch, die DSR ist
+    die Probabilistic Sharpe Ratio, und es gibt nichts zu deflationieren. Dass daraus
+    niemand durch Loeschen des Registers wieder eins macht, sichert die Anhaenge-Regel
+    dieses Moduls samt :func:`check_integrity` — nicht diese Funktion.
+    """
+    ledger = Path(path) if path is not None else default_ledger_path()
+    if not ledger.is_file():
+        raise TrialsLedgerError(
+            f"Register {ledger} fehlt. Ohne Register ist die Versuchszahl unbekannt, "
+            "und unbekannt ist nicht eins: bei einem Versuch deflationiert nichts. "
+            "Fail-closed — kein Vorgabewert."
+        )
+    return total_trials(ledger) + (1 if include_running else 0)
 
 
 @dataclass(frozen=True)

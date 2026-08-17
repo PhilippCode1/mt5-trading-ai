@@ -32,10 +32,34 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from mt5_trading_ai.betrieb.journal import lies_journal  # noqa: E402
+from mt5_trading_ai.betrieb.journal import Trade, lies_journal  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[1]
 JOURNALE = REPO / "betrieb"
+
+
+def _geldsumme(trades: list[Trade]) -> None:
+    """Summe der Geldergebnisse -- nur wenn sie ueberhaupt eine Einheit haben.
+
+    Verschiedene Kontowaehrungen, oder gar keine Angabe (Journale von vor der
+    Protokollerweiterung), sind nicht summierbar. Statt still zu addieren, sagt das
+    Werkzeug, dass es nicht geht: eine Summe ueber gemischte Einheiten waere eine
+    Zahl, die aussieht wie Geld und keines ist.
+    """
+    betraege = [t.ergebnis_geld for t in trades if t.ergebnis_geld is not None]
+    if not betraege:
+        return
+    waehrungen = {t.ergebnis_geld_waehrung for t in trades}
+    if None in waehrungen:
+        print("    Keine Summe: mindestens ein Betrag kommt ohne Waehrungsangabe")
+        print("    (Journal von vor der Protokollerweiterung).")
+        return
+    if len(waehrungen) != 1:
+        print(f"    Keine Summe: verschiedene Waehrungen "
+              f"{sorted(str(w) for w in waehrungen)}.")
+        return
+    print(f"    Summe dieser Schaetzungen: {sum(betraege, Decimal('0')):+} "
+          f"{waehrungen.pop()} (brutto, ohne Swap und Kommission)")
 
 
 def auswerten(pfad: Path) -> int:
@@ -113,7 +137,13 @@ def auswerten(pfad: Path) -> int:
     print("-" * 78)
     print("3. WAS SAGT DAS ERGEBNIS?")
     print("-" * 78)
+    # Zu wenige Equity-Punkte beendete diese Auswertung frueher mit ``return`` -- und
+    # nahm die Trade-Zahlen darunter mit ins Grab. Ein Lauf, der nach dem ersten Takt
+    # abbrach, aber einen Stop-Out gesehen hat, meldete dann ueberhaupt nichts ueber
+    # den Trade. Die Equity-Aussage entfaellt, die Trades werden trotzdem gezaehlt.
     reihe = lauf.equity_reihe()
+    e0: Decimal | None = None
+    e1: Decimal | None = None
     if ende is not None:
         e0 = Decimal(str(ende["equity_start"] or "0"))
         e1 = Decimal(str(ende["equity"] or "0"))
@@ -121,23 +151,44 @@ def auswerten(pfad: Path) -> int:
         e0, e1 = reihe[0][1], reihe[-1][1]
         print("  (Kein Endeintrag — Equity aus dem ersten und letzten Takt.)")
     else:
-        print("  Zu wenige Messpunkte fuer eine Aussage.")
-        return 0
-    print(f"  Equity   : {e0} -> {e1}   ({e1 - e0:+})")
-    if e0 > 0:
-        print(f"  Rendite  : {(e1 - e0) / e0 * 100:+.4f} %")
+        print("  Zu wenige Messpunkte fuer eine Equity-Aussage.")
+    if e0 is not None and e1 is not None:
+        print(f"  Equity   : {e0} -> {e1}   ({e1 - e0:+})")
+        if e0 > 0:
+            print(f"  Rendite  : {(e1 - e0) / e0 * 100:+.4f} %")
 
-    rechenbar = [t.ergebnis_bps for t in zu if t.ergebnis_bps is not None]
+    # Zwei Sorten Ergebnis, bewusst getrennt ausgewiesen. Der Median lebt weiter
+    # ausschliesslich von gemessenen Preisen; der Trefferanteil darf zusaetzlich das
+    # Vorzeichen des Geldergebnisses verwenden. Vermischt man beides, steht am Ende
+    # eine Zahl da, der niemand ansieht, wie viel Schaetzung in ihr steckt.
+    preis = [t.ergebnis_bps for t in zu if t.ergebnis_bps is not None]
+    beurteilt = [t for t in zu if t.beurteilbar]
+    nur_geld = [t for t in beurteilt if t.urteilsquelle == "geld"]
+    stumm = [t for t in zu if not t.beurteilbar]
     print()
-    print(f"  Trades mit rechenbarem Ergebnis: {len(rechenbar)} von {len(zu)}")
-    if rechenbar:
-        treffer = sum(1 for w in rechenbar if w > 0) / len(rechenbar) * 100
-        print(f"    Median {statistics.median(rechenbar):+.2f} bp | "
-              f"Treffer {treffer:.0f} %")
+    print(f"  Trades geschlossen             : {len(zu)}")
+    print(f"    mit Preisergebnis (bp)       : {len(preis)}")
+    print(f"    nur mit Geldergebnis         : {len(nur_geld)}")
+    print(f"    ohne jedes Ergebnis          : {len(stumm)}")
+    if preis:
+        print(f"    Median {statistics.median(preis):+.2f} bp ueber {len(preis)} "
+              f"Trade(s)")
         print("    Preisdifferenz OHNE Kommission und Swap.")
-    elif zu:
-        print("    Kein einziger vollstaendig — meist fehlt der Ausstiegspreis eines")
-        print("    broker-seitigen Schlusses. Das ist NICHT Ergebnis null.")
+    if beurteilt:
+        treffer = sum(1 for t in beurteilt if t.gewinn) / len(beurteilt) * 100
+        print(f"    Treffer {treffer:.0f} % ueber {len(beurteilt)} beurteilbare "
+              f"Trade(s)")
+    if nur_geld:
+        print("    Beim broker-seitigen Schluss (Stop-Out) gibt es keinen Fuellpreis.")
+        print("    Was es gibt, ist der zuletzt beobachtete Buchwert: sein BETRAG ist")
+        print("    eine Schaetzung und geht in KEINEN Median, sein VORZEICHEN geht in")
+        print("    den Trefferanteil. Ohne das fielen die Stop-Outs -- also die")
+        print("    Verlierer -- ganz aus der Statistik, und sie sah besser aus.")
+        _geldsumme(nur_geld)
+    if stumm:
+        print("    Ohne jedes Ergebnis heisst UNBEKANNT, nicht null. Diese Trades")
+        print("    zaehlen in keine Zahl oben hinein -- Journale von vor der")
+        print("    Protokollerweiterung tragen den Wert nicht.")
 
     n = len(auf)
     print()

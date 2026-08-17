@@ -78,6 +78,36 @@ def utc_zu_server(ts: datetime) -> datetime:
     return ts.astimezone(SERVER_TZ).replace(tzinfo=None).replace(tzinfo=UTC)
 
 
+#: Etikett der Zeitbasis, auf der gemessen wird. Es steht in jeder eingefrorenen Reihe,
+#: weil genau diese Angabe den Unterschied macht: die Manifeste in ``config/reihen``
+#: tragen ``zeitbasis: server-etikett``, die Studie misst auf gedrehten Stempeln. Zwei
+#: Reihen mit denselben Kursen und verschiedener Zeitbasis sind verschiedene Daten, und
+#: eine Pruefsumme, die das verschweigt, deckt die falsche von beiden.
+ZEITBASIS_ECHT_UTC = "echt-utc"
+
+
+def verlange_echtes_utc(ts: datetime, wofuer: str) -> datetime:
+    """Verlange einen Zeitstempel mit Zone und gib ihn in echtem UTC zurueck.
+
+    Warum das eine eigene Funktion ist: ob :func:`server_zu_utc` schon gelaufen ist,
+    sieht man einem Zeitstempel nicht an (Modulkopf). Pruefbar ist nur das Wenige, was
+    sich pruefen laesst — dass ueberhaupt eine Zone daranhaengt. Ein naiver Stempel ist
+    hier ein Fehler und kein Anlass, UTC zu **raten**: genau dieses Raten
+    (``RealMt5Terminal._utc`` haengt das Etikett UTC an Serverzeit) ist die Ursache des
+    ganzen Zeitproblems dieses Pakets.
+
+    Die Rueckgabe ist kanonisch (``+00:00``), damit dieselbe Zeitscheibe unter
+    verschiedenen Zonen-Etiketten nicht zwei verschiedene Textformen ergibt.
+    """
+    if ts.tzinfo is None:
+        raise KalenderError(
+            f"{wofuer}: Zeitstempel {ts.isoformat()} ohne Zeitzone. Aus dem Terminal "
+            "kommt er mit Zone; fehlt sie, ist unbekannt, welche Zeitbasis vorliegt — "
+            "und geraten wird sie hier nicht."
+        )
+    return ts.astimezone(UTC)
+
+
 @dataclass(frozen=True)
 class Kandidat:
     """Ein vorregistrierter Kandidat und die Regel, die seine Zeitpunkte erzeugt.
