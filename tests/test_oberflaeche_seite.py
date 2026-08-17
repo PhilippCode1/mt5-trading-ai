@@ -52,9 +52,44 @@ def _leer(**zusatz: Any) -> dict[str, Any]:
 
 # --- Der entartete Fall ---------------------------------------------------
 def test_seite_baut_ohne_terminal_und_ohne_journal() -> None:
-    seite = OB.seite(_leer())
-    assert "<html" in seite
-    assert len(seite) > 2000
+    """``seite`` liefert nur noch das FRAGMENT -- die Huelle kommt separat."""
+    fragment = OB.seite(_leer())
+    assert "<html" not in fragment, "Das Fragment darf kein Seitengeruest tragen"
+    assert len(fragment) > 1000
+
+
+def test_die_huelle_traegt_das_geruest_und_das_skript() -> None:
+    ganz = OB.huelle(OB.seite(_leer()))
+    assert "<html" in ganz and "</html>" in ganz
+    assert 'id="inhalt"' in ganz, "Ohne dieses Ziel kann das Skript nichts tauschen"
+    assert "fetch('/inhalt'" in ganz
+
+
+def test_ohne_javascript_steht_ein_hinweis_da() -> None:
+    """Die Seite bleibt ohne Skript lesbar -- sie sagt nur, dass sie stehen bleibt."""
+    ganz = OB.huelle("x")
+    assert "<noscript>" in ganz
+    assert "aktualisiert sich diese" in ganz
+
+
+def test_es_gibt_kein_meta_refresh_mehr() -> None:
+    """Das Ganzseiten-Neuladen war der Grund fuer die Trennung.
+
+    Es liess die Scrollposition springen und die Diagramme flackern -- alle zehn
+    Sekunden. Kehrt es zurueck, ist der Gewinn wieder weg.
+    """
+    assert "http-equiv" not in OB.huelle("x")
+
+
+def test_das_alter_des_schnappschusses_steht_auf_der_seite() -> None:
+    """Eine Anzeige, die stillschweigend einfriert, ist gefaehrlicher als eine leere."""
+    from datetime import timedelta
+    stand = _leer()
+    stand["gebaut"] = stand["jetzt"] - timedelta(seconds=45)
+    stand["dauer_ms"] = 12.0
+    fragment = OB.seite(stand, jetzt=stand["jetzt"])
+    assert "45 s alt" in fragment
+    assert "krit" in fragment, "Ein alter Stand muss auffallen, nicht nur dastehen"
 
 
 def test_ein_terminalfehler_steht_auf_der_seite() -> None:

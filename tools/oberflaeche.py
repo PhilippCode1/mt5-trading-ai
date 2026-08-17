@@ -38,6 +38,8 @@ from __future__ import annotations
 import argparse
 import html
 import sys
+import threading
+import time
 import webbrowser
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
@@ -88,8 +90,14 @@ def _neuester_lauf() -> Lauf | None:
     return offen[-1] if offen else laeufe[-1]
 
 
-def _lage() -> dict[str, Any]:
-    """Alles, was die Seite braucht. Fehler werden gemeldet, nicht verschluckt."""
+def _lage(venue: Mt5Venue) -> dict[str, Any]:
+    """Alles, was die Seite braucht. Fehler werden gemeldet, nicht verschluckt.
+
+    Nimmt ein **offenes** Venue entgegen. Frueher baute diese Funktion bei jedem
+    Seitenaufruf eine neue Terminalsitzung auf und wieder ab -- gemessen 99 bis 136 ms
+    je Aufruf, alle zehn Sekunden, dauerhaft. Die Sitzung haelt jetzt der
+    :class:`Sammler`.
+    """
     stand: dict[str, Any] = {"jetzt": datetime.now(UTC), "fehler": None}
     try:
         stand["lauf"] = _neuester_lauf()
@@ -97,17 +105,7 @@ def _lage() -> dict[str, Any]:
         stand["lauf"] = None
         stand["journalfehler"] = str(exc)
     stand["alle_laeufe"] = lies_alle(JOURNALE) if stand.get("lauf") else []
-
-    terminal = RealMt5Terminal(allow_write=False, server_tz=SERVER_TZ_NAME)
-    if not terminal.initialize():
-        stand["fehler"] = "MT5-Terminal nicht erreichbar."
-        return stand
     try:
-        venue = Mt5Venue(
-            name="oberflaeche", terminal=terminal,
-            catalog=load_instrument_catalog(),
-        )
-        venue.connect()
         stand["konto"] = venue.get_account()
         stand["positionen"] = venue.get_positions()
         kosten = load_broker_costs()
@@ -133,9 +131,87 @@ def _lage() -> dict[str, Any]:
         stand["preise"] = preise
     except VenueError as exc:
         stand["fehler"] = str(exc)
-    finally:
-        terminal.shutdown()
     return stand
+
+
+class Sammler:
+    """Haelt die Terminalsitzung offen und sammelt im Hintergrund.
+
+    Ein Hintergrundfaden ist hier **die einzige Stelle**, die MetaTrader anfasst. Die
+    Anfragen des Webservers lesen nur den letzten Schnappschuss unter einer Sperre.
+    Das ist kein Geschwindigkeitstrick, sondern eine Notwendigkeit: die
+    MetaTrader5-Bindung haelt eine Prozessverbindung, und sie aus mehreren Faeden zu
+    bedienen waere ein Wettlauf.
+
+    Faellt die Verbindung aus, bleibt der letzte Schnappschuss stehen und traegt sein
+    Alter. Die Seite zeigt dann sichtbar veraltete Zahlen statt gar keine -- **und sie
+    sagt, dass sie veraltet sind**. Eine Anzeige, die stillschweigend einfriert, ist
+    gefaehrlicher als eine leere.
+    """
+
+    def __init__(self, *, takt: float) -> None:
+        self._takt = takt
+        self._sperre = threading.Lock()
+        self._stand: dict[str, Any] | None = None
+        self._gebaut: datetime | None = None
+        self._dauer_ms = 0.0
+        self._terminal: RealMt5Terminal | None = None
+        self._venue: Mt5Venue | None = None
+        self._aus = threading.Event()
+
+    def start(self) -> None:
+        threading.Thread(target=self._schleife, daemon=True).start()
+
+    def stoppen(self) -> None:
+        self._aus.set()
+
+    def hole(self) -> tuple[dict[str, Any] | None, datetime | None, float]:
+        with self._sperre:
+            return self._stand, self._gebaut, self._dauer_ms
+
+    def _verbinden(self) -> bool:
+        if self._venue is not None and self._venue.is_healthy():
+            return True
+        if self._terminal is not None:
+            try:
+                self._terminal.shutdown()
+            except Exception:  # noqa: BLE001 - Aufraeumen darf nichts werfen
+                pass
+        self._terminal = RealMt5Terminal(allow_write=False, server_tz=SERVER_TZ_NAME)
+        if not self._terminal.initialize():
+            self._venue = None
+            return False
+        self._venue = Mt5Venue(
+            name="oberflaeche", terminal=self._terminal,
+            catalog=load_instrument_catalog(),
+        )
+        self._venue.connect()
+        return True
+
+    def _schleife(self) -> None:
+        while not self._aus.is_set():
+            t0 = time.perf_counter()
+            if not self._verbinden():
+                with self._sperre:
+                    if self._stand is None:
+                        self._stand = {"jetzt": datetime.now(UTC),
+                                       "fehler": "MT5-Terminal nicht erreichbar.",
+                                       "lauf": None, "alle_laeufe": []}
+                    else:
+                        self._stand["fehler"] = "MT5-Terminal nicht erreichbar."
+                self._aus.wait(self._takt)
+                continue
+            assert self._venue is not None
+            try:
+                stand = _lage(self._venue)
+            except Exception as exc:  # noqa: BLE001 - der Faden darf nie sterben
+                stand = {"jetzt": datetime.now(UTC), "fehler": str(exc),
+                         "lauf": None, "alle_laeufe": []}
+            with self._sperre:
+                self._stand = stand
+                self._gebaut = datetime.now(UTC)
+                self._dauer_ms = (time.perf_counter() - t0) * 1000
+            self._aus.wait(self._takt)
 
 
 # --------------------------------------------------------------------------
@@ -212,6 +288,55 @@ def _linienzug(
               fill="var(--matt)">{bis:%H:%M} UTC</text>
       </svg>
     </div>""".replace(",", " ")
+
+
+def _kennzahlen(stand: dict[str, Any]) -> str:
+    """Was aus dem Journal rechenbar ist und bisher nur darin lag.
+
+    Alle vier Zahlen folgen aus dem erweiterten Protokoll. Sie standen schon in den
+    Daten und wurden nur nicht gezeigt -- was der haeufigste Grund ist, warum eine
+    Anzeige duenn wirkt.
+    """
+    lauf: Lauf | None = stand.get("lauf")
+    if lauf is None:
+        return ""
+    reihe = lauf.equity_reihe()
+    takte = lauf.art("takt")
+    trades = [t for t in lauf.trades() if not t.offen]
+    rechenbar = [t.ergebnis_bps for t in trades if t.ergebnis_bps is not None]
+
+    # Drawdown seit Laufbeginn: groesster Ruecksetzer vom laufenden Hoechststand.
+    tiefster = Decimal("0")
+    spitze: Decimal | None = None
+    for _, wert in reihe:
+        spitze = wert if spitze is None or wert > spitze else spitze
+        if spitze > 0:
+            tiefster = min(tiefster, (wert - spitze) / spitze * Decimal("100"))
+    im_halt = sum(1 for t in takte if t["halt"])
+    halt_anteil = im_halt / len(takte) * 100 if takte else 0.0
+    treffer = (sum(1 for w in rechenbar if w > 0) / len(rechenbar) * 100
+               if rechenbar else None)
+    schlimmster = min(rechenbar) if rechenbar else None
+
+    def kachel(etikett: str, wert: str, klein: str, klasse: str = "") -> str:
+        return (f'<div class="kachel"><span class="etikett">{etikett}</span>'
+                f'<span class="wert {klasse}">{wert}</span>'
+                f'<span class="klein">{klein}</span></div>')
+
+    return "<div class='kacheln'>" + "".join([
+        kachel("Drawdown", f"{float(tiefster):.3f} %",
+               "groesster Ruecksetzer seit Laufbeginn",
+               "krit" if tiefster < -1 else ""),
+        kachel("Zeit im Halt", f"{halt_anteil:.0f} %",
+               f"von {len(takte)} Takten", "krit" if halt_anteil > 0 else "gut"),
+        kachel("Trefferanteil",
+               "—" if treffer is None else f"{treffer:.0f} %",
+               f"aus {len(rechenbar)} rechenbaren Trades"),
+        kachel("Schlechtester Trade",
+               "—" if schlimmster is None else f"{float(schlimmster):+.2f} bp",
+               "Preisdifferenz, ohne Kosten",
+               "krit" if schlimmster is not None and schlimmster < 0 else ""),
+    ]) + "</div>"
 
 
 def _abschnitt_verlauf(stand: dict[str, Any]) -> str:
@@ -498,12 +623,20 @@ table{display:block;overflow-x:auto;white-space:nowrap}
 .diagramm{background:var(--feld);border:1px solid var(--haar);border-radius:8px;
 padding:.7rem .8rem}
 .diagramm h3{margin:0 0 .3rem}
+.verbindung{color:var(--krit);font-size:.8rem;min-height:1rem;margin:0 0 .3rem}
 .fuss{margin-top:2rem;padding-top:.8rem;border-top:1px solid var(--haar);
 color:var(--matt);font-size:.75rem}
 """
 
 
-def seite(stand: dict[str, Any]) -> str:
+def seite(stand: dict[str, Any], *, jetzt: datetime | None = None) -> str:
+    """Das Inhaltsfragment. ``jetzt`` ist die RENDERZEIT, nicht die Sammelzeit.
+
+    Der Unterschied ist der Punkt: das Alter eines Schnappschusses misst sich daran,
+    wie lange er beim Ansehen schon liegt. Gegen seine eigene Entstehungszeit gerechnet
+    waere es per Konstruktion null -- derselbe Fehler wie in der ersten Fassung der
+    Frische-Kachel. Die Uhr wird hereingereicht, damit sie pruefbar bleibt.
+    """
     # Jeder Defekt gehoert AUF die Seite. Der Journalfehler wurde bisher zwar
     # gefangen und abgelegt, aber nirgends gezeigt -- die Seite meldete dann
     # "Kein Journal gefunden", wo "defektes Journal" richtig gewesen waere. Eine
@@ -519,14 +652,15 @@ def seite(stand: dict[str, Any]) -> str:
         f"<div class='hinweis krit-rand'><b>{etikett}:</b> {_e(text)}</div>"
         for etikett, text in stoerungen
     )
-    return f"""<!doctype html><html lang="de"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="refresh" content="{NEULADEN}">
-<title>MT5 Trading AI — Stand</title><style>{STIL}</style></head><body>
-<div class="huelle">
-  <h1>MT5 Trading AI — Stand</h1>
-  <p class="kopfzeile">{stand['jetzt']:%Y-%m-%d %H:%M:%S} UTC ·
-    lädt alle {NEULADEN} s neu · <b>nur lesend</b>, diese Seite kann nicht handeln</p>
+    alter = ""
+    if stand.get("gebaut") is not None:
+        sekunden = ((jetzt or datetime.now(UTC)) - stand["gebaut"]).total_seconds()
+        klasse = "krit" if sekunden > 30 else "klein"
+        alter = (f' · Stand <span class="{klasse}">{sekunden:.0f} s alt</span>'
+                 f' (gesammelt in {stand.get("dauer_ms", 0):.0f} ms)')
+    return f"""
+  <p class="kopfzeile">{stand['jetzt']:%Y-%m-%d %H:%M:%S} UTC{alter} ·
+    <b>nur lesend</b>, diese Seite kann nicht handeln</p>
   {warnung}
   <div class="hinweis">
     <b>Keine zugelassene Strategie.</b> Sieben Ereignisstudien haben keine tragfähige
@@ -536,32 +670,99 @@ def seite(stand: dict[str, Any]) -> str:
   </div>
   <h2>Konto und Verbindung</h2>{_abschnitt_konto(stand)}
   <h2>Offene Positionen</h2>{_abschnitt_positionen(stand)}
+  <h2>Kennzahlen</h2>{_kennzahlen(stand)}
   <h2>Verlauf</h2>{_abschnitt_verlauf(stand)}
   <h2>Der laufende Betrieb</h2>{_abschnitt_lauf(stand)}
   <h2>Die Orderkette, Naht für Naht</h2>{_abschnitt_sperren(stand)}
   <h2>Kurse gegen Kostenmodell</h2>{_abschnitt_preise(stand)}
   <p class="fuss">Gebaut aus der Standardbibliothek, ohne Webframework.
     Das Terminal wird mit <span class="mono">allow_write=False</span> geöffnet —
-    das ist kein Schalter dieses Werkzeugs.</p>
-</div></body></html>"""
+    das ist kein Schalter dieses Werkzeugs.</p>"""
+
+
+#: Der einzige Skriptteil dieser Seite. Kein Framework, keine Bibliothek, kein
+#: Bauwerkzeug -- zwanzig Zeilen, die den INHALT nachladen statt der ganzen Seite.
+#:
+#: Das ``<meta refresh>`` davor lud alle zehn Sekunden alles neu: die Scrollposition
+#: sprang, eine Textauswahl ging verloren, die Diagramme flackerten. Bei einer Seite,
+#: die man nebenher offen hat, ist genau das der Unterschied zwischen brauchbar und
+#: laestig.
+#:
+#: Ohne JavaScript bleibt die Seite lesbar -- sie aktualisiert dann nur nicht, und der
+#: ``<noscript>``-Hinweis sagt das. Bei verdecktem Fenster wird nicht geholt: eine
+#: Anzeige, die niemand ansieht, muss den Rechner nicht beschaeftigen.
+SKRIPT = """
+(function () {
+  var ziel = document.getElementById('inhalt');
+  var marke = document.getElementById('verbindung');
+  var laeuft = false;
+  function hole() {
+    if (laeuft || document.hidden) { return; }
+    laeuft = true;
+    fetch('/inhalt', {cache: 'no-store'})
+      .then(function (a) { if (!a.ok) { throw new Error(a.status); } return a.text(); })
+      .then(function (t) { ziel.innerHTML = t; marke.textContent = ''; })
+      .catch(function (e) {
+        marke.textContent = 'Seite nicht erreichbar (' + e.message + ')';
+      })
+      .then(function () { laeuft = false; });
+  }
+  setInterval(hole, TAKT);
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) { hole(); }
+  });
+})();
+"""
+
+
+def huelle(inhalt: str) -> str:
+    """Die Seite drumherum. Wird genau einmal geladen und danach nicht mehr."""
+    return f"""<!doctype html><html lang="de"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MT5 Trading AI — Stand</title><style>{STIL}</style></head><body>
+<div class="huelle">
+  <h1>MT5 Trading AI — Stand</h1>
+  <p id="verbindung" class="verbindung"></p>
+  <noscript><div class="hinweis krit-rand">Ohne JavaScript aktualisiert sich diese
+    Seite nicht von selbst. Zum Auffrischen neu laden.</div></noscript>
+  <main id="inhalt">{inhalt}</main>
+</div>
+<script>{SKRIPT.replace("TAKT", str(NEULADEN * 1000))}</script>
+</body></html>"""
 
 
 class Griff(BaseHTTPRequestHandler):
+    """Zwei Wege: die Huelle einmal, den Inhalt so oft man will."""
+
+    sammler: Sammler
+
+    def _inhalt(self) -> str:
+        stand, gebaut, dauer = self.sammler.hole()
+        if stand is None:
+            return ("<p class='leer'>Noch kein Schnappschuss — der Sammler "
+                    "verbindet sich gerade.</p>")
+        kopie = dict(stand)
+        kopie["gebaut"] = gebaut
+        kopie["dauer_ms"] = dauer
+        return seite(kopie)
+
     def do_GET(self) -> None:  # noqa: N802 - von BaseHTTPRequestHandler vorgegeben
-        if self.path not in ("/", "/index.html"):
+        weg = self.path.split("?")[0]
+        if weg not in ("/", "/index.html", "/inhalt"):
             self.send_error(404)
             return
         try:
-            inhalt = seite(_lage()).encode("utf-8")
+            text = self._inhalt()
+            roh = (text if weg == "/inhalt" else huelle(text)).encode("utf-8")
         except Exception as exc:  # noqa: BLE001 - die Seite soll den Fehler zeigen
-            inhalt = (f"<!doctype html><meta charset='utf-8'>"
-                      f"<pre>Fehler beim Bauen der Seite:\n{html.escape(str(exc))}"
-                      f"</pre>").encode()
+            roh = (f"<div class='hinweis krit-rand'>Fehler beim Bauen der Seite: "
+                   f"{html.escape(str(exc))}</div>").encode()
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
-        self.send_header("Content-Length", str(len(inhalt)))
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Content-Length", str(len(roh)))
         self.end_headers()
-        self.wfile.write(inhalt)
+        self.wfile.write(roh)
 
     def log_message(self, *_args: Any) -> None:
         """Still. Jede Anfrage zu protokollieren macht die Konsole unlesbar."""
@@ -573,13 +774,23 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Lesende Oberflaeche (nur lokal)")
     ap.add_argument("--port", type=int, default=8765)
     ap.add_argument("--kein-browser", action="store_true")
+    ap.add_argument("--takt", type=float, default=5.0,
+                    help="Sekunden zwischen zwei Sammellaeufen (Vorgabe 5)")
     args = ap.parse_args()
+
+    # Der Sammler haelt die Terminalsitzung offen und ist der EINZIGE Faden, der
+    # MetaTrader anfasst. Die Anfragen lesen nur seinen letzten Schnappschuss.
+    sammler = Sammler(takt=args.takt)
+    sammler.start()
+    Griff.sammler = sammler
+
     # Bewusst nur 127.0.0.1: die Seite zeigt Kontostand und Positionen und hat im
     # Netz nichts verloren.
     adresse = ("127.0.0.1", args.port)
     server = HTTPServer(adresse, Griff)
     url = f"http://{adresse[0]}:{adresse[1]}/"
     print(f"Oberflaeche laeuft: {url}")
+    print(f"Sammeltakt {args.takt:g} s, Anzeige laedt alle {NEULADEN} s nach.")
     print("Nur lesend. Beenden mit Strg-C.")
     if not args.kein_browser:
         webbrowser.open(url)
@@ -588,6 +799,7 @@ def main() -> int:
     except KeyboardInterrupt:
         print("\nBeendet.")
     finally:
+        sammler.stoppen()
         server.server_close()
     return 0
 
