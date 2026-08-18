@@ -18,6 +18,7 @@ Drei Eigenschaften bestimmen den Aufbau:
 
 from __future__ import annotations
 
+import hashlib
 import importlib
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, replace
@@ -26,6 +27,7 @@ from decimal import Decimal
 from typing import Any, Protocol, runtime_checkable
 from zoneinfo import ZoneInfo
 
+from mt5_trading_ai.backtest.edge import EdgeVerdict
 from mt5_trading_ai.execution.cost_gate import CostGate, evaluate_cost_gate
 from mt5_trading_ai.execution.freshness import (
     MAX_SNAPSHOT_AGE,
@@ -41,8 +43,13 @@ from mt5_trading_ai.execution.reconcile import (
 )
 from mt5_trading_ai.execution.release import live_release_blocks_opening_order
 from mt5_trading_ai.execution.risk_manager import RiskManager
-from mt5_trading_ai.venue.catalog import CatalogEntry
-from mt5_trading_ai.venue.demo_run import DemoReadiness
+from mt5_trading_ai.venue.catalog import (
+    MINUTEN_JE_TAG,
+    CatalogEntry,
+    InstrumentCatalogError,
+    session_minutes,
+)
+from mt5_trading_ai.venue.demo_run import DemoRegistration, pruefe_demo_beleg
 from mt5_trading_ai.venue.halal import screen_halal
 from mt5_trading_ai.venue.protocol import (
     AccountState,
@@ -56,13 +63,38 @@ from mt5_trading_ai.venue.protocol import (
     Position,
     Quote,
     Timeframe,
+    TradingSession,
     TradingVenue,
     UnknownInstrumentError,
-    VenueError,
     VenueUnavailableError,
 )
 
 MT5_ADAPTER_VERSION = "mt5-venue-v1"
+
+
+class NotAusUnvollstaendig(VenueUnavailableError):
+    """Der Not-Aus hat **nicht** alles geschlossen. Kein Rueckgabewert, ein Fehler.
+
+    Warum eine eigene Ausnahme und nicht ein Tupel mit weniger Eintraegen: ein
+    Aufrufer, der ``emergency_flatten()`` ruft, will genau eine Auskunft -- ist das
+    Risiko weg? Ein kuerzeres Tupel beantwortet die Frage nicht, es verschweigt sie.
+    Der Ausgang "teilweise" muss darum den normalen Weg verlassen.
+
+    ``geschlossen`` traegt, was gelungen ist (die Information geht durch das Werfen
+    nicht verloren), ``offen`` je einen Klartext-Eintrag pro Position, die steht oder
+    deren Ausgang unbekannt ist. Der Global-Halt ist beim Werfen bereits gesetzt.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        geschlossen: tuple[OrderResult, ...],
+        offen: tuple[str, ...],
+    ) -> None:
+        super().__init__(message)
+        self.geschlossen = geschlossen
+        self.offen = offen
 
 
 # --------------------------------------------------------------------------- #
@@ -144,6 +176,10 @@ class Mt5SendResult:
     ts: datetime
     reason: str
     retryable: bool = False
+    #: Der Auftrag lag beim Broker bereits vor und wurde **nicht erneut gesendet**.
+    #: Getrennt von ``accepted``, weil es eine andere Tatsache ist: angenommen ja,
+    #: gesendet nein. Wer beides zusammenwirft, bucht eine alte Fuellung zweimal.
+    idempotent_replay: bool = False
     raw: dict[str, Any] = field(default_factory=dict)
 
 
@@ -175,9 +211,71 @@ class Mt5Terminal(Protocol):
     def account(self) -> Mt5Account: ...
 
 
-def _hhmm_to_minutes(value: str) -> int:
-    hours, minutes = value.split(":")
-    return int(hours) * 60 + int(minutes)
+#: Minuten einer Woche. Bezugspunkt ist Montag 00:00 UTC (``weekday() == 0``).
+MINUTEN_JE_WOCHE = 7 * MINUTEN_JE_TAG
+
+
+def _sitzungsfenster(session: TradingSession) -> tuple[int, int]:
+    """Ein Sitzungsfenster als halboffenes Intervall in **Minuten seit Montag 00:00**.
+
+    Warum Minuten der Woche und nicht Minuten des Tages: die alte Fassung verglich
+    ``open_min <= minute_of_day < close_min`` innerhalb **eines** Wochentags. Damit war
+    eine Sitzung ueber Mitternacht schlicht nicht ausdrueckbar -- und genau so laeuft
+    die reale Woche: der FX-Handel oeffnet Sonntagabend und schliesst Freitagabend, ein
+    Index-CFD haengt an der Kassa-Sitzung seines Platzes. Wer so ein Fenster in
+    Tagesminuten pressen will, bekommt ``22:00 <= x < 06:00`` -- eine Bedingung, die
+    fuer **kein** ``x`` wahr ist. Das ist die harmlose Richtung (der Filter schneidet
+    Handelszeit weg), aber es ist eine Sperre, die per Konstruktion nichts sagt.
+
+    Ueber die Wochengrenze hinaus (Sonntag 22:00 -> Montag 06:00) laeuft das Fenster
+    ueber ``MINUTEN_JE_WOCHE`` hinaus; :func:`_sitzung_deckt` faengt das ab.
+
+    **Die drei Pruefungen unten stehen ein zweites Mal im Haus** -- dieselben Regeln
+    (Wochentag 0..6, Beginn nicht am Tagesende, Beginn ungleich Ende) prueft
+    ``venue/catalog.py::_parse_sessions`` beim Laden der Datei. Ueber den Katalog-Lader
+    sind sie hier unerreichbar; sie feuern nur an einem **handgebauten**
+    ``TradingSession``, also in Tests und in kuenftigem Code, der den Lader umgeht.
+    Bewusst nicht entfernt: ein Sitzungsfenster ohne Pruefung ist ein Fenster, das
+    still nie (oder immer) greift, und der Lader kann fuer ein Objekt, das nie durch
+    ihn lief, nicht buergen. Bewusst auch nicht zusammengezogen: die geteilte Stelle
+    waere ``session_minutes`` -- die ist bereits geteilt --, waehrend die drei Regeln
+    hier auf einem Objekt und dort auf JSON-Rohwerten arbeiten. Wer eine der Regeln
+    aendert, aendert beide Stellen; das steht hier, damit die zweite gefunden wird.
+    """
+    if not 0 <= session.weekday <= 6:
+        raise InstrumentCatalogError(
+            f"Sitzung mit Wochentag {session.weekday} (erlaubt 0..6, 0 = Montag)"
+        )
+    auf = session_minutes(session.open_utc)
+    zu = session_minutes(session.close_utc)
+    if auf >= MINUTEN_JE_TAG:
+        raise InstrumentCatalogError(
+            f"Sitzungsbeginn {session.open_utc!r} liegt am Tagesende"
+        )
+    if auf == zu:
+        raise InstrumentCatalogError(
+            f"Sitzung {session.open_utc!r}-{session.close_utc!r} ist mehrdeutig"
+        )
+    dauer = zu - auf if zu > auf else (MINUTEN_JE_TAG - auf) + zu
+    anfang = session.weekday * MINUTEN_JE_TAG + auf
+    return anfang, anfang + dauer
+
+
+def _sitzung_deckt(sessions: tuple[TradingSession, ...], zeit: datetime) -> bool:
+    """Faellt ``zeit`` (UTC, zonenbewusst) in eines der Sitzungsfenster?
+
+    Rein rechnerisch, ohne jede Aussage darueber, ob der Platz tatsaechlich offen ist
+    -- das beantwortet allein der Kursstrom (siehe :meth:`Mt5Venue.is_trading_open`).
+    """
+    minute = zeit.weekday() * MINUTEN_JE_TAG + zeit.hour * 60 + zeit.minute
+    for session in sessions:
+        anfang, ende = _sitzungsfenster(session)
+        if anfang <= minute < ende:
+            return True
+        # Fenster, das ueber Sonntag 24:00 hinauslaeuft, deckt den Montagmorgen.
+        if ende > MINUTEN_JE_WOCHE and minute < ende - MINUTEN_JE_WOCHE:
+            return True
+    return False
 
 
 class Mt5Venue(TradingVenue):
@@ -209,11 +307,22 @@ class Mt5Venue(TradingVenue):
     als **erste** der fuenf Sperren, weil jede folgende mit Zahlen aus genau diesem
     Zustand rechnet. Default ist die Systemuhr; Tests spritzen eine feste Uhr ein.
 
-    ``demo_readiness`` (Paket 5) ist das Ergebnis des Demo-Reife-Tors
-    (``venue/demo_run.py``): eine Live-Eroeffnung verlangt >= 180 Tage Demo-Betrieb
-    **und** weiter bestandenen Edge; fehlt es oder ist es nicht reif, blockt die
-    Live-Freigabe. Der Halal-Screen (``venue/halal.py``) laeuft ebenfalls je
-    eroeffnender Live-Order und liest swapfrei/zinsfrei/Freigabe aus ``settings``.
+    ``demo_registration`` + ``demo_live_verdict`` (Paket 5) sind die Belege des
+    Demo-Betriebs (``venue/demo_run.py``): der **Registrierungsbeleg** (welche
+    Strategie lief ab wann auf welchem Demokonto) und der im Demo **weiter gemessene**
+    Edge. Eine Live-Eroeffnung verlangt >= 180 Tage Demo-Betrieb und weiter bestandenen
+    Edge; das Urteil darueber rechnet das Tor selbst (:meth:`_require_demo_maturity`)
+    aus diesen Belegen und ``clock``.
+
+    Bewusst **kein** fertiges ``DemoReadiness`` mehr: das war ein Urteil, das der
+    Aufrufer in einer Zeile behaupten konnte (``DemoReadiness(True, ())``), und ein Tor,
+    das ein Urteil entgegennimmt, ist kein Tor, sondern ein Echo. Ein Beleg dagegen muss
+    ein Registrierungsdatum tragen, das gegen die Uhr dieses Venues besteht -- und die
+    Uhr gehoert dem Tor, nicht dem Aufrufer. Fehlt einer der beiden Belege, wird
+    fail-closed abgelehnt.
+
+    Der Halal-Screen (``venue/halal.py``) laeuft ebenfalls je eroeffnender Live-Order
+    und liest swapfrei/zinsfrei/Freigabe aus ``settings``.
     """
 
     def __init__(
@@ -227,7 +336,8 @@ class Mt5Venue(TradingVenue):
         sync: PrivateSync | None = None,
         cost_gate: CostGate | None = None,
         risk_manager: RiskManager | None = None,
-        demo_readiness: DemoReadiness | None = None,
+        demo_registration: DemoRegistration | None = None,
+        demo_live_verdict: EdgeVerdict | None = None,
         clock: Callable[[], datetime] | None = None,
         max_account_age: timedelta = MAX_SNAPSHOT_AGE,
     ) -> None:
@@ -238,13 +348,28 @@ class Mt5Venue(TradingVenue):
         self._max_notional_drift = max_notional_drift
         self._cost_gate = cost_gate
         self._risk_manager = risk_manager
-        self._demo_readiness = demo_readiness
+        self._demo_registration = demo_registration
+        self._demo_live_verdict = demo_live_verdict
         #: Gegenwart fuer den Frische-Latch. Injizierbar, damit die Sperre pruefbar ist.
         self._clock = clock if clock is not None else (lambda: datetime.now(UTC))
         self._max_account_age = max_account_age
         self._connected = False
         #: Idempotenz je ``client_order_id`` — nur angenommene Orders.
+        #:
+        #: **Reicht allein nicht** und war nie als alleiniger Schutz gedacht: dieses
+        #: Verzeichnis lebt im Prozessgedaechtnis. Ein Neustart, ein zweiter Runner
+        #: oder ein Zeitablauf VOR dem Eintrag findet es leer. Der belastbare Teil der
+        #: Idempotenz liegt beim Broker (``RealMt5Terminal._bereits_beim_broker``, die
+        #: Kennmarke am Auftrag); dieser Puffer spart nur den Umlauf im Normalfall.
         self._results: dict[str, OrderResult] = {}
+        #: Kennungen, deren Sendeversuch mit einer Ausnahme endete -- Ausgang unbekannt.
+        #: Sie latchen den Global-Halt und stehen hier, damit der Betrieb weiss, wonach
+        #: er beim Broker sehen muss. Ein spaeteres Ergebnis derselben Kennung raeumt
+        #: den Eintrag wieder ab.
+        self._unklare_sendeversuche: dict[str, str] = {}
+        #: Zaehler der Not-Aus-Laeufe. Er geht in die Kennung jeder Schliessorder ein,
+        #: damit ein zweiter Not-Aus nicht als Wiedergaenger des ersten gilt.
+        self._flatten_laeufe = 0
         #: Privater Ereignisstrom (optional). Ist er da, fuehrt er das Buch.
         self._sync = sync
         #: Lokales Buch der Nettopositionen; mit Strom ist es dessen Buch (geteilt).
@@ -265,6 +390,19 @@ class Mt5Venue(TradingVenue):
         self._connected = False
 
     def is_healthy(self) -> bool:
+        """Sitzung da und Leitung offen. **Keine** Aussage ueber das Alter der Daten.
+
+        ``self._connected`` haelt fest, dass ``connect()`` gelaufen und
+        ``disconnect()`` nicht gelaufen ist; ``Mt5Terminal.is_connected()`` prueft
+        am realen Terminal
+        Prozess, Serververbindung und Kontositzung (siehe dort).
+
+        Die dritte Kante des Vertrags -- veraltete Daten -- liegt bewusst nicht hier,
+        sondern am Order-Pfad (:meth:`_enforce_account_freshness`, mit Kursstempel und
+        Symbol). Der Grund steht bei ``RealMt5Terminal.is_connected``: eine
+        Frischepruefung braucht ein Symbol, und diese Methode laeuft am Kopf fast
+        jeder anderen. Wer eine Frischezusage braucht, holt sie dort -- nicht hier.
+        """
         return self._connected and self._terminal.is_connected()
 
     def _require_healthy(self) -> None:
@@ -307,16 +445,138 @@ class Mt5Venue(TradingVenue):
         return tuple(out)
 
     def is_trading_open(self, symbol: str, *, at: datetime) -> bool:
+        """Ist der Platz fuer dieses Symbol offen? **Zwei** Bedingungen, beide noetig.
+
+        Die alte Fassung stellte nur eine Frage, und die falsche: sie las eine Tabelle,
+        in der EURUSD, GBPUSD, USDJPY, EURGBP, XAUUSD **und US500** dieselbe Zeile
+        teilten (Mo-Fr 00:00-21:00), rechnete die Wanduhr ohne Zonenpruefung in
+        Tagesminuten um und kannte keine Feiertage. Die harmlose Fehlrichtung war, dass
+        der Filter reale Handelszeit wegschneidet. Die gefaehrliche war die andere:
+        **"offen", waehrend der Platz zu ist** -- US500 um drei Uhr nachts, alles an
+        Weihnachten. Danach laeuft die ganze Eintrittskette auf einem Markt, den es
+        gerade nicht gibt.
+
+        Darum ist die Antwort jetzt die Konjunktion aus einer Tabelle und einer
+        **Messung**:
+
+        1. **Die Tabelle darf nur verengen.** Das Sitzungsfenster aus dem Katalog ist
+           eine konservative Annahme, kein veroeffentlichter Boersenkalender -- die
+           Datei sagt das selbst ("Handelszeiten vereinfacht"). Eine unbelegte Annahme
+           darf nichts oeffnen. In dieser Konjunktion kann sie genau das nicht: sie
+           kommt nur als **notwendige** Bedingung vor, also ausschliesslich in der
+           harmlosen Richtung. Damit muss hier keine Handelszeit erfunden werden, um
+           die gefaehrliche Richtung zu schliessen -- und erfundene Handelszeiten
+           waeren in einer belegpflichtigen Datei ohnehin das groessere Uebel.
+        2. **Offen ist, wo Preise entstehen.** Der Beleg dafuer, dass der Platz
+           tatsaechlich handelt, kommt von der anderen Seite der Leitung: der
+           Kursstempel des Symbols muss innerhalb derselben Frist liegen, die der
+           Frische-Latch am Order-Pfad anlegt (:meth:`_enforce_account_freshness`).
+           Ein geschlossener Platz druckt keine Preise -- der letzte Tick altert, und
+           das faellt hier auf, ohne dass irgendwo ein Feiertagskalender gepflegt
+           werden muesste. Das ist dieselbe Entscheidung, die
+           ``config/ereigniskalender.json`` schon fuer die Studie getroffen hat:
+           "ein Ereignis ohne Kerze faellt heraus, und das ist genauer als ein
+           gepflegter Feiertagskalender".
+
+        **Die beiden Bedingungen fragen nach zwei verschiedenen Zeiten, und das ist
+        der Kern.** Die Tabelle wird gegen ``at`` gelesen: sie beantwortet, ob der
+        gefragte Zeitpunkt in einem Sitzungsfenster liegt. Die Messung dagegen wird
+        gegen ``self._clock()`` gerechnet -- die Uhr dieses Venues, dieselbe, gegen
+        die zwei Zeilen spaeter der Frische-Latch misst. Die erste Fassung nahm hier
+        ``at``, und daran starb der Eintrittspfad:
+
+        * ``tools/live_betrieb.py`` friert ``jetzt = datetime.now(UTC)`` am Kopf des
+          Taktes ein und fragt erst danach ``is_trading_open(symbol, at=jetzt)``.
+          Dazwischen liegen ein Kontoabruf, eine Positionsliste, ein ``get_quote`` je
+          Symbol, der Buchabgleich, die Notbremse und je offener Position ein
+          ``get_bars`` ueber 360 Stunden.
+        * Der Tick dagegen wird in genau diesem Aufruf frisch geholt und ist ~echte
+          Gegenwart. Sein Alter **gegen den eingefrorenen Zeitpunkt** ist damit
+          negativ, und jenseits von ``FUTURE_TOLERANCE`` (1 s) lautet das Urteil
+          ``snapshot_from_future``.
+        * Ergebnis: sobald ein Takt laenger als eine Sekunde unterwegs ist -- also
+          praktisch immer, und fuer das letzte Symbol der Liste sicher --, meldete
+          ``is_trading_open`` False, und der Aufrufer sprang mit einem stillen
+          ``continue`` weiter. Eine Sperre, die aus einem Grund schliesst, der mit dem
+          Zustand des Marktes nichts zu tun hat, ist genauso kaputt wie eine, die nie
+          schliesst; sie wird nur nicht bemerkt, sondern irgendwann abgeschaltet.
+
+        "Druckt der Platz gerade Preise?" ist eine Frage an die Gegenwart, nicht an
+        einen mitgereichten Zeitpunkt. Die Gegenwart gehoert diesem Venue (``clock``,
+        in Tests eingespritzt) -- genauso, wie das Demo-Reifetor sein Datum nicht vom
+        Aufrufer entgegennimmt. Festgenagelt in
+        ``tests/test_handelszeiten.py::test_der_eingefrorene_zeitpunkt_des_aufrufers_bremst_nicht``.
+
+        Warum genau ``self._max_account_age`` als Frist und keine eigene, weichere
+        Zahl: eine Order auf ein Symbol, dessen Kurs diese Frist reisst, wird zwei
+        Zeilen spaeter ohnehin abgelehnt. Diese Zusage haelt jetzt woertlich -- gleiche
+        Frist UND gleiche Uhr; mit ``at`` als Bezug war sie nur halb wahr, denn in der
+        Zukunftsrichtung sagte ``is_trading_open`` "zu", waehrend
+        ``_enforce_account_freshness`` dieselbe Lage klaglos durchliess. Eine
+        grosszuegigere Frist hier wuerde nur etwas versprechen, was das naechste Tor
+        zurueckweist -- und eine zweite, abweichende Zahl fuer dieselbe Frage ist die
+        Sorte Kopie, die auseinanderlaeuft.
+
+        ``at`` **muss** zonenbewusst sein. Ein naiver Zeitstempel wird nicht still als
+        UTC gedeutet: ``at.weekday()`` und ``at.hour`` haetten dann eine unbekannte
+        Bedeutung, und das Ergebnis waere ein geratener Wochentag. Ein ``False`` waere
+        hier die schlechtere Antwort als ein Fehler, denn "geschlossen" ist eine
+        gueltige Marktaussage -- ein Aufruferfehler saehe als dauerhaft geschlossener
+        Markt aus und faende sich nie.
+
+        **Was das ueber ein historisches ``at`` sagt: nichts.** Wer einen Zeitpunkt
+        von gestern einreicht, bekommt die Tabelle fuer gestern und die Messung fuer
+        heute. Die Antwort ist dann keine historische Aussage. Das ist bewusst nicht
+        durch eine Abweichungsgrenze abgefangen: jede solche Grenze waere eine weitere
+        Zahl ohne Beleg, und der Kursstrom eines vergangenen Tages laesst sich am
+        Terminal ohnehin nicht mehr abfragen. Beide realen Aufrufer
+        (``tools/live_betrieb.py``, ``venue/smoke.py``) reichen die Gegenwart ein.
+
+        **Benannter Mangel, bewusst nicht behoben:** ein Broker, der auf einem
+        geschlossenen Platz weiter indikative Kurse stellt, faellt hier nicht auf. Die
+        saubere Gegenprobe waere ``symbol_info(...).trade_mode`` bzw.
+        ``symbol_info_sessions_trade`` -- beides gehoert an die Naht
+        :class:`Mt5Terminal` und damit in eine eigene Welle, weil jedes Fake-Terminal
+        im Repo mitzieht. Festgenagelt in
+        ``tests/test_handelszeiten.py::test_stehende_indikative_kurse_gelten_als_offen``.
+        """
+        if at.tzinfo is None or at.utcoffset() is None:
+            raise ValueError(
+                "is_trading_open braucht einen zonenbewussten Zeitpunkt -- ein naiver "
+                "Stempel macht Wochentag und Uhrzeit zu geratenen Groessen"
+            )
         instrument = self.get_instrument(symbol)
-        minute_of_day = at.hour * 60 + at.minute
-        for session in instrument.sessions:
-            if session.weekday != at.weekday():
-                continue
-            open_min = _hhmm_to_minutes(session.open_utc)
-            close_min = _hhmm_to_minutes(session.close_utc)
-            if open_min <= minute_of_day < close_min:
-                return True
-        return False
+        zeit = at.astimezone(UTC)
+        if not _sitzung_deckt(instrument.sessions, zeit):
+            return False
+        return self._markt_druckt_preise(symbol)
+
+    def _markt_druckt_preise(self, symbol: str) -> bool:
+        """Belegt der Kursstrom, dass dieses Symbol GERADE gehandelt wird?
+
+        Kein Tick = kein Beleg = zu. Ein Tick, dessen Stempel die Frist reisst, ist
+        derselbe Fall: der letzte Preis ist alt, also druckt der Platz gerade keine.
+        Die Verbindung geht mit in die Frage ein -- ueber eine tote Leitung ist ueber
+        den Zustand des Platzes nichts auszusagen (``session_not_connected``).
+
+        Gemessen wird gegen ``self._clock()`` und **nicht** gegen einen mitgereichten
+        Zeitpunkt. Der Grund steht ausfuehrlich bei :meth:`is_trading_open`: ein
+        eingefrorener Aufruferzeitpunkt macht den frisch geholten Tick rechnerisch zu
+        einem Stempel aus der Zukunft und schaltet damit den ganzen Eintrittspfad ab,
+        ohne dass das mit dem Markt etwas zu tun haette. Darum nimmt diese Methode
+        auch kein Zeitargument mehr entgegen -- es gab nur eine falsche Antwort
+        darauf.
+        """
+        tick = self._terminal.tick(symbol)
+        if tick is None:
+            return False
+        verdict = evaluate_account_freshness(
+            snapshot_ts=tick.ts,
+            now=self._clock(),
+            connected=self._terminal.is_connected(),
+            max_age=self._max_account_age,
+        )
+        return verdict.evaluable
 
     # --- Marktdaten -------------------------------------------------------
     def get_quote(self, symbol: str) -> Quote:
@@ -463,10 +723,11 @@ class Mt5Venue(TradingVenue):
                     reason="missing_stop_loss",
                     retryable=False,
                 )
-            # Sperre 1 von 5 (Paket 2, A3.2): Frische des Kontozustands. Sie laeuft
-            # VOR allem, was aus dem Kontozustand liest -- auch vor der Live-Freigabe,
-            # die ``is_demo`` aus genau diesem Schnappschuss zieht.
-            self._enforce_account_freshness()
+            # Sperre 1 von 5 (Paket 2, A3.2): Frische der Lage. Sie laeuft VOR allem,
+            # was aus Konto- oder Kurszahlen liest -- auch vor der Live-Freigabe, die
+            # ``is_demo`` aus dem Kontoschnappschuss zieht. Gemessen wird der
+            # Kursstempel des Brokers; die Begruendung steht an der Methode.
+            self._enforce_account_freshness(request.symbol)
             # Live-Freigabe (inkl. Demo-Reife): nur eroeffnende Orders am Live-Konto.
             self._require_live_release_for_opening()
             # Halal-Screen: mechanische Konformitaet + hinterlegte Gelehrten-Freigabe.
@@ -480,8 +741,60 @@ class Mt5Venue(TradingVenue):
             # Positionsgroesse (risk/sizing.py) -- alle vier ueber den einen
             # Aggregator, kontounabhaengig.
             self._enforce_risk(instrument, request, effective_leverage)
+            # Doppelorder-Riegel. Steht NACH den fuenf Sperren, weil er keine von
+            # ihnen ist: er fragt nicht, ob diese Order erlaubt waere, sondern ob es
+            # sie schon gibt. Begruendung an der Methode.
+            self._verhindere_doppelte_eroeffnung(request)
 
-        send = self._terminal.order_send(self._to_terminal_request(request))
+        try:
+            send = self._terminal.order_send(self._to_terminal_request(request))
+        except Exception as exc:
+            # E10.4: Ein Sendeversuch, der mit einer AUSNAHME endet, hat kein Ergebnis
+            # -- und "kein Ergebnis" ist nicht dasselbe wie "nichts geschehen". Ein
+            # Zeitablauf, ein weggebrochenes Terminal, ein Absturz zwischen Senden und
+            # Antwort: in all diesen Faellen kann beim Broker eine echte Order liegen,
+            # von der dieser Prozess nichts weiss. Das Buch ist ab hier unbelegt.
+            #
+            # Fail-closed heisst hier: Global-Halt latchen (keine weitere Eroeffnung,
+            # Reduce-Only bleibt frei) und die Kennung als unklar vermerken, damit der
+            # Betrieb weiss, WELCHE Order von Hand nachzusehen ist. Der Fehler wird
+            # unveraendert weitergereicht -- der Aufrufer darf nicht glauben, es sei
+            # nichts passiert.
+            #
+            # Bewusst jede Ausnahme, nicht nur ``VenueError``: aus Sicht des Venues ist
+            # ``terminal.order_send`` eine geschlossene Kiste. Welche Ausnahme sie
+            # wirft, sagt nichts darueber, wie weit sie vorher gekommen ist. Der Preis
+            # ist ein Fehlalarm bei Ausgaengen, die nachweislich nichts gesendet haben
+            # (etwa ein gesperrter Schreibpfad); ein Halt zu viel ist geraeuschvoll,
+            # ein Halt zu wenig ist eine unbemerkte Position.
+            self._unklare_sendeversuche[request.client_order_id] = (
+                f"{type(exc).__name__}: {exc}"
+            )
+            self._halted = True
+            self._halt_reason = f"sendeversuch_unklar:{request.client_order_id}"
+            raise
+        if send.idempotent_replay:
+            # Der Handelsplatz kennt diese Kennung bereits (Marke am Broker, siehe
+            # ``RealMt5Terminal._bereits_beim_broker``): der Auftrag ist NICHT ein
+            # zweites Mal gesendet worden. Genau wie beim Wiedergaenger aus
+            # ``self._results`` wird hier nichts gebucht und nichts gezaehlt -- was
+            # damals gefuellt wurde, gehoert nicht ein zweites Mal ins Buch. Die
+            # autoritative Wiederherstellung nach einem Neustart ist ``adopt_book()``;
+            # ein Buch, das zu wenig fuehrt, faellt im naechsten ``reconcile()`` laut
+            # auf, ein doppelt gebuchtes waere still falsch.
+            wiedergaenger = OrderResult(
+                client_order_id=request.client_order_id,
+                venue_order_id=send.venue_order_id,
+                accepted=True,
+                filled_volume=Decimal("0"),
+                average_price=None,
+                ts=send.ts,
+                idempotent_replay=True,
+                raw=send.raw,
+            )
+            self._results[request.client_order_id] = wiedergaenger
+            self._unklare_sendeversuche.pop(request.client_order_id, None)
+            return wiedergaenger
         if not send.accepted:
             raise OrderRejectedError(
                 f"Handelsplatz hat abgelehnt: {send.reason}",
@@ -499,15 +812,30 @@ class Mt5Venue(TradingVenue):
             raw=send.raw,
         )
         self._results[request.client_order_id] = result
+        # Der Broker hat geantwortet -- die Kennung ist nicht mehr unklar.
+        self._unklare_sendeversuche.pop(request.client_order_id, None)
         # ``pre_net`` (oben, vor jeder Buchung erfasst) + dieser Fill ergibt den
         # resultierenden Netto-Stand -- stromunabhaengig (das lokale Buch wird nur ohne
         # Strom hier mutiert; mit Strom bucht der nachlaufende private Fill).
+        #
+        # ``send.filled_volume`` ist bei einer angenommenen, aber nur ANGELEGTEN Order
+        # (``TRADE_RETCODE_PLACED``) null -- und dann bucht dieser Aufruf richtigerweise
+        # nichts. Frueher stand hier das Anfragevolumen: das Buch fuehrte eine Position,
+        # die es beim Broker nicht gab, und der naechste ``reconcile()`` latchte dafuer
+        # den Global-Halt.
         if self._sync is None:
             # Ohne Strom optimistisch buchen; mit Strom bucht der autoritative Fill.
             self._book.apply_fill(request.symbol, request.side, send.filled_volume)
         # Akzeptierten Fill an die Risikoschicht melden. Kontounabhaengig: die
         # Zaehler der Drossel und der Positionsdeckel muessen auch auf Demo stimmen,
         # sonst prueft die Sperre dort gegen einen leeren Zustand.
+        #
+        # Gemeldet wird die ANNAHME, nicht die Fuellung -- auch eine nur angelegte
+        # Pending-Order zaehlt gegen Drossel und Positionsdeckel. Sie kann jederzeit
+        # fuellen, und wenn sie es tut, laeuft keine Sperre mehr. Der Zaehler kann
+        # dadurch zu hoch stehen (eine stornierte Pending-Order gibt ihren Platz nicht
+        # zurueck); das sperrt haeufiger als noetig und ist die einzige Richtung, in
+        # der ein Zaehlfehler hier ungefaehrlich ist.
         if self._risk_manager is not None:
             if not is_reducing:
                 # Eroeffnung: Frequenz-Zaehler + offene Position fortschreiben.
@@ -523,6 +851,76 @@ class Mt5Venue(TradingVenue):
                     # pre_net + Fill statt book.net(): stromunabhaengig korrekt.
                     self._risk_manager.record_close(request.symbol)
         return result
+
+    def _verhindere_doppelte_eroeffnung(self, request: OrderRequest) -> None:
+        """Steht die gewollte Position beim Broker schon? Dann wird nicht eroeffnet.
+
+        **Warum es diesen Riegel zusaetzlich zur Kennmarke braucht.** Die Idempotenz
+        am Broker (E10.4, :func:`kennmarke`) erkennt eine Wiederholung an der
+        ``client_order_id``: gleiche Kennung -> gleiche Marke -> der Auftrag wird im
+        Bestand gefunden und nicht ein zweites Mal gesendet. Das traegt genau so weit,
+        wie der Aufrufer dieselbe Kennung noch einmal schickt. Der einzige reale
+        Aufrufer tut das nie: ``tools/live_betrieb.py`` baut
+        ``f"open-{symbol}-{uuid.uuid4().hex[:10]}"`` und leitet nach einem Zeitablauf,
+        einem Neustart oder in einem zweiten Runner den Willen neu ab -- mit neuer
+        Zufallskennung, neuer Marke, und die Abfrage findet nichts. Gemessen, nicht
+        geschlossen: zwei Sendeversuche derselben Absicht mit uuid-Kennungen erzeugten
+        zwei echte Orders (``tests/test_idempotenz_am_broker.py::
+        test_zweiter_versuch_mit_neuer_zufallskennung_eroeffnet_nicht_doppelt``).
+
+        Ein Idempotenzschutz, der nur im Test greift, ist gefaehrlicher als keiner --
+        man verlaesst sich auf ihn. Also wird hier nach dem gefragt, was der Aufrufer
+        **nicht** neu wuerfeln kann: dem Zustand beim Broker. Eine eroeffnende Order
+        in ein Symbol, in dem bereits eine **gleichgerichtete** Position steht, ist
+        fuer dieses System nie gewollt. Es fuehrt netto eine Position je Symbol
+        (``RiskManager.record_open_fill`` zaehlt je Symbol einmal, der Live-Treiber
+        ueberspringt jedes Symbol mit offener Position), es baut keine Pyramide auf,
+        und es hat keinen Pfad, der eine bestehende Position vergroessert.
+
+        Massgeblich ist ``get_positions()``, also eine frische Broker-Abfrage --
+        dieselbe Quelle wie in :meth:`_reduces_position` und aus demselben Grund: das
+        lokale Buch ist nach einem Neustart leer, und leer waere hier die schmeichelnde
+        Antwort.
+
+        **Was der Riegel NICHT faengt** -- ausdruecklich, damit sich niemand mehr
+        darauf verlaesst als er traegt:
+
+        * Eine liegende, noch nicht ausgefuehrte Pending-Order. Sie steht in
+          ``orders_get``, nicht in ``positions_get``, und der Vertrag
+          :class:`Mt5Terminal` kennt keine Auftragsliste. Der Live-Treiber sendet
+          ausschliesslich Marktorders; fuer den Limit-Pfad bleibt die Luecke offen und
+          ist in ``tests/test_idempotenz_am_broker.py`` festgenagelt.
+        * Eine Wiederholung, deren erster Versuch den Broker nie erreicht hat. Dann
+          ist auch nichts doppelt -- der Riegel soll dort gar nicht greifen.
+        * Zwei Runner, die im selben Augenblick senden. Zwischen Abfrage und Senden
+          liegt ein Umlauf; das ist ein Wettlauf, den nur der Broker selbst
+          entscheiden kann.
+
+        **Die Gegenrichtung, damit der Riegel keine Dauerbremse wird:** er greift nur
+        bei gleicher Seite. Eine Gegenorder (Flip, Absicherung) laeuft weiter durch
+        alle Tore, und Reduce-Only erreicht diese Stelle gar nicht erst -- Risikoabbau
+        darf nie an einer Sperre haengen. Im gesunden Betrieb loest er nicht aus, weil
+        der Aufrufer solche Symbole ohnehin ueberspringt; er ist eine Sicherung, kein
+        Filter. Genau dadurch ist sein Ausloesen ein Alarm: es heisst, dass der
+        Aufrufer eine Position nicht kannte, die es gibt.
+        """
+        gleichgerichtet = tuple(
+            pos
+            for pos in self.get_positions()
+            if pos.symbol == request.symbol and pos.side is request.side
+        )
+        if not gleichgerichtet:
+            return
+        tickets = ", ".join(pos.venue_position_id for pos in gleichgerichtet)
+        raise OrderRejectedError(
+            f"{request.symbol}: es steht bereits eine gleichgerichtete Position beim "
+            f"Broker ({request.side.value}, Ticket {tickets}). Eine eroeffnende Order "
+            "waere eine zweite Position auf dieselbe Absicht -- der haeufigste Weg zu "
+            "einer Doppelorder ist eine neu gewuerfelte Kennung nach Zeitablauf oder "
+            "Neustart. Abbau (reduce_only) bleibt frei.",
+            reason="doppelte_eroeffnung",
+            retryable=False,
+        )
 
     def _reduces_position(self, request: OrderRequest) -> bool:
         """Baut die Order eine offene Gegenposition ab, OHNE sie zu ueberschreiten?
@@ -549,30 +947,85 @@ class Mt5Venue(TradingVenue):
         # opposite > 0: Gegenposition da; volume <= opposite: kein Flip/Over-Fill.
         return opposite > 0 and request.volume <= opposite
 
-    def _enforce_account_freshness(self) -> None:
-        """Frische-Latch (S2) fuer eine eroeffnende Order — auf JEDEM Konto.
+    def _enforce_account_freshness(self, symbol: str) -> None:
+        """Frische-Latch (S2) fuer eine eroeffnende Order -- auf JEDEM Konto.
 
-        Erste der fuenf Sperren aus A3.2. Ein Kontozustand, dessen Alter die Frist
-        reisst, ist nicht bewertbar; nicht bewertbar gilt als nicht erfuellt. Ohne
-        diese Sperre rechnen Tagesverlustdeckel, Drawdown-Halt und Positionsgroesse
-        auf Zahlen, die aussehen wie Messwerte und keine sind.
+        Erste der fuenf Sperren aus A3.2. Ein Zustand, dessen Alter die Frist reisst,
+        ist nicht bewertbar; nicht bewertbar gilt als nicht erfuellt. Ohne diese Sperre
+        rechnen Tagesverlustdeckel, Drawdown-Halt und Positionsgroesse auf Zahlen, die
+        aussehen wie Messwerte und keine sind.
 
-        Bewusst **nicht** demo-frei: ein veralteter Kontostand ist auf dem Demokonto
-        genauso wenig bewertbar wie auf dem Live-Konto, und das Demokonto ist der Ort,
-        an dem sich die Sperre beweisen muss.
+        **Gemessen wird der Kursstempel des Brokers, nicht der Kontoschnappschuss.**
+        Das ist der Kern dieser Sperre, und die erste Fassung hatte ihn falsch herum:
+
+        * MetaTrader liefert ueberhaupt keinen Kontozeitstempel.
+          ``RealMt5Terminal.account`` setzt ``ts`` in genau diesem Aufruf selbst auf
+          ``datetime.now(UTC)``. Wer den so entstandenen Stempel gegen
+          ``self._clock()`` haelt, misst die eigene Uhr gegen die eigene Uhr: das
+          Alter ist per Konstruktion ein paar Mikrosekunden, die Frist betraegt fuenf
+          Sekunden. Die Sperre konnte nicht ausloesen -- und hat es in 21
+          Betriebsjournalen kein einziges Mal getan, kein einziges ``snapshot_stale``.
+        * Der Kursstempel kommt von der anderen Seite der Leitung. Er ist das einzige
+          Lebenszeichen im System, das nicht im eigenen Prozess entsteht, und damit
+          das einzige, an dem sich ein haengendes Terminal ueberhaupt zeigen kann.
+
+        Genau diese Umstellung ist in ``tools/oberflaeche.py`` (Kachel "Kursfrische")
+        und ``tools/live_konsole.py`` bereits gefahren und dort begruendet; hier steht
+        dieselbe Messung an der Stelle, an der sie eine Order **stoppt**, statt sie
+        nur anzuzeigen.
+
+        Gemessen wird der Stempel **des zu handelnden Symbols**, nicht irgendeiner.
+        Ein frischer EURUSD-Tick sagt nichts ueber einen eingefrorenen XAUUSD-Strom,
+        und alle folgenden Sperren (Hebel, Kostentor, Groesse) rechnen mit dem Preis
+        genau dieses Symbols.
+
+        Kein Kurs = kein Stempel = nicht bewertbar. Auch das ist eine Ablehnung, kein
+        stilles Durchwinken.
+
+        Bewusst **nicht** demofrei: ein veralteter Kurs ist auf dem Demokonto genauso
+        wenig bewertbar wie auf dem Livekonto, und das Demokonto ist der Ort, an dem
+        sich die Sperre beweisen muss.
+
+        Nebenwirkung, die keine ist: ohne konfigurierte Serverzone
+        (``RealMt5Terminal(server_tz=...)``) tragen die Kursstempel die Wanduhr des
+        Servers unter dem Etikett UTC. Der Vergleich gegen echte UTC hat dann den
+        vollen Serverversatz drin, und die Sperre steht dauerhaft rot -- je nach
+        Richtung des Versatzes als ``snapshot_from_future`` oder als
+        ``snapshot_stale``. Das ist richtig so: wer den Versatz nicht kennt, kann das
+        Alter nicht messen, und nicht messbar heisst nicht bewertbar.
+
+        Hier stand "alle drei realen Aufrufer setzen die Zone". Es sind **vier**, und
+        der vierte setzt sie nicht: ``tools/mt5_smoke.py`` baut sein
+        ``RealMt5Terminal`` ohne ``server_tz`` und faehrt darueber ``run_smoke`` ->
+        ``_write_probe`` -> ``submit_order``. Bei einem Server vor UTC (gemessene Zone
+        ``Europe/Helsinki``, im Sommer UTC+3) kommt der Tick drei Stunden in der
+        Zukunft heraus, und diese Sperre steht dort dauerhaft rot. Die Schreibprobe
+        des Rauchtests -- also genau das Tor, das ``RealMt5Terminal._require_write``
+        als Vorbedingung fuer ``allow_write`` nennt -- ist damit nicht durchfuehrbar,
+        bis ``tools/mt5_smoke.py`` die Zone mitgibt. Die Fehlrichtung ist sicher
+        (fail-closed), die Freigabeprozedur ist es nicht mehr. ``tools/`` gehoert
+        nicht zu dieser Datei; der Satz steht hier, damit der naechste Eingriff die
+        Stelle findet statt eine falsche Zusicherung zu lesen. Zone gesetzt:
+        ``tools/live_betrieb.py``, ``tools/live_konsole.py``, ``tools/oberflaeche.py``.
         """
-        account = self._terminal.account()
+        tick = self._terminal.tick(symbol)
+        if tick is None:
+            raise OrderRejectedError(
+                f"Kein Kursstempel fuer {symbol} -- Frische nicht bewertbar",
+                reason="no_market_stamp",
+                retryable=True,
+            )
         verdict = evaluate_account_freshness(
-            snapshot_ts=account.ts,
+            snapshot_ts=tick.ts,
             now=self._clock(),
             connected=self._terminal.is_connected(),
             max_age=self._max_account_age,
         )
         if not verdict.evaluable:
             raise OrderRejectedError(
-                f"Kontozustand nicht bewertbar: {verdict.reason} "
+                f"Kurslage nicht bewertbar: {verdict.reason} "
                 f"(Alter {verdict.age}, Frist {verdict.max_age})",
-                reason=verdict.reason or "account_state_unevaluable",
+                reason=verdict.reason or "market_state_unevaluable",
                 retryable=True,
             )
 
@@ -588,12 +1041,66 @@ class Mt5Venue(TradingVenue):
                 retryable=False,
             )
         # Demo-Reife-Tor (Paket 5): keine Live-Eroeffnung vor >= 180 Tagen Demo-Betrieb
-        # mit weiter bestandenem Edge. Fehlt das Reife-Ergebnis -> fail-closed.
-        ready = self._demo_readiness
-        if ready is None or not ready.ready_for_live_question:
-            reasons = ready.reasons if ready is not None else ("demo_readiness_fehlt",)
+        # mit weiter bestandenem Edge. Gerechnet, nicht entgegengenommen.
+        self._require_demo_maturity(account)
+
+    def _require_demo_maturity(self, account: Mt5Account) -> None:
+        """Demo-Reife-Tor: rechnet das Urteil hier, aus Beleg und eigener Uhr.
+
+        Bis hierher nahm der Konstruktor ein fertiges ``DemoReadiness`` entgegen und
+        das Tor las nur dessen Ja/Nein. Damit war das 180-Tage-Tor mit einer Zeile
+        (``DemoReadiness(True, ())``) auf, ohne dass irgendwo Zeit vergangen waere --
+        derselbe Fehler, den ``venue/demo_run.py`` fuer ``elapsed_days`` beschreibt,
+        nur eine Ebene hoeher. Jetzt bekommt der Konstruktor die **Registrierung**
+        (ein Datum, kein Urteil) und den im Demo gemessenen Edge; die Frist rechnet
+        ``pruefe_demo_beleg`` gegen ``self._clock`` -- die Uhr des Tores.
+
+        Warum hier nicht ``evaluate_demo_progress`` steht (die Fassung mit
+        Kontoabgleich): diese Methode laeuft ausschliesslich auf einem **Live**-Konto
+        -- ``_require_live_release_for_opening`` kehrt auf einem Demokonto vorher um.
+        Das beobachtete Konto ist hier also nie ein Demokonto, und der Abgleich haette
+        bei jeder Eingabe ``beobachtetes_konto_ist_kein_demokonto`` gemeldet: eine
+        Sperre, die immer ausloest, ist so wenig ein Melder wie eine, die nie ausloest.
+        Der Kontoabgleich gehoert dorthin, wo das Demokonto wirklich gelesen wird
+        (``venue/smoke.py``).
+
+        Was sich **hier** unabhaengig pruefen laesst, wird hier geprueft: ein
+        Demo-Beleg, der die Nummer eben dieses Livekontos traegt, ist ein Widerspruch
+        in sich (dieses Konto ist kein Demokonto) und der naechstliegende Griff, wenn
+        jemand einen Beleg passend machen will. Er wird abgelehnt, statt ihn zu glauben.
+        """
+        registration = self._demo_registration
+        live_verdict = self._demo_live_verdict
+        if registration is None or live_verdict is None:
+            fehlend = tuple(
+                name
+                for name, beleg in (
+                    ("demo_registrierung_fehlt", registration),
+                    ("demo_edge_im_demo_fehlt", live_verdict),
+                )
+                if beleg is None
+            )
             raise OrderRejectedError(
-                f"Demo-Reife nicht belegt: {', '.join(reasons)}",
+                f"Demo-Reife nicht belegt: {', '.join(fehlend)}",
+                reason="demo_not_ready",
+                retryable=False,
+            )
+        beleg_konto = registration.account.account_id.strip()
+        if beleg_konto and beleg_konto == account.account_id.strip():
+            raise OrderRejectedError(
+                "Demo-Reife nicht belegt: demo_beleg_nennt_das_livekonto "
+                f"({account.account_id})",
+                reason="demo_not_ready",
+                retryable=False,
+            )
+        ready = pruefe_demo_beleg(
+            registration=registration,
+            live_verdict=live_verdict,
+            clock=self._clock,
+        )
+        if not ready.ready_for_live_question:
+            raise OrderRejectedError(
+                f"Demo-Reife nicht belegt: {', '.join(ready.reasons)}",
                 reason="demo_not_ready",
                 retryable=False,
             )
@@ -855,6 +1362,16 @@ class Mt5Venue(TradingVenue):
     def is_halted(self) -> bool:
         return self._halted
 
+    def unklare_sendeversuche(self) -> dict[str, str]:
+        """Kennungen, deren Sendeversuch ohne Antwort endete -- Ausgang unbekannt.
+
+        Sie sind der Arbeitszettel nach einem Zwischenfall: zu jeder dieser Kennungen
+        kann beim Broker eine echte Order liegen. ``clear_halt()`` raeumt sie
+        ausdruecklich **nicht** ab -- die Freigabe des Halts ist eine Entscheidung des
+        Betreibers, das Nachsehen beim Broker eine andere.
+        """
+        return dict(self._unklare_sendeversuche)
+
     @property
     def halt_reason(self) -> str | None:
         """Grund des zuletzt via ``latch_halt`` gesetzten Halts (best-effort)."""
@@ -963,42 +1480,191 @@ class Mt5Venue(TradingVenue):
         return healthy
 
     def emergency_flatten(self) -> tuple[OrderResult, ...]:
-        """Not-Aus: sperrt sofort neue Eroeffnungen (Global-Halt) **und** schliesst alle
-        offenen Positionen per Reduce-Only. Gibt die Schliess-Ergebnisse zurueck.
+        """Not-Aus: Global-Halt **und** alle offenen Positionen per Reduce-Only zu.
 
-        Der Halt wird **zuerst** gesetzt — scheitert eine Schliessung, bleiben neue
-        Eroeffnungen trotzdem gesperrt. Reduce-Only umgeht bewusst Freigabe- und
-        Hebel-Tore: Risikoabbau darf nie an einer Sperre haengen. Der Latch klaert nur
-        ``clear_halt()``.
+        Gibt die Schliess-Ergebnisse zurueck -- **oder wirft**. Genau das war der
+        Befund E10.5: die alte Fassung fing jeden ``VenueError`` mit ``continue`` und
+        gab nur die Erfolge zurueck. Fuer den Aufrufer sahen "alles glatt" und "nichts
+        glatt" damit gleich aus, naemlich wie ein Tupel. Beim Not-Aus ist das die
+        gefaehrlichste Fehlrichtung ueberhaupt: der Betrieb glaubt, das Risiko sei weg,
+        waehrend die Positionen offen stehen. Ein unvollstaendiger Not-Aus ist deshalb
+        keine Rueckgabe, sondern ein :class:`NotAusUnvollstaendig` -- mit der Liste
+        dessen, was steht.
+
+        **Zweiter Befund, dieselbe Stelle: die Kennung war stabil.** Sie lautete
+        ``flatten-{ticket}``. Ein zweiter Not-Aus auf dieselbe Position traf damit den
+        Wiedergaenger-Zweig in :meth:`submit_order`, **sendete nichts** und meldete
+        trotzdem ``accepted=True``. Der zweite Griff zur Notbremse war eine Attrappe.
+        Die Kennung traegt darum jetzt Uhrzeit und Laufnummer des Not-Aus
+        (``fl-{sekunde}-{lauf}-{ticket}``): jeder Not-Aus-Lauf ist ein eigener Vorgang.
+
+        Dass das hier richtig ist und nicht die Idempotenz aushebelt, haengt an
+        Reduce-Only: :meth:`_reduces_position` misst die Gegenposition bei **jedem**
+        Aufruf frisch am Broker und laesst nur ein Volumen durch, das sie nicht reisst.
+        Ist bereits geschlossen, findet die Schleife keine Position mehr und sendet gar
+        nichts. Ein Not-Aus kann sich also nicht ueberschliessen -- eine unterlassene
+        Schliessung dagegen kostet Geld.
+
+        Der Halt wird **zuerst** gesetzt -- und zwar vor der Gesundheitspruefung, nicht
+        nach ihr. Das war der dritte Fehler an dieser Stelle und der stillste: die
+        Reihenfolge lautete ``_require_healthy()``, dann ``_halted = True``. Bricht die
+        Leitung weg -- der wahrscheinlichste Zustand, in dem jemand ueberhaupt zur
+        Notbremse greift --, warf die Methode, schloss nichts UND latchte nichts. Der
+        Not-Aus liess das System im Zweifel offen, waehrend sein eigener Docstring das
+        Gegenteil zusagte. Das Setzen des Latches ist eine reine Zuweisung auf ein Feld
+        dieses Objekts; sie braucht keine Leitung, kann nicht scheitern und darf darum
+        von nichts abhaengen. Die Gesundheitspruefung laeuft unmittelbar danach und
+        wirft weiter -- der Aufrufer erfaehrt also nach wie vor, dass nichts geschlossen
+        wurde. Er erfaehrt es nur nicht mehr auf einem System, das weiter eroeffnen
+        darf. Festgenagelt in
+        ``tests/test_notaus_wirkung.py::test_der_halt_steht_auch_ohne_leitung``.
+
+        Scheitert eine Schliessung, bleiben neue Eroeffnungen trotzdem gesperrt.
+        Reduce-Only umgeht bewusst Freigabe- und Hebel-Tore: Risikoabbau darf nie an
+        einer Sperre haengen. Der Latch klaert nur ``clear_halt()``.
+
+        **Woran der Erfolg gemessen wird:** nicht am Rueckgabecode, sondern am
+        bestaetigten Volumen -- ``filled_volume`` jeder Schliessung muss die Position
+        vollstaendig decken. Eine Teilfuellung ist ein unvollstaendiger Not-Aus. Ein
+        erneutes ``get_positions()`` unmittelbar danach ist bewusst **nicht** das Mass:
+        die Positionsliste des Brokers zieht der Ausfuehrung nach, ein Nachlesen in
+        derselben Millisekunde meldete die eben geschlossene Position noch offen -- und
+        ein Melder, der bei jedem gelungenen Not-Aus Alarm gibt, wird nach dem zweiten
+        Mal ignoriert. Der Preis dieser Wahl steht unter "offen": eine Position, die
+        trotz bestaetigter Fuellung offen bleibt (Hedging-Eigenheit), faellt erst im
+        naechsten ``reconcile()`` auf.
         """
-        self._require_healthy()
+        # ZUERST der Latch, dann alles, was scheitern kann. Umgekehrt waere der
+        # Not-Aus in genau dem Fall wirkungslos, fuer den es ihn gibt.
         self._halted = True
         self._halt_reason = "emergency_flatten"
+        self._require_healthy()
+        self._flatten_laeufe += 1
+        # Sekunde + Laufnummer: die Sekunde trennt zwei Laeufe ueber einen Neustart
+        # hinweg (der Zaehler faengt dann wieder bei 1 an), die Laufnummer zwei Laeufe
+        # innerhalb derselben Sekunde. Ohne die Sekunde koennte die Marke am Broker
+        # (E10.4) einen Not-Aus nach einem Neustart als Wiederholung des vorigen lesen
+        # und nichts senden -- ausgerechnet den Fall, fuer den es die Bremse gibt.
+        lauf = f"{int(self._clock().timestamp())}-{self._flatten_laeufe}"
         results: list[OrderResult] = []
+        offen: list[str] = []
         for position in self.get_positions():
             close_side = (
                 OrderSide.SELL if position.side is OrderSide.BUY else OrderSide.BUY
             )
             try:
-                results.append(
-                    self.submit_order(
-                        OrderRequest(
-                            client_order_id=f"flatten-{position.venue_position_id}",
-                            symbol=position.symbol,
-                            side=close_side,
-                            order_type=OrderType.MARKET,
-                            volume=position.volume,
-                            stop_loss=Decimal("0"),
-                            reduce_only=True,
-                            comment="emergency-flatten",
-                        )
+                ergebnis = self.submit_order(
+                    OrderRequest(
+                        client_order_id=f"fl-{lauf}-{position.venue_position_id}",
+                        symbol=position.symbol,
+                        side=close_side,
+                        order_type=OrderType.MARKET,
+                        volume=position.volume,
+                        stop_loss=Decimal("0"),
+                        reduce_only=True,
+                        comment="emergency-flatten",
                     )
                 )
-            except VenueError:
-                # Eine gescheiterte Schliessung darf die uebrigen nicht verhindern;
-                # der Global-Halt steht bereits.
+            except Exception as exc:  # noqa: BLE001 - jeder Ausgang wird gemeldet
+                # Eine gescheiterte Schliessung darf die uebrigen nicht verhindern --
+                # aber sie darf auch nicht verschwinden. Beides: weitermachen UND
+                # merken.
+                offen.append(
+                    f"{position.symbol}/{position.venue_position_id}: "
+                    f"{type(exc).__name__}: {exc}"
+                )
                 continue
+            results.append(ergebnis)
+            if ergebnis.filled_volume < position.volume:
+                offen.append(
+                    f"{position.symbol}/{position.venue_position_id}: nur "
+                    f"{ergebnis.filled_volume} von {position.volume} geschlossen "
+                    f"(Auftrag {ergebnis.venue_order_id}, "
+                    f"Wiedergaenger={ergebnis.idempotent_replay})"
+                )
+        if offen:
+            raise NotAusUnvollstaendig(
+                "Not-Aus unvollstaendig -- der Global-Halt steht, aber Risiko ist "
+                f"offen: {'; '.join(offen)}",
+                geschlossen=tuple(results),
+                offen=tuple(offen),
+            )
         return tuple(results)
+
+
+def _erfolgscodes(mt5: Any) -> set[int]:
+    """Die drei dokumentierten Codes, unter denen der Server NICHT abgelehnt hat.
+
+    Getrennt gehalten, weil drei verschiedene Fragen sie brauchen (Annahme, Fuellung,
+    Aenderung/Storno) und eine Kopie je Frage genau die Sorte Abweichung erzeugt, an
+    der ``cancel`` und ``modify_stops`` zuletzt haengen geblieben sind.
+    """
+    return {
+        int(getattr(mt5, "TRADE_RETCODE_DONE", 10009)),
+        int(getattr(mt5, "TRADE_RETCODE_PLACED", 10008)),
+        int(getattr(mt5, "TRADE_RETCODE_DONE_PARTIAL", 10010)),
+    }
+
+
+def _ohne_fehlercode(mt5: Any, res: Any) -> bool:
+    """Hat der Server ueberhaupt keinen Fehler gemeldet?
+
+    Die halbe Auskunft, und bewusst nur die halbe: ein Erfolgscode (oder der an
+    diesem Broker gemessene ``retcode=0``) sagt, dass die Anfrage durchging -- **nicht**
+    was danach in der Welt steht. Wer daraus eine Wirkung ableiten will, braucht eine
+    zweite Messung; siehe :func:`_send_gefuellt`, :meth:`RealMt5Terminal.cancel` und
+    :meth:`RealMt5Terminal.modify_stops`.
+
+    Warum ``retcode=0`` hier mitzaehlt, steht bei :func:`_send_angenommen`: an diesem
+    Broker (gemessen 2026-08-17) ist 0 der Erfolgscode einer ausgefuehrten Order.
+    """
+    if res is None:
+        return False
+    code = int(getattr(res, "retcode", -1))
+    return code == 0 or code in _erfolgscodes(mt5)
+
+
+def _send_gefuellt(mt5: Any, res: Any) -> bool:
+    """Wurde tatsaechlich etwas AUSGEFUEHRT -- oder nur eine Order angelegt?
+
+    Der Unterschied ist keine Feinheit. ``TRADE_RETCODE_PLACED`` (10008) heisst
+    woertlich "Order im System abgelegt": eine Pending-Order existiert beim Broker,
+    ausgefuehrt ist nichts. ``res.volume`` spiegelt dabei das **Anfrage**volumen, nicht
+    ein Fuellvolumen -- MetaTrader gibt dasselbe Feld fuer beides her.
+
+    Bis hierher galt PLACED als Fill. Die Folge war die Spiegelung des Fehlers, den
+    :func:`_send_angenommen` behebt: das lokale Buch fuehrte eine Position, die es beim
+    Broker nicht gibt, der naechste ``reconcile()`` sah diese Geisterposition als Drift
+    und latchte bei ``max_notional_drift=0`` den Global-Halt -- obwohl nichts
+    schiefgelaufen war.
+
+    Gefuellt heisst hier:
+
+    * ``DONE`` oder ``DONE_PARTIAL`` mit Volumen groesser null -- der dokumentierte
+      Fall. Bei ``DONE_PARTIAL`` ist ``res.volume`` der vom Broker bestaetigte
+      Teil-Fill; genau der gehoert ins Buch, nicht das Wunschvolumen.
+    * ``retcode == 0`` mit zugeteilter Order- oder Deal-Kennung **und** Volumen groesser
+      null -- der an diesem Broker gemessene Erfolgsfall.
+
+    ``PLACED`` ist ausdruecklich ausgeschlossen, auch mit Volumen und Kennung. Es ist
+    der einzige Code, der Annahme und Ausfuehrung auseinanderfallen laesst, und genau
+    deshalb steht er hier als eigene Zeile statt in einer Menge mit den anderen.
+    """
+    if res is None:
+        return False
+    if float(getattr(res, "volume", 0) or 0) <= 0:
+        return False
+    code = int(getattr(res, "retcode", -1))
+    if code == int(getattr(mt5, "TRADE_RETCODE_PLACED", 10008)):
+        return False  # angelegt, nicht ausgefuehrt -- der Kern dieser Funktion
+    if code in {
+        int(getattr(mt5, "TRADE_RETCODE_DONE", 10009)),
+        int(getattr(mt5, "TRADE_RETCODE_DONE_PARTIAL", 10010)),
+    }:
+        return True
+    if code != 0:
+        return False
+    return bool(int(getattr(res, "order", 0) or 0) or int(getattr(res, "deal", 0) or 0))
 
 
 def _send_angenommen(mt5: Any, res: Any) -> bool:
@@ -1023,22 +1689,81 @@ def _send_angenommen(mt5: Any, res: Any) -> bool:
 
     Die zweite Bedingung ist bewusst konjunktiv. Ein blosses „kein Fehlercode" genuegt
     nicht; es muss etwas zugeteilt worden sein.
+
+    **Angenommen ist nicht gefuellt.** PLACED steht oben mit Recht: die Order existiert
+    beim Broker und muss darum gebucht, wiedererkannt und stornierbar bleiben. Ob dabei
+    etwas ausgefuehrt wurde, beantwortet :func:`_send_gefuellt` -- getrennt, weil es
+    eine andere Frage ist.
     """
     if res is None:
         return False
     code = int(getattr(res, "retcode", -1))
-    erfolgscodes = {
-        int(getattr(mt5, "TRADE_RETCODE_DONE", 10009)),
-        int(getattr(mt5, "TRADE_RETCODE_PLACED", 10008)),
-        int(getattr(mt5, "TRADE_RETCODE_DONE_PARTIAL", 10010)),
-    }
-    if code in erfolgscodes:
+    if code in _erfolgscodes(mt5):
         return True
     if code != 0:
         return False
     zugeteilt = int(getattr(res, "order", 0) or 0) or int(getattr(res, "deal", 0) or 0)
     volumen = float(getattr(res, "volume", 0) or 0)
     return bool(zugeteilt) and volumen > 0
+
+
+#: Laenge, auf die MetaTrader den Auftragskommentar kuerzt. Der Kommentar ist die
+#: **lesbare** Spur der Kennung; die belastbare traegt ``magic`` (siehe
+#: :func:`kennmarke`). Manche Server ueberschreiben den Kommentar sogar ganz -- ein
+#: Grund mehr, die Wiedererkennung nicht daran zu haengen.
+MAX_KOMMENTAR = 31
+
+
+def kennmarke(client_order_id: str) -> int:
+    """Die Kennung des Auftraggebers als Zahl, die beim Broker liegen bleibt.
+
+    E10.4: Die Idempotenz lag ausschliesslich in ``Mt5Venue._results``, also im
+    Prozessgedaechtnis, und der Eintrag entstand erst NACH einer angenommenen Antwort.
+    Am Auftrag selbst stand nichts -- weder ``magic`` noch die Kennung im Kommentar.
+    Beim Broker lag damit **kein einziges Merkmal**, an dem eine Wiederholung zu
+    erkennen gewesen waere. Ein Zeitablauf, ein Neustart oder ein zweiter Runner
+    erzeugte eine zweite echte Order, und niemand konnte das hinterher entscheiden.
+
+    ``magic`` ist das einzige Feld, das diese Reise ueberlebt: es geht mit dem Auftrag
+    hin, steht danach an Order, Position und Deal, und kein Server schreibt es um.
+    Dass es damit nicht mehr die uebliche Rolle "eine Zahl je Expert Advisor" spielen
+    kann, ist der bewusste Preis: eine Zahl je EA beantwortet die Frage "war ICH das?",
+    aber nicht "war das GENAU DIESER Auftrag?" -- und nur die zweite verhindert eine
+    Doppelorder.
+
+    Die Abbildung ist ein Blake2b-Digest auf 63 Bit (das oberste Bit bleibt frei, weil
+    ``magic`` als vorzeichenlose 64-Bit-Zahl ueber mehrere Sprachgrenzen laeuft).
+    Stabil ueber Prozesse und Laeufe hinweg -- ``hash()`` waere es nicht, das ist je
+    Prozess gesalzen und haette genau im Neustartfall versagt, fuer den diese Marke
+    gebaut ist. Die Null wird ausgeschlossen: ``magic=0`` ist der Normalfall jeder
+    fremden, handgestellten Order und darf keine Kennung sein.
+
+    **WAS DIE MARKE AM REALEN AUFRUFER LEISTET -- UND WAS NICHT.** Sie erkennt eine
+    Wiederholung *derselben Kennung*. Ob es die je gibt, entscheidet der Aufrufer, und
+    der einzige reale baut sie zufaellig: ``tools/live_betrieb.py`` bildet
+    ``f"open-{symbol}-{uuid.uuid4().hex[:10]}"`` bzw. ``f"close-{symbol}-..."`` und
+    leitet nach Zeitablauf, Neustart oder in einem zweiten Runner den Willen NEU ab --
+    mit neuer Kennung und damit neuer Marke. Fuer ihn ist die Marke deshalb heute ein
+    **Zuordnungsmerkmal** (welcher Auftrag steht da beim Broker?) und kein
+    Doppelorder-Schutz. Beides ist wertvoll, aber es ist nicht dasselbe, und der
+    Unterschied darf nicht im Docstring verschwinden.
+
+    Zwei Dinge stehen dagegen:
+
+    * Der Doppelorder-Schutz, der ohne Zutun des Aufrufers greift, sitzt eine Ebene
+      hoeher: :meth:`Mt5Venue._verhindere_doppelte_eroeffnung` fragt den Broker nach
+      einer bereits stehenden gleichgerichteten Position. Diese Frage ist an die
+      Absicht gebunden, nicht an eine Zeichenkette.
+    * Damit die Marke auch als Idempotenzschluessel traegt, muesste die Kennung aus
+      der ABSICHT abgeleitet sein (Symbol + Signal + Kerzenstempel), nicht gewuerfelt.
+      Das ist eine Zeile im Aufrufer und steht als Vertragsaussage in
+      ``venue/protocol.py`` (``TradingVenue.submit_order``). Sie hier zu erraten geht
+      nicht: Volumen und Stop werden bei jedem Versuch neu gerechnet, ein Hash ueber
+      die Zahlen der Anfrage waere nach einem Neustart also ohnehin ein anderer.
+    """
+    roh = hashlib.blake2b(client_order_id.encode("utf-8"), digest_size=8).digest()
+    wert = int.from_bytes(roh, "big") >> 1
+    return wert or 1
 
 
 def _fuellart(mt5: Any, symbol: str) -> int:
@@ -1150,9 +1875,47 @@ class RealMt5Terminal:
             self._mt5.shutdown()
 
     def is_connected(self) -> bool:
+        """Drei Fragen, nicht eine -- und die erste Fassung stellte nur die erste.
+
+        ``terminal_info() is not None`` beantwortet ausschliesslich: **laeuft der
+        Prozess?** Ein MetaTrader, das offen auf dem Bildschirm steht, aber die
+        Verbindung zum Handelsserver verloren hat, beantwortet sie mit ja. Genau
+        dieser Zustand ist der gefaehrliche: das Terminal liefert weiter Zahlen, sie
+        sind nur alt. Der Vertrag (``venue/protocol.py``, ``is_healthy``) verlangt Rot
+        bei fehlendem Terminal ODER fehlender Sitzung; geprueft wurde davon nur der
+        erste Fall. (Die frueher mitzitierte dritte Kante -- veraltete Daten -- steht
+        nicht mehr in dieser Zusage: sie braucht ein Symbol und ist im Vertrag als
+        getrennte Pflicht je Order gefuehrt. Siehe unten.)
+
+        Hier stehen jetzt die beiden Fragen, die dieser Aufruf beantworten kann:
+
+        1. **Laeuft ein Terminal?** ``terminal_info()``.
+        2. **Steht die Leitung zum Handelsserver?** ``terminal_info().connected``.
+           Das Feld ist genau dafuer da und wurde nirgends im Adapter gelesen.
+        3. **Gibt es eine Kontositzung?** ``account_info()`` ist ``None``, solange
+           kein Konto angemeldet ist -- und aus genau diesem Aufruf zieht die
+           Risikoschicht Equity und freie Marge.
+
+        Fehlt das Feld ``connected`` (fremde oder aeltere Bindung), gilt das als
+        **nicht verbunden**. Fail-closed: eine unbeantwortbare Frage ist keine
+        bestandene Pruefung.
+
+        Die getrennt gefuehrte Vertragspflicht -- veraltete Daten -- laesst sich hier
+        nicht beantworten: sie braucht einen Kursstempel je Symbol. Sie wird am
+        Order-Pfad gestellt (``Mt5Venue._enforce_account_freshness``) und in den
+        Anzeigen (``tools/oberflaeche.py``, ``tools/live_konsole.py``). Sie hier ein
+        zweites Mal zu bauen hiesse, dieselbe Regel an zwei Orten zu fuehren, wo sie
+        auseinanderlaufen kann -- und ``is_connected`` laeuft am Kopf fast jeder
+        Methode, also je Aufruf einmal pro Symbol ueber die Leitung.
+        """
         if self._mt5 is None:
             return False
-        return self._mt5.terminal_info() is not None
+        info = self._mt5.terminal_info()
+        if info is None:
+            return False
+        if not bool(getattr(info, "connected", False)):
+            return False
+        return bool(self._mt5.account_info() is not None)
 
     # --- Hilfen ----------------------------------------------------------
     @staticmethod
@@ -1340,12 +2103,72 @@ class RealMt5Terminal:
         )
 
     # --- Schreiben (fail-closed) -----------------------------------------
+    def _bereits_beim_broker(self, marke: int) -> tuple[str, str] | None:
+        """Liegt zu dieser Kennmarke beim Broker schon etwas? (Art, Ticket) oder None.
+
+        Der belastbare Teil der Idempotenz (E10.4). Gefragt werden die beiden Bestaende,
+        in denen ein soeben gesendeter Auftrag stehen kann: die offenen **Positionen**
+        (er wurde ausgefuehrt) und die liegenden **Auftraege** (er wurde angelegt).
+        Beide tragen das ``magic`` des Auftrags.
+
+        ``positions_get()``/``orders_get()`` geben bei einem **Fehler** ``None`` und bei
+        leerem Ergebnis ein leeres Tupel -- dieselbe Falle wie ueberall sonst in diesem
+        Modul. ``None`` heisst hier: die Frage "gibt es das schon?" ist unbeantwortet.
+        Sie unbeantwortet zu lassen und trotzdem zu senden hiesse, die Doppelorder in
+        Kauf zu nehmen, gegen die diese Pruefung gebaut ist. Also fail-closed: laut
+        scheitern, nicht senden.
+
+        **Benannter Mangel:** die Historie wird nicht befragt. Ein Auftrag, der gefuellt
+        und dessen Position bereits wieder geschlossen wurde, steht in keinem der beiden
+        Bestaende mehr und gilt hier als unbekannt. Fuer den Fall, um den es geht --
+        Wiederholung nach Zeitablauf oder Neustart, also Sekunden bis Minuten spaeter --
+        traegt die Pruefung; fuer eine Kennung, die Tage spaeter erneut verwendet wird,
+        nicht. ``history_deals_get`` braeuchte ein Zeitfenster, und jedes Fenster waere
+        eine Zahl ohne Beleg. Festgenagelt in
+        ``tests/test_idempotenz_am_broker.py::test_geschlossene_position_wird_nicht_erkannt``.
+        """
+        mt5 = self._mt5
+        for abfrage, art in (
+            (mt5.positions_get, "position"),
+            (mt5.orders_get, "order"),
+        ):
+            roh = abfrage()
+            if roh is None:
+                raise VenueUnavailableError(
+                    f"Der Bestand ({art}) ist nicht abfragbar -- ob dieser Auftrag "
+                    "beim Broker schon liegt, ist damit unbekannt. Es wird nicht "
+                    "gesendet: eine Doppelorder ist der teurere Ausgang."
+                )
+            for eintrag in tuple(roh):
+                if int(getattr(eintrag, "magic", 0) or 0) == marke:
+                    return art, str(getattr(eintrag, "ticket", "") or "")
+        return None
+
     def order_send(self, request: Mapping[str, Any]) -> Mt5SendResult:
         self._require_write()
         mt5 = self._mt5
         symbol = str(request["symbol"])
         is_buy = request["side"] == "buy"
         now = datetime.now(UTC)
+        # E10.4: erst fragen, dann senden. Die Marke steht am Auftrag (``magic``), also
+        # laesst sich eine Wiederholung ueberhaupt erkennen -- vorher lag beim Broker
+        # nichts, woran man sie haette festmachen koennen.
+        marke = kennmarke(str(request["client_order_id"]))
+        gefunden = self._bereits_beim_broker(marke)
+        if gefunden is not None:
+            art, kennung = gefunden
+            return Mt5SendResult(
+                accepted=True,
+                venue_order_id=kennung,
+                # Was damals gefuellt wurde, gehoert nicht ein zweites Mal ins Buch.
+                # Null ist hier kein Messwert, sondern die Aussage "durch DIESEN
+                # Aufruf ist nichts entstanden".
+                filled_volume=Decimal("0"),
+                average_price=None,
+                ts=now,
+                reason=f"bereits_beim_broker ({art} {kennung}, magic={marke})",
+                idempotent_replay=True,
+            )
         raw_tick = mt5.symbol_info_tick(symbol)
         if raw_tick is None:
             return Mt5SendResult(False, None, Decimal("0"), None, now, "no_tick")
@@ -1367,7 +2190,17 @@ class RealMt5Terminal:
             "deviation": 20,
             "type_time": mt5.ORDER_TIME_GTC,
             "type_filling": _fuellart(mt5, symbol),
-            "comment": str(request.get("comment", "")),
+            # Die Marke geht MIT. Ohne sie steht der Auftrag beim Broker anonym da,
+            # und die Frage "habe ich den schon gesendet?" ist nach einem Neustart
+            # nicht mehr beantwortbar.
+            "magic": marke,
+            # Der Kommentar traegt die Kennung im Klartext -- fuer den Menschen, der
+            # im Terminal danach sucht. Er wird gekuerzt und darf vom Server sogar
+            # ueberschrieben werden; die Wiedererkennung haengt deshalb an ``magic``
+            # und nicht hier. Der frueher hier stehende freie Kommentar entfaellt: er
+            # war an dieser Stelle die schwaechere Information (er sagt, WAS die Order
+            # ist, nicht WELCHE sie ist).
+            "comment": str(request["client_order_id"])[:MAX_KOMMENTAR],
         }
         take_profit = request.get("take_profit")
         if take_profit is not None:
@@ -1375,16 +2208,56 @@ class RealMt5Terminal:
         if request.get("reduce_only") and action == mt5.TRADE_ACTION_DEAL:
             # Gegenposition gezielt schliessen (Ticket setzen) — sonst entsteht auf
             # Hedging-Konten eine neue Position statt eines Close.
+            #
+            # ``or ()`` stand hier und war dieselbe None-Falle, die 56 Zeilen weiter
+            # oben ausdruecklich fail-closed behandelt wird -- nur mit der
+            # gegenteiligen Antwort: ein Abfragefehler wurde still zu "keine
+            # Position", ``req['position']`` blieb leer, und der Broker machte auf
+            # einem Hedging-Konto aus der Schliessung eine NEUE Gegenposition. Das ist
+            # der Reduce-Only-Pfad; hier ist die schmeichelnde Richtung besonders
+            # teuer, weil sie Risiko AUFBAUT, wo Risiko abgebaut werden sollte.
+            roh = mt5.positions_get(symbol=symbol)
+            if roh is None:
+                raise VenueUnavailableError(
+                    f"{symbol}: der Positionsbestand ist nicht abfragbar -- welche "
+                    "Position geschlossen werden soll, ist damit unbekannt. Es wird "
+                    "nicht gesendet: eine Schliessung ohne Ticket wird auf einem "
+                    "Hedging-Konto zur Gegenposition."
+                )
             want_long = not is_buy
             buy_type = int(getattr(mt5, "POSITION_TYPE_BUY", 0))
-            for pos in mt5.positions_get(symbol=symbol) or ():
+            for pos in tuple(roh):
                 if (int(pos.type) == buy_type) == want_long:
                     req["position"] = int(pos.ticket)
                     break
         res = mt5.order_send(req)
-        accepted = _send_angenommen(mt5, res)
-        if accepted:
+        # Zwei Fragen, nicht eine: durfte die Order ins System (``angenommen``), und
+        # ist dabei etwas ausgefuehrt worden (``gefuellt``)? Bei
+        # ``TRADE_RETCODE_PLACED`` faellt beides auseinander -- die Order liegt beim
+        # Broker, gefuellt ist nichts. ``Mt5SendResult`` traegt darum beide Antworten
+        # getrennt: ``accepted`` fuer den Lebenszyklus (Kennung merken, stornierbar
+        # bleiben, Idempotenz), ``filled_volume`` fuer das Buch.
+        angenommen = _send_angenommen(mt5, res)
+        gefuellt = angenommen and _send_gefuellt(mt5, res)
+        ticket = int(getattr(res, "order", 0) or 0) if angenommen else 0
+        if angenommen and not gefuellt and not ticket:
+            # Eine angelegte, nicht ausgefuehrte Order OHNE Kennung ist der einzige
+            # Ausgang, den dieses System nicht sauber halten kann: sie liegt beim
+            # Broker, kann jederzeit fuellen, und ``cancel`` haette nichts, worauf es
+            # zeigen koennte. Laut scheitern statt still weiterlaufen.
+            raise VenueUnavailableError(
+                f"{symbol}: der Broker meldet eine angelegte, aber nicht ausgefuehrte "
+                f"Order (retcode={int(getattr(res, 'retcode', -1))}) OHNE "
+                "Order-Kennung. Es kann eine Pending-Order beim Broker liegen, die "
+                "dieses System weder buchen noch stornieren kann -- von Hand pruefen."
+            )
+        if gefuellt:
             reason = "done"
+        elif angenommen:
+            # Angenommen, aber nichts gefuellt: das muss im Journal stehen, sonst
+            # sieht ein Fill mit Volumen 0 wie ein Fehler aus statt wie eine
+            # wartende Pending-Order.
+            reason = f"placed_pending (retcode={int(getattr(res, 'retcode', -1))})"
         elif res is not None:
             # Der Rueckgabecode gehoert in die Meldung. Ohne ihn steht im Protokoll
             # nur der Kommentar des Brokers -- und der lautet auch bei manchen
@@ -1393,22 +2266,84 @@ class RealMt5Terminal:
         else:
             reason = "no_result"
         return Mt5SendResult(
-            accepted=accepted,
-            venue_order_id=str(res.order) if accepted else None,
-            filled_volume=self._d(res.volume) if accepted else Decimal("0"),
-            average_price=self._d(res.price) if accepted else None,
+            accepted=angenommen,
+            venue_order_id=str(res.order) if angenommen else None,
+            # Nur ein echter Fill geht ins Buch. Eine Pending-Order mit dem
+            # Anfragevolumen zu buchen erzeugte eine Geisterposition, und der naechste
+            # Reconcile latchte dafuer den Global-Halt.
+            filled_volume=self._d(res.volume) if gefuellt else Decimal("0"),
+            # Ohne Ausfuehrung gibt es keinen Ausfuehrungspreis. ``res.price`` traegt
+            # bei einer Pending-Order den Wunschpreis; als Durchschnittspreis
+            # weitergereicht waere er eine erfundene Messung.
+            average_price=self._d(res.price) if gefuellt else None,
             ts=now,
             reason=reason,
         )
 
     def cancel(self, venue_order_id: str) -> bool:
+        """Pending-Order stornieren -- und die Wirkung nachmessen, nicht ablesen.
+
+        Zwei Fehler steckten in der alten Fassung, und sie zeigen in
+        entgegengesetzte Richtungen:
+
+        * **Falsch negativ.** Geprueft wurde allein auf ``TRADE_RETCODE_DONE``. Genau
+          zwanzig Zeilen ueber dieser Stelle steht mit Messdatum, dass dieser Broker
+          bei Erfolg ``retcode=0`` mit ``comment='Done'`` liefert und dass eine
+          Pruefung allein auf 10009 "die gefaehrlichste Fehlrichtung" ist. Eine
+          tatsaechlich stornierte Order galt damit als nicht storniert.
+        * **Falsch positiv.** Ein Rueckgabecode ist die Auskunft des Servers ueber die
+          ANFRAGE, nicht ueber den Zustand danach. Ein "Done" auf eine Order, die
+          inzwischen schon gefuellt wurde, sagt nichts darueber, ob sie noch liegt.
+
+        Beides faellt weg, wenn die Wirkung nachgemessen wird. Gemessen werden **zwei**
+        Bestaende, und der zweite war der Rest des falsch positiven Falls: aus
+        ``orders_get`` verschwindet ein Auftrag naemlich auf zwei voellig
+        verschiedenen Wegen -- er wurde storniert, oder er wurde **gefuellt**. Wer nur
+        die Auftragsliste liest, meldet fuer beides ``True``, und der zweite Fall ist
+        genau die gefaehrliche Richtung: das System glaubt, es sei kein Risiko offen,
+        waehrend eine Position steht. Die Schwestermethode
+        :meth:`_bereits_beim_broker` fragt aus demselben Grund beide Bestaende.
+
+        Also: nach dem Storno darf der Auftrag weder in ``orders_get`` stehen noch als
+        Position unter derselben Kennung auftauchen. Der Rueckgabecode bleibt
+        Vorfilter (ein benannter Fehlercode ist ein Fehler), die Aussage traegt die
+        Gegenprobe.
+
+        Beide Abfragen geben bei einem **Fehler** ``None`` zurueck und bei wirklich
+        leerem Ergebnis ein leeres Tupel -- dieselbe Falle wie ueberall in diesem
+        Modul. ``None`` heisst hier deshalb **nicht belegt**, also ``False``. Ein nicht
+        belegtes Storno erneut zu versuchen ist harmlos; ein nicht erfolgtes Storno
+        fuer erledigt zu halten nicht.
+
+        **Benannter Rest.** Die Positionsabfrage traegt, weil MetaTrader der Position
+        in aller Regel das Ticket der eroeffnenden Order gibt. "In aller Regel" ist
+        keine Zusage: auf einem Netting-Konto verschmilzt eine Fuellung mit einer
+        bereits stehenden Position und behaelt DEREN Ticket -- dann findet die
+        Gegenprobe nichts und das Storno gilt als erfolgt, obwohl gefuellt wurde. Die
+        vollstaendige Auskunft gaebe ``history_orders_get(ticket=...)`` mit
+        ``ORDER_STATE_CANCELED``; sie ist hier bewusst nicht gezogen, weil sie den
+        Vertrag :class:`Mt5Terminal` um eine Historienfrage erweitert und damit jede
+        Attrappe im Repo mitzieht. Festgenagelt in
+        ``tests/test_schreibpfad_wirkung.py::test_gefuellte_order_gilt_nicht_als_storniert``.
+        """
         self._require_write()
         mt5 = self._mt5
-        res = mt5.order_send(
-            {"action": mt5.TRADE_ACTION_REMOVE, "order": int(venue_order_id)}
-        )
-        done = int(getattr(mt5, "TRADE_RETCODE_DONE", 10009))
-        return res is not None and int(res.retcode) == done
+        ticket = int(venue_order_id)
+        res = mt5.order_send({"action": mt5.TRADE_ACTION_REMOVE, "order": ticket})
+        if not _ohne_fehlercode(mt5, res):
+            return False
+        rest = mt5.orders_get(ticket=ticket)
+        if rest is None:
+            return False  # Abfrage fehlgeschlagen -- nicht dasselbe wie "ist weg"
+        if len(tuple(rest)) != 0:
+            return False
+        gefuellt = mt5.positions_get(ticket=ticket)
+        if gefuellt is None:
+            return False  # dieselbe Falle, dieselbe Antwort
+        # Steht unter dieser Kennung eine Position, ist die Order nicht storniert
+        # worden, sondern ausgefuehrt. Aus der Auftragsliste ist sie in beiden
+        # Faellen verschwunden.
+        return len(tuple(gefuellt)) == 0
 
     def modify_stops(
         self,
@@ -1416,16 +2351,69 @@ class RealMt5Terminal:
         stop_loss: Decimal | None,
         take_profit: Decimal | None,
     ) -> bool:
+        """Stops verschieben -- und nachlesen, wo sie danach wirklich stehen.
+
+        Dieselben zwei Fehler wie bei :meth:`cancel` (Begruendung dort), hier aber mit
+        der schwereren Folge: ein Stop ist die einzige harte Verlustgrenze einer
+        offenen Position. Ein Stop, den das System fuer verschoben haelt und der nicht
+        verschoben ist, ist ein Risiko, von dem niemand weiss -- und ein Nachziehen,
+        das faelschlich als gescheitert gilt, laesst den Betrieb den Griff verlieren.
+
+        Darum wird die Position nach der Aenderung zurueckgelesen und ``sl``/``tp``
+        gegen das Gewuenschte gehalten. Toleranz ist **ein Point** des Symbols, also
+        die kleinste Preisstufe, die der Broker ueberhaupt darstellen kann; alles
+        darueber ist eine echte Abweichung.
+
+        Drei Faelle antworten bewusst ``False``, obwohl "etwas passiert" ist:
+
+        * Die Position ist beim Nachlesen weg (Stop lief ins Ziel, Handschliessung).
+          Dann ist die Aussage "der Stop steht bei X" nicht mehr wahr.
+        * Der Broker hat den Stop auf sein ``stops_level`` gezogen und steht damit
+          woanders als gewuenscht. Das System darf dann nicht glauben, sein Risiko sei
+          X -- es ist Y.
+        * ``positions_get`` oder ``symbol_info`` liefern nichts. Nicht messbar heisst
+          nicht belegt.
+
+        ``None`` als Wunsch heisst "nicht anfassen" und wird darum auch nicht geprueft.
+        """
         self._require_write()
         mt5 = self._mt5
-        req: dict[str, Any] = {
-            "action": mt5.TRADE_ACTION_SLTP,
-            "position": int(venue_position_id),
-        }
+        ticket = int(venue_position_id)
+        req: dict[str, Any] = {"action": mt5.TRADE_ACTION_SLTP, "position": ticket}
         if stop_loss is not None:
             req["sl"] = float(stop_loss)
         if take_profit is not None:
             req["tp"] = float(take_profit)
         res = mt5.order_send(req)
-        done = int(getattr(mt5, "TRADE_RETCODE_DONE", 10009))
-        return res is not None and int(res.retcode) == done
+        if not _ohne_fehlercode(mt5, res):
+            return False
+        return self._stops_stehen(ticket, stop_loss, take_profit)
+
+    def _stops_stehen(
+        self,
+        ticket: int,
+        stop_loss: Decimal | None,
+        take_profit: Decimal | None,
+    ) -> bool:
+        """Gegenprobe zu :meth:`modify_stops`: stehen die Stops wirklich dort?"""
+        roh = self._mt5.positions_get(ticket=ticket)
+        if not roh:
+            return False  # None (Fehler) und () (Position weg) sind beide kein Beleg
+        pos = tuple(roh)[0]
+        info = self._mt5.symbol_info(str(pos.symbol))
+        if info is None:
+            return False
+        toleranz = self._d(getattr(info, "point", 0) or 0)
+        if toleranz <= 0:
+            return False  # ohne bekannte Preisstufe ist kein Vergleich moeglich
+        for gewuenscht, gemeldet in (
+            (stop_loss, getattr(pos, "sl", None)),
+            (take_profit, getattr(pos, "tp", None)),
+        ):
+            if gewuenscht is None:
+                continue  # nicht angefragt, also nichts zu belegen
+            if gemeldet is None:
+                return False
+            if abs(self._d(gemeldet) - gewuenscht) > toleranz:
+                return False
+        return True

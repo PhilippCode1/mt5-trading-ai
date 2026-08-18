@@ -14,23 +14,45 @@ Darum gilt hier die Regel des Kerns: *nicht bewertbar = nicht erfuellt*. Ein
 ``AccountSnapshot``, dessen Alter die Frist reisst, ist kein „wahrscheinlich noch
 gueltiger" Zustand, sondern ein **unbekannter** Zustand. Die Order wird abgelehnt.
 
-DIE FRIST — UND WARUM SIE SO KURZ IST
--------------------------------------
+DIE FRIST -- UND WOFUER SIE BEGRUENDET IST
+-----------------------------------------
 ``MAX_SNAPSHOT_AGE = 5 Sekunden``.
 
-Der Kontozustand wird im Order-Pfad **unmittelbar vor** der Pruefung abgefragt; die
-normale Latenz einer lokalen Terminalabfrage liegt im Millisekundenbereich. Fuenf
-Sekunden sind damit rund drei Groessenordnungen ueber dem Normalfall — die Frist
-kann im gesunden Betrieb nicht zufaellig reissen. Reisst sie doch, ist genau einer
-von zwei Faellen eingetreten, und beide sind Ablehnungsgruende:
+**Achtung, die Begruendung ist umgezogen.** Sie lautete frueher: der Kontozustand
+wird unmittelbar vor der Pruefung abgefragt, die Latenz einer lokalen
+Terminalabfrage liegt im Millisekundenbereich, fuenf Sekunden sind drei
+Groessenordnungen darueber. Das war richtig fuer den Kontozustand -- nur wird der
+hier gar nicht mehr gemessen (siehe den Abschnitt darunter): gemessen wird ein
+**ereignisgetriebener Kursstempel**, und fuer den ist ein Alter von sechs Sekunden
+kein haengendes Terminal, sondern ein Instrument, das gerade nicht gehandelt wird.
+Eine mituebernommene Zahl mit einer nicht mituebernehmbaren Begruendung ist genau
+die Sorte Erbstueck, die spaeter niemand mehr verteidigen kann. Also die Begruendung
+fuer DIESE Verwendung:
 
-1. Der Aufrufer hat einen **zwischengespeicherten** Schnappschuss weitergereicht,
-   statt frisch abzufragen.
-2. Das Terminal **haengt** — die Antwort kam, aber sie ist alt.
+1. Die Frist beantwortet nicht "ist der Kurs alt", sondern "darf auf diesem Kurs
+   **eine Order** entstehen". Das ist eine schaerfere Frage. Eine Marktorder wird
+   gegen den zuletzt gesehenen Preis gerechnet -- Stopabstand, Positionsgroesse,
+   Kostentor, Hebelklammer haengen alle daran. Fuenf Sekunden sind bei einem
+   Instrument, das ueberhaupt handelt, bereits eine lange Zeit.
+2. Die Fehlrichtung ist die harmlose: ein Symbol, dessen Strom langsamer taktet als
+   die Frist, wird **nicht gehandelt**. Es entsteht kein falscher Preis, kein
+   falsches Volumen, keine Position -- es entsteht nichts.
+3. Die Zahl steht bewusst **einmal** im Haus und beantwortet damit zwei Fragen:
+   "darf hier eine Order entstehen" (``Mt5Venue._enforce_account_freshness``) und
+   "druckt der Platz gerade Preise" (``Mt5Venue.is_trading_open``). Das ist kein
+   Versehen, sondern die Absicht: beide Tore fragen dasselbe, mit derselben Uhr, und
+   ein Symbol, das am zweiten haengenbleibt, wuerde am ersten ohnehin abgelehnt. Zwei
+   Zahlen fuer dieselbe Frage waeren die Kopie, die auseinanderlaeuft.
 
-Eine laengere Frist (etwa eine Minute) wuerde beide Faelle durchlassen, ohne dafuer
-etwas zu gewinnen: es gibt keinen Betriebsfall, in dem ein fuenf Sekunden alter
-Kontostand richtig und ein frischer nicht zu bekommen waere.
+**Was das kostet, ausdruecklich benannt:** ein ruhiges Instrument (Asien-Sitzung,
+Index-CFD ausserhalb der Kassa-Zeit, Mittagspause) kann laenger als fuenf Sekunden
+ohne Tick bleiben und ist fuer dieses System in dieser Zeit nicht handelbar. Nichts
+im Repo misst heute den realen Tickabstand je Katalogsymbol; die Zahl ist also nicht
+an dieser Verwendung gemessen, sondern nur an ihr begruendet. Wer sie anhebt, hebt
+sie fuer beide Fragen zugleich an und macht damit auch die Marktoffen-Aussage
+nachsichtiger -- das ist vor einer Aenderung zu entscheiden, nicht danach. Die
+belastbare Grundlage waere eine Messung der Tickabstaende je Symbol ueber einen
+Betriebstag.
 
 DIE ZUKUNFTSKANTE
 -----------------
@@ -41,14 +63,73 @@ einen falschen Stempel vollstaendig aushebeln — deshalb hat sie zwei Kanten.
 ``FUTURE_TOLERANCE = 1 Sekunde`` faengt gewoehnliche Rundungs- und
 Aufloesungsunterschiede ab, ohne das Loch zu oeffnen.
 
+**Diese Toleranz spannt zwei unabhaengige Uhren, und das ist zu wissen.** Frueher
+entstanden beide Zeiten im eigenen Prozess; eine Sekunde war dafuer reichlich. Jetzt
+kommt ``snapshot_ts`` vom Handelsserver und ``now`` vom lokalen Rechner. Damit gilt:
+
+* Eine gewoehnliche Uhrenabweichung von mehr als einer Sekunde zwischen Broker-Server
+  und PC sperrt den gesamten Eroeffnungspfad -- dauerhaft und ohne Bezug zur
+  Datenfrische. Ein laufender Zeitabgleich auf beiden Seiten ist damit
+  Betriebsvoraussetzung, keine Empfehlung.
+* Schaltet der Server seine Sommerzeit nach einem anderen Termin als die
+  konfigurierte Zone (der bekannte MT5-Fall: US-Termin am Server,
+  ``ZoneInfo("Europe/Helsinki")`` nach EU-Termin), liegt der Stempel im Fruehjahr und
+  im Herbst je rund drei Wochen eine volle Stunde daneben. Der Eroeffnungspfad steht
+  dann still.
+
+Beides ist fail-closed und damit die sichere Richtung -- aber es ist eine
+Betriebsbremse, die wie ein geschlossener Markt aussieht. Wer sie sucht, findet sie
+am Ablehnungsgrund: ``snapshot_from_future`` bzw. ``snapshot_stale`` bei einem
+Alter nahe einer runden Stunde ist keine Marktaussage, sondern ein Uhrenbefund. Der
+Beleg fuer die Serverzone in ``backtest/kalender.py`` ist an Tageskerzen-Grenzen
+gemessen (Minutenaufloesung) und traegt fuer eine Sekunden-Kante ausdruecklich
+nicht.
+
+WELCHER STEMPEL HIER HINEINGEHOERT -- UND WELCHER NIE
+-----------------------------------------------------
+Diese Funktion vergleicht zwei Zeiten. Wenn beide aus derselben Uhr stammen, ist das
+Ergebnis per Konstruktion null und die Sperre kann nicht ausloesen. Das ist kein
+theoretischer Fall: es ist im Repo dreimal passiert, zuletzt am Order-Pfad selbst.
+
+* ``RealMt5Terminal.account()`` setzt ``ts=datetime.now(UTC)`` **in genau diesem
+  Aufruf**. MetaTrader liefert ueberhaupt keinen Kontozeitstempel; es gibt nichts,
+  woraus dieses Feld sonst entstehen koennte. Wer es als ``snapshot_ts`` uebergibt und
+  ``datetime.now(UTC)`` als ``now``, misst eine Uhr gegen sich selbst: Alter ein paar
+  Mikrosekunden, Frist fuenf Sekunden, Urteil dauerhaft gruen. In 21 Journalen der
+  Betriebslaeufe steht kein einziges ``snapshot_stale``.
+* Zulaessig ist allein ein Stempel **von der anderen Seite der Leitung**: der
+  Kursstempel des Brokers (``Mt5Tick.ts``, ``Quote.ts``). Er ist das einzige
+  Lebenszeichen im System, das nicht im eigenen Prozess entsteht, und damit das
+  einzige, an dem sich ein haengendes Terminal zeigen kann.
+
+Alle vier Aufrufer messen darum den Kursstempel:
+``Mt5Venue._enforce_account_freshness`` (sperrt die Order),
+``Mt5Venue._markt_druckt_preise`` (beantwortet, ob der Platz gerade handelt),
+``tools/live_konsole.py`` und ``tools/oberflaeche.py`` (zeigen es an).
+
+``now`` ist bei allen vieren die Uhr des messenden Bauteils, nie ein mitgereichter
+Zeitpunkt. Das ist keine Feinheit: ein Aufrufer, der seine Gegenwart am Kopf eines
+Taktes einfriert und Sekunden spaeter hier einreicht, macht aus einem frisch
+geholten Stempel rechnerisch einen Stempel aus der Zukunft -- und die Sperre steht
+still, ohne dass das mit den Daten etwas zu tun haette. Genau so ist der
+Eintrittspfad des Live-Betriebs einmal abgeschaltet worden.
+
+Ein Nebeneffekt gehoert dazu: ohne bekannte Serverzone tragen die Kursstempel die
+Wanduhr des Brokers unter dem Etikett UTC, und der Vergleich gegen echte UTC hat den
+vollen Versatz drin. Die Sperre steht dann dauerhaft rot -- als
+``snapshot_from_future`` bei einem Server vor UTC, als ``snapshot_stale`` bei einem
+dahinter. Das ist die richtige Antwort: wer den Versatz nicht kennt, kann das Alter
+nicht messen.
+
 WAS DIESE SPERRE NICHT LEISTET
 ------------------------------
-Sie prueft das **Alter** des Schnappschusses, nicht seine **Richtigkeit**. Ein
-Terminal, das einen frischen Zeitstempel auf einen veralteten Kontostand setzt (die
-lokale Uhr statt der Brokerzeit — genau das tut ``RealMt5Terminal.account``), faellt
-hier nicht auf. Dagegen hilft nur die Verbindungspruefung, die der Aufrufer
+Sie prueft das **Alter** eines Stempels, nicht die **Richtigkeit** der Zahlen daneben.
+Ein Terminal, das einen frischen Kurs liefert und dazu einen veralteten Kontostand,
+faellt hier nicht auf. Dagegen hilft die Verbindungspruefung, die der Aufrufer
 zusaetzlich fahren muss (``connected``-Parameter): eine getrennte Sitzung liefert
-keine gueltige Kontolage, egal wie frisch der Stempel aussieht.
+keine gueltige Kontolage, egal wie frisch der Stempel aussieht. Am MT5-Adapter fuellt
+``RealMt5Terminal.is_connected()`` diesen Parameter und prueft dafuer Prozess,
+Serververbindung und Kontositzung.
 """
 
 from __future__ import annotations

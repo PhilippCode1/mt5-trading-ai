@@ -97,11 +97,13 @@ def test_sync_staleness_and_health() -> None:
 
 def _synced_venue(
     positions: tuple[object, ...] = (),
+    terminal: FakeMt5Terminal | None = None,
 ) -> tuple[Mt5Venue, PrivateSync]:
+    """``terminal`` durchreichen, wenn ein Test den Broker-Bestand spaeter umsetzt."""
     sync = PrivateSync()
     venue = Mt5Venue(
         name="mt5",
-        terminal=FakeMt5Terminal(is_demo=True, positions=positions),  # type: ignore[arg-type]
+        terminal=terminal or FakeMt5Terminal(is_demo=True, positions=positions),  # type: ignore[arg-type]
         catalog=_catalog(), sync=sync,
         # Seit A3 Pflicht auf jedem Konto: Risikoschicht + Frische-Latch. Die feste
         # Uhr entspricht dem Zeitstempel des Fake-Kontostands.
@@ -124,9 +126,11 @@ def test_synced_venue_stream_books_not_submit() -> None:
 def test_synced_venue_gap_halts_and_blocks_opening() -> None:
     # Bei Desync ist das Strom-Buch nicht mehr vertrauenswuerdig; das Terminal meldet die
     # Long-Position autoritativ, sodass ein echter reduce_only-Abbau weiter passiert.
-    venue, sync = _synced_venue(
-        positions=(_mt5_position("EURUSD", is_buy=True, volume=Decimal("0.10")),)
+    terminal = FakeMt5Terminal(
+        is_demo=True,
+        positions=(_mt5_position("EURUSD", is_buy=True, volume=Decimal("0.10")),),
     )
+    venue, sync = _synced_venue(terminal=terminal)
     venue.apply_private_event(_fill(1, "EURUSD", OrderSide.BUY, Decimal("0.10")))
     venue.apply_private_event(_heartbeat(3))  # Luecke (seq 2 fehlt)
     assert sync.desync is True
@@ -138,7 +142,11 @@ def test_synced_venue_gap_halts_and_blocks_opening() -> None:
     assert venue.submit_order(
         _order(client_order_id="r-1", side=OrderSide.SELL, reduce_only=True)
     ).accepted
-    # Freigabe resynchronisiert den Strom und gibt Eroeffnungen frei.
+    # Freigabe resynchronisiert den Strom und gibt Eroeffnungen frei. Der Abbau von
+    # eben ist beim Broker angekommen; ohne das antwortet der Doppelorder-Riegel (die
+    # gleichgerichtete Position steht noch) statt des Halt-Latches, den dieser Test
+    # meint.
+    terminal.set_positions(())
     venue.clear_halt()
     assert sync.desync is False
     assert venue.submit_order(_order(client_order_id="g-2")).accepted is True

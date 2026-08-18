@@ -39,7 +39,7 @@ Round-Turns je Tag mit Hebel 2** — jeweils je Instrument beim günstigsten Bro
 | **A2 Abbruchkriterium** | **GRÜN** | **6 Bedingungen**, jede beziffert; davon **1 bereits ausgelöst** (Bedingung 6) | [06-ABBRUCHKRITERIUM.md](06-ABBRUCHKRITERIUM.md) |
 | **A3 Verdrahtung** | **GRÜN** | **5 von 5** Sperren an **3 von 3** eröffnenden Eintrittspunkten; vorher 4 von 5 nur am Live-Konto, 0 von 5 am Demokonto | [02-VERDRAHTUNG.md](02-VERDRAHTUNG.md), [`eichfaelle.txt`](07-AUSGABEN/eichfaelle.txt) |
 | **A3.3 Eichfälle** | **GRÜN** | **6 rote** und **2 grüne** Eichfälle; jede der 5 Sperren mindestens einmal rot gefahren | [`eichfaelle.txt`](07-AUSGABEN/eichfaelle.txt) |
-| **A3.4 Dauertor** | **GRÜN** | `tests/test_orderpfad_verdrahtung.py`, **26 Fälle**; scheitert laut, wenn es keinen Eintrittspunkt findet | [`eichfaelle.txt`](07-AUSGABEN/eichfaelle.txt) |
+| **A3.4 Dauertor** | **GRÜN** | `tests/test_orderpfad_verdrahtung.py`, **28 Fälle**; scheitert laut, wenn es keinen Eintrittspunkt findet | [`eichfaelle.txt`](07-AUSGABEN/eichfaelle.txt) |
 | **A3.5 Kill-Switch** | **GRÜN** | Widerspruch aufgelöst: er existiert, verteilt auf **drei** Quelldateien; beide Aussagen korrigiert | [02-VERDRAHTUNG.md](02-VERDRAHTUNG.md) |
 | **A4 Doku-Wahrheit** | **GRÜN** | **0** widersprüchliche Zahlen zwischen README, MASTERBERICHT, FEHLT, MODULES — geprüft vom Werkzeug | [`check_doc_numbers.txt`](07-AUSGABEN/check_doc_numbers.txt) |
 | **A4.1 Zahlenwächter** | **GRÜN** | Regel 5 neu; **18 von 18** falschen Zeilenzahlen entfernt, Zahl jetzt erzeugt statt gepflegt | [03-DOKU-WAHRHEIT.md](03-DOKU-WAHRHEIT.md) |

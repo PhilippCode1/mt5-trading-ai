@@ -249,7 +249,7 @@ Pre-Trade-Kostentor am Order-Pfad.
 
 ## `mt5_trading_ai/execution/freshness.py`
 
-Zeilen: 144
+Zeilen: 225
 
 Frische-Latch fuer den Kontozustand — S2 aus Paket 0.
 
@@ -297,14 +297,30 @@ Mehrteilige Freigabe fuer Order-Submit an einen echten Markt.
 - `def evaluate_live_release`
 - `def live_release_blocks_opening_order`
 
+## `mt5_trading_ai/execution/risiko_zustand.py`
+
+Zeilen: 1047
+
+Der Risikozustand, der einen Neustart ueberdauert -- und wie er fail-closed liest.
+
+- `class ZustandsortFehler`
+- `def standard_zustandsordner`
+- `def standard_zustandsdatei`
+- `def korb_start`
+- `def fenster_fortschreiben`
+- `class RisikoLage`
+- `class Zustandsbefund`
+- `class DateiZustand`
+
 ## `mt5_trading_ai/execution/risk_manager.py`
 
-Zeilen: 609
+Zeilen: 990
 
 Risikoschicht am Order-Pfad: die vier Grenzen als letzte Verteidigungslinie.
 
 - `class RiskPolicy`
 - `class RiskAuthorization`
+- `def freigabe_gueltig`
 - `def measured_cost_from_meta`
 - `class RiskManager`
 
@@ -455,7 +471,7 @@ Stop-Budget je Anlageklasse — hergeleitet, nicht uebertragen (Phase 6.5).
 
 ## `mt5_trading_ai/venue/catalog.py`
 
-Zeilen: 159
+Zeilen: 220
 
 Instrumentenkatalog — die Metadaten, die MT5 nicht liefert.
 
@@ -463,17 +479,20 @@ Instrumentenkatalog — die Metadaten, die MT5 nicht liefert.
 - `class CatalogEntry`
 - `def default_catalog_path`
 - `def load_instrument_catalog`
+- `def session_minutes`
 
 ## `mt5_trading_ai/venue/demo_run.py`
 
-Zeilen: 88
+Zeilen: 303
 
 Paket 5: Registrierung und Fortschritts-Tor des Demo-Betriebs (§8.5).
 
 - `class DemoGateError`
+- `class DemoAccount`
 - `class DemoRegistration`
 - `def register_for_demo`
 - `class DemoReadiness`
+- `def pruefe_demo_beleg`
 - `def evaluate_demo_progress`
 
 ## `mt5_trading_ai/venue/halal.py`
@@ -487,10 +506,11 @@ Der Halal-Screen: das mechanisch Pruefbare erzwingen, die fiqh-Grenze benennen (
 
 ## `mt5_trading_ai/venue/mt5.py`
 
-Zeilen: 1431
+Zeilen: 2419
 
 MT5-Anbindung an das ``TradingVenue``-Protokoll.
 
+- `class NotAusUnvollstaendig`
 - `class Mt5Symbol`
 - `class Mt5Tick`
 - `class Mt5Rate`
@@ -499,11 +519,12 @@ MT5-Anbindung an das ``TradingVenue``-Protokoll.
 - `class Mt5SendResult`
 - `class Mt5Terminal`
 - `class Mt5Venue`
+- `def kennmarke`
 - `class RealMt5Terminal`
 
 ## `mt5_trading_ai/venue/protocol.py`
 
-Zeilen: 397
+Zeilen: 453
 
 Plattformunabhaengiger Handelsplatz-Vertrag.
 
@@ -529,7 +550,7 @@ Plattformunabhaengiger Handelsplatz-Vertrag.
 
 ## `mt5_trading_ai/venue/smoke.py`
 
-Zeilen: 215
+Zeilen: 261
 
 Demo-Smoke-Test der MT5-Bindung — die Orchestrierung, terminalunabhaengig.
 

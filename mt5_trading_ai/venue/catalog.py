@@ -24,6 +24,10 @@ from mt5_trading_ai.venue.protocol import AssetClass, FeeSchedule, TradingSessio
 INSTRUMENT_CATALOG_VERSION = "instrument-catalog-v1"
 CATALOG_FILENAME = "instrument_catalog.json"
 
+#: Minuten eines Tages. ``"24:00"`` (= 1440) ist als **Schluss** ausdruecklich
+#: erlaubt, als Oeffnung nicht -- siehe :func:`session_minutes`.
+MINUTEN_JE_TAG = 24 * 60
+
 _FEE_DECIMAL_FIELDS = (
     "commission_per_lot_round_turn",
     "typical_spread_points",
@@ -137,7 +141,49 @@ def _parse_fees(symbol: str, value: Any) -> FeeSchedule:
     )
 
 
+def session_minutes(value: str) -> int:
+    """``"HH:MM"`` -> Minuten seit Mitternacht. Jede andere Form ist ein Fehler.
+
+    Bis hierher stand die Umrechnung ungeprueft in ``venue/mt5.py``: ein
+    ``int(hours) * 60 + int(minutes)`` ohne Formatpruefung und ohne Wertebereich.
+    ``"25:99"`` ergab damit klaglos 1599 Minuten, ``"9"`` warf einen nackten
+    ``ValueError`` mitten im Handelszeitfilter. Eine Katalogdatei ist eine
+    **belegpflichtige** Datei; ein Wert, den niemand liest, ist kein Beleg.
+
+    ``"24:00"`` ist erlaubt und meint das **Tagesende**, nicht den Tagesanfang. Ohne
+    diese Schreibweise laesst sich eine Sitzung, die bis Mitternacht laeuft, gar nicht
+    ausdruecken: ``"00:00"`` als Schluss waere null Minuten nach Tagesbeginn, und ein
+    ``"23:59"`` reisst jede Nacht ein Loch von einer Minute in einen durchgehenden
+    Strom (genau das stand fuer BTCUSD im Katalog). Als **Oeffnung** ist ``"24:00"``
+    sinnlos und darum verboten -- eine Sitzung, die am Tagesende beginnt, ist eine
+    Sitzung des Folgetags.
+    """
+    teile = value.split(":")
+    if len(teile) != 2 or len(teile[0]) != 2 or len(teile[1]) != 2:
+        raise InstrumentCatalogError(f"Uhrzeit nicht als HH:MM geschrieben: {value!r}")
+    if not (teile[0].isdigit() and teile[1].isdigit()):
+        raise InstrumentCatalogError(f"Uhrzeit ist keine Zahl: {value!r}")
+    stunden, minuten = int(teile[0]), int(teile[1])
+    if stunden == 24 and minuten == 0:
+        return MINUTEN_JE_TAG
+    if not (0 <= stunden <= 23 and 0 <= minuten <= 59):
+        raise InstrumentCatalogError(f"Uhrzeit ausserhalb des Tages: {value!r}")
+    return stunden * 60 + minuten
+
+
 def _parse_sessions(symbol: str, value: Any) -> tuple[TradingSession, ...]:
+    """Sitzungsfenster lesen -- und jedes einzelne auf Sinn pruefen.
+
+    Der Katalog ist die einzige Quelle der Handelszeiten, und der Filter
+    (``Mt5Venue.is_trading_open``) rechnet ohne weitere Pruefung mit dem, was hier
+    herauskommt. Ein Wochentag 9 oder ein Schluss ``"25:99"`` erzeugte bis hierher ein
+    Fenster, das der Filter still ins Leere laufen liess -- also eine Sperre, die
+    nicht mehr sperrt. Fail-closed: jeder Defekt ist ein Fehler, kein Default.
+
+    Ein Fenster mit ``open == close`` wird abgelehnt, weil es zwei Lesarten hat
+    (null Minuten oder volle 24 Stunden) und beide plausibel sind. Wer 24 Stunden
+    meint, schreibt ``"00:00"`` bis ``"24:00"``.
+    """
     if not isinstance(value, list) or not value:
         raise InstrumentCatalogError(f"{symbol}: sessions fehlt oder ist leer")
     out: list[TradingSession] = []
@@ -145,15 +191,30 @@ def _parse_sessions(symbol: str, value: Any) -> tuple[TradingSession, ...]:
         if not isinstance(entry, dict):
             raise InstrumentCatalogError(f"{symbol}: Session ist kein Objekt")
         try:
-            out.append(
-                TradingSession(
-                    weekday=int(entry["weekday"]),
-                    open_utc=str(entry["open_utc"]),
-                    close_utc=str(entry["close_utc"]),
-                )
-            )
+            weekday = int(entry["weekday"])
+            auf = str(entry["open_utc"])
+            zu = str(entry["close_utc"])
         except (KeyError, TypeError, ValueError) as exc:
             raise InstrumentCatalogError(
                 f"{symbol}: Session unvollstaendig oder falsch: {entry!r}"
             ) from exc
+        if not 0 <= weekday <= 6:
+            raise InstrumentCatalogError(
+                f"{symbol}: Wochentag {weekday} liegt nicht in 0..6 (0 = Montag)"
+            )
+        try:
+            auf_min, zu_min = session_minutes(auf), session_minutes(zu)
+        except InstrumentCatalogError as exc:
+            raise InstrumentCatalogError(f"{symbol}: {exc}") from exc
+        if auf_min >= MINUTEN_JE_TAG:
+            raise InstrumentCatalogError(
+                f"{symbol}: Sitzungsbeginn {auf!r} liegt am Tagesende -- eine Sitzung, "
+                "die um 24:00 beginnt, gehoert auf den Folgetag"
+            )
+        if auf_min == zu_min:
+            raise InstrumentCatalogError(
+                f"{symbol}: Sitzung {auf!r}-{zu!r} ist mehrdeutig (null Minuten oder "
+                "volle 24 Stunden?) -- fuer einen ganzen Tag 00:00-24:00 schreiben"
+            )
+        out.append(TradingSession(weekday=weekday, open_utc=auf, close_utc=zu))
     return tuple(out)

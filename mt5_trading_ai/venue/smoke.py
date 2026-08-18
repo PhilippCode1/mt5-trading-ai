@@ -19,8 +19,10 @@ from decimal import ROUND_DOWN, Decimal
 
 from mt5_trading_ai.backtest.edge import EdgeVerdict
 from mt5_trading_ai.venue.demo_run import (
+    DemoAccount,
     DemoGateError,
     DemoReadiness,
+    DemoRegistration,
     evaluate_demo_progress,
     register_for_demo,
 )
@@ -43,14 +45,31 @@ class DemoRunInputs:
 
     ``edge_verdict`` ist das Ergebnis des Sechs-Bedingungen-Tors aus ``run_backtest ->
     evaluate_edge`` **zum Registrierungszeitpunkt**; ``live_verdict`` das im Demo weiter
-    gemessene Ergebnis. ``elapsed_days`` ist die bisherige Demo-Laufzeit.
+    gemessene Ergebnis.
+
+    ``elapsed_days`` gibt es nicht mehr. Es war eine frei behauptete Laufzeit: ein
+    ``elapsed_days=400`` reifte jedes Konto in einer Zeile (siehe ``demo_run.py``).
+    Die Laufzeit ist jetzt die Differenz zwischen der Uhr des Laufs
+    (``run_smoke(now=)``) und dem Registrierungsdatum.
+
+    ``registration`` ist der **bestehende** Beleg, wenn der Demo-Betrieb schon laeuft.
+    Fehlt er, registriert die Harness jetzt -- und ein Beleg von heute ist null Tage
+    alt, also nicht reif. Das ist die richtige Antwort, keine Panne: eine Frist beginnt
+    mit der Registrierung und nicht mit der Frage danach.
+
+    ``broker`` ist die Broker-/Serverkennung des Terminals, das die Harness gerade
+    liest. Sie steht **nicht** im Kontoschnappschuss (``AccountState`` fuehrt kein
+    solches Feld), muss also vom Aufrufer aus derselben Terminal-Konfiguration kommen,
+    aus der auch die Registrierung stammt. Der Vergleich faengt damit
+    Fehlkonfiguration, nicht Taeuschung -- so steht es auch an ``DemoAccount``.
     """
 
     strategy_id: str
     version: str
     edge_verdict: EdgeVerdict
-    elapsed_days: int
     live_verdict: EdgeVerdict
+    broker: str
+    registration: DemoRegistration | None = None
 
 
 @dataclass
@@ -86,9 +105,23 @@ def run_smoke(
     Schreib-Probe frei (die dennoch ein Demokonto verlangt).
 
     ``demo`` fuettert die Naht §8.5->§7: die Harness registriert die Strategie fuer den
-    Demo-Betrieb (``register_for_demo`` -- fail-closed ohne bestandenen Edge) und prueft
-    den Fortschritt (``evaluate_demo_progress``); das Ergebnis liegt in
-    ``report.demo_readiness`` und ist die Vorbedingung des Live-Freigabe-Tors.
+    Demo-Betrieb (``register_for_demo`` -- fail-closed ohne bestandenen Edge, auf dem
+    Konto, das sie gerade liest) und prueft den Fortschritt
+    (``evaluate_demo_progress``); das Ergebnis liegt in ``report.demo_readiness``.
+
+    Die Uhr des Demo-Tors ist ``now`` (Default: Systemuhr) -- dieselbe, die den ganzen
+    Lauf datiert. Damit haengt die Frist an einer injizierbaren Groesse und nicht an
+    ``datetime.now()`` im Modul.
+
+    Der Schritt ``demo_progress`` ist **rot, solange die Frist nicht voll ist**. Das ist
+    die Antwort des Tors, kein Fehler der Harness: wer ohne bestehenden Beleg fragt,
+    registriert gerade erst und hat null von 180 Tagen. Wer nur die Verdrahtung des
+    Smoke pruefen will, laesst ``demo`` weg.
+
+    Was ``report.demo_readiness`` **nicht** ist: die Eingabe des Live-Freigabe-Tors.
+    ``Mt5Venue`` nimmt kein fertiges Urteil mehr entgegen, sondern die Registrierung,
+    und rechnet selbst (``venue/mt5.py``, ``_require_demo_maturity``). Der Bericht hier
+    ist der Nachweis des Betreibers, nicht die Freigabe.
     """
     report = SmokeReport()
     at = now if now is not None else datetime.now(UTC)
@@ -111,18 +144,31 @@ def run_smoke(
 
         if demo is not None:
             # Naht §8.5->§7: Demo-Registrierung (fail-closed ohne Edge) + Fortschritt.
-            try:
-                registration = register_for_demo(
-                    strategy_id=demo.strategy_id, version=demo.version,
-                    edge_verdict=demo.edge_verdict, registered_on=at.date(),
+            # Das beobachtete Konto ist das gerade gelesene -- und HIER ist es
+            # wirklich ein Demokonto (der harte Abbruch oben hat das erzwungen).
+            beobachtet = DemoAccount(
+                account_id=account.account_id,
+                broker=demo.broker,
+                is_demo=account.is_demo,
+            )
+            registration: DemoRegistration | None = demo.registration
+            if registration is None:
+                try:
+                    registration = register_for_demo(
+                        strategy_id=demo.strategy_id, version=demo.version,
+                        edge_verdict=demo.edge_verdict, account=beobachtet,
+                        clock=lambda: at,
+                    )
+                except DemoGateError as exc:
+                    report.add("demo_registration", False, str(exc))
+            if registration is not None:
+                report.add(
+                    "demo_registration", True,
+                    f"{registration.strategy_id} seit {registration.registered_on}",
                 )
-            except DemoGateError as exc:
-                report.add("demo_registration", False, str(exc))
-            else:
-                report.add("demo_registration", True, registration.strategy_id)
                 readiness = evaluate_demo_progress(
-                    registration=registration, elapsed_days=demo.elapsed_days,
-                    live_verdict=demo.live_verdict,
+                    registration=registration, observed_account=beobachtet,
+                    live_verdict=demo.live_verdict, clock=lambda: at,
                 )
                 report.demo_readiness = readiness
                 report.add(

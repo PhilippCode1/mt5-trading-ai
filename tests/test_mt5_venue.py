@@ -9,8 +9,9 @@ Es laeuft ohne echtes MT5-Terminal: das Fake-Terminal unten liefert die Rohwerte
 
 from __future__ import annotations
 
+import inspect
 from collections.abc import Callable
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
 
@@ -21,8 +22,9 @@ from mt5_trading_ai.execution.leverage_preflight import evaluate_leverage_prefli
 from mt5_trading_ai.execution.private_sync import PrivateSync
 from mt5_trading_ai.execution.risk_manager import RiskManager, RiskPolicy
 from mt5_trading_ai.venue.demo_run import (
-    DemoReadiness,
-    evaluate_demo_progress,
+    MIN_DEMO_DAYS,
+    DemoAccount,
+    DemoRegistration,
     register_for_demo,
 )
 from mt5_trading_ai.venue.mt5 import (
@@ -125,9 +127,30 @@ def _released_settings() -> SimpleNamespace:
     )
 
 
-def _ready_demo() -> DemoReadiness:
-    """Ein reifes Demo-Ergebnis (>= 180 Tage + Edge bestanden) fuer Live-Happy-Paths."""
-    return DemoReadiness(ready_for_live_question=True, reasons=())
+#: Das Demokonto, auf dem der Demo-Betrieb der Live-Happy-Paths gelaufen ist.
+#: Bewusst eine ANDERE Nummer als das Fake-Konto "123": ein Demo-Beleg, der die
+#: Nummer des Livekontos traegt, ist ein Widerspruch und wird abgelehnt.
+_DEMO_KONTO = DemoAccount(account_id="demo-9001", broker="Demo-Broker", is_demo=True)
+
+
+def _bestandener_edge() -> EdgeVerdict:
+    return EdgeVerdict(passed=True, checks=(), unmet=())
+
+
+def _reifer_demo_beleg(*, tage: int = MIN_DEMO_DAYS) -> DemoRegistration:
+    """Ein Registrierungsbeleg, der ``tage`` vor ``TS`` entstanden ist.
+
+    Frueher stand hier ``DemoReadiness(ready_for_live_question=True, reasons=())`` --
+    ein fertiges Ja in einer Zeile. Genau das nimmt der Konstruktor nicht mehr
+    entgegen: der Beleg traegt ein Datum, und ob daraus Reife wird, rechnet das Tor
+    mit seiner eigenen Uhr. Das Datum kommt auch hier aus ``register_for_demo``, also
+    aus einer Uhr -- nicht aus einem Argument.
+    """
+    stand = TS - timedelta(days=tage)
+    return register_for_demo(
+        strategy_id="eurusd", version="v1", edge_verdict=_bestandener_edge(),
+        account=_DEMO_KONTO, clock=lambda: stand,
+    )
 
 
 class FakeMt5Terminal:
@@ -139,8 +162,14 @@ class FakeMt5Terminal:
         is_demo: bool,
         margin_free: Decimal = Decimal("10000"),
         positions: tuple[Mt5Position, ...] = (),
+        jetzt: datetime = TS,
     ) -> None:
         self._connected = False
+        #: Stempel von Konto und Tick. Steht per Default auf ``TS``; wer die Uhr des
+        #: Venues verschiebt, muss ihn mitschieben -- sonst antwortet der
+        #: Frische-Latch (er laeuft vor allen Compliance-Toren) statt des Tors, das
+        #: der Test meint.
+        self._jetzt = jetzt
         self._symbols = {"EURUSD": _eurusd_symbol(), "BTCUSD": _btcusd_symbol()}
         self._account = Mt5Account(
             account_id="123",
@@ -150,7 +179,7 @@ class FakeMt5Terminal:
             margin_used=Decimal("0"),
             margin_free=margin_free,
             is_demo=is_demo,
-            ts=TS,
+            ts=jetzt,
         )
         self._positions: tuple[Mt5Position, ...] = positions
         self.order_send_calls = 0
@@ -177,8 +206,8 @@ class FakeMt5Terminal:
         if name not in self._symbols:
             return None
         if name == "BTCUSD":
-            return Mt5Tick(ts=TS, bid=Decimal("60000"), ask=Decimal("60010"))
-        return Mt5Tick(ts=TS, bid=Decimal("1.09990"), ask=Decimal("1.10000"))
+            return Mt5Tick(ts=self._jetzt, bid=Decimal("60000"), ask=Decimal("60010"))
+        return Mt5Tick(ts=self._jetzt, bid=Decimal("1.09990"), ask=Decimal("1.10000"))
 
     def rates(
         self, name: str, timeframe: Timeframe, start: datetime, end: datetime
@@ -236,6 +265,17 @@ class FakeMt5Terminal:
     def positions(self) -> tuple[Mt5Position, ...]:
         return self._positions
 
+    def set_positions(self, positions: tuple[Mt5Position, ...]) -> None:
+        """Den Bestand BEIM BROKER umsetzen -- Eroeffnung, Schliessung, Fremdeingriff.
+
+        Ein echter Broker meldet eine Position erst NACH der Fuellung und meldet sie
+        nach der Schliessung nicht mehr. Tests, die einen Bestand schon vor der
+        Eroeffnung stellen, bilden eine Lage ab, die es so nicht gibt -- und seit dem
+        Doppelorder-Riegel (``Mt5Venue._verhindere_doppelte_eroeffnung``) antwortet
+        auf diese Lage der Riegel statt des Tors, das der Test meint.
+        """
+        self._positions = positions
+
     def account(self) -> Mt5Account:
         return self._account
 
@@ -273,11 +313,18 @@ def _venue(
     cost_gate: CostGate | None = None,
     risk_manager: RiskManager | None = None,
     sync: PrivateSync | None = None,
-    demo_readiness: DemoReadiness | None = None,
+    demo_registration: DemoRegistration | None = None,
+    demo_live_verdict: EdgeVerdict | None = None,
     clock: Callable[[], datetime] | None = None,
+    jetzt: datetime = TS,
     ohne_risiko: bool = False,
 ) -> tuple[Mt5Venue, FakeMt5Terminal]:
     """Ein verbundenes Venue mit Fake-Terminal.
+
+    ``demo_live_verdict`` faellt auf einen bestandenen Edge zurueck, sobald ein
+    ``demo_registration`` da ist: die Live-Happy-Paths handeln nicht vom Edge, und der
+    Fall "Edge im Demo verloren" setzt ihn ausdruecklich. Ohne Registrierung bleibt
+    beides ``None`` -- das ist der fail-closed-Fall und soll es bleiben.
 
     Zwei Vorgaben, die seit Paket 2 (A3) noetig sind:
 
@@ -288,14 +335,20 @@ def _venue(
     * ``clock`` steht per Default auf ``TS``, der Zeit des Fake-Kontostands. Sonst
       risse der Frische-Latch bei jedem Testlauf, weil ``TS`` fest in der
       Vergangenheit liegt.
+
+    ``jetzt`` verschiebt Konto- und Kursstempel des Fake-Terminals **mit** der Uhr.
+    Wer nur ``clock`` verstellt, misst den Frische-Latch (er laeuft als erste Sperre)
+    und nicht das Tor, das er meint.
     """
     terminal = FakeMt5Terminal(
-        is_demo=is_demo, margin_free=margin_free, positions=positions
+        is_demo=is_demo, margin_free=margin_free, positions=positions, jetzt=jetzt
     )
     if ohne_risiko:
         gewaehlt = None
     else:
         gewaehlt = risk_manager if risk_manager is not None else _fresh_risk()
+    if demo_registration is not None and demo_live_verdict is None:
+        demo_live_verdict = _bestandener_edge()
     venue = Mt5Venue(
         name="mt5-demo",
         terminal=terminal,
@@ -304,8 +357,9 @@ def _venue(
         cost_gate=cost_gate,
         risk_manager=gewaehlt,
         sync=sync,
-        demo_readiness=demo_readiness,
-        clock=clock if clock is not None else (lambda: TS),
+        demo_registration=demo_registration,
+        demo_live_verdict=demo_live_verdict,
+        clock=clock if clock is not None else (lambda: jetzt),
     )
     venue.connect()
     return venue, terminal
@@ -423,7 +477,7 @@ def test_live_opening_order_blocked_without_release() -> None:
 def test_live_opening_order_allowed_with_full_release() -> None:
     venue, terminal = _venue(
         is_demo=False, settings=_released_settings(), cost_gate=_LENIENT_COST_GATE,
-        risk_manager=_fresh_risk(), demo_readiness=_ready_demo(),
+        risk_manager=_fresh_risk(), demo_registration=_reifer_demo_beleg(),
     )
     result = venue.submit_order(_order(volume=Decimal("0.01")))
     assert result.accepted is True
@@ -433,7 +487,7 @@ def test_live_opening_order_allowed_with_full_release() -> None:
 def test_live_opening_rejected_when_cost_gate_unconfigured() -> None:
     # Kein Kostentor auf einem Live-Konto -> fail-closed, keine Order gesendet.
     venue, terminal = _venue(
-        is_demo=False, settings=_released_settings(), demo_readiness=_ready_demo()
+        is_demo=False, settings=_released_settings(), demo_registration=_reifer_demo_beleg()
     )
     with pytest.raises(OrderRejectedError) as excinfo:
         venue.submit_order(_order())
@@ -446,7 +500,7 @@ def test_live_opening_rejected_when_cost_exceeds_threshold() -> None:
     tight = CostGate(max_roundturn_cost_fraction=Decimal("0.0001"))
     venue, terminal = _venue(
         is_demo=False, settings=_released_settings(), cost_gate=tight,
-        demo_readiness=_ready_demo(),
+        demo_registration=_reifer_demo_beleg(),
     )
     with pytest.raises(OrderRejectedError) as excinfo:
         venue.submit_order(_order())
@@ -459,7 +513,7 @@ def test_live_opening_allowed_when_cost_within_threshold() -> None:
     # volumenunabhaengig, 0,01 Lot passt zusaetzlich ins Risikobudget).
     venue, terminal = _venue(
         is_demo=False, settings=_released_settings(), cost_gate=_LENIENT_COST_GATE,
-        risk_manager=_fresh_risk(), demo_readiness=_ready_demo(),
+        risk_manager=_fresh_risk(), demo_registration=_reifer_demo_beleg(),
     )
     result = venue.submit_order(_order(volume=Decimal("0.01")))
     assert result.accepted is True
@@ -485,7 +539,7 @@ def _live_risk_venue(
         settings=_released_settings(),
         cost_gate=_LENIENT_COST_GATE,
         risk_manager=risk_manager,
-        demo_readiness=_ready_demo(),
+        demo_registration=_reifer_demo_beleg(),
         positions=positions,
     )
 
@@ -556,10 +610,14 @@ def test_reduce_only_close_records_close_at_risk_manager() -> None:
     # Positionsdeckel am RiskManager frei (record_close verdrahtet). Das Terminal meldet
     # die offene Long-Position autoritativ (wie ein echter Broker nach der Eroeffnung).
     rm = _fresh_risk()
-    venue, terminal = _live_risk_venue(
-        rm, positions=(_mt5_position("EURUSD", is_buy=True, volume=Decimal("0.10")),)
-    )
+    venue, terminal = _live_risk_venue(rm)
     venue.submit_order(_risk_order(client_order_id="open-1"))
+    # Erst JETZT meldet der Broker die Position -- vorher gab es sie nicht. Die alte
+    # Reihenfolge (Bestand schon vor der Eroeffnung) bildete eine Lage ab, in der die
+    # Eroeffnung selbst eine Doppelorder waere; seit dem Riegel antwortet darauf er.
+    terminal.set_positions(
+        (_mt5_position("EURUSD", is_buy=True, volume=Decimal("0.10")),)
+    )
     assert rm.open_position_count == 1
     # Gegenorder (SELL, reduce_only) baut die Long ab -> record_close.
     venue.submit_order(_order(
@@ -597,7 +655,7 @@ def test_live_opening_rejected_when_risk_unconfigured() -> None:
     # Live ohne Risiko-Manager -> fail-closed (auch wenn das Kostentor sitzt).
     venue, terminal = _venue(
         is_demo=False, settings=_released_settings(), cost_gate=_LENIENT_COST_GATE,
-        demo_readiness=_ready_demo(), ohne_risiko=True,
+        demo_registration=_reifer_demo_beleg(), ohne_risiko=True,
     )
     with pytest.raises(OrderRejectedError) as ex:
         venue.submit_order(_order(volume=Decimal("0.01")))
@@ -609,22 +667,63 @@ def test_live_opening_rejected_when_risk_unconfigured() -> None:
 
 
 def test_demo_not_ready_blocks_live_opening() -> None:
-    # < 180 Tage Demo -> keine Live-Eroeffnung (Demo-Reife-Tor).
-    not_ready = DemoReadiness(
-        ready_for_live_question=False, reasons=("demo_zu_kurz_10_von_180_tagen",)
-    )
+    # < 180 Tage Demo -> keine Live-Eroeffnung (Demo-Reife-Tor). Die Zahl im Grund
+    # ist GERECHNET (Uhr des Venues minus Registrierungsdatum), nicht behauptet.
     venue, terminal = _venue(
         is_demo=False, settings=_released_settings(), cost_gate=_LENIENT_COST_GATE,
-        risk_manager=_fresh_risk(), demo_readiness=not_ready,
+        risk_manager=_fresh_risk(),
+        demo_registration=_reifer_demo_beleg(tage=10),
     )
     with pytest.raises(OrderRejectedError) as ex:
         venue.submit_order(_order(volume=Decimal("0.01")))
     assert ex.value.reason == "demo_not_ready"
+    assert f"demo_zu_kurz_10_von_{MIN_DEMO_DAYS}_tagen" in str(ex.value)
     assert terminal.order_send_calls == 0
 
 
-def test_demo_readiness_missing_blocks_live_opening() -> None:
-    # Kein Demo-Reife-Ergebnis hinterlegt -> fail-closed.
+def test_ein_tag_vor_der_frist_blockt_die_live_eroeffnung() -> None:
+    """Die Kante am Order-Pfad, nicht nur in der Rechenfunktion: 179 Tage sind nein,
+    180 sind ja. Ohne beide Seiten waere das Tor nicht als Melder belegt."""
+    for tage, geht in ((MIN_DEMO_DAYS - 1, False), (MIN_DEMO_DAYS, True)):
+        venue, terminal = _venue(
+            is_demo=False, settings=_released_settings(),
+            cost_gate=_LENIENT_COST_GATE, risk_manager=_fresh_risk(),
+            demo_registration=_reifer_demo_beleg(tage=tage),
+        )
+        if geht:
+            assert venue.submit_order(_order(volume=Decimal("0.01"))).accepted is True
+        else:
+            with pytest.raises(OrderRejectedError) as ex:
+                venue.submit_order(_order(volume=Decimal("0.01")))
+            assert ex.value.reason == "demo_not_ready"
+            assert terminal.order_send_calls == 0
+
+
+def test_derselbe_beleg_reift_erst_mit_der_uhr_des_tores() -> None:
+    """Der Kern der Reparatur: EIN Beleg, zwei Venues, zwei verschiedene Uhren --
+    zwei verschiedene Antworten. Die Reife ist damit eine Eigenschaft der
+    verstrichenen Zeit und nicht des uebergebenen Objekts."""
+    beleg = _reifer_demo_beleg(tage=MIN_DEMO_DAYS)  # reif genau bei TS
+    frueh, terminal = _venue(
+        is_demo=False, settings=_released_settings(), cost_gate=_LENIENT_COST_GATE,
+        risk_manager=_fresh_risk(), demo_registration=beleg,
+        jetzt=TS - timedelta(days=1),
+    )
+    with pytest.raises(OrderRejectedError) as ex:
+        frueh.submit_order(_order(volume=Decimal("0.01")))
+    assert ex.value.reason == "demo_not_ready"
+    assert f"demo_zu_kurz_{MIN_DEMO_DAYS - 1}_von_" in str(ex.value)
+    assert terminal.order_send_calls == 0
+
+    spaet, _ = _venue(
+        is_demo=False, settings=_released_settings(), cost_gate=_LENIENT_COST_GATE,
+        risk_manager=_fresh_risk(), demo_registration=beleg, jetzt=TS,
+    )
+    assert spaet.submit_order(_order(volume=Decimal("0.01"))).accepted is True
+
+
+def test_demo_beleg_fehlt_blockt_live_opening() -> None:
+    # Kein Registrierungsbeleg hinterlegt -> fail-closed.
     venue, terminal = _venue(
         is_demo=False, settings=_released_settings(), cost_gate=_LENIENT_COST_GATE,
         risk_manager=_fresh_risk(),
@@ -632,12 +731,60 @@ def test_demo_readiness_missing_blocks_live_opening() -> None:
     with pytest.raises(OrderRejectedError) as ex:
         venue.submit_order(_order(volume=Decimal("0.01")))
     assert ex.value.reason == "demo_not_ready"
+    assert "demo_registrierung_fehlt" in str(ex.value)
+    assert "demo_edge_im_demo_fehlt" in str(ex.value)
+    assert terminal.order_send_calls == 0
+
+
+def test_beleg_ohne_edge_im_demo_blockt_trotz_langer_laufzeit() -> None:
+    # Frist voll, aber der Edge ist im Demo verloren gegangen -> nein.
+    venue, terminal = _venue(
+        is_demo=False, settings=_released_settings(), cost_gate=_LENIENT_COST_GATE,
+        risk_manager=_fresh_risk(),
+        demo_registration=_reifer_demo_beleg(tage=400),
+        demo_live_verdict=EdgeVerdict(passed=False, checks=(), unmet=("trades",)),
+    )
+    with pytest.raises(OrderRejectedError) as ex:
+        venue.submit_order(_order(volume=Decimal("0.01")))
+    assert ex.value.reason == "demo_not_ready"
+    assert "live_demo_verfehlt_sechs_bedingungen" in str(ex.value)
+    assert terminal.order_send_calls == 0
+
+
+def test_demo_beleg_darf_nicht_das_livekonto_nennen() -> None:
+    """Ein Demo-Beleg, der die Nummer eben dieses Livekontos traegt, ist ein
+    Widerspruch -- und der naechstliegende Griff, wenn jemand einen Beleg passend
+    machen will. Das Konto kommt frisch aus dem Terminal, nicht aus dem Beleg."""
+    stand = TS - timedelta(days=400)
+    beleg = register_for_demo(
+        strategy_id="eurusd", version="v1", edge_verdict=_bestandener_edge(),
+        account=DemoAccount(account_id="123", broker="Demo-Broker", is_demo=True),
+        clock=lambda: stand,
+    )
+    venue, terminal = _venue(
+        is_demo=False, settings=_released_settings(), cost_gate=_LENIENT_COST_GATE,
+        risk_manager=_fresh_risk(), demo_registration=beleg,
+    )
+    with pytest.raises(OrderRejectedError) as ex:
+        venue.submit_order(_order(volume=Decimal("0.01")))
+    assert ex.value.reason == "demo_not_ready"
+    assert "demo_beleg_nennt_das_livekonto" in str(ex.value)
+    assert terminal.order_send_calls == 0
+
+
+def test_der_konstruktor_nimmt_kein_fertiges_reifeurteil_mehr() -> None:
+    """Die strukturelle Seite: solange ein fertiges ``DemoReadiness`` ein
+    Konstruktorargument ist, gibt es einen Weg, dem Tor die Antwort vorzusagen."""
+    params = inspect.signature(Mt5Venue.__init__).parameters
+    assert "demo_readiness" not in params
+    assert "demo_registration" in params
+    assert "demo_live_verdict" in params
 
 
 def test_non_halal_instrument_rejected() -> None:
     # Krypto ist fiqh-umstritten -> mechanisch nicht konform -> Ablehnung vor dem Send.
     venue, terminal = _venue(
-        is_demo=False, settings=_released_settings(), demo_readiness=_ready_demo()
+        is_demo=False, settings=_released_settings(), demo_registration=_reifer_demo_beleg()
     )
     with pytest.raises(OrderRejectedError) as ex:
         venue.submit_order(_order(symbol="BTCUSD", stop_loss=Decimal("59000")))
@@ -649,7 +796,7 @@ def test_swap_bearing_account_rejected() -> None:
     settings = _released_settings()
     settings.halal_account_swap_free = False  # nicht swapfrei -> overnight-Zins (riba)
     venue, terminal = _venue(
-        is_demo=False, settings=settings, demo_readiness=_ready_demo()
+        is_demo=False, settings=settings, demo_registration=_reifer_demo_beleg()
     )
     with pytest.raises(OrderRejectedError) as ex:
         venue.submit_order(_order(volume=Decimal("0.01")))
@@ -662,7 +809,7 @@ def test_missing_scholar_review_rejected() -> None:
     settings = _released_settings()
     settings.halal_scholar_review_id = ""  # keine Gelehrten-Entscheidung hinterlegt
     venue, terminal = _venue(
-        is_demo=False, settings=settings, demo_readiness=_ready_demo()
+        is_demo=False, settings=settings, demo_registration=_reifer_demo_beleg()
     )
     with pytest.raises(OrderRejectedError) as ex:
         venue.submit_order(_order(volume=Decimal("0.01")))
@@ -680,24 +827,34 @@ def test_demo_opening_skips_compliance_gates() -> None:
 
 
 def test_demo_registration_flow_unblocks_live_opening() -> None:
-    # Die Naht §8.5->§7: ein bestandener Edge -> register_for_demo -> nach >= 180 Tagen
-    # evaluate_demo_progress -> DemoReadiness -> Live-Eroeffnung passiert. (Der Edge ist
-    # hier konstruiert bestanden; real besteht keine Strategie -- dann greift die Sperre.)
-    passed = EdgeVerdict(passed=True, checks=(), unmet=())
+    """Die Naht §8.5->§7, umgeschrieben auf das, was jetzt gilt.
+
+    Vorher fuhr dieser Test ``register_for_demo(registered_on=...)`` und
+    ``evaluate_demo_progress(elapsed_days=200)`` und reichte das ERGEBNIS an den
+    Venue weiter. Beides waren freie Behauptungen: das Datum und die Laufzeit kamen
+    aus dem Testkoerper, das Urteil ebenfalls -- der Test belegte damit nur, dass ein
+    ``DemoReadiness(True, ())`` die Live-Eroeffnung oeffnet. Genau diese Bequemlichkeit
+    darf es nicht mehr geben, also ist der Test hier auf die verbleibende Aussage
+    umgeschrieben: die REGISTRIERUNG geht an den Venue, das Urteil rechnet das Tor.
+
+    Was er weiterhin belegt: ein bestandener Edge fuehrt ueber ``register_for_demo``
+    zu einem Beleg, und ein Beleg von vor 200 Tagen oeffnet die Live-Eroeffnung.
+    (Der Edge ist konstruiert bestanden; real besteht keine Strategie -- dann greift
+    die Sperre schon bei der Registrierung.)
+    """
+    stand = TS - timedelta(days=200)
     registration = register_for_demo(
-        strategy_id="eurusd", version="v1", edge_verdict=passed,
-        registered_on=date(2026, 1, 1),
+        strategy_id="eurusd", version="v1", edge_verdict=_bestandener_edge(),
+        account=_DEMO_KONTO, clock=lambda: stand,
     )
-    readiness = evaluate_demo_progress(
-        registration=registration, elapsed_days=200, live_verdict=passed
-    )
-    assert readiness.ready_for_live_question is True
+    assert registration.registered_on == stand.date()  # aus der Uhr, nicht gesetzt
     venue, terminal = _venue(
         is_demo=False, settings=_released_settings(), cost_gate=_LENIENT_COST_GATE,
-        risk_manager=_fresh_risk(), demo_readiness=readiness,
+        risk_manager=_fresh_risk(), demo_registration=registration,
     )
     result = venue.submit_order(_order(volume=Decimal("0.01")))
     assert result.accepted is True
+    assert terminal.order_send_calls == 1
 
 
 def test_live_reduce_only_passes_without_release() -> None:
@@ -923,7 +1080,11 @@ def test_reconcile_drift_halts_and_blocks_opening() -> None:
     )
     assert reduce.accepted is True
 
-    # Nach manueller Freigabe geht Eroeffnung wieder.
+    # Nach manueller Freigabe geht Eroeffnung wieder. Der Abbau von eben ist beim
+    # Broker angekommen; ohne das antwortet der Doppelorder-Riegel (die
+    # gleichgerichtete Position steht noch) statt des Halt-Latches, den dieser Test
+    # meint.
+    terminal.set_positions(())
     venue.clear_halt()
     assert venue.is_halted() is False
     assert venue.submit_order(_order(client_order_id="o-2")).accepted is True
@@ -945,7 +1106,7 @@ def test_adopt_book_from_positions_matches_reconcile() -> None:
 
 
 def test_adopt_resolves_restart_drift_then_manual_clear() -> None:
-    venue, _ = _venue(
+    venue, terminal = _venue(
         is_demo=True,
         positions=(_mt5_position("EURUSD", is_buy=True, volume=Decimal("0.50")),),
     )
@@ -956,7 +1117,11 @@ def test_adopt_resolves_restart_drift_then_manual_clear() -> None:
     venue.adopt_book()
     assert venue.reconcile().matched is True
     assert venue.is_halted() is True
-    # Erst die manuelle Freigabe gibt Eroeffnungen wieder frei.
+    # Erst die manuelle Freigabe gibt Eroeffnungen wieder frei. Geprueft wird dabei
+    # eine Eroeffnung in ein Symbol OHNE stehende Position -- eine zweite
+    # gleichgerichtete Position im selben Symbol lehnt der Doppelorder-Riegel ab, und
+    # zwar unabhaengig vom Halt-Latch, um den es hier geht.
+    terminal.set_positions(())
     venue.clear_halt()
     assert venue.submit_order(_order(client_order_id="a-1")).accepted is True
 

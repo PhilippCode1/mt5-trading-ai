@@ -338,7 +338,40 @@ class TradingVenue(Protocol):
     def connect(self) -> None: ...
     def disconnect(self) -> None: ...
     def is_healthy(self) -> bool:
-        """False bei fehlendem Terminal, fehlender Sitzung oder veralteten Daten."""
+        """False bei fehlendem Terminal oder fehlender Sitzung.
+
+        Praezisiert, nachdem die MT5-Fassung zwei der drei zugesagten Faelle gar
+        nicht prueft: sie fragte nur, ob der Terminal-**Prozess** laeuft. Ein
+        laufendes Terminal ohne Leitung zum Handelsserver galt als gesund.
+
+        Was diese Frage beantwortet -- und was jede Umsetzung liefern muss:
+
+        * **kein Terminal** -- keine Bindung, kein Prozess.
+        * **keine Sitzung** -- Prozess laeuft, aber die Verbindung zum Handelsserver
+          steht nicht oder es ist kein Konto angemeldet.
+
+        Was sie **nicht** beantwortet: das **Alter der Daten**. Frische ist immer die
+        Frage nach einem konkreten Stempel eines konkreten Symbols; sie braucht ein
+        Symbol als Eingabe und einen Stempel von der Gegenseite der Leitung. Diese
+        Methode bekommt kein Symbol und laeuft am Kopf fast jeder anderen -- sie
+        koennte die Frage also weder stellen noch bezahlen.
+
+        **Die dritte Zusage ist damit nicht entfallen, sondern umgezogen.** Frueher
+        stand hier "oder veralteten Daten", und keine Umsetzung hat es je geprueft:
+        die MT5-Fassung fragte allein, ob der Terminal-Prozess laeuft. Eine Zusage,
+        die keine Umsetzung einhalten kann, ist keine Sperre, sondern ein
+        Missverstaendnis mit Vertragstext. Sie lautet jetzt: **jede Umsetzung schuldet
+        die Frischepruefung je Order und je Symbol, vor der ersten Sperre, die mit
+        Zahlen rechnet** -- gegen einen Stempel, der von der Gegenseite der Leitung
+        kommt, nicht gegen einen selbst gesetzten. Wo eine Umsetzung sie fuehrt, ist
+        ihre Sache; im MT5-Adapter ist es ``Mt5Venue._enforce_account_freshness`` mit
+        ``execution/freshness.py``. Ein gesundes ``is_healthy`` ist deshalb kein
+        Freibrief.
+
+        Wer diesen Vertragstext zitiert, zitiert diese zwei Faelle und den Verweis --
+        nicht die alte Dreierliste (nachgezogen in ``venue/mt5.py`` und
+        ``tests/test_terminal_gesundheit.py``).
+        """
         ...
 
     # --- Instrumentenmetadaten -------------------------------------------
@@ -379,6 +412,29 @@ class TradingVenue(Protocol):
         Ein zweiter Aufruf mit derselben Kennung darf **keine** zweite Order
         erzeugen; er liefert das Ergebnis der ersten mit
         ``idempotent_replay=True``.
+
+        **Damit ist der Aufrufer in der Pflicht, und zwar an der einen Stelle, an der
+        er es nicht merkt.** Diese Zusage kann eine Umsetzung nur einloesen, wenn sie
+        dieselbe Kennung ein zweites Mal zu sehen bekommt. Eine je Versuch neu
+        gewuerfelte Kennung (``uuid4``) macht daraus zwei verschiedene Auftraege --
+        aus Sicht jeder Umsetzung sind sie es dann auch. Der Schutz ist damit nicht
+        schwach, sondern abgeschaltet, und das faellt nirgends auf: der Normalfall
+        sieht genauso aus.
+
+        Die Kennung muss darum aus der **Absicht** abgeleitet sein und nicht aus dem
+        Versuch: Symbol + Signal + Kerzenstempel ergibt fuer denselben Willen
+        zweimal dieselbe Zeichenkette -- ueber einen Zeitablauf, einen Neustart und
+        einen zweiten Runner hinweg. Genau diese drei Faelle sind der Grund fuer die
+        Zusage; in allen dreien ist das Prozessgedaechtnis leer.
+
+        Eine Umsetzung darf sich auf diese Mitwirkung nicht verlassen. Der MT5-Adapter
+        fuehrt darum zusaetzlich einen kennungsunabhaengigen Riegel: eine eroeffnende
+        Order in ein Symbol, in dem beim Handelsplatz bereits eine gleichgerichtete
+        Position steht, wird abgelehnt
+        (``Mt5Venue._verhindere_doppelte_eroeffnung``, Grund
+        ``doppelte_eroeffnung``). Das ist keine Vertragspflicht -- eine Umsetzung, die
+        Pyramiden zulassen will, darf ihn nicht haben --, aber es ist die einzige
+        Wiedererkennung, die auch ohne Zutun des Aufrufers greift.
         """
         ...
 

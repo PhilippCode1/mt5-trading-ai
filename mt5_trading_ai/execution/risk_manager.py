@@ -78,6 +78,44 @@ eigene Zahl und diese Schicht lehnt ihn mit ``stop_budget_below_cost_floor`` ab.
 Fassungen derselben Rechnung, und die strengere Politik erzeugt nicht den weiteren
 Stop, sondern gar keinen Handel.
 
+**Der Zustand ueberdauert den Neustart -- sonst gibt es keinen Halt.** Bis hierher lag
+der gesamte Risikozustand im Prozessgedaechtnis: Equity-Fenster, Tagesstart-Equity,
+Tageszaehler, Halt. ``_window_peak`` begann mit der *aktuellen* Equity, der Drawdown war
+nach jedem Start also null -- das ``drawdown_window`` von 30 Tagen war in Wahrheit „seit
+Prozessstart". Gemessen an den Betriebsjournalen: 22 Eroeffnungen an einem Konto-Tag
+gegen eine Kappe von 10, weil jeder Neustart bei null anfing. ``risk/limits.py`` sagt
+es selbst: „Ein System, das sich nach einem Drawdown-Halt selbst wieder freischaltet,
+hat keinen Halt."
+
+Zwei Aenderungen tragen das:
+
+1. **Der Halt latcht auch hier**, nicht nur im Venue (``Mt5Venue._halted``). Meldet
+   ``evaluate_limits`` einmal ``HALTED``, bleibt diese Schicht angehalten, bis ein
+   Mensch freigibt -- auch wenn sich die Equity danach erholt. Das ist keine
+   Zugabe, sondern Bedingung fuer Punkt 2: schriebe man den Halt auf die Platte und
+   lese ihn beim Start als Ablehnung, im laufenden Prozess aber nicht, dann waere ein
+   Neustart **strenger** als kein Neustart. Nebenwirkung ist gewollt: die Sperre loest
+   oefter aus.
+2. **Der Zustand wird gesichert** (``execution/risiko_zustand.py``), sobald eine
+   Zustandsdatei da ist -- ``zustand=`` am Konstruktor oder die Umgebungsvariable
+   ``MT5_RISIKO_ZUSTAND``. Ohne beides bleibt diese Schicht fluechtig wie bisher;
+   ``zustand_dauerhaft`` sagt, welcher Fall vorliegt. Was ein fehlender, leerer oder
+   beschaedigter Zustand bedeutet -- und warum der Halt dabei anders behandelt wird als
+   der Tageszaehler --, steht im Docstring von ``execution/risiko_zustand.py``.
+
+**Die Umgebungsvariable genuegt -- auch fuer den Peak.** Sie muss es, denn alle
+Produktionsstellen bauen ``RiskManager()`` ohne Argumente (``tools/live_betrieb.py``,
+``tools/paper_run.py``, ``tools/live_konsole.py``, ``tools/mt5_smoke.py``). Eine
+Zusage, die auf dem einzigen wirklich benutzten Weg nicht greift, ist keine. Der Weg
+dorthin ist nicht der Konstruktor, sondern die Schreibseite: das Equity-Fenster wird
+**auch ohne geprueftes Konto** gesichert, alles Uebrige erst danach (Begruendung und
+Fehlrichtung in ``execution/risiko_zustand.py``, „Was ohne geprueftes Konto geschrieben
+wird"). Sonst faellt genau der Teil aus, der vor der ersten Order entsteht: der
+Scheduler beobachtet Equity je Takt (``execution/scheduler.py``), autorisiert wird
+seltener -- und ein Neustart vor der ersten Order verloere den Fenster-Hoechststand,
+also den Drawdown, also den Halt. ``konto_id``/``waehrung`` am Konstruktor sind damit
+nur noch eine Abkuerzung fuer den vollen Zustand ab Takt eins, keine Bedingung.
+
 Fail-closed: jede nicht sicher zulaessige Order wird abgelehnt, ohne Default. Die
 **Politik** (Grenzen, Schwellen, Risikoanteil) traegt der ``RiskPolicy``; die Venue
 erzwingt sie am Order-Pfad (siehe ``venue/mt5.py``).
@@ -85,10 +123,20 @@ erzwingt sie am Order-Pfad (siehe ``venue/mt5.py``).
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from decimal import Decimal
 
+from mt5_trading_ai.execution.risiko_zustand import (
+    UMGEBUNG_ZUSTANDSDATEI,
+    UMGEBUNG_ZUSTANDSORDNER,
+    DateiZustand,
+    RisikoLage,
+    Zustandsbefund,
+    fenster_fortschreiben,
+    standard_zustandsdatei,
+)
 from mt5_trading_ai.gates.evaluation import (
     Candidate,
     GateState,
@@ -183,6 +231,25 @@ class RiskAuthorization:
     detail: dict[str, str] = field(default_factory=dict)
 
 
+def freigabe_gueltig(kennung: str | None) -> bool:
+    """Ist das eine Freigabe? Genau **ein** Massstab, an allen drei Stellen derselbe.
+
+    Die Frage entscheidet, ob ein Drawdown-Halt faellt, und sie wurde bisher an drei
+    Orten verschieden beantwortet: ``risk/limits.py`` verlangte ``.strip()``, der
+    Konstruktor dieser Schicht ebenfalls -- ``release_drawdown`` gar nichts. Damit
+    loeschte ``release_drawdown("")`` einen dauerhaften Halt, den dieselbe Kennung am
+    Konstruktor nicht geloest haette. Zwei Massstaebe fuer dieselbe menschliche Geste,
+    und der laxere sass auf dem Not-Aus.
+
+    Leerzeichen sind keine Entscheidung. Eine Freigabe ist die Aussage eines Menschen
+    ueber eine Lage, die er gesehen hat; sie traegt eine Kennung, an der man ihn spaeter
+    findet (Ticket, Datum, Kuerzel). Ein Leerstring benennt niemanden -- er ist ein
+    durchgereichtes leeres Feld, ein Tippfehler oder eine nicht gesetzte Variable, und
+    keins davon darf einen Halt aufheben.
+    """
+    return bool(kennung and kennung.strip())
+
+
 def measured_cost_from_meta(request: OrderRequest) -> Decimal | None:
     """Hole die mitgereiste Kostenmessung aus ``request.meta``. Fail-closed.
 
@@ -248,7 +315,33 @@ class RiskManager:
         *,
         manual_release_id: str | None = None,
         gap_events: tuple[datetime, ...] = (),
+        zustand: DateiZustand | None = None,
+        konto_id: str | None = None,
+        waehrung: str | None = None,
     ) -> None:
+        """``zustand`` macht den Risikozustand dauerhaft (siehe Modul-Docstring).
+
+        Wird nichts uebergeben, entscheidet die Umgebung: ist
+        ``MT5_RISIKO_ZUSTAND`` (oder ``MT5_RISIKO_ZUSTAND_ORDNER``) gesetzt, wird die
+        Datei dort gefuehrt, sonst bleibt die Schicht fluechtig. Die Umgebung ist hier
+        der richtige Schalter und nicht Bequemlichkeit: die Stellen, die einen
+        ``RiskManager`` bauen (``tools/live_betrieb.py``, ``venue/demo_run.py``),
+        gehoeren anderen Wellen -- ueber die Umgebung schaltet der Betrieb die
+        Dauerhaftigkeit ein, ohne dass eine davon angefasst werden muss. Eine Vorgabe
+        „immer dauerhaft am Standardpfad" scheidet aus: dann teilten sich alle Tests
+        dieses Repos **eine** Zustandsdatei, und ein Halt aus einem Test haltete den
+        naechsten.
+
+        ``konto_id``/``waehrung`` binden den Zustand sofort an ein Konto. Ohne sie
+        bindet die erste ``authorize_opening`` (dort kommt die ``AccountState``
+        herein); bis dahin wird **nur das Equity-Fenster** gesichert -- der Teil, der
+        auch ohne Kontobeweis nicht schmeicheln kann. Wer den vollen Zustand ab dem
+        ersten Scheduler-Takt auf der Platte haben will, uebergibt sie hier.
+
+        Wirft ``ZustandsortFehler``, wenn die Umgebung einen relativen Pfad vorgibt --
+        beim Bau, also vor der ersten Order (Begruendung in
+        ``execution/risiko_zustand.py``).
+        """
         self._policy = policy if policy is not None else RiskPolicy()
         #: Manuelle Freigabe nach einem Drawdown-Halt. Ohne sie bleibt der Halt.
         #: Gilt nur fuer die AKTUELLE Episode: erholt sich der Drawdown unter die Grenze
@@ -270,19 +363,153 @@ class RiskManager:
         self._trade_day: date | None = None
         #: Offene Positionen mit Eroeffnungszeit (Mindesthaltedauer, Positionsdeckel).
         self._open_positions: list[OpenPosition] = []
+        #: Halt-Latch DIESER Schicht. Er spiegelt, was sie als ``latch_halt`` gemeldet
+        #: hat, und loest sich -- wie der des Venue -- nur durch Freigabe.
+        self._halt = False
+        self._halt_grund = ""
+        self._halt_seit: datetime | None = None
+        #: Sperre der Tageszaehler aus einem unlesbaren Zustand. Schwaecher als der
+        #: Halt: sie verfaellt mit dem Tageswechsel, ohne menschliches Zutun.
+        self._zaehler_gesperrt = False
+        #: Grund einer fehlgeschlagenen Kontobindung (``None`` = passt/noch offen).
+        self._bindungsgrund: str | None = None
+        #: Der Zustand konnte zuletzt nicht auf die Platte (``None`` = konnte).
+        #: Begruendung und Wirkung: ``_sichern``.
+        self._schreibfehler: str | None = None
+
+        self._zustand = self._zustand_waehlen(zustand)
+        if self._zustand is not None:
+            self._uebernehme(self._zustand.laden())
+            if konto_id is not None and waehrung is not None:
+                self._bindungsgrund = self._zustand.binde(konto_id, waehrung)
+            self._sichern()
+
+    @staticmethod
+    def _zustand_waehlen(zustand: DateiZustand | None) -> DateiZustand | None:
+        """Uebergeben -> Umgebung -> fluechtig. Begruendung im ``__init__``."""
+        if zustand is not None:
+            return zustand
+        if os.environ.get(UMGEBUNG_ZUSTANDSDATEI) or os.environ.get(
+            UMGEBUNG_ZUSTANDSORDNER
+        ):
+            return DateiZustand(standard_zustandsdatei())
+        return None
+
+    @property
+    def zustand_dauerhaft(self) -> bool:
+        """Ob der Risikozustand einen Neustart ueberdauert.
+
+        Oeffentlich, weil „fluechtig" keine Eigenschaft ist, die man aus dem Verhalten
+        ablesen kann, bevor es zu spaet ist: eine fluechtige Schicht verhaelt sich bis
+        zum Neustart genau wie eine dauerhafte. Die Konsole/das Betriebswerkzeug soll
+        das anzeigen koennen.
+        """
+        return self._zustand is not None
+
+    def _uebernehme(self, befund: Zustandsbefund) -> None:
+        """Uebernimm den gelesenen Zustand -- samt seiner fail-closed-Aufloesung."""
+        lage = befund.lage
+        self._halt = lage.halt
+        self._halt_grund = lage.halt_grund
+        self._halt_seit = lage.halt_seit
+        self._zaehler_gesperrt = lage.zaehler_gesperrt
+        self._trade_day = lage.handelstag
+        self._trades_today_instrument = dict(lage.trades_je_instrument)
+        self._trades_today_account = lage.trades_konto
+        self._last_trade_at = dict(lage.letzter_trade_at)
+        self._equity_day = lage.equity_tag
+        self._day_start_equity = lage.tagesstart_equity
+        self._equity_obs = list(lage.equity_fenster)
+        self._open_positions = [
+            OpenPosition(instrument=symbol, opened_at=ts)
+            for symbol, ts in lage.offene_positionen
+        ]
+        if befund.sperrgrund is not None:
+            self._halt = True
+            self._halt_grund = befund.sperrgrund
+        if self._halt and freigabe_gueltig(self._manual_release_id):
+            # Eine am Konstruktor mitgegebene Freigabe ist derselbe menschliche Akt wie
+            # ``release_drawdown`` -- und der einzige Weg aus einem Halt, dessen Grund
+            # ein unlesbarer Zustand war. Ohne ihn bliebe nur „Datei loeschen", also
+            # eine Geste, die den Zustand samt Beweis mitnimmt.
+            self._halt = False
+            self._halt_grund = ""
+            self._halt_seit = None
+
+    def _lage(self) -> RisikoLage:
+        """Der aktuelle Zustand als sicherbare Lage (ohne Freigabe -- siehe Modul)."""
+        return RisikoLage(
+            halt=self._halt,
+            halt_grund=self._halt_grund,
+            halt_seit=self._halt_seit,
+            handelstag=self._trade_day,
+            zaehler_gesperrt=self._zaehler_gesperrt,
+            trades_je_instrument=dict(self._trades_today_instrument),
+            trades_konto=self._trades_today_account,
+            letzter_trade_at=dict(self._last_trade_at),
+            equity_tag=self._equity_day,
+            tagesstart_equity=self._day_start_equity,
+            equity_fenster=list(self._equity_obs),
+            offene_positionen=[
+                (pos.instrument, pos.opened_at) for pos in self._open_positions
+            ],
+        )
+
+    def _sichern(self) -> None:
+        """Schreibe den Zustand fort -- und lass die Platte nicht in den Order-Pfad.
+
+        Die Frage dahinter: was ist schlimmer -- ein Absturz nach dem Fill, oder ein
+        stillschweigend nicht gesicherter Zustand? Der Absturz, deutlich. Und man muss
+        sich nicht entscheiden.
+
+        **Absturz nach dem Fill** ist der schlechtestmoegliche Ausgang. ``venue/mt5.py``
+        ruft ``record_open_fill`` NACH dem Fill und VOR ``return result``: die Position
+        steht beim Broker, und der Aufrufer bekaeme statt des ``OrderResult`` eine
+        Ausnahme -- die er nicht erwartet (der Live-Takt faengt ``VenueError``, nicht
+        ``OSError``). Er wuesste dann nicht, dass er eine Position hat: kein Stop-
+        Management, kein Abgleich, keine Schliessung. Aus einer vollen Platte wuerde
+        eine unbeaufsichtigte offene Position. Auf Windows ist das kein Randfall --
+        ``os.replace`` scheitert mit ``PermissionError``, sobald ein anderer Prozess
+        das Ziel offen haelt.
+
+        **Stillschweigend nicht sichern** ist der zweitschlechteste und darum auch
+        keine Loesung: der naechste Start laese einen aelteren Stand -- weniger Trades,
+        kleineren Peak, keinen Halt. Das ist genau die milde Richtung, gegen die diese
+        Schicht gebaut ist.
+
+        Also der dritte Weg: der Fehler wird gefangen (der Order-Pfad laeuft zu Ende,
+        der Aufrufer bekommt sein ``OrderResult``), und der Zustand gilt ab sofort als
+        **unsicher**. Die naechste ``authorize_opening`` lehnt mit
+        ``risk_zustand_nicht_gesichert`` ab: es wird nichts NEUES eroeffnet, solange
+        nicht gesichert werden kann, waehrend das Bestehende bedienbar bleibt. Die
+        Marke loescht sich nicht durch Zeitablauf und nicht durch einen Neustart,
+        sondern nur durch einen erfolgreichen Schreibvorgang -- also durch einen
+        Beweis. Deshalb braucht sie, anders als der Drawdown-Halt, keine menschliche
+        Freigabe: sie behauptet nichts ueber den Markt, sondern nur ueber die Platte,
+        und die Platte antwortet selbst.
+        """
+        if self._zustand is not None:
+            self._schreibfehler = self._zustand.sichern(self._lage())
 
     # --- Zustandspflege ---------------------------------------------------
     def observe_equity(self, now: datetime, equity: Decimal) -> None:
-        """Nimm eine Equity-Beobachtung auf (Tagesstart + Fenster-Hoechststand)."""
+        """Nimm eine Equity-Beobachtung auf (Tagesstart + Fenster-Hoechststand).
+
+        Das Fenster wird in Stundenkoerben mit ihrem Hoechststand gefuehrt
+        (``risiko_zustand.fenster_fortschreiben``). Roh angehaengt wuchs die Reihe im
+        Sekundentakt auf Hunderttausende Eintraege je 30-Tage-Fenster -- unauffaellig,
+        solange der laengste Lauf dieses Repos ein Tag war, und untragbar, sobald der
+        Zustand je Beobachtung auf die Platte geht. Der Korb-Hoechststand kann den
+        Peak nur halten oder heben, nie senken.
+        """
         if self._equity_day != now.date():
             # Neuer Handelstag: Tagesstart-Equity neu setzen (Tageslimit-Bezug).
             self._equity_day = now.date()
             self._day_start_equity = equity
-        window = self._policy.loss_limits.drawdown_window
-        self._equity_obs.append((now, equity))
-        # Alte Beobachtungen ausserhalb des Drawdown-Fensters verwerfen.
-        cutoff = now - window
-        self._equity_obs = [(ts, eq) for ts, eq in self._equity_obs if ts >= cutoff]
+        self._equity_obs = fenster_fortschreiben(
+            self._equity_obs, now, equity, self._policy.loss_limits.drawdown_window
+        )
+        self._sichern()
 
     def _window_peak(self, current_equity: Decimal) -> Decimal:
         peak = current_equity
@@ -296,10 +523,26 @@ class RiskManager:
         Pfaden gerufen (Lesen in ``authorize_opening``, Schreiben in
         ``record_open_fill``), sonst blockt eine an Tag N ausgeschoepfte Kappe an
         Tag N+1 stale weiter."""
-        if self._trade_day != day:
-            self._trade_day = day
-            self._trades_today_instrument = {}
-            self._trades_today_account = 0
+        if self._trade_day == day:
+            return
+        vorheriger_tag = self._trade_day
+        self._trade_day = day
+        self._trades_today_instrument = {}
+        self._trades_today_account = 0
+        if vorheriger_tag is not None:
+            # Nur ein ECHTER Tageswechsel hebt die Zaehlersperre auf. Die Bedingung
+            # ist der ganze Punkt: kommt der Zustand mit unbekanntem Tag herein
+            # (``handelstag=None``, weil der Abschnitt unlesbar war), dann setzt der
+            # erste Takt nach dem Start hier den Tag -- ohne diese Pruefung loeste
+            # genau dieser Takt die Sperre wieder auf, und sie koennte per
+            # Konstruktion nie greifen.
+            self._zaehler_gesperrt = False
+        # Den Tageswechsel sofort sichern. Ohne das bliebe ``handelstag`` in der Datei
+        # auf dem Stand, mit dem sie hereinkam -- bei einem unlesbaren Zaehlerabschnitt
+        # also auf ``null``. Dann saehe JEDER Neustart wieder „Tag unbekannt", die
+        # Bedingung oben griffe nie, und die Zaehlersperre liefe nie ab: aus einer
+        # Sperre mit Verfallsdatum waere ein zweiter, heimlicher Dauer-Halt geworden.
+        self._sichern()
 
     def record_open_fill(self, instrument: str, now: datetime) -> None:
         """Akzeptierte Eroeffnung: Frequenz-Zaehler + offene Position fortschreiben."""
@@ -315,12 +558,16 @@ class RiskManager:
             self._open_positions.append(
                 OpenPosition(instrument=instrument, opened_at=now)
             )
+        # Sofort sichern, nicht am Ende des Takts: zwischen Fill und Absturz liegt
+        # sonst genau der Trade, den die Kappe nach dem Neustart nicht mehr kennt.
+        self._sichern()
 
     def record_close(self, instrument: str) -> None:
         """Eine Schliessung: offene Positionen dieses Instruments entfernen."""
         self._open_positions = [
             pos for pos in self._open_positions if pos.instrument != instrument
         ]
+        self._sichern()
 
     @property
     def open_position_count(self) -> int:
@@ -332,9 +579,34 @@ class RiskManager:
 
         Gilt nur fuer die aktuelle Halt-Episode -- der Kill-Switch stellt sich nach
         Erholung oder bei einem tieferen Drawdown von selbst wieder scharf.
+
+        Sie loescht dabei den **dauerhaften** Halt-Latch: sonst bliebe der Zustand auf
+        der Platte angehalten und der naechste Start haltete wieder, obwohl ein Mensch
+        gerade freigegeben hat. Die Freigabe selbst wird ausdruecklich **nicht**
+        gesichert (Begruendung in ``execution/risiko_zustand.py``): sie ist eine
+        Aussage ueber eine Lage, die dieser Mensch gerade gesehen hat.
+
+        Eine leere Kennung ist keine Freigabe (``freigabe_gueltig``) und wird
+        **abgewiesen, nicht ignoriert**: sie wirft, bevor irgendetwas geaendert ist.
+        Der Halt bliebe sonst zwar stehen, aber der Aufrufer glaubte, er habe
+        freigegeben -- und ein Not-Aus, den man versehentlich fuer geloest haelt, ist
+        so schlecht wie einer, der sich loesen laesst. Der Wurf ist hier gefahrlos:
+        diese Methode steht nicht im Order-Pfad, sondern am Ende einer menschlichen
+        Geste.
         """
-        self._manual_release_id = release_id
+        if not freigabe_gueltig(release_id):
+            raise ValueError(
+                "release_drawdown verlangt eine nicht leere Freigabekennung "
+                f"(uebergeben: {release_id!r}). Sie loescht einen Drawdown-Halt, der "
+                "einen Neustart ueberdauert -- an ihr muss spaeter nachvollziehbar "
+                "sein, WER auf welche Lage hin freigegeben hat."
+            )
+        self._manual_release_id = release_id.strip()
         self._release_ceiling = None
+        self._halt = False
+        self._halt_grund = ""
+        self._halt_seit = None
+        self._sichern()
 
     # --- Kostenbasis ------------------------------------------------------
     def stop_budget_for(
@@ -405,6 +677,33 @@ class RiskManager:
             return _Kostenbasis(kampagne, "kampagne", verworfen)
         return _Kostenbasis(None, "annahme", verworfen)
 
+    # --- Kontobindung -----------------------------------------------------
+    def _konto_abgleich(self, account: AccountState) -> str | None:
+        """Gehoert der gespeicherte Zustand zu DIESEM Konto? ``None`` heisst ja.
+
+        Zwei Wege in denselben Fehler, und beide muessen dicht sein:
+
+        * Die **Datei** wurde von einem anderen Konto geschrieben -- erkannt am
+          Kontoabdruck bzw. an der Kontowaehrung (``DateiZustand.binde``).
+        * Der **Aufrufer** wechselt das Konto mitten im Lauf -- erkannt daran, dass die
+          einmal gesetzte Bindung nicht mehr passt.
+
+        Warum das ueberhaupt zaehlt: der Zustand besteht aus **Betraegen**
+        (Tagesstart-Equity, Fenster-Peak) und aus **Zaehlungen** gegen die Kappen
+        dieses Kontos. Ein 50-000-EUR-Peak, uebernommen von einem 500-USD-Konto, macht
+        den Drawdown rechnerisch riesig; andersherum macht er ihn null. Die eine
+        Richtung sperrt grundlos, die andere ist die stille Freigabe -- und wir wissen
+        nicht, welche vorliegt. Also: keine Uebernahme, sondern Ablehnung.
+        """
+        if self._zustand is None:
+            return None
+        if self._bindungsgrund is not None:
+            return self._bindungsgrund
+        grund = self._zustand.binde(account.account_id, account.currency)
+        if grund is not None:
+            self._bindungsgrund = grund
+        return grund
+
     # --- Autorisierung ----------------------------------------------------
     def authorize_opening(
         self,
@@ -433,10 +732,82 @@ class RiskManager:
         Schicht geprueft (``_kostenbasis``); unterbietet sie sie, wirft die
         Autorisierung, statt milder zu rechnen.
         """
+        # 0) Gehoert der gespeicherte Zustand ueberhaupt zu DIESEM Konto? Diese Frage
+        # steht vor allem anderen -- auch vor ``observe_equity``: die Equity eines
+        # fremden Kontos in dieses Fenster zu schreiben verdirbt Peak und
+        # Tagesstart, und zwar in die milde Richtung.
+        fremd = self._konto_abgleich(account)
+        if fremd is not None:
+            return RiskAuthorization(
+                approved=False,
+                reason=f"risk_{fremd}",
+                # Latch: eine Order fuer das falsche Konto ist ein Verdrahtungsfehler,
+                # kein Marktzustand. Bewusst NICHT auf die Platte geschrieben -- der
+                # Fehlgriff des Aufrufers darf nicht den Zustand des richtigen Kontos
+                # vergiften. Die Ablehnung wiederholt sich ohnehin bei jedem Aufruf.
+                latch_halt=True,
+                detail={"zustandsdatei": str(self._zustand.pfad)}
+                if self._zustand is not None
+                else {},
+            )
+
         self.observe_equity(now, account.equity)
         # Frequenz-Tageszaehler auch auf dem LESEpfad rollen (nicht nur beim Fill),
         # sonst blockt eine an Tag N ausgeschoepfte Kappe an Tag N+1 stale weiter.
         self._roll_trade_day(now.date())
+
+        # 0b) Der gelatchte Halt -- aus diesem Lauf oder aus dem Zustand des vorigen.
+        # Er steht VOR ``evaluate_limits``, weil er gerade den Fall abdeckt, in dem
+        # ``evaluate_limits`` nichts mehr faende: erholte Equity nach einem Halt.
+        if self._halt:
+            return RiskAuthorization(
+                approved=False,
+                reason=f"risk_{self._halt_grund or 'halt_gelatcht'}",
+                latch_halt=True,
+                detail={
+                    "halt_seit": (
+                        self._halt_seit.isoformat()
+                        if self._halt_seit is not None
+                        else "unbekannt"
+                    )
+                },
+            )
+
+        # 0b2) Der Zustand kommt nicht auf die Platte (Begruendung: ``_sichern``).
+        # Nach dem Halt, weil der Halt die aeltere und schwerere Aussage ist -- und
+        # weil die Reihenfolge sonst einen gelatchten Halt hinter einem Plattenfehler
+        # verstecken wuerde, obwohl nur der Halt einen Menschen braucht.
+        if self._schreibfehler is not None:
+            return RiskAuthorization(
+                approved=False,
+                reason=f"risk_{self._schreibfehler}",
+                # KEIN Latch: diese Sperre behauptet nichts ueber den Markt, sondern
+                # nur ueber die Platte. Sie faellt, sobald ein Schreibvorgang gelingt
+                # -- durch einen Beweis, nicht durch Zeitablauf. Ein Latch verlangte
+                # dafuer einen Menschen und machte aus einem geloesten Plattenproblem
+                # eine offene Ticketnummer.
+                latch_halt=False,
+                detail={
+                    "zustandsdatei": str(self._zustand.pfad)
+                    if self._zustand is not None
+                    else "",
+                    "schreibfehler": (
+                        self._zustand.schreibfehler_text
+                        if self._zustand is not None
+                        else ""
+                    ),
+                },
+            )
+
+        # 0c) Tageszaehler aus einem unlesbaren Zustand: fuer HEUTE ausgeschoepft.
+        # Kein Latch -- diese Sperre verfaellt mit dem Tageswechsel (Begruendung der
+        # Asymmetrie in ``execution/risiko_zustand.py``).
+        if self._zaehler_gesperrt:
+            return RiskAuthorization(
+                approved=False,
+                reason="throttle_tageszaehler_unlesbar",
+                detail={"handelstag": now.date().isoformat()},
+            )
 
         # Freigabe-Gueltigkeit VOR der Limit-Auswertung bestimmen, damit die AKTUELLE
         # Order korrekt entscheidet: die Freigabe deckt nur die aktuelle Halt-Episode.
@@ -477,6 +848,16 @@ class RiskManager:
         if not limit.may_open:
             halt = limit.state is TradingState.HALTED
             reason = f"risk_{limit.reasons[0]}" if limit.reasons else "risk_blocked"
+            if halt:
+                # Der Latch wird HIER gesetzt, nicht nur im Venue. Ohne ihn loeste sich
+                # der Halt bei erholter Equity von selbst -- „ein System, das sich nach
+                # einem Drawdown-Halt selbst wieder freischaltet, hat keinen Halt"
+                # (``risk/limits.py``). Und ohne ihn gaebe es nichts zu sichern, was
+                # einen Neustart ueberdauern koennte.
+                self._halt = True
+                self._halt_grund = "drawdown_halt_gelatcht"
+                self._halt_seit = now
+                self._sichern()
             return RiskAuthorization(
                 approved=False,
                 reason=reason,

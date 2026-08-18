@@ -139,9 +139,9 @@ negativ gefahren).
 | `venue/smoke.py` | **Demo-Smoke-Orchestrierung** (`run_smoke`): feste Prüffolge gegen einen Venue, harter Demo-Abbruch, optionale abgesicherte Schreib-Probe. |
 
 Belegt durch drei Testdateien (je eine Fallzahl pro Zeile, vom Zahlen-Tor geprüft):
-`test_mt5_venue.py` mit 52 Fällen (der Vertragstest);
+`test_mt5_venue.py` mit 57 Fällen (der Vertragstest);
 `test_instrument_catalog.py` mit 13 Fällen (davon 9 Fail-closed);
-`test_mt5_smoke.py` mit 7 Fällen.
+`test_mt5_smoke.py` mit 9 Fällen.
 
 ### 3.5 `execution/` — die Tore am Order-Pfad
 

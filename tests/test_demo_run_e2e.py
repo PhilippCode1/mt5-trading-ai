@@ -12,7 +12,7 @@ echten Daten mit echtem Edge; das laesst sich hier nicht ehrlich herstellen.
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from pathlib import Path
 
@@ -34,6 +34,7 @@ from mt5_trading_ai.backtest.strategies import mean_reversion_zscore
 from mt5_trading_ai.costs.model import load_cost_fees
 from mt5_trading_ai.data.loader import FxSession, load_verified_csv
 from mt5_trading_ai.venue.demo_run import (
+    DemoAccount,
     DemoGateError,
     DemoRegistration,
     evaluate_demo_progress,
@@ -43,6 +44,8 @@ from mt5_trading_ai.venue.demo_run import (
 FIXTURE = Path(__file__).parent / "fixtures" / "smoke_eurusd_h1.csv"
 COMMIT = "demoe2e0commit0fixed"
 STRATEGY_ID = "mean_reversion_eurusd_h1"
+#: Das Demokonto, auf dem der Demo-Betrieb laeuft -- das Reifezeugnis gehoert zu ihm.
+KONTO = DemoAccount(account_id="4711", broker="Demo-Broker", is_demo=True)
 
 
 def _real_verdict(ledger: Path) -> tuple[EdgeVerdict, int]:
@@ -115,7 +118,7 @@ def test_real_no_edge_verdict_is_refused_by_demo_gate(tmp_path: Path) -> None:
     with pytest.raises(DemoGateError) as excinfo:
         register_for_demo(
             strategy_id=STRATEGY_ID, version="v1", edge_verdict=verdict,
-            registered_on=date(2026, 1, 1),
+            account=KONTO, clock=lambda: datetime(2026, 1, 1, 12, tzinfo=UTC),
         )
     assert verdict.unmet  # es gibt konkrete offene Bedingungen
     assert verdict.unmet[0] in str(excinfo.value)
@@ -123,11 +126,13 @@ def test_real_no_edge_verdict_is_refused_by_demo_gate(tmp_path: Path) -> None:
 
 def test_real_no_edge_verdict_blocks_live_question(tmp_path: Path) -> None:
     verdict, _trades = _real_verdict(tmp_path / "TRIALS.jsonl")
-    reg = DemoRegistration(STRATEGY_ID, "v1", date(2026, 1, 1))
-    # Selbst nach > 180 Tagen Demo: ein real durchgefallenes Live-Urteil sperrt die
-    # Live-Frage. Der Zeitanteil ist erfuellt, die Bedingung nicht.
+    reg = DemoRegistration(STRATEGY_ID, "v1", date(2026, 1, 1), KONTO)
+    # Selbst nach > 180 Tagen Demo (die Uhr steht 400 Tage nach der Registrierung, auf
+    # demselben Konto): ein real durchgefallenes Live-Urteil sperrt die Live-Frage.
+    # Der Zeitanteil ist erfuellt, die Bedingung nicht.
     readiness = evaluate_demo_progress(
-        registration=reg, elapsed_days=400, live_verdict=verdict
+        registration=reg, observed_account=KONTO, live_verdict=verdict,
+        clock=lambda: datetime(2027, 2, 5, 12, tzinfo=UTC),
     )
     assert not readiness.ready_for_live_question
     assert "live_demo_verfehlt_sechs_bedingungen" in readiness.reasons

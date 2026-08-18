@@ -193,7 +193,7 @@ Urteil. Die Eichfälle im Dauertor selbst: **6 rote**, **2 grüne**.
 
 ## A3.4 — Das Dauertor gegen den Rückfall
 
-`tests/test_orderpfad_verdrahtung.py`, **26 Fälle**. Es zählt auf zwei Ebenen, weil jede für
+`tests/test_orderpfad_verdrahtung.py`, **28 Fälle**. Es zählt auf zwei Ebenen, weil jede für
 sich täuschbar ist:
 
 **Dynamisch** — eine echte Order läuft durch den echten Pfad, und jede der fünf Sollsperren

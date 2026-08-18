@@ -166,6 +166,62 @@ def _aufgerufene_namen(knoten: ast.AST) -> set[str]:
     return namen
 
 
+def _rufname(knoten: ast.Call) -> str | None:
+    ziel = knoten.func
+    if isinstance(ziel, ast.Name):
+        return ziel.id
+    if isinstance(ziel, ast.Attribute):
+        return ziel.attr
+    return None
+
+
+def _selbstgestempelte_terminalmethoden(baum: ast.Module) -> set[str]:
+    """Welche ``RealMt5Terminal``-Methoden setzen ihr ``ts`` aus der EIGENEN Uhr?
+
+    Nicht als Liste hinterlegt, sondern am Quelltext **gemessen**: ein
+    ``ts=``-Argument, dessen Ausdruck ``now`` erwaehnt, stammt aus der Systemuhr des
+    eigenen Prozesses. Ein solcher Stempel taugt nicht als Frischequelle -- gegen die
+    Systemuhr gehalten ergibt er per Konstruktion das Alter null.
+
+    Gemessen statt hinterlegt, weil eine Liste veraltet, sobald jemand eine weitere
+    Methode selbst stempelt. Die Messung findet auch die.
+    """
+    treffer: set[str] = set()
+    for node in baum.body:
+        if not (isinstance(node, ast.ClassDef) and node.name == "RealMt5Terminal"):
+            continue
+        for child in node.body:
+            if not isinstance(child, ast.FunctionDef):
+                continue
+            for kind in ast.walk(child):
+                if (
+                    isinstance(kind, ast.keyword)
+                    and kind.arg == "ts"
+                    and "now" in ast.unparse(kind.value)
+                ):
+                    treffer.add(child.name)
+    return treffer
+
+
+def _terminalherkunft(funktion: ast.FunctionDef) -> dict[str, str]:
+    """Welche lokale Variable stammt aus welchem ``self._terminal.<methode>()``?"""
+    herkunft: dict[str, str] = {}
+    for kind in ast.walk(funktion):
+        if not (isinstance(kind, ast.Assign) and isinstance(kind.value, ast.Call)):
+            continue
+        ziel = kind.value.func
+        if not (
+            isinstance(ziel, ast.Attribute)
+            and isinstance(ziel.value, ast.Attribute)
+            and ziel.value.attr == "_terminal"
+        ):
+            continue
+        for name in kind.targets:
+            if isinstance(name, ast.Name):
+                herkunft[name.id] = ziel.attr
+    return herkunft
+
+
 # --------------------------------------------------------------------------- #
 # A3.1 -- die Sollzahl der Eintrittspunkte, gegen den Quelltext geprueft.      #
 # --------------------------------------------------------------------------- #
@@ -297,7 +353,7 @@ def test_live_eroeffnung_faehrt_alle_fuenf_sperren(
     from test_mt5_venue import (
         _LENIENT_COST_GATE,
         _fresh_risk,
-        _ready_demo,
+        _reifer_demo_beleg,
         _released_settings,
     )
 
@@ -307,7 +363,7 @@ def test_live_eroeffnung_faehrt_alle_fuenf_sperren(
         settings=_released_settings(),
         cost_gate=_LENIENT_COST_GATE,
         risk_manager=_fresh_risk(),
-        demo_readiness=_ready_demo(),
+        demo_registration=_reifer_demo_beleg(),
     )
     ergebnis = venue.submit_order(_eroeffnende_order())
     assert ergebnis.accepted is True
@@ -415,6 +471,101 @@ def test_frische_latch_hat_keinen_konto_abhaengigen_ausstieg() -> None:
     assert "evaluate_account_freshness" in quelle, (
         "_enforce_account_freshness ruft die Sperrfunktion nicht mehr auf."
     )
+
+
+def test_frische_misst_nicht_gegen_die_eigene_uhr() -> None:
+    """E9: der Melder darf seinen Stempel nicht aus der Uhr ziehen, gegen die er misst.
+
+    Der bisherige Test dieses Tors prueft per AST nur, **dass**
+    ``evaluate_account_freshness`` gerufen wird -- nicht, dass der Aufruf ablehnen
+    kann. Genau darunter versteckte sich E9: die Sperre holte
+    ``self._terminal.account()`` und hielt dessen ``ts`` gegen ``self._clock()``,
+    waehrend ``RealMt5Terminal.account`` diesen Stempel im selben Aufruf auf
+    ``datetime.now(UTC)`` setzt. Alter per Konstruktion Mikrosekunden, Frist fuenf
+    Sekunden, in 21 Betriebsjournalen kein einziges ``snapshot_stale``.
+
+    Dieser Test macht die Bedingung strukturell nachpruefbar, ohne eine Namensliste zu
+    pflegen: er misst am Quelltext, welche Terminal-Methoden ihren Zeitstempel selbst
+    setzen, und verlangt, dass ``snapshot_ts`` aus keiner von ihnen stammt.
+    """
+    baum = _lade_baum(MT5_QUELLE)
+    selbst = _selbstgestempelte_terminalmethoden(baum)
+    assert selbst, (
+        "Dauertor findet keine einzige selbstgestempelte Terminal-Methode. Das ist "
+        "ein Fehlschlag des Tors: solange ``RealMt5Terminal.account`` seinen "
+        "Zeitstempel selbst setzt, MUSS diese Messung etwas finden."
+    )
+    funktion = _finde_funktion(
+        baum, "Mt5Venue", "_enforce_account_freshness", "venue/mt5.py"
+    )
+    aufrufe = [
+        knoten
+        for knoten in ast.walk(funktion)
+        if isinstance(knoten, ast.Call)
+        and _rufname(knoten) == "evaluate_account_freshness"
+    ]
+    if not aufrufe:
+        pytest.fail(
+            "Dauertor findet seinen Gegenstand nicht: _enforce_account_freshness ruft "
+            "evaluate_account_freshness nicht."
+        )
+    kw = {k.arg: ast.unparse(k.value) for k in aufrufe[0].keywords if k.arg is not None}
+    for name in ("snapshot_ts", "now"):
+        assert name in kw, (
+            f"{name} wird nicht benannt uebergeben -- der Melder ist nicht pruefbar."
+        )
+    assert kw["snapshot_ts"] != kw["now"], (
+        f"snapshot_ts und now sind derselbe Ausdruck ({kw['now']}). Das Alter ist "
+        "damit immer null und die Sperre kann nicht ausloesen."
+    )
+
+    herkunft = _terminalherkunft(funktion)
+    wurzel = kw["snapshot_ts"].split(".")[0]
+    assert wurzel in herkunft, (
+        f"snapshot_ts={kw['snapshot_ts']!r} stammt aus keinem Terminal-Aufruf. Ein "
+        "Frischestempel muss von der anderen Seite der Leitung kommen; alles andere "
+        f"ist die eigene Uhr. Aus dem Terminal kamen: {sorted(herkunft)}."
+    )
+    quelle = herkunft[wurzel]
+    assert quelle not in selbst, (
+        f"Der Frische-Latch misst gegen {quelle}(), und {quelle}() setzt seinen "
+        f"Zeitstempel selbst aus der Systemuhr (gemessen am Quelltext: "
+        f"{sorted(selbst)}). Damit wird die eigene Uhr gegen die eigene Uhr gehalten: "
+        "das Alter ist per Konstruktion null, die Sperre kann nicht ausloesen. "
+        "Zulaessig ist nur ein Stempel vom Broker, etwa der Kursstempel."
+    )
+
+
+def test_roter_eichfall_frische_gegen_den_brokerstempel() -> None:
+    """E9 dynamisch: frischer Kontostempel, alter Kurs -- die Order faellt.
+
+    Der statische Test darueber belegt den Bauplan, dieser die Wirkung. Er braucht ein
+    Terminal, das sich wie das echte verhaelt: Kontostempel aus der eigenen Uhr,
+    Kursstempel vom Broker (``tests/test_frische_am_orderpfad.py``). Gegen die alte
+    Fassung lief diese Order durch.
+    """
+    from mt5_trading_ai.venue.mt5 import Mt5Venue
+
+    from test_frische_am_orderpfad import SelbstgestempeltesTerminal
+    from test_mt5_venue import _catalog, _fresh_risk
+
+    terminal = SelbstgestempeltesTerminal(
+        uhr=lambda: TS, kursalter={"EURUSD": timedelta(minutes=5)}, is_demo=True
+    )
+    venue = Mt5Venue(
+        name="eichfall-frische",
+        terminal=terminal,
+        catalog=_catalog(),
+        risk_manager=_fresh_risk(),
+        clock=lambda: TS,
+    )
+    venue.connect()
+    # Vorbedingung: nach der ALTEN Rechnung waere hier alles gruen gewesen.
+    assert terminal.account().ts == TS
+    with pytest.raises(OrderRejectedError) as ex:
+        venue.submit_order(_eroeffnende_order())
+    assert ex.value.reason == "snapshot_stale"
+    assert terminal.order_send_calls == 0
 
 
 def test_frische_laeuft_vor_allem_was_den_kontozustand_liest() -> None:
