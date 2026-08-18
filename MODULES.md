@@ -249,7 +249,7 @@ Pre-Trade-Kostentor am Order-Pfad.
 
 ## `mt5_trading_ai/execution/freshness.py`
 
-Zeilen: 225
+Zeilen: 246
 
 Frische-Latch fuer den Kontozustand — S2 aus Paket 0.
 
@@ -299,22 +299,25 @@ Mehrteilige Freigabe fuer Order-Submit an einen echten Markt.
 
 ## `mt5_trading_ai/execution/risiko_zustand.py`
 
-Zeilen: 1047
+Zeilen: 1570
 
 Der Risikozustand, der einen Neustart ueberdauert -- und wie er fail-closed liest.
 
 - `class ZustandsortFehler`
+- `def verbotene_baeume`
 - `def standard_zustandsordner`
 - `def standard_zustandsdatei`
 - `def korb_start`
 - `def fenster_fortschreiben`
+- `def fenster_vereinen`
 - `class RisikoLage`
+- `def lage_vereinen`
 - `class Zustandsbefund`
 - `class DateiZustand`
 
 ## `mt5_trading_ai/execution/risk_manager.py`
 
-Zeilen: 990
+Zeilen: 1151
 
 Risikoschicht am Order-Pfad: die vier Grenzen als letzte Verteidigungslinie.
 
@@ -471,7 +474,7 @@ Stop-Budget je Anlageklasse — hergeleitet, nicht uebertragen (Phase 6.5).
 
 ## `mt5_trading_ai/venue/catalog.py`
 
-Zeilen: 220
+Zeilen: 260
 
 Instrumentenkatalog — die Metadaten, die MT5 nicht liefert.
 
@@ -483,7 +486,7 @@ Instrumentenkatalog — die Metadaten, die MT5 nicht liefert.
 
 ## `mt5_trading_ai/venue/demo_run.py`
 
-Zeilen: 303
+Zeilen: 372
 
 Paket 5: Registrierung und Fortschritts-Tor des Demo-Betriebs (§8.5).
 
@@ -506,7 +509,7 @@ Der Halal-Screen: das mechanisch Pruefbare erzwingen, die fiqh-Grenze benennen (
 
 ## `mt5_trading_ai/venue/mt5.py`
 
-Zeilen: 2419
+Zeilen: 2561
 
 MT5-Anbindung an das ``TradingVenue``-Protokoll.
 
@@ -518,13 +521,14 @@ MT5-Anbindung an das ``TradingVenue``-Protokoll.
 - `class Mt5Account`
 - `class Mt5SendResult`
 - `class Mt5Terminal`
+- `def stop_level_in_tickschritten`
 - `class Mt5Venue`
 - `def kennmarke`
 - `class RealMt5Terminal`
 
 ## `mt5_trading_ai/venue/protocol.py`
 
-Zeilen: 453
+Zeilen: 493
 
 Plattformunabhaengiger Handelsplatz-Vertrag.
 
@@ -550,7 +554,7 @@ Plattformunabhaengiger Handelsplatz-Vertrag.
 
 ## `mt5_trading_ai/venue/smoke.py`
 
-Zeilen: 261
+Zeilen: 339
 
 Demo-Smoke-Test der MT5-Bindung — die Orchestrierung, terminalunabhaengig.
 

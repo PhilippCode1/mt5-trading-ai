@@ -325,6 +325,239 @@ def _q(wert: Decimal, stellen: str = "0.01") -> Decimal:
     return wert.quantize(Decimal(stellen))
 
 
+# ---------------------------------------------------------------------------
+# DIE RECHNUNGEN, herausgezogen aus der print-Kaskade.
+#
+# Warum das hier steht und nicht mehr mitten im Druck: dieselbe Begruendung wie
+# bei ``m1_ampel``. Eine Zahl, die nur als Nebenwirkung eines ``print`` entsteht,
+# laesst sich nicht nachrechnen -- und genau so konnte die falsche ROT-Schwelle
+# monatelang unbemerkt bleiben. Der Druck unten ruft diese Funktionen auf; die
+# Ausgabe bleibt dabei Zeichen fuer Zeichen dieselbe (Beleg:
+# ``ABSCHLUSS-3a/07-AUSGABEN/kostentor.txt``, gesichert durch
+# ``tests/test_kostentor_ausgabe.py``).
+# ---------------------------------------------------------------------------
+
+#: Der Stopabstand, auf dem M1 gemessen wird. Steht als eigene Groesse da, weil
+#: die Urteilstabelle und die strenge Broker-Lesart denselben nehmen muessen --
+#: zwei getrennt hingeschriebene 1,0 waeren zwei Stellen, an denen es auseinander
+#: laufen kann.
+M1_STOP_VIELFACHES = Decimal("1.0")
+
+
+@dataclass(frozen=True)
+class M1Lage:
+    """Die Einteilung des Pruefuniversums, aus der ``m1_ampel`` ihr Urteil zieht.
+
+    ``nicht_bewertbar`` ist kein Restposten, sondern ein Ergebnis: ein Instrument
+    ohne rechenbare Kostenzeile zaehlt als NICHT gruen und NICHT rot -- es faellt
+    aus beiden Zaehlungen und druckt gleichzeitig die Bewertbarkeitsschwelle
+    (``M1_MIN_BEWERTBAR``) nach unten.
+    """
+
+    bewertbar: list[str]
+    nicht_bewertbar: list[str]
+    gruen: list[str]
+    gelb: list[str]
+    rot: list[str]
+
+
+def bestes_p_je_instrument(rechenbar: Sequence[Zeile]) -> dict[str, Decimal]:
+    """Das guenstigste ``p*`` je Instrument bei S = 1,0 x Median-ATR(14) H1.
+
+    "Guenstigst" heisst hier: ueber die Broker hinweg das kleinste. Das ist die
+    Kennzahl der Urteilstabelle -- **nicht** der Massstab selbst. M1 verlangt
+    zusaetzlich, dass ein EINZELNER Broker die geforderten drei traegt; dafuer
+    gibt es ``gruene_je_broker``.
+    """
+    bestes: dict[str, Decimal] = {}
+    for z in rechenbar:
+        if z.k_bps is None or z.atr_median_bps is None:
+            continue
+        p = _p_stern(z.k_bps, M1_STOP_VIELFACHES * z.atr_median_bps)
+        vorher = bestes.get(z.instrument)
+        if vorher is None or p < vorher:
+            bestes[z.instrument] = p
+    return bestes
+
+
+def gruene_je_broker(rechenbar: Sequence[Zeile]) -> dict[str, list[str]]:
+    """Die gruenen Instrumente je Broker -- die strenge Lesart von M1.
+
+    M1 sagt "bei mindestens einem Broker". Streng gelesen heisst das: EIN
+    Anbieter muss die drei gruenen Instrumente tragen, nicht drei Anbieter je
+    eines. Wer je Instrument den guenstigsten nimmt, baut ein Konto zusammen,
+    das es nicht gibt.
+    """
+    je_broker: dict[str, list[str]] = {}
+    for z in rechenbar:
+        if z.k_bps is None or z.atr_median_bps is None:
+            continue
+        if _p_stern(z.k_bps, M1_STOP_VIELFACHES * z.atr_median_bps) <= M1_GRUEN_MAX:
+            je_broker.setdefault(z.broker, []).append(z.instrument)
+    return je_broker
+
+
+def einteilung(bestes: dict[str, Decimal]) -> M1Lage:
+    """Teile das Universum nach den M1-Schwellen ein, in der Reihenfolge von §4."""
+    bewertbar = [s for s, _, _, _ in UNIVERSUM if s in bestes]
+    return M1Lage(
+        bewertbar=bewertbar,
+        nicht_bewertbar=[s for s, _, _, _ in UNIVERSUM if s not in bestes],
+        gruen=[s for s in bewertbar if bestes[s] <= M1_GRUEN_MAX],
+        gelb=[s for s in bewertbar if M1_GRUEN_MAX < bestes[s] <= M1_GELB_MAX],
+        rot=[s for s in bewertbar if bestes[s] > M1_GELB_MAX],
+    )
+
+
+def lesarten(z: Zeile) -> dict[str, tuple[Decimal, Decimal]]:
+    """Die sechs Lesarten A-F als Paare ``(K, Stopabstand)``, beide in bp.
+
+    ACHTUNG, hier steckt eine bekannte Schwaeche: Lesart D ("Swap eingerechnet")
+    setzt einen Swap, den die Quelle nicht in Basispunkten veroeffentlicht, still
+    auf **null** -- die Zeile sieht dann unter D genauso guenstig aus wie unter A,
+    obwohl der Swap nicht null, sondern unbekannt ist. Das ist derselbe fail-open,
+    den M1 an anderer Stelle ausdruecklich verbietet ("nicht bewertbar = nicht
+    erfuellt"). Es ist hier nicht behoben, weil jede Behebung die eingefrorene
+    Ausgabe verschieben wuerde; der Befund ist gemeldet und in
+    ``tests/test_kostentor_rechnungen.py`` festgeschrieben.
+    """
+    if (
+        z.k_bps is None
+        or z.atr_median_bps is None
+        or z.atr_p25_bps is None
+        or z.slippage_bps is None
+        or z.spread_bps is None
+    ):
+        raise KostentorError(f"{z.instrument}/{z.broker}: Zeile ist nicht rechenbar")
+    swap = (
+        abs(z.swap_bps_nacht) * Decimal("0.25") if z.swap_bps_nacht else Decimal(0)
+    )
+    gemessen = z.gemessener_spread_bps
+    k_b = z.k_bps - z.spread_bps + gemessen if gemessen is not None else z.k_bps
+    return {
+        "A": (z.k_bps, z.atr_median_bps),
+        "B": (k_b, z.atr_median_bps),
+        "C": (z.k_bps + z.slippage_bps, z.atr_median_bps),
+        "D": (z.k_bps + swap, z.atr_median_bps),
+        "E": (z.k_bps, z.atr_p25_bps),
+        "F": (k_b + z.slippage_bps + swap, z.atr_p25_bps),
+    }
+
+
+def hebel_je_instrument(instrument: str) -> tuple[int, ...]:
+    """Die Hebelreihe eines Laufs. Krypto bleibt hart bei 1/2 (ESMA 2:1)."""
+    return HEBEL_KRYPTO if instrument == "BTCUSD" else HEBEL
+
+
+def m2_hebel(instrument: str) -> int:
+    """Der Hebel der GEPLANTEN Auslegung, auf die M2 gemuenzt ist: 5, Krypto 2."""
+    return 2 if instrument == "BTCUSD" else 5
+
+
+def jahreslast(k_bps: Decimal, *, rt_pro_tag: int, hebel: int) -> Decimal:
+    """L = N x H x k als **Anteil** am Eigenkapital (nicht in Prozent).
+
+    ``N = rt_pro_tag x HANDELSTAGE`` Round-Turns im Jahr, ``k = K / 10000``. Der
+    Faktor 10000 steht genau hier und nirgends sonst: K kommt in Basispunkten,
+    L ist ein Anteil, und die Verwechslung von beidem ist in diesem Haus schon
+    einmal passiert.
+    """
+    if rt_pro_tag <= 0 or hebel <= 0:
+        raise KostentorError("Umschlag und Hebel muessen positiv sein")
+    return Decimal(rt_pro_tag * HANDELSTAGE) * Decimal(hebel) * k_bps / Decimal("10000")
+
+
+def m2_urteil(
+    rechenbar: Sequence[Zeile],
+) -> tuple[list[tuple[str, str, Decimal]], list[tuple[str, str, Decimal]]]:
+    """M2 gegen die geplante Auslegung: 4 RT/Tag, 250 Tage, Hebel 5 (Krypto 2).
+
+    Gibt ``(gerissen, gehalten)``. Die Grenze reisst bei **ueber** 50 %; genau
+    50 % haelt -- so steht der Massstab in §2, und er wird hier nicht im Licht
+    der Ergebnisse umgelegt.
+    """
+    gerissen: list[tuple[str, str, Decimal]] = []
+    gehalten: list[tuple[str, str, Decimal]] = []
+    for z in rechenbar:
+        if z.k_bps is None:
+            continue
+        last = jahreslast(z.k_bps, rt_pro_tag=4, hebel=m2_hebel(z.instrument))
+        (gerissen if last > M2_MAX_JAHRESLAST else gehalten).append(
+            (z.instrument, z.broker, last)
+        )
+    return gerissen, gehalten
+
+
+def kreuzanteil(rt_pro_tag: int) -> Decimal:
+    """Anteil der Trades, die den taeglichen Rollover kreuzen. SCHAETZUNG.
+
+    Bei gleichverteiltem Einstieg und einer mittleren Haltedauer von ``24/RT``
+    Stunden kreuzt ein Anteil von ``Haltedauer/24`` den einen Rollover-Zeitpunkt
+    des Tages.
+    """
+    if rt_pro_tag <= 0:
+        raise KostentorError("Umschlag muss positiv sein")
+    haltedauer = Decimal(24) / Decimal(rt_pro_tag)
+    return min(Decimal(1), haltedauer / Decimal(24))
+
+
+def swap_last_jahr(swap_bps_nacht: Decimal, *, rt_pro_tag: int) -> Decimal:
+    """Swap-Last im Jahr als Anteil am Nominal. ``abs``: ein Guthaben zaehlt nicht.
+
+    Die Groesse ist vom Umschlag unabhaengig, und das ist kein Zufall: mehr
+    Round-Turns bedeuten kuerzere Haltedauern und damit proportional seltener
+    einen gekreuzten Rollover. Uebrig bleiben ``HANDELSTAGE`` Naechte.
+    """
+    n = rt_pro_tag * HANDELSTAGE
+    return Decimal(n) * kreuzanteil(rt_pro_tag) * abs(swap_bps_nacht) / Decimal("10000")
+
+
+def stop_fuer_schwelle(k_bps: Decimal, schwelle: Decimal) -> Decimal:
+    """Nach S aufgeloest: ``p* <= x``  <=>  ``S >= K / (2 x (x - 0,5))``.
+
+    Beide Groessen in Basispunkten. Eine Schwelle bei oder unter 50 % ist bei
+    CRV 1:1 mit positiven Kosten unerreichbar -- das ist ein Fehler und keine
+    grosse Zahl.
+    """
+    nenner = 2 * (schwelle - Decimal("0.5"))
+    if nenner <= 0:
+        raise KostentorError(
+            f"Schwelle {schwelle} liegt bei oder unter 50 % und ist bei positiven "
+            "Kosten mit keinem Stopabstand erreichbar"
+        )
+    return k_bps / nenner
+
+
+def guenstigste_zeile_je_instrument(rechenbar: Sequence[Zeile]) -> dict[str, Zeile]:
+    """Je Instrument die Zeile mit dem kleinsten K. Bei Gleichstand die erste."""
+    bestes: dict[str, Zeile] = {}
+    for z in rechenbar:
+        if z.k_bps is None:
+            continue
+        vorher = bestes.get(z.instrument)
+        if vorher is None or (vorher.k_bps is not None and z.k_bps < vorher.k_bps):
+            bestes[z.instrument] = z
+    return bestes
+
+
+def erste_zeile_je_instrument(rechenbar: Sequence[Zeile]) -> dict[str, Zeile]:
+    """Je Instrument die ZUERST auftretende Zeile -- also der erste Broker.
+
+    Das ist ausdruecklich **nicht** dasselbe wie ``guenstigste_zeile_je_instrument``,
+    und der Unterschied ist ein gemeldeter Mangel: die Randbedingungstabelle am
+    Ende von Tabelle 5 rechnet die Kostenuntergrenze auf dieser Grundlage,
+    waehrend die Tabelle direkt darueber dieselbe Groesse auf der guenstigsten
+    Zeile rechnet. Fuer NVDA stehen deshalb 230,72 bp und 41,88 bp unter
+    derselben Ueberschrift. Welcher Broker "der erste" ist, haengt allein an der
+    Schluesselreihenfolge in ``config/broker_costs.json``.
+    """
+    erste: dict[str, Zeile] = {}
+    for z in rechenbar:
+        if z.instrument not in erste:
+            erste[z.instrument] = z
+    return erste
+
+
 def lade() -> tuple[BrokerCosts, dict[str, AtrMeasurement], dict[str, float]]:
     try:
         kosten = load_broker_costs()
@@ -408,7 +641,7 @@ def main() -> int:
     print("-" * 100)
     kopf = "".join(f"{'S=' + str(m) + 'xATR':>16}" for m in STOP_VIELFACHE)
     print(f"{'Instrument':<10} {'Broker':<16}{kopf}")
-    bestes_je_instrument: dict[str, Decimal] = {}
+    bestes_je_instrument = bestes_p_je_instrument(rechenbar)
     for z in rechenbar:
         assert z.k_bps is not None and z.atr_median_bps is not None
         assert z.atr_p25_bps is not None
@@ -418,10 +651,6 @@ def main() -> int:
             p25 = _p_stern(z.k_bps, mult * z.atr_p25_bps)
             felder_50 += f"{_q(p50 * 100, '0.1'):>10}% {_ampel(p50)[:4]:>4}"
             felder_25 += f"{_q(p25 * 100, '0.1'):>10}% {_ampel(p25)[:4]:>4}"
-            if mult == Decimal("1.0"):
-                vorher = bestes_je_instrument.get(z.instrument)
-                if vorher is None or p50 < vorher:
-                    bestes_je_instrument[z.instrument] = p50
         print(f"{z.instrument:<10} {z.broker:<16}{felder_50}   (Median)")
         print(f"{'':<10} {'':<16}{felder_25}   (25. Perzentil)")
     print()
@@ -430,17 +659,10 @@ def main() -> int:
     print("=" * 100)
     print("URTEIL GEGEN M1 — Kennzahl: p* bei CRV 1:1 und S = 1,0 x Median-ATR(14) H1")
     print("=" * 100)
-    gemessene_instrumente = [s for s, _, _, _ in UNIVERSUM if s in bestes_je_instrument]
-    nicht_bewertbar = [s for s, _, _, _ in UNIVERSUM if s not in bestes_je_instrument]
-    gruen = [
-        s for s in gemessene_instrumente
-        if bestes_je_instrument[s] <= M1_GRUEN_MAX
-    ]
-    gelb = [
-        s for s in gemessene_instrumente
-        if M1_GRUEN_MAX < bestes_je_instrument[s] <= M1_GELB_MAX
-    ]
-    rot = [s for s in gemessene_instrumente if bestes_je_instrument[s] > M1_GELB_MAX]
+    lage = einteilung(bestes_je_instrument)
+    gemessene_instrumente = lage.bewertbar
+    nicht_bewertbar = lage.nicht_bewertbar
+    gruen, gelb, rot = lage.gruen, lage.gelb, lage.rot
 
     for s, klartext, _, deckel in UNIVERSUM:
         if s in bestes_je_instrument:
@@ -461,11 +683,7 @@ def main() -> int:
     # die geforderten drei gruenen Instrumente tragen -- nicht drei Broker je eines.
     # Der Unterschied ist keine Spitzfindigkeit: wer je Instrument den guenstigsten
     # Anbieter nimmt, baut ein Konto zusammen, das es nicht gibt.
-    je_broker: dict[str, list[str]] = {}
-    for z in rechenbar:
-        assert z.k_bps is not None and z.atr_median_bps is not None
-        if _p_stern(z.k_bps, z.atr_median_bps) <= M1_GRUEN_MAX:
-            je_broker.setdefault(z.broker, []).append(z.instrument)
+    je_broker = gruene_je_broker(rechenbar)
     print(
         "  Strenge Lesart ('bei mindestens einem Broker') — gruene Instrumente je "
         "Broker:"
@@ -557,24 +775,8 @@ def _robustheit(rechenbar: list[Zeile], gruen_basis: list[str]) -> None:
     print(f"{'Instrument':<10} {'Broker':<16}{kopf}")
     bestes: dict[str, dict[str, Decimal]] = {}
     for z in rechenbar:
-        assert z.k_bps is not None and z.atr_median_bps is not None
-        assert z.atr_p25_bps is not None and z.slippage_bps is not None
-        assert z.spread_bps is not None
-        swap = (
-            abs(z.swap_bps_nacht) * Decimal("0.25")
-            if z.swap_bps_nacht
-            else Decimal(0)
-        )
         gemessen = z.gemessener_spread_bps
-        k_b = z.k_bps - z.spread_bps + gemessen if gemessen is not None else z.k_bps
-        varianten: dict[str, tuple[Decimal, Decimal]] = {
-            "A": (z.k_bps, z.atr_median_bps),
-            "B": (k_b, z.atr_median_bps),
-            "C": (z.k_bps + z.slippage_bps, z.atr_median_bps),
-            "D": (z.k_bps + swap, z.atr_median_bps),
-            "E": (z.k_bps, z.atr_p25_bps),
-            "F": (k_b + z.slippage_bps + swap, z.atr_p25_bps),
-        }
+        varianten = lesarten(z)
         felder = ""
         for name, (k, stop) in varianten.items():
             p = _p_stern(k, stop)
@@ -617,12 +819,10 @@ def _jahreslast(rechenbar: list[Zeile]) -> None:
     gesamt = 0
     for z in rechenbar:
         assert z.k_bps is not None
-        k = z.k_bps / Decimal("10000")
-        hebel = HEBEL_KRYPTO if z.instrument == "BTCUSD" else HEBEL
+        hebel = hebel_je_instrument(z.instrument)
         for rt in UMSCHLAEGE:
-            n = rt * HANDELSTAGE
             for h in hebel:
-                last = Decimal(n) * Decimal(h) * k
+                last = jahreslast(z.k_bps, rt_pro_tag=rt, hebel=h)
                 gesamt += 1
                 marke = ""
                 if last > M2_MAX_JAHRESLAST:
@@ -639,17 +839,7 @@ def _jahreslast(rechenbar: list[Zeile]) -> None:
     # Hebel 5 (Krypto 2). Die Gesamtzahl oben ist nur Kontext -- das Urteil faellt hier.
     print("  URTEIL GEGEN M2 — geplante Auslegung: 4 RT/Tag, 250 Tage, Hebel 5 "
           "(Krypto 2)")
-    gerissen: list[tuple[str, str, Decimal]] = []
-    gehalten: list[tuple[str, str, Decimal]] = []
-    for z in rechenbar:
-        assert z.k_bps is not None
-        hebel_m2 = 2 if z.instrument == "BTCUSD" else 5
-        last = (
-            Decimal(4 * HANDELSTAGE) * Decimal(hebel_m2) * z.k_bps / Decimal("10000")
-        )
-        (gerissen if last > M2_MAX_JAHRESLAST else gehalten).append(
-            (z.instrument, z.broker, last)
-        )
+    gerissen, gehalten = m2_urteil(rechenbar)
     for name, broker_key, last in gerissen + gehalten:
         marke = "REISST" if last > M2_MAX_JAHRESLAST else "haelt "
         print(f"    {marke}  {name:<8} {broker_key:<16} {_q(last * 100, '0.1'):>8} %")
@@ -669,16 +859,15 @@ def _jahreslast(rechenbar: list[Zeile]) -> None:
         print("  GEGENRECHNUNG: welche Auslegung haelt M2?")
         print("  Gerechnet je Instrument mit dem GUENSTIGSTEN Broker -- wer ein")
         print("  Instrument handelt, waehlt dafuer nicht den teuersten Anbieter.")
-        guenstigste: dict[str, Decimal] = {}
-        for z in rechenbar:
-            assert z.k_bps is not None
-            vorher = guenstigste.get(z.instrument)
-            if vorher is None or z.k_bps < vorher:
-                guenstigste[z.instrument] = z.k_bps
+        guenstigste = {
+            name: z.k_bps
+            for name, z in guenstigste_zeile_je_instrument(rechenbar).items()
+            if z.k_bps is not None
+        }
         for rt in (8, 4, 2, 1):
             for h in (5, 2, 1):
                 lasten = {
-                    name: Decimal(rt * HANDELSTAGE) * Decimal(h) * k / Decimal("10000")
+                    name: jahreslast(k, rt_pro_tag=rt, hebel=h)
                     for name, k in guenstigste.items()
                 }
                 schlimmste = max(lasten.values())
@@ -712,10 +901,8 @@ def _swaps(rechenbar: list[Zeile], kosten: BrokerCosts) -> None:
             ohne_bps.append(f"{z.instrument}/{z.broker}")
             continue
         for rt in UMSCHLAEGE:
-            haltedauer = Decimal(24) / Decimal(rt)
-            anteil = min(Decimal(1), haltedauer / Decimal(24))
-            n = rt * HANDELSTAGE
-            last = Decimal(n) * anteil * abs(z.swap_bps_nacht) / Decimal("10000")
+            anteil = kreuzanteil(rt)
+            last = swap_last_jahr(z.swap_bps_nacht, rt_pro_tag=rt)
             print(f"{z.instrument:<10} {z.broker:<16} "
                   f"{_q(z.swap_bps_nacht, '0.001'):>17} "
                   f"{_q(anteil * 100, '0.1'):>11} % {_q(last * 100, '0.1'):>20} %")
@@ -752,8 +939,8 @@ def _gegenrechnung(rechenbar: list[Zeile]) -> None:
           f"{'als xATR50':>11} {'S fuer 62 %':>12} {'als xATR50':>11}")
     for z in rechenbar:
         assert z.k_bps is not None and z.atr_median_bps is not None
-        s_gruen = z.k_bps / (2 * (M1_GRUEN_MAX - Decimal("0.5")))
-        s_gelb = z.k_bps / (2 * (M1_GELB_MAX - Decimal("0.5")))
+        s_gruen = stop_fuer_schwelle(z.k_bps, M1_GRUEN_MAX)
+        s_gelb = stop_fuer_schwelle(z.k_bps, M1_GELB_MAX)
         print(f"{z.instrument:<10} {z.broker:<16} {_q(z.k_bps):>8} "
               f"{_q(s_gruen):>12} {_q(s_gruen / z.atr_median_bps, '0.001'):>11} "
               f"{_q(s_gelb):>12} {_q(s_gelb / z.atr_median_bps, '0.001'):>11}")
@@ -781,12 +968,7 @@ def _gegenrechnung(rechenbar: list[Zeile]) -> None:
     print(f"{'Instrument':<10} {'K (bp)':>8} {'Kostenfloor':>12} {'ATR50':>9} "
           f"{'1,0 x ATR zulaessig?':>22}")
     unzulaessig: list[str] = []
-    beste_zeile: dict[str, Zeile] = {}
-    for z in rechenbar:
-        assert z.k_bps is not None
-        vorher = beste_zeile.get(z.instrument)
-        if vorher is None or (vorher.k_bps is not None and z.k_bps < vorher.k_bps):
-            beste_zeile[z.instrument] = z
+    beste_zeile = guenstigste_zeile_je_instrument(rechenbar)
     for schluessel, _, _, _ in UNIVERSUM:
         beste = beste_zeile.get(schluessel)
         if beste is None:
@@ -820,14 +1002,13 @@ def _gegenrechnung(rechenbar: list[Zeile]) -> None:
         f"{'Instrument':<10} {'Hebel':>6} {'Kostenuntergrenze':>18} "
         f"{'Margin-Obergrenze':>18}"
     )
-    gesehen: set[str] = set()
-    for z in rechenbar:
-        if z.instrument in gesehen:
-            continue
-        gesehen.add(z.instrument)
+    # ACHTUNG: hier steht die ERSTE Zeile je Instrument, nicht die guenstigste --
+    # anders als in der Tabelle direkt darueber. Gemeldeter Mangel, siehe
+    # ``erste_zeile_je_instrument``. Nicht behoben, weil die Ausgabe eingefroren ist.
+    for z in erste_zeile_je_instrument(rechenbar).values():
         assert z.k_bps is not None
         unten = cost_floor_bps(z.k_bps)
-        hebel = HEBEL_KRYPTO if z.instrument == "BTCUSD" else HEBEL
+        hebel = hebel_je_instrument(z.instrument)
         for h in hebel:
             oben = margin_ceiling_bps(h)
             marke = "  <-- nicht handelbar" if unten > oben else ""

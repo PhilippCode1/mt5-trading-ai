@@ -188,10 +188,16 @@ class Instrument:
     volume_max: Decimal | None
     base_currency: str | None
     quote_currency: str | None
-    #: Mindestabstand von Stops zum Marktpreis, in Points. Geht in den Stop-Floor ein
-    #: und kann ihn dominieren.
+    #: Mindestabstand von Stops zum Marktpreis, gezaehlt in **Tick-Schritten**: der
+    #: Abstand in Preiseinheiten ist ``stop_level_points * tick_size``. Genau so lesen
+    #: ihn alle drei Verbraucher (``venue/smoke.py``, ``execution/risk_manager.py``,
+    #: ``execution/runner.py``). Der Name sagt "points", weil MT5 das Rohfeld
+    #: (``SYMBOL_TRADE_STOPS_LEVEL``) in MT5-Points fuehrt; die Umrechnung macht der
+    #: Adapter beim Einlesen (``venue/mt5.py::stop_level_in_tickschritten``). Eine
+    #: Umsetzung, die den Wert selbst fuellt, schuldet dieselbe Einheit. Geht in den
+    #: Stop-Floor ein und kann ihn dominieren.
     stop_level_points: int
-    #: Abstand, innerhalb dessen der Platz Aenderungen ablehnt.
+    #: Abstand, innerhalb dessen der Platz Aenderungen ablehnt. Rohwert des Platzes.
     freeze_level_points: int
     fees: FeeSchedule
     sessions: tuple[TradingSession, ...]
@@ -381,7 +387,41 @@ class TradingVenue(Protocol):
         ...
 
     def is_trading_open(self, symbol: str, *, at: datetime) -> bool:
-        """Handelszeiten der Klasse, inklusive Sitzungspausen. UTC."""
+        """Handelt der Platz dieses Symbol? **Zwei** Bedingungen, beide notwendig.
+
+        Der frueher hier stehende Einzeiler ("Handelszeiten der Klasse, inklusive
+        Sitzungspausen. UTC.") beschrieb nur die erste Haelfte und liess offen, woran
+        eine Umsetzung die zweite misst. Eine Zeitplantabelle allein beantwortet die
+        Frage nicht: sie kennt keine Feiertage, keinen ausgefallenen Platz und keine
+        haengende Leitung -- sie wuerde "offen" sagen, waehrend nichts gehandelt wird.
+        Das ist die gefaehrliche Fehlrichtung, denn danach laeuft die ganze
+        Eintrittskette auf einem Markt, den es gerade nicht gibt.
+
+        Was jede Umsetzung schuldet:
+
+        1. **Zeitplan gegen ``at``.** Faellt ``at`` in ein Sitzungsfenster? Ein
+           Fahrplan, der nicht aus einem veroeffentlichten Boersenkalender stammt, darf
+           ausschliesslich **verengen** -- er darf nie das einzige Ja sein.
+        2. **Beleg gegen die Gegenwart.** Dass der Platz wirklich handelt, belegt nur
+           ein Lebenszeichen von der anderen Seite der Leitung -- im MT5-Adapter der
+           Kursstempel des Symbols, gemessen mit derselben Frist wie der Frische-Latch
+           am Order-Pfad (``execution/freshness.py``). Gemessen wird gegen die **Uhr der
+           Umsetzung**, nicht gegen ``at``: ein Aufrufer, der seine Gegenwart am Kopf
+           eines Taktes einfriert, macht den frisch geholten Stempel sonst rechnerisch
+           zu einem aus der Zukunft und schaltet den Eintrittspfad ab, ohne dass das mit
+           dem Markt zu tun haette. Genau so ist er einmal abgeschaltet worden.
+
+        Daraus folgt, was ein **historisches** ``at`` liefert: keine historische
+        Antwort. Es waehlt das Zeitfenster von damals und bekommt die Messung von jetzt.
+        Wer Vergangenheit beurteilen will, fragt die Daten, nicht diese Methode.
+
+        ``at`` muss **zonenbewusst** sein; ein naiver Stempel ist ein Aufruferfehler und
+        wirft. Ein ``False`` waere hier die schlechtere Antwort, weil "geschlossen" eine
+        gueltige Marktaussage ist -- der Fehler saehe wie ein dauerhaft geschlossener
+        Markt aus und faende sich nie.
+
+        Umsetzung und Begruendung im Einzelnen: ``Mt5Venue.is_trading_open``.
+        """
         ...
 
     # --- Marktdaten -------------------------------------------------------

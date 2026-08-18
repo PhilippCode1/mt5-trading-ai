@@ -23,7 +23,7 @@ import importlib
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
-from decimal import Decimal
+from decimal import ROUND_CEILING, Decimal
 from typing import Any, Protocol, runtime_checkable
 from zoneinfo import ZoneInfo
 
@@ -112,6 +112,10 @@ class Mt5Symbol:
     volume_max: Decimal | None
     base_currency: str | None
     quote_currency: str | None
+    #: Mindestabstand fuer Stops, gezaehlt in **Tick-Schritten** (``tick_size``) --
+    #: nicht in MT5-Points. ``RealMt5Terminal`` rechnet ``trade_stops_level`` beim
+    #: Einlesen um (:func:`stop_level_in_tickschritten`), weil jeder Leser des Feldes
+    #: mit ``tick_size`` multipliziert. Der Name blieb, die Einheit steht hier.
     stop_level_points: int
     freeze_level_points: int
     visible: bool
@@ -278,6 +282,76 @@ def _sitzung_deckt(sessions: tuple[TradingSession, ...], zeit: datetime) -> bool
     return False
 
 
+def stop_level_in_tickschritten(
+    stops_level: int, *, point: Decimal, tick: Decimal
+) -> int:
+    """``trade_stops_level`` steht in POINTS -- hier in **Tick-Schritte** umgerechnet.
+
+    Der Einheitenbruch, den das behebt: MT5 gibt ``SYMBOL_TRADE_STOPS_LEVEL`` als
+    Vielfaches von ``SYMBOL_POINT`` an (``point``, die letzte Stelle des Kurses). Jeder
+    Leser dieses Feldes im Repo multipliziert es aber mit ``tick_size``
+    (``venue/smoke.py::_probe_stop``, ``execution/risk_manager.py``,
+    ``execution/runner.py``) -- also mit ``SYMBOL_TRADE_TICK_SIZE``, der kleinsten
+    Kursaenderung. Solange beide gleich sind (FX mit fuenf Stellen: 0.00001 = 0.00001)
+    faellt das nicht auf. Wo sie auseinandergehen -- Index-CFDs mit ``point=0.01`` und
+    ``tick_size=0.25`` sind der bekannte Fall -- rechnete bisher jeder dieser Leser mit
+    einem falschen Mindestabstand.
+
+    **Die Richtung ist bewusst einseitig gewaehlt.** Umgerechnet wird mit dem
+    *groesseren* der beiden Massstaebe::
+
+        tickschritte = aufgerundet(stops_level * max(point, tick) / tick)
+
+    * ``tick >= point`` (der Normalfall): das Ergebnis ist ``stops_level``, also genau
+      der bisherige Wert. Es wird nichts gelockert.
+    * ``point > tick``: der bisherige Wert war **kleiner** als der Mindestabstand des
+      Brokers -- ein zu enger Stop, den der Server mit INVALID_STOPS zurueckweist. Genau
+      diese Richtung wird geschlossen, und zwar nach oben.
+
+    Aufgerundet wird, weil ein halber Tick kein Tick ist: abgerundet ergaebe sich wieder
+    ein Abstand unterhalb des Brokerminimums. Was hier **nicht** entschieden wird: ob
+    ein Broker, dessen ``point`` und ``tick_size`` auseinandergehen, das Feld wirklich
+    in Points meint. Das laesst sich am Terminal nicht feststellen; darum die
+    konservative Seite und keine Verkleinerung des bisherigen Wertes.
+
+    Der Feldname bleibt ``stop_level_points``, weil ihn drei Module ausserhalb dieses
+    Adapters lesen und eine Umbenennung eine eigene Welle ist. Die Einheit steht an
+    :class:`Mt5Symbol` und an ``protocol.Instrument``.
+    """
+    if stops_level <= 0 or point <= 0 or tick <= 0:
+        # Nichts umzurechnen (kein Mindestabstand) oder kein brauchbares Raster. Der
+        # Rohwert bleibt stehen; ein Raster von 0 faellt am Rauchtest auf
+        # (``get_instrument``-Schritt in ``venue/smoke.py``).
+        return max(stops_level, 0)
+    massstab = point if point > tick else tick
+    if massstab == tick:
+        return stops_level
+    schritte = (Decimal(stops_level) * massstab) / tick
+    return int(schritte.to_integral_value(rounding=ROUND_CEILING))
+
+
+def _halt_grund_fortschreiben(bisher: str | None, neu: str) -> str:
+    """Neuer Halt-Grund, **ohne** den bestehenden zu loeschen.
+
+    Der Grund ist die Spur, an der ein Zwischenfall spaeter nachvollzogen wird. Wird er
+    beim zweiten Latch ueberschrieben, verschwindet gerade der erste -- und der erste
+    ist der interessante: ein ``sendeversuch_unklar:...`` sagt, wonach beim Broker zu
+    sehen ist, ein nachfolgendes ``emergency_flatten`` sagt nur, dass jemand die Bremse
+    gezogen hat.
+
+    Das Ergebnis waechst nicht unbegrenzt und **schrumpft auch nicht**: steht derselbe
+    Grund schon vorn, bleibt der Wert unveraendert stehen -- mitsamt dem, was er
+    bewahrt. Ein zweiter Not-Aus haengt also weder etwas an noch loescht er den
+    urspruenglichen Anlass. Eine unbeschraenkte Kette waere die zweite Sorte
+    Diagnoseverlust: eine Zeile, die niemand mehr liest.
+    """
+    if bisher is None:
+        return neu
+    if bisher == neu or bisher.startswith(f"{neu} ("):
+        return bisher
+    return f"{neu} (zuvor: {bisher})"
+
+
 class Mt5Venue(TradingVenue):
     """MT5-Handelsplatz. Erfuellt das ``TradingVenue``-Protokoll (statisch geprueft).
 
@@ -309,17 +383,27 @@ class Mt5Venue(TradingVenue):
 
     ``demo_registration`` + ``demo_live_verdict`` (Paket 5) sind die Belege des
     Demo-Betriebs (``venue/demo_run.py``): der **Registrierungsbeleg** (welche
-    Strategie lief ab wann auf welchem Demokonto) und der im Demo **weiter gemessene**
-    Edge. Eine Live-Eroeffnung verlangt >= 180 Tage Demo-Betrieb und weiter bestandenen
-    Edge; das Urteil darueber rechnet das Tor selbst (:meth:`_require_demo_maturity`)
-    aus diesen Belegen und ``clock``.
+    Strategie lief ab wann auf welchem Demokonto) und das Edge-Urteil, das der Aufrufer
+    fuer den Demo-Betrieb **mitbringt**. Eine Live-Eroeffnung verlangt >= 180 Tage seit
+    dem Registrierungsdatum und ein bestandenes Edge-Urteil; die Frist rechnet das Tor
+    selbst (:meth:`_require_demo_maturity`) gegen ``clock``.
 
     Bewusst **kein** fertiges ``DemoReadiness`` mehr: das war ein Urteil, das der
     Aufrufer in einer Zeile behaupten konnte (``DemoReadiness(True, ())``), und ein Tor,
-    das ein Urteil entgegennimmt, ist kein Tor, sondern ein Echo. Ein Beleg dagegen muss
-    ein Registrierungsdatum tragen, das gegen die Uhr dieses Venues besteht -- und die
-    Uhr gehoert dem Tor, nicht dem Aufrufer. Fehlt einer der beiden Belege, wird
-    fail-closed abgelehnt.
+    das ein Urteil entgegennimmt, ist kein Tor, sondern ein Echo. Ein Beleg traegt
+    dagegen ein Datum, und ueber das Datum rechnet die Uhr des Tores, nicht der
+    Aufrufer. Fehlt einer der beiden Belege, wird fail-closed abgelehnt.
+
+    **Wie weit das traegt, ausdruecklich:** ``DemoRegistration`` ist ein offener
+    Datentyp, ``registered_on`` ein gewoehnliches Feld. Wer den Beleg selbst baut, setzt
+    das Datum frei -- die Latte ist real hoeher, aber die Behauptungsstelle ist von
+    einem Urteil auf ein Datum umgezogen, nicht verschwunden. Dasselbe gilt fuer
+    ``demo_live_verdict``: ``EdgeVerdict(passed=True, checks=(), unmet=())`` ist eine
+    Zeile, dieser Venue misst nichts nach. Die Begruendung, warum das an dieser Stelle
+    strukturell nicht zu schliessen ist (ein Zeuge muesste von der anderen Seite der
+    Leitung kommen, und das Demokonto ist aus der Live-Sitzung nicht sichtbar), steht in
+    ``venue/demo_run.py`` unter "DIE GRENZE DIESER STUFE"; festgenagelt in
+    ``tests/test_demo_beleg_grenze.py``.
 
     Der Halal-Screen (``venue/halal.py``) laeuft ebenfalls je eroeffnender Live-Order
     und liest swapfrei/zinsfrei/Freigabe aus ``settings``.
@@ -436,12 +520,38 @@ class Mt5Venue(TradingVenue):
         )
 
     def list_instruments(self) -> tuple[Instrument, ...]:
+        """Das handelbare Universum: jeder Katalogeintrag, am Terminal aufgeloest.
+
+        **Ein Katalogeintrag, den das Terminal nicht kennt, ist ein Fehler und kein
+        stiller Abgang.** Bis hierher fing die Schleife ``UnknownInstrumentError`` mit
+        einem ``continue`` ab: ein Symbol, das der Broker anders schreibt (``EURUSD.r``,
+        Suffixe je Kontotyp) oder das im MarketWatch fehlt, verschwand lautlos aus dem
+        Universum. Die Liste sah dann vollstaendig aus und war es nicht -- und weil der
+        Katalog die einzige belegpflichtige Quelle des Universums ist, ist eine
+        stillschweigend geschrumpfte Liste genau die Sorte Befund, die niemand bemerkt.
+        Der Rueckgabetyp hat keinen Platz fuer eine Nebenmeldung, also gibt es nur zwei
+        ehrliche Antworten: die vollstaendige Liste oder ein Fehler.
+
+        Fail-closed, wie ``load_instrument_catalog``: jeder Defekt ist ein Fehler, kein
+        Default. Es werden **alle** unaufloesbaren Symbole gesammelt und in einer
+        Meldung genannt -- wer eine Kontoumstellung nachzieht, soll die Liste einmal
+        sehen und nicht nach jedem Fix erneut anlaufen.
+        """
         out: list[Instrument] = []
+        fehlend: list[str] = []
         for symbol in self._catalog:
             try:
                 out.append(self.get_instrument(symbol))
             except UnknownInstrumentError:
-                continue
+                fehlend.append(symbol)
+        if fehlend:
+            raise UnknownInstrumentError(
+                "Katalogsymbole, die dieses Terminal nicht aufloest: "
+                f"{', '.join(sorted(fehlend))}. Der Katalog ist die belegte Quelle des "
+                "Universums -- ein Eintrag, den der Adapter nicht findet, ist ein "
+                "Defekt der Datenlage (Broker-Suffix? MarketWatch?), kein Grund, das "
+                "Symbol still wegzulassen."
+            )
         return tuple(out)
 
     def is_trading_open(self, symbol: str, *, at: datetime) -> bool:
@@ -859,8 +969,8 @@ class Mt5Venue(TradingVenue):
         am Broker (E10.4, :func:`kennmarke`) erkennt eine Wiederholung an der
         ``client_order_id``: gleiche Kennung -> gleiche Marke -> der Auftrag wird im
         Bestand gefunden und nicht ein zweites Mal gesendet. Das traegt genau so weit,
-        wie der Aufrufer dieselbe Kennung noch einmal schickt. Der einzige reale
-        Aufrufer tut das nie: ``tools/live_betrieb.py`` baut
+        wie der Aufrufer dieselbe Kennung noch einmal schickt. Der eroeffnende Treiber
+        tut das nie: ``tools/live_betrieb.py`` baut
         ``f"open-{symbol}-{uuid.uuid4().hex[:10]}"`` und leitet nach einem Zeitablauf,
         einem Neustart oder in einem zweiten Runner den Willen neu ab -- mit neuer
         Zufallskennung, neuer Marke, und die Abfrage findet nichts. Gemessen, nicht
@@ -903,6 +1013,14 @@ class Mt5Venue(TradingVenue):
         der Aufrufer solche Symbole ohnehin ueberspringt; er ist eine Sicherung, kein
         Filter. Genau dadurch ist sein Ausloesen ein Alarm: es heisst, dass der
         Aufrufer eine Position nicht kannte, die es gibt.
+
+        **Der zweite Aufrufer, damit die Wirkung vollstaendig benannt ist:**
+        ``venue/smoke.py`` eroeffnet in der Schreib-Probe eine winzige BUY-Order auf dem
+        Probesymbol. Steht dort schon ein Long -- der Live-Treiber faehrt auf demselben
+        Demokonto, und ein gescheiterter ``smoke-close`` hinterlaesst genau das --,
+        lehnt dieser Riegel die Probe ab. Die Schreib-Probe ist damit nur auf einem in
+        diesem Symbol glattgestellten Konto durchfuehrbar. Die Richtung ist sicher, und
+        die Harness sagt es jetzt vorher statt hinterher (``_write_probe``).
         """
         gleichgerichtet = tuple(
             pos
@@ -1068,6 +1186,13 @@ class Mt5Venue(TradingVenue):
         Demo-Beleg, der die Nummer eben dieses Livekontos traegt, ist ein Widerspruch
         in sich (dieses Konto ist kein Demokonto) und der naechstliegende Griff, wenn
         jemand einen Beleg passend machen will. Er wird abgelehnt, statt ihn zu glauben.
+
+        **Was dieser Vergleich nicht ist: eine Kontobindung.** Er stellt einen einzigen
+        String gegen einen einzigen String und faellt bei jeder anderen Kontonummer
+        stillschweigend durch -- ``account_id="irgendeine-nummer"`` kommt hier vorbei.
+        Es ist ein Widerspruchstest gegen einen Wert, keine Ortsaussage. Eine echte
+        Bindung braeuchte eine Sicht auf das Demokonto, und die gibt es an dieser Stelle
+        strukturell nicht (siehe ``venue/demo_run.py``, "DIE GRENZE DIESER STUFE").
         """
         registration = self._demo_registration
         live_verdict = self._demo_live_verdict
@@ -1505,6 +1630,15 @@ class Mt5Venue(TradingVenue):
         nichts. Ein Not-Aus kann sich also nicht ueberschliessen -- eine unterlassene
         Schliessung dagegen kostet Geld.
 
+        **Der bestehende Halt-Grund wird nicht ueberschrieben.** Der haeufigste Weg zur
+        Notbremse fuehrt ueber einen Zwischenfall, der bereits gelatcht hat -- etwa
+        ``sendeversuch_unklar:open-EURUSD-x`` aus :meth:`submit_order`. Wer den Grund
+        hier durch ``emergency_flatten`` ersetzt, loescht genau die Angabe, mit der der
+        Betrieb hinterher beim Broker nachsieht. Der neue Grund steht darum vorn und der
+        alte in Klammern dahinter (:func:`_halt_grund_fortschreiben`). Das ist Diagnose,
+        nicht Sicherheit: der Latch selbst ist eine Zuweisung und steht in jedem Fall,
+        und die Arbeitsliste ueberlebt zusaetzlich in :meth:`unklare_sendeversuche`.
+
         Der Halt wird **zuerst** gesetzt -- und zwar vor der Gesundheitspruefung, nicht
         nach ihr. Das war der dritte Fehler an dieser Stelle und der stillste: die
         Reihenfolge lautete ``_require_healthy()``, dann ``_halted = True``. Bricht die
@@ -1537,7 +1671,9 @@ class Mt5Venue(TradingVenue):
         # ZUERST der Latch, dann alles, was scheitern kann. Umgekehrt waere der
         # Not-Aus in genau dem Fall wirkungslos, fuer den es ihn gibt.
         self._halted = True
-        self._halt_reason = "emergency_flatten"
+        self._halt_reason = _halt_grund_fortschreiben(
+            self._halt_reason, "emergency_flatten"
+        )
         self._require_healthy()
         self._flatten_laeufe += 1
         # Sekunde + Laufnummer: die Sekunde trennt zwei Laeufe ueber einen Neustart
@@ -1992,10 +2128,11 @@ class RealMt5Terminal:
         pip = point * 10 if int(info.digits) in (3, 5) else point
         vol_max_raw = getattr(info, "volume_max", 0)
         tick_raw = getattr(info, "trade_tick_size", 0)
+        tick = self._d(tick_raw) if tick_raw else point
         return Mt5Symbol(
             name=str(info.name),
             digits=int(info.digits),
-            tick_size=self._d(tick_raw) if tick_raw else point,
+            tick_size=tick,
             pip_size=pip,
             contract_size=self._d(info.trade_contract_size),
             volume_min=self._d(info.volume_min),
@@ -2003,7 +2140,12 @@ class RealMt5Terminal:
             volume_max=self._d(vol_max_raw) if vol_max_raw else None,
             base_currency=str(info.currency_base) or None,
             quote_currency=str(info.currency_profit) or None,
-            stop_level_points=int(info.trade_stops_level),
+            # Points -> Tick-Schritte: jeder Leser dieses Feldes multipliziert es mit
+            # ``tick_size``, MT5 zaehlt es aber in ``point``. Siehe
+            # :func:`stop_level_in_tickschritten`.
+            stop_level_points=stop_level_in_tickschritten(
+                int(info.trade_stops_level), point=point, tick=tick
+            ),
             freeze_level_points=int(info.trade_freeze_level),
             visible=bool(info.visible),
         )

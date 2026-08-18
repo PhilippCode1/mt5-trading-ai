@@ -4,11 +4,39 @@
 lesen (und auf **Demo** bestehen), Marktdaten, Positionen, Buch adoptieren, reconcilen.
 Die optionale Schreib-Probe (winzige Order, sofort per Reduce-Only geschlossen) laeuft
 nur bei ``allow_write=True`` **und** auf einem Demokonto — der Demo-Check hier ist ein
-**harter Abbruch**: auf einem Nicht-Demokonto wird nichts weiter getan.
+**harter Abbruch**: auf einem Nicht-Demokonto wird nichts weiter getan. Dritte
+Vorbedingung seit dem Doppelorder-Riegel: auf dem Probesymbol darf kein Long offen
+stehen, sonst waere die Probe selbst eine zweite gleichgerichtete Position. Sie wird
+dann vorher abgelehnt, nicht erst vom Riegel (siehe ``_write_probe``).
 
 Die Folge ist gegen ein Fake-Terminal testbar; der echte Lauf (``tools/mt5_smoke.py``)
 steckt ein ``RealMt5Terminal`` hinein. So ist die Sicherheits- und Ablauflogik geprueft,
 ohne dass ein echtes Terminal noetig ist.
+
+JEDER SCHRITT MUSS FEHLSCHLAGEN KOENNEN
+---------------------------------------
+Fuenf Schritte trugen ein hart gesetztes ``True``: ``account``, ``get_instrument``,
+``get_bars``, ``is_trading_open`` und ``adopt_book``. Sie meldeten nicht, dass die
+Abfrage etwas Brauchbares geliefert hat, sondern nur, dass die Zeile erreicht wurde --
+ein Rauchtest, dessen Schritte per Konstruktion gruen sind, meldet, dass er gelaufen
+ist, und sonst nichts. Sie fragen jetzt das, wofuer der Betreiber sie liest:
+
+* ``account`` -- Kontonummer vorhanden und Eigenkapital > 0 (ein leergelaufenes Konto
+  ist kein Beweisplatz).
+* ``get_instrument`` -- das gelieferte Instrument ist das gefragte, hat ein Tickraster
+  und ein Mindestvolumen (``_probe_stop`` teilt durch ``tick_size``) und steht im
+  MarketWatch.
+* ``get_quote`` -- ``ask > bid > 0`` statt nur ``ask > 0``: ein verdrehter oder
+  einseitiger Kurs ist kein handelbarer Kurs.
+* ``get_bars`` -- ueber drei Tage H1 muss mindestens eine Kerze kommen; null Bars ist
+  eine Fehlanzeige, keine Erfolgsmeldung.
+* ``is_trading_open`` -- der Schritt traegt jetzt die **Antwort**, nicht ein ``True``
+  neben der Antwort. Folge, bewusst so: ein Lauf auf einem geschlossenen Platz
+  (Wochenende, Feiertag, stiller Kursstrom) ist rot. Das ist richtig, denn genau dann
+  belegt der Lauf die Schreibfaehigkeit nicht -- und die Vorbedingung fuer
+  ``allow_write`` ist ein gruener Bericht.
+* ``adopt_book`` -- das uebernommene Buch muss dieselben Symbole fuehren wie die
+  Positionsmeldung des Brokers, gegen die es gebaut wurde.
 """
 
 from __future__ import annotations
@@ -32,6 +60,7 @@ from mt5_trading_ai.venue.protocol import (
     OrderRequest,
     OrderSide,
     OrderType,
+    Position,
     Quote,
     Timeframe,
     VenueError,
@@ -136,7 +165,11 @@ def run_smoke(
     try:
         report.add("healthy", venue.is_healthy())
         account = venue.get_account()
-        report.add("account", True, f"{account.account_id} equity={account.equity}")
+        report.add(
+            "account",
+            bool(account.account_id.strip()) and account.equity > 0,
+            f"{account.account_id} equity={account.equity}",
+        )
         if not account.is_demo:
             report.add("demo_guard", False, "KEIN Demokonto — Smoke abgebrochen")
             return report
@@ -181,23 +214,39 @@ def run_smoke(
             "list_instruments", len(instruments) > 0, f"{len(instruments)} Instrumente"
         )
         instrument = venue.get_instrument(symbol)
-        report.add("get_instrument", True, f"{symbol} {instrument.asset_class.value}")
+        report.add(
+            "get_instrument",
+            instrument.symbol == symbol
+            and instrument.tick_size > 0
+            and instrument.volume_min > 0
+            and instrument.active,
+            f"{symbol} {instrument.asset_class.value} tick={instrument.tick_size} "
+            f"min={instrument.volume_min} sichtbar={instrument.active}",
+        )
         quote = venue.get_quote(symbol)
-        report.add("get_quote", quote.ask > 0, f"bid={quote.bid} ask={quote.ask}")
+        report.add(
+            "get_quote", quote.ask > quote.bid > 0, f"bid={quote.bid} ask={quote.ask}"
+        )
         bars = venue.get_bars(
             symbol, Timeframe.H1, start=at - timedelta(days=3), end=at
         )
-        report.add("get_bars", True, f"{len(bars)} Bars")
-        report.add("is_trading_open", True, str(venue.is_trading_open(symbol, at=at)))
+        report.add("get_bars", len(bars) > 0, f"{len(bars)} Bars")
+        offen = venue.is_trading_open(symbol, at=at)
+        report.add("is_trading_open", offen, str(offen))
 
-        venue.get_positions()
+        positionen = venue.get_positions()
         adopted = venue.adopt_book()
-        report.add("adopt_book", True, f"{len(adopted)} Symbole im Buch")
+        gemeldet = {p.symbol for p in positionen}
+        report.add(
+            "adopt_book",
+            set(adopted) == gemeldet,
+            f"{len(adopted)} Symbole im Buch, {len(gemeldet)} gemeldet",
+        )
         recon = venue.reconcile()
         report.add("reconcile", not recon.halt, f"matched={recon.matched}")
 
         if allow_write:
-            _write_probe(venue, symbol, instrument, quote, report)
+            _write_probe(venue, symbol, instrument, quote, positionen, report)
         else:
             report.add("write_probe", True, "uebersprungen (nur lesend)")
     except VenueError as exc:
@@ -225,10 +274,39 @@ def _write_probe(
     symbol: str,
     instrument: Instrument,
     quote: Quote,
+    positionen: tuple[Position, ...],
     report: SmokeReport,
 ) -> None:
     """Eine winzige Kauf-Order, sofort per Reduce-Only geschlossen. Nur auf Demo (der
-    Aufrufer hat das Demokonto bereits als harte Sperre geprueft)."""
+    Aufrufer hat das Demokonto bereits als harte Sperre geprueft).
+
+    **Vorbedingung, seit es den Doppelorder-Riegel gibt:** das Probesymbol darf keinen
+    offenen Long tragen. ``Mt5Venue._verhindere_doppelte_eroeffnung`` lehnt eine
+    eroeffnende Order in ein Symbol ab, in dem bereits eine gleichgerichtete Position
+    steht -- und die Probe eroeffnet einen Long. Der Fall ist nicht konstruiert: der
+    Live-Treiber faehrt auf demselben Demokonto, und ein ``smoke-close``, der einmal
+    nicht durchkam, hinterlaesst genau diesen Bestand.
+
+    Das wird **vorher** gemeldet, nicht als ``doppelte_eroeffnung`` hinterher. Beide
+    Wege sind rot -- die Sperre steht, daran wird nichts gelockert --, aber nur der eine
+    sagt dem Betreiber, was zu tun ist. Ein Ablehnungsgrund, der wie ein Fehler des
+    Adapters aussieht, waehrend er eine Kontolage beschreibt, wird im Betrieb
+    weggeklickt.
+    """
+    bestand = tuple(
+        pos
+        for pos in positionen
+        if pos.symbol == symbol and pos.side is OrderSide.BUY
+    )
+    if bestand:
+        tickets = ", ".join(pos.venue_position_id for pos in bestand)
+        report.add(
+            "write_probe", False,
+            f"{symbol} traegt bereits einen Long (Ticket {tickets}) -- die Probe waere "
+            "eine zweite gleichgerichtete Position und wird vom Doppelorder-Riegel "
+            "abgelehnt. Konto in diesem Symbol glattstellen, dann erneut fahren.",
+        )
+        return
     volume = instrument.volume_min
     stop = _probe_stop(instrument, quote)
     try:

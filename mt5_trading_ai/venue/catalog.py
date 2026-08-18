@@ -8,13 +8,21 @@ Pruefdatum — eine Aenderung ist damit eine Datenaenderung, keine Codeaenderung
 Fail-closed: jeder Defekt ist ein Fehler, kein Default. Ein Symbol ohne Katalogeintrag
 ist unbekannt, und der Handelsplatz lehnt es ab (siehe ``Mt5Venue.get_instrument``). Die
 ``asset_class`` muss ein bekannter Wert sein — sonst faende die Hebelklammer keinen
-Deckel.
+Deckel. Umgekehrt gilt dasselbe: ein Katalogeintrag, den das Terminal nicht aufloest,
+verschwindet nicht still aus dem Universum, sondern ist ein Fehler
+(``Mt5Venue.list_instruments``).
+
+``valid_from`` und ``verified_on`` werden nicht nur auf Anwesenheit, sondern auf
+**Form** geprueft (``YYYY-MM-DD``). Sie sind der einzige Beleg dafuer, wann die Zahlen
+darunter gegen den Broker gehalten wurden; ein Pruefdatum, das kein Datum ist, belegt
+nichts.
 """
 
 from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+from datetime import date
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
@@ -82,6 +90,9 @@ def load_instrument_catalog(path: Path | str | None = None) -> dict[str, Catalog
         if field not in raw:
             raise InstrumentCatalogError(f"Katalog-Datei ohne Pflichtfeld {field!r}")
 
+    _pruefe_datum("valid_from", raw["valid_from"])
+    _pruefe_datum("verified_on", raw["verified_on"])
+
     instruments = raw["instruments"]
     if not isinstance(instruments, dict) or not instruments:
         raise InstrumentCatalogError("Katalog-Datei ohne Instrumente")
@@ -90,6 +101,35 @@ def load_instrument_catalog(path: Path | str | None = None) -> dict[str, Catalog
     for symbol, entry in instruments.items():
         out[str(symbol)] = _parse_entry(str(symbol), entry)
     return out
+
+
+def _pruefe_datum(field: str, value: Any) -> date:
+    """``valid_from``/``verified_on`` muessen echte Kalendertage sein (``YYYY-MM-DD``).
+
+    Bis hierher wurde nur geprueft, dass der Schluessel **da** ist. Ein
+    ``"verified_on": "irgendwann"`` kam damit klaglos durch -- und genau dieses Feld ist
+    der ganze Beleg dafuer, dass jemand die Zahlen darunter einmal gegen den Broker
+    gehalten hat. Ein Pruefdatum, das kein Datum ist, ist keine schlechtere Angabe als
+    ein gutes; es ist gar keine. Fail-closed wie alles in dieser Datei: jeder Defekt ist
+    ein Fehler, kein Default.
+
+    Geprueft wird die **Form**, nicht die Wahrheit: dass am genannten Tag wirklich
+    jemand nachgesehen hat, kann diese Datei nicht wissen (und behauptet es auch nicht).
+    ``date.fromisoformat`` allein reicht dafuer nicht -- es nimmt seit 3.11 auch
+    ``"20260812"`` und volle Zeitstempel an. Verlangt wird die eine Schreibweise, die
+    im Datenbestand steht und sich sortieren laesst.
+    """
+    text = value if isinstance(value, str) else None
+    if text is None or len(text) != 10 or text[4] != "-" or text[7] != "-":
+        raise InstrumentCatalogError(
+            f"Katalog-Datei: {field} ist kein Datum als YYYY-MM-DD: {value!r}"
+        )
+    try:
+        return date.fromisoformat(text)
+    except ValueError as exc:
+        raise InstrumentCatalogError(
+            f"Katalog-Datei: {field} ist kein gueltiger Kalendertag: {value!r}"
+        ) from exc
 
 
 def _parse_entry(symbol: str, entry: Any) -> CatalogEntry:

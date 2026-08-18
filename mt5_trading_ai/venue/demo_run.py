@@ -9,26 +9,67 @@ bleibt hart gesperrt.
 
 Fail-closed: eine Strategie ohne bestandenen Edge-Test kommt nicht in den Demo-Betrieb.
 
-DIE LAUFZEIT WIRD GERECHNET, NICHT ENTGEGENGENOMMEN
----------------------------------------------------
+DIE LAUFZEIT WIRD GERECHNET -- DAS ANFANGSDATUM WIRD GEGLAUBT
+-------------------------------------------------------------
 Bis hierher nahm ``evaluate_demo_progress`` einen freien ``elapsed_days: int`` und
 glaubte ihn; die uebergebene ``DemoRegistration`` wurde im ganzen Funktionskoerper kein
 einziges Mal gelesen. Das war kein Melder, sondern ein Echo des Aufrufers: ein
 ``elapsed_days=400`` reifte jedes Konto in einer Zeile, ohne dass irgendwo Zeit
-vergangen waere. Genau die Groesse, die belegt werden sollte, war die einzige, die
-niemand belegen musste.
+vergangen waere.
 
 Jetzt gilt: die verstrichene Zeit ist die Differenz zwischen einer **uebergebenen Uhr**
-und ``DemoRegistration.registered_on`` -- und ``registered_on`` stammt selbst aus einer
-Uhr (``register_for_demo``), nicht aus einem Argument. Waere das Registrierungsdatum
-weiter frei, waere derselbe Fehler nur eine Ebene hoeher gewandert: Rueckdatieren um 200
-Tage haette die Sechs-Monats-Frist genauso uebersprungen. Die Uhr ist injizierbar (wie
-beim Frische-Latch, ``execution/freshness.py``), weil ein Melder, der an
-``datetime.now()`` haengt, nicht pruefbar ist -- und ein ungeprueftes Tor ist kein Tor.
+und ``DemoRegistration.registered_on``. Die Uhr ist injizierbar (wie beim Frische-Latch,
+``execution/freshness.py``), weil ein Melder, der an ``datetime.now()`` haengt, nicht
+pruefbar ist -- und ein ungeprueftes Tor ist kein Tor.
 
 Eine Uhr **ohne Zeitzone** gilt als nicht bewertbar: naiv kann Ortszeit, Serverzeit oder
 UTC heissen, und der Unterschied ist bis zu einem Tag. Nicht bewertbar heisst nicht
 erfuellt (Regel des Kerns).
+
+DIE GRENZE DIESER STUFE, PRAEZISE -- KEINE DICHTIGKEIT BEHAUPTEN
+----------------------------------------------------------------
+:func:`register_for_demo` liest ``registered_on`` aus der Uhr und nimmt es ausdruecklich
+**nicht** als Argument entgegen. Daraus folgt aber nicht, dass jeder Beleg so entstanden
+ist: ``DemoRegistration`` ist ein oeffentlicher, offener frozen-dataclass mit
+``registered_on`` als gewoehnlichem Feld, und weder diese Datei noch ``Mt5Venue``
+verlangen irgendwo, dass ein Beleg durch :func:`register_for_demo` gegangen ist. Zwei
+Konstruktorzeilen mit einem Datum von vor 400 Tagen ergeben einen Beleg, den jede
+Pruefung hier fuer reif haelt. Der freie ``elapsed_days`` ist damit nicht verschwunden;
+er ist von einer Zahl auf ein Datum umgezogen. Wer diese Stelle liest, soll das wissen
+und nicht auf eine Zusage stossen, die der Typ nicht traegt.
+
+Was hier **belegt** wird: das im Beleg genannte Anfangsdatum liegt mindestens
+``MIN_DEMO_DAYS`` vor der Uhr des pruefenden Bauteils; der Beleg ist vollstaendig; er
+nennt ein Demokonto; und -- nur in :func:`evaluate_demo_progress` -- er nennt genau das
+Konto, das der Aufrufer gerade liest. Was hier **nicht** belegt wird: dass an diesem
+Datum wirklich etwas begonnen hat.
+
+Warum das an dieser Stelle nicht zu schliessen ist, und nicht aus Bequemlichkeit offen
+bleibt:
+
+* Ein Beleg muss 180 Tage ueberdauern, also mindestens einen Prozessneustart und damit
+  einen Speicher. Ein **Siegel** (Signatur/HMAC ueber Datum und Konto) braucht einen
+  Schluessel, der dieselben 180 Tage ueberdauert und ausserhalb dieses Speichers liegt;
+  wer ihn haelt, signiert genauso ein rueckdatiertes Datum. Ein Siegel verschiebt das
+  Vertrauen, es erzeugt keines -- und ein Siegel, dessen Schluessel neben dem Beleg
+  liegt, ist nur eine laengere Behauptung.
+* Belegen koennte die Laufzeit allein ein **Zeuge von der anderen Seite der Leitung**:
+  die Auftrags-/Geschaeftshistorie des Demokontos beim Broker. Das ist dasselbe Prinzip,
+  aus dem der Frische-Latch nur Brokerstempel gelten laesst (``execution/freshness.py``:
+  "das einzige Lebenszeichen im System, das nicht im eigenen Prozess entsteht"). Er ist
+  hier strukturell nicht erreichbar: :class:`Mt5Terminal` fuehrt keine Historienabfrage,
+  und das Reifetor am Order-Pfad sitzt auf der **Live**-Sitzung, in der das Demokonto
+  ueberhaupt nicht sichtbar ist. Es fehlt also nicht ein Aufruf, sondern eine Naht.
+
+Festgenagelt -- damit diese Grenze nicht stillschweigend zur Dichtigkeit wird -- in
+``tests/test_demo_beleg_grenze.py``. Der Tag, an dem ein Zeuge da ist, ist der Tag, an
+dem diese Datei rot wird.
+
+Ein Rest laesst sich ohne Zeugen pruefen und wird geprueft: dass ``registered_on``
+ueberhaupt ein reines Kalenderdatum ist. Ein ``datetime`` in diesem Feld (der Typ
+erlaubt es, ``datetime`` ist eine Unterklasse von ``date``) liess die Zeitrechnung
+frueher mit einem nackten ``TypeError`` mitten im Order-Pfad zerbrechen statt mit einer
+Ablehnung. Nicht bewertbar heisst auch hier: nicht erfuellt.
 
 DAS ZEUGNIS GEHOERT ZU EINEM KONTO
 ----------------------------------
@@ -109,11 +150,20 @@ class DemoAccount:
 
 @dataclass(frozen=True)
 class DemoRegistration:
-    """Der Beleg: welche Strategie lief ab wann auf welchem Konto im Demo-Betrieb."""
+    """Der Beleg: welche Strategie lief ab wann auf welchem Konto im Demo-Betrieb.
+
+    **Ein offener Datentyp, und das ist eine Grenze, keine Zusage.** Wer ihn ueber
+    :func:`register_for_demo` erzeugt, bekommt ein ``registered_on`` aus der Uhr. Wer
+    ihn selbst baut -- was moeglich ist, noetig ist (Rekonstruktion aus einem Speicher
+    nach Wochen) und nirgends verhindert wird --, setzt das Datum frei. Die Pruefungen
+    unten rechnen gegen dieses Datum; sie belegen es nicht. Warum es an dieser Stelle
+    nicht zu belegen ist, steht im Modul-Docstring unter "DIE GRENZE DIESER STUFE".
+    """
 
     strategy_id: str
     version: str
-    #: Tag der Registrierung, gelesen aus der Uhr -- kein Argument des Aufrufers.
+    #: Tag der Registrierung. Aus der Uhr, **wenn** der Beleg aus
+    #: :func:`register_for_demo` stammt -- der Typ erzwingt das nicht.
     registered_on: date
     account: DemoAccount
 
@@ -135,6 +185,10 @@ def register_for_demo(
     Zeitpunkt der Registrierung, nicht eine Behauptung darueber; als Argument waere es
     der freie ``elapsed_days`` in neuer Verkleidung. Die Uhr wird uebergeben, damit die
     Naht pruefbar bleibt, aber der Aufrufer setzt das Datum nicht.
+
+    Das gilt fuer **diesen Weg** und nur fuer ihn: ``DemoRegistration`` laesst sich auch
+    direkt bauen, und dann ist das Datum wieder frei. Diese Funktion ist der saubere
+    Eingang, kein Zwang -- siehe Modul-Docstring, "DIE GRENZE DIESER STUFE".
 
     Registriert wird nur auf einem **Demokonto**: ein Demo-Betrieb, der auf einem
     Echtgeldkonto beginnt, ist ein Widerspruch in sich, und ein Widerspruch ist ein
@@ -186,12 +240,19 @@ def _beleg_gruende(
     reasons: list[str] = []
 
     jetzt = clock()
-    if jetzt.tzinfo is None or jetzt.utcoffset() is None:
+    beginn = registration.registered_on
+    if not isinstance(beginn, date) or isinstance(beginn, datetime):
+        # ``datetime`` ist eine Unterklasse von ``date``, der Typ haelt das also nicht
+        # ab -- und ``date - datetime`` wirft einen nackten ``TypeError`` mitten im
+        # Order-Pfad. Ein Beleg mit einem Zeitpunkt statt einem Tag ist nicht
+        # bewertbar, und nicht bewertbar heisst nicht erfuellt.
+        reasons.append("registrierungsdatum_ist_kein_kalendertag")
+    elif jetzt.tzinfo is None or jetzt.utcoffset() is None:
         # Naiv ist nicht vergleichbar (siehe Modul-Docstring): nicht bewertbar =
         # nicht erfuellt. Die Zeitrechnung entfaellt dann komplett.
         reasons.append("uhr_ohne_zeitzone")
     else:
-        gelaufen = (jetzt.astimezone(UTC).date() - registration.registered_on).days
+        gelaufen = (jetzt.astimezone(UTC).date() - beginn).days
         if gelaufen < 0:
             # Registrierung in der Zukunft: entweder eine gesprungene Uhr oder ein
             # gesetztes Datum. Beides macht die Laufzeit unbrauchbar -- und ohne
@@ -235,16 +296,24 @@ def pruefe_demo_beleg(
 ) -> DemoReadiness:
     """Das Reifeurteil aus dem Beleg allein -- fuer Aufrufer ohne Sicht aufs Demokonto.
 
-    Gerechnet wird: die Laufzeit (uebergebene Uhr minus ``registered_on``), die
-    Vollstaendigkeit des Belegs (Strategie, Konto, Demo-Eigenschaft) und der im Demo
-    weiter gemessene Edge. Was hier **nicht** geprueft werden kann, ist der Abgleich
-    mit dem gerade beobachteten Konto -- wer diese Sicht hat, nimmt
-    :func:`evaluate_demo_progress`.
+    Gerechnet wird: die Laufzeit (uebergebene Uhr minus ``registered_on``) und die
+    Vollstaendigkeit des Belegs (Strategie, Konto, Demo-Eigenschaft). ``live_verdict``
+    wird **gelesen, nicht gemessen** -- es ist ein ``EdgeVerdict``, das der Aufrufer
+    mitbringt; ob im Demo wirklich weiter gemessen wurde, kann diese Datei nicht
+    feststellen (``EdgeVerdict(passed=True, checks=(), unmet=())`` ist eine Zeile). Der
+    Melder greift, wenn der Aufrufer ein **nicht** bestandenes Urteil mitbringt; er
+    unterscheidet ein bestandenes Urteil nicht von einem behaupteten. Dieselbe Grenze
+    wie beim Datum, siehe Modul-Docstring.
+
+    Was hier **nicht** geprueft werden kann, ist der Abgleich mit dem gerade
+    beobachteten Konto -- wer diese Sicht hat, nimmt :func:`evaluate_demo_progress`.
 
     Der Aufrufer ist das Reifetor am Order-Pfad (``venue/mt5.py``). Es bekommt die
-    **Registrierung**, nicht das fertige Urteil: ein Urteil laesst sich in einer Zeile
-    behaupten, eine Registrierung muss ein Datum tragen, das gegen die Uhr des Tores
-    besteht. Fail-closed -- fehlt die Registrierung, fragt das Tor hier gar nicht erst.
+    **Registrierung**, nicht das fertige Urteil. Das ist eine echte Verschaerfung: ein
+    ``DemoReadiness(True, ())`` traegt nicht mehr, und ein Datum muss die Frist gegen
+    die Uhr des Tores ueberstehen. Es ist aber kein Beweis -- ein frei gesetztes Datum
+    uebersteht sie ebenso. Fail-closed: fehlt die Registrierung, fragt das Tor hier gar
+    nicht erst.
     """
     reasons = _beleg_gruende(
         registration=registration, live_verdict=live_verdict, clock=clock

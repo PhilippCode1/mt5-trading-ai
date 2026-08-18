@@ -463,9 +463,16 @@ def _verbindung_sichern(
             continue
         # Nur Halts loesen, die von der Stoerung SELBST kommen. Ein Drawdown-,
         # Desync- oder Notbremsen-Halt bleibt stehen -- er hat einen anderen Grund.
-        if venue.halt_reason in ("reconcile_unavailable", "account_unavailable"):
+        #
+        # Der Grund wird VOR dem Loesen festgehalten. ``clear_halt()`` setzt
+        # ``_halt_reason`` auf ``None``; die Zeile las den Grund danach und schrieb
+        # darum dauerhaft ``"grund": null`` ins Journal. Damit war ausgerechnet die
+        # Auskunft weg, wozu der Satz da ist: WARUM ein Halt endete. Ein Journal, das
+        # das Loesen einer Sperre ohne Grund vermerkt, belegt nur, dass geloest wurde.
+        vorheriger_grund = venue.halt_reason
+        if vorheriger_grund in ("reconcile_unavailable", "account_unavailable"):
             venue.clear_halt()
-            journal.schreib("halt_geloest", grund=venue.halt_reason)
+            journal.schreib("halt_geloest", grund=vorheriger_grund)
         journal.schreib("reconnect_ok", nr=i + 1)
         print("  OK   Verbindung wieder da")
         return True

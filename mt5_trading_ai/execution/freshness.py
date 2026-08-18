@@ -107,12 +107,33 @@ Alle vier Aufrufer messen darum den Kursstempel:
 ``Mt5Venue._markt_druckt_preise`` (beantwortet, ob der Platz gerade handelt),
 ``tools/live_konsole.py`` und ``tools/oberflaeche.py`` (zeigen es an).
 
-``now`` ist bei allen vieren die Uhr des messenden Bauteils, nie ein mitgereichter
-Zeitpunkt. Das ist keine Feinheit: ein Aufrufer, der seine Gegenwart am Kopf eines
+``now`` **muss** die Uhr des messenden Bauteils sein, unmittelbar an der Messung
+gelesen. Das ist keine Feinheit: ein Aufrufer, der seine Gegenwart am Kopf eines
 Taktes einfriert und Sekunden spaeter hier einreicht, macht aus einem frisch
 geholten Stempel rechnerisch einen Stempel aus der Zukunft -- und die Sperre steht
 still, ohne dass das mit den Daten etwas zu tun haette. Genau so ist der
 Eintrittspfad des Live-Betriebs einmal abgeschaltet worden.
+
+**Eingehalten wird das an den beiden sperrenden Stellen, an den beiden anzeigenden
+nicht.** Der Unterschied ist zu kennen, und er ist kein Versehen dieser Datei:
+
+* ``Mt5Venue._enforce_account_freshness`` und ``Mt5Venue._markt_druckt_preise`` lesen
+  ``self._clock()`` in derselben Anweisung, in der sie messen. Dort haengt eine Order
+  daran, und dort ist die Regel eingehalten.
+* ``tools/live_konsole.py`` (``jetzt`` am Kopf des Taktes) und
+  ``tools/oberflaeche.py`` (``stand["jetzt"]`` als erste Anweisung der Sammlung)
+  frieren ihre Gegenwart **vor** der Sammlung ein und reichen sie danach hier ein.
+  Zwischen Einfrieren und Messung liegen bei der Oberflaeche der Journallauf, ein
+  Kontoabruf, die Positionsliste und ein ``get_quote`` je Katalogsymbol; der
+  juengste Stempel wird also NACH dem Einfrieren geholt. Ueberschreitet die Sammlung
+  ``FUTURE_TOLERANCE``, meldet die Kachel ``snapshot_from_future`` -- ein Uhrenbefund
+  in der Aufmachung eines Datenbefunds.
+
+Die Fehlrichtung ist dort sichtbar (eine rote Kachel, kein stilles Gruen) und
+kostet keine Order, weshalb sie hier benannt und nicht behoben wird -- beide Dateien
+gehoeren nicht zu dieser Sperre. In einer Zeile nachzupruefen: steht die Zuweisung
+von ``jetzt`` vor der Sammlung oder neben dem Aufruf? Wer sie an die Messung
+heranschiebt, streicht diesen Absatz mit.
 
 Ein Nebeneffekt gehoert dazu: ohne bekannte Serverzone tragen die Kursstempel die
 Wanduhr des Brokers unter dem Etikett UTC, und der Vergleich gegen echte UTC hat den

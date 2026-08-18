@@ -401,3 +401,79 @@ def test_notaus_bleibt_reduce_only_und_umgeht_keine_sperre_nach_oben() -> None:
     venue, terminal = _venue((_position("p1", "0.30"),))
     venue.emergency_flatten()
     assert all(req["reduce_only"] is True for req in terminal.gesendet)
+
+
+# =========================================================================== #
+# Diagnoseverlust: der Not-Aus loeschte den Grund, der ihn ausgeloest hat      #
+# =========================================================================== #
+def test_der_notaus_loescht_den_bestehenden_haltgrund_nicht() -> None:
+    """Der haeufigste Weg zur Notbremse fuehrt ueber einen Zwischenfall, der bereits
+    gelatcht hat.
+
+    ``sendeversuch_unklar:open-EURUSD-x`` sagt, WONACH beim Broker zu sehen ist. Ein
+    nachfolgendes ``emergency_flatten`` sagt nur, dass jemand die Bremse gezogen hat.
+    Wer den Grund ueberschreibt, loescht genau die Angabe, die hinterher gebraucht wird
+    -- und zwar unwiederbringlich, denn ``halt_reason`` fuehrt nur einen Wert.
+
+    Der Latch selbst bleibt unberuehrt: er steht, bevor irgendetwas scheitern kann.
+    """
+    venue, _ = _venue((_position("p1", "0.30"),))
+    venue.latch_halt(reason="sendeversuch_unklar:open-EURUSD-x")
+
+    venue.emergency_flatten()
+
+    assert venue.is_halted() is True
+    grund = venue.halt_reason or ""
+    assert grund.startswith("emergency_flatten"), (
+        "Der juengste Anlass gehoert nach vorn -- er ist der, den der Betrieb sucht."
+    )
+    assert "sendeversuch_unklar:open-EURUSD-x" in grund, (
+        "Der Not-Aus hat den bestehenden Halt-Grund ueberschrieben. Damit ist die "
+        "Kennung weg, unter der beim Broker nachzusehen waere."
+    )
+
+
+def test_der_haltgrund_waechst_bei_wiederholtem_notaus_nicht_ins_endlose() -> None:
+    """Gegenprobe zur Fortschreibung: sie ist beschraenkt.
+
+    Eine unbeschraenkte Kette waere die zweite Sorte Diagnoseverlust -- eine Zeile, die
+    niemand mehr liest. Von Hand: nach dem ersten Not-Aus steht
+    ``"emergency_flatten (zuvor: <alter Grund>)"``; ein zweiter und dritter Lauf haengen
+    nichts an, weil der bestehende Grund bereits mit ``"emergency_flatten ("`` beginnt.
+    """
+    venue, _ = _venue((_position("p1", "0.30"),))
+    venue.latch_halt(reason="reconcile_drift")
+
+    venue.emergency_flatten()
+    nach_dem_ersten = venue.halt_reason
+    assert nach_dem_ersten == "emergency_flatten (zuvor: reconcile_drift)"
+
+    venue.emergency_flatten()
+    venue.emergency_flatten()
+    assert venue.halt_reason == nach_dem_ersten
+
+
+def test_ohne_vorherigen_halt_bleibt_der_grund_schlicht() -> None:
+    """Der Normalfall darf durch die Fortschreibung nicht umstaendlicher werden."""
+    venue, _ = _venue((_position("p1", "0.30"),))
+    venue.emergency_flatten()
+    assert venue.halt_reason == "emergency_flatten"
+
+
+def test_der_grund_ueberlebt_auch_den_notaus_ohne_leitung() -> None:
+    """Genau die Lage, in der die Diagnose am meisten wert ist: die Leitung ist weg.
+
+    Hier wirft ``emergency_flatten`` nach dem Latch. Auf dem werfenden Pfad wurde der
+    bestehende Grund bisher ebenfalls ueberschrieben -- der Not-Aus loeschte also die
+    Spur genau dann, wenn er nichts anderes mehr ausrichten konnte.
+    """
+    venue, terminal = _venue((_position("p1", "0.30"),))
+    venue.latch_halt(reason="sendeversuch_unklar:open-EURUSD-x")
+    venue.disconnect()
+
+    with pytest.raises(VenueUnavailableError):
+        venue.emergency_flatten()
+
+    assert venue.is_halted() is True
+    assert "sendeversuch_unklar:open-EURUSD-x" in (venue.halt_reason or "")
+    assert terminal.gesendet == []

@@ -55,6 +55,7 @@ from mt5_trading_ai.backtest.kalender import SERVER_TZ_NAME  # noqa: E402
 from mt5_trading_ai.betrieb.journal import (  # noqa: E402
     JournalError,
     Lauf,
+    bilanz,
     durchgehende_equity,
     lies_alle,
 )
@@ -394,14 +395,27 @@ def _kennzahlen(stand: dict[str, Any]) -> str:
     Alle vier Zahlen folgen aus dem erweiterten Protokoll. Sie standen schon in den
     Daten und wurden nur nicht gezeigt -- was der haeufigste Grund ist, warum eine
     Anzeige duenn wirkt.
+
+    DER TREFFERANTEIL LAEUFT UEBER ``bilanz`` -- NICHT UEBER DIE PREISE ALLEIN
+    ---------------------------------------------------------------------------
+    Diese Kachel rechnete den Trefferanteil ueber ``ergebnis_bps``, also **nur ueber
+    Trades mit zwei gemessenen Preisen**. Ein broker-seitiger Schluss hat keinen
+    Fuellpreis; er traegt sein Ergebnis in Kontowaehrung. Damit fiel er hier heraus --
+    und weil broker-seitige Schluesse ueberwiegend Stop-Outs sind, fielen genau die
+    Verlierer heraus. Die Kachel zeigte einen zu guten Anteil, und man sah es ihr
+    nicht an. Das ist derselbe blinde Fleck, den ``betrieb/journal.py`` mit ``bilanz``
+    schon geschlossen hatte -- die Oberflaeche war die dritte, nicht angeschlossene
+    Umsetzung derselben Einteilung.
+
+    ``schlimmster`` bleibt bewusst am PREIS-Topf: die Zahl steht in Basispunkten, und
+    ein Geldbetrag in Kontowaehrung ist keine Preisdifferenz.
     """
     lauf: Lauf | None = stand.get("lauf")
     if lauf is None:
         return ""
     reihe = lauf.equity_reihe()
     takte = lauf.art("takt")
-    trades = [t for t in lauf.trades() if not t.offen]
-    rechenbar = [t.ergebnis_bps for t in trades if t.ergebnis_bps is not None]
+    b = bilanz(lauf.trades())
 
     # Drawdown seit Laufbeginn: groesster Ruecksetzer vom laufenden Hoechststand.
     tiefster = Decimal("0")
@@ -412,9 +426,9 @@ def _kennzahlen(stand: dict[str, Any]) -> str:
             tiefster = min(tiefster, (wert - spitze) / spitze * Decimal("100"))
     im_halt = sum(1 for t in takte if t["halt"])
     halt_anteil = im_halt / len(takte) * 100 if takte else 0.0
-    treffer = (sum(1 for w in rechenbar if w > 0) / len(rechenbar) * 100
-               if rechenbar else None)
-    schlimmster = min(rechenbar) if rechenbar else None
+    treffer = (sum(1 for t in b.beurteilt if t.gewinn) / len(b.beurteilt) * 100
+               if b.beurteilt else None)
+    schlimmster = min(b.preis) if b.preis else None
 
     def kachel(etikett: str, wert: str, klein: str, klasse: str = "") -> str:
         return (f'<div class="kachel"><span class="etikett">{etikett}</span>'
@@ -429,7 +443,8 @@ def _kennzahlen(stand: dict[str, Any]) -> str:
                f"von {len(takte)} Takten", "krit" if halt_anteil > 0 else "gut"),
         kachel("Trefferanteil",
                "—" if treffer is None else f"{treffer:.0f} %",
-               f"aus {len(rechenbar)} rechenbaren Trades"),
+               f"aus {len(b.beurteilt)} beurteilbaren Trades, "
+               f"{len(b.nur_geld)} davon ohne Preis"),
         kachel("Schlechtester Trade",
                "—" if schlimmster is None else f"{float(schlimmster):+.2f} bp",
                "Preisdifferenz, ohne Kosten",
@@ -537,7 +552,10 @@ def _abschnitt_lauf(stand: dict[str, Any]) -> str:
     versuche = lauf.art("eroeffnungsversuch")
     auf = [v for v in versuche if v["eroeffnet"]]
     trades = lauf.trades()
-    zu = [t for t in trades if not t.offen]
+    # Dieselbe Einteilung wie in ``betrieb_auswerten.py`` -- aus ``betrieb/journal.py``
+    # und nicht hier noch einmal nachgebaut.
+    b = bilanz(trades)
+    zu = b.geschlossen
     halts = [t for t in takte if t["halt"]]
 
     gruende: dict[str, int] = {}
@@ -568,7 +586,6 @@ def _abschnitt_lauf(stand: dict[str, Any]) -> str:
                else "<span class='marke gut'>läuft</span>")
     scharf = ("<span class='marke krit'>scharf</span>" if lauf.scharf
               else "<span class='marke'>trocken</span>")
-    rechenbar = sum(1 for t in zu if t.vollstaendig)
     return f"""
     <p>{zustand} {scharf}
       <span class="klein">Strategie {_e(start['strategie'] if start else None)} ·
@@ -582,7 +599,8 @@ def _abschnitt_lauf(stand: dict[str, Any]) -> str:
         <span class="klein">von {len(versuche)} Versuchen</span></div>
       <div class="kachel"><span class="etikett">Trades zu</span>
         <span class="wert">{len(zu)}</span>
-        <span class="klein">{rechenbar} rechenbar</span></div>
+        <span class="klein">{len(b.preis)} mit Preis · {len(b.nur_geld)} nur Geld ·
+          {len(b.stumm)} stumm</span></div>
       <div class="kachel"><span class="etikett">Takte im Halt</span>
         <span class="wert {'krit' if halts else 'gut'}">{len(halts)}</span></div>
     </div>

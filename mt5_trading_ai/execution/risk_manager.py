@@ -124,9 +124,11 @@ erzwingt sie am Order-Pfad (siehe ``venue/mt5.py``).
 from __future__ import annotations
 
 import os
+import unicodedata
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from decimal import Decimal
+from typing import Final
 
 from mt5_trading_ai.execution.risiko_zustand import (
     UMGEBUNG_ZUSTANDSDATEI,
@@ -146,6 +148,7 @@ from mt5_trading_ai.gates.evaluation import (
 )
 from mt5_trading_ai.risk.limits import (
     AccountSnapshot,
+    LimitDecision,
     LossLimits,
     TradingState,
     evaluate_limits,
@@ -231,6 +234,15 @@ class RiskAuthorization:
     detail: dict[str, str] = field(default_factory=dict)
 
 
+#: Unicode-Gattungen, die auf dem Bildschirm nichts hinterlassen: Steuerzeichen (Cc),
+#: Formatzeichen (Cf -- darunter U+200B ZERO WIDTH SPACE und U+FEFF), Ersatzzeichen
+#: und Privatbereich (Cs/Co), nicht vergebene Stellen (Cn) sowie alle drei
+#: Trennerarten (Zs/Zl/Zp).
+_UNSICHTBARE_GATTUNGEN: Final = frozenset(
+    {"Cc", "Cf", "Cs", "Co", "Cn", "Zs", "Zl", "Zp"}
+)
+
+
 def freigabe_gueltig(kennung: str | None) -> bool:
     """Ist das eine Freigabe? Genau **ein** Massstab, an allen drei Stellen derselbe.
 
@@ -246,8 +258,26 @@ def freigabe_gueltig(kennung: str | None) -> bool:
     findet (Ticket, Datum, Kuerzel). Ein Leerstring benennt niemanden -- er ist ein
     durchgereichtes leeres Feld, ein Tippfehler oder eine nicht gesetzte Variable, und
     keins davon darf einen Halt aufheben.
+
+    **Unsichtbar ist dasselbe wie leer.** ``.strip()`` allein genuegt dafuer nicht:
+    ``str.isspace()`` ist fuer U+200B (ZERO WIDTH SPACE) und U+FEFF ``False``, sie
+    ueberleben also jedes Strippen. ``release_drawdown("\\u200b")`` loeste damit einen
+    dauerhaften Halt mit einer Kennung, die in keinem Protokoll und in keinem Ticket
+    wiederzufinden ist -- und die niemand beim Lesen bemerkt. Verlangt wird darum
+    mindestens **ein sichtbares Zeichen**. Kurze sichtbare Kennungen (``0``, ``-``)
+    gehen weiter durch: sie sind schlechte Kennungen, aber sie stehen im Protokoll und
+    ein Mensch sieht sie.
+
+    Diese Fassung ist strikt strenger als ``risk/limits.py``. Damit der eine Massstab
+    trotzdem gilt, gibt der ``RiskManager`` eine ungueltige Kennung gar nicht erst
+    weiter (siehe ``__init__``): was ``evaluate_limits`` erreicht, hat hier bestanden.
     """
-    return bool(kennung and kennung.strip())
+    if not kennung:
+        return False
+    return any(
+        unicodedata.category(zeichen) not in _UNSICHTBARE_GATTUNGEN
+        for zeichen in kennung
+    )
 
 
 def measured_cost_from_meta(request: OrderRequest) -> Decimal | None:
@@ -346,7 +376,16 @@ class RiskManager:
         #: Manuelle Freigabe nach einem Drawdown-Halt. Ohne sie bleibt der Halt.
         #: Gilt nur fuer die AKTUELLE Episode: erholt sich der Drawdown unter die Grenze
         #: oder vertieft er sich ueber das freigegebene Niveau, wird sie verbraucht.
-        self._manual_release_id = manual_release_id
+        #: Eine Kennung, die ``freigabe_gueltig`` nicht besteht, wird hier **verworfen**
+        #: statt mitgefuehrt. Sonst reichte diese Schicht sie an ``evaluate_limits``
+        #: weiter, das nur ``.strip()`` prueft -- eine unsichtbare Kennung waere dort
+        #: eine Freigabe, die hier keine ist, und der laxere Massstab entschiede wieder
+        #: ueber den Not-Aus.
+        self._manual_release_id = (
+            manual_release_id.strip()
+            if manual_release_id is not None and freigabe_gueltig(manual_release_id)
+            else None
+        )
         #: Drawdown-Niveau, gegen das die Freigabe erteilt wurde (lazily beim ersten
         #: Sehen gesetzt); ein tieferer Drawdown macht die Freigabe ungueltig.
         self._release_ceiling: Decimal | None = None
@@ -435,6 +474,12 @@ class RiskManager:
             self._halt = False
             self._halt_grund = ""
             self._halt_seit = None
+            if self._zustand is not None:
+                # Und sie muss beim Schreiben ausdruecklich mitkommen: seit die
+                # Zustandsdatei vereinigt statt ueberschrieben wird, gewinnt ein Halt
+                # der Platte gegen jeden Speicherstand -- ausser gegen diesen einen,
+                # begruendeten Akt (``DateiZustand.freigabe_vormerken``).
+                self._zustand.freigabe_vormerken()
 
     def _lage(self) -> RisikoLage:
         """Der aktuelle Zustand als sicherbare Lage (ohne Freigabe -- siehe Modul)."""
@@ -482,14 +527,86 @@ class RiskManager:
         **unsicher**. Die naechste ``authorize_opening`` lehnt mit
         ``risk_zustand_nicht_gesichert`` ab: es wird nichts NEUES eroeffnet, solange
         nicht gesichert werden kann, waehrend das Bestehende bedienbar bleibt. Die
-        Marke loescht sich nicht durch Zeitablauf und nicht durch einen Neustart,
-        sondern nur durch einen erfolgreichen Schreibvorgang -- also durch einen
-        Beweis. Deshalb braucht sie, anders als der Drawdown-Halt, keine menschliche
-        Freigabe: sie behauptet nichts ueber den Markt, sondern nur ueber die Platte,
-        und die Platte antwortet selbst.
+        Marke loescht sich nicht durch Zeitablauf, sondern nur durch einen
+        erfolgreichen Schreibvorgang -- also durch einen Beweis. Deshalb braucht sie,
+        anders als der Drawdown-Halt, keine menschliche Freigabe: sie behauptet nichts
+        ueber den Markt, sondern nur ueber die Platte, und die Platte antwortet selbst.
+
+        **Sie ueberdauert einen Neustart nicht, und das kann sie auch nicht.** Hier
+        stand einmal das Gegenteil; es war falsch. ``_schreibfehler`` ist ein
+        Instanzfeld und beginnt in jedem neuen Prozess bei ``None`` -- eine Marke, die
+        einen Neustart ueberleben soll, muesste ausgerechnet auf die Platte, die
+        gerade nicht mitspielt. Der Fall, der daran haengt: Platte voll -> ein Halt
+        faellt aus -> Betreiber raeumt auf -> Neustart, und es steht kein Halt mehr da.
+        Was DARAN reparierbar war, ist repariert: der Halt wird jetzt VOR dem
+        Plattenbefund ausgewertet und gelatcht (``authorize_opening``, 0b1), also
+        schon waehrend des Ausfalls im Speicher gehalten und mit dem ersten
+        gelungenen Schreibvorgang gesichert. Was bleibt, ist der Prozess, der von
+        Anfang bis Ende auf eine unschreibbare Platte trifft: dessen Zustand ist
+        unwiederbringlich, und keine Zeile dieser Schicht kann das aendern.
+
+        **Und danach wird nachgezogen.** Seit die Zustandsdatei unmittelbar vor jedem
+        Schreibvorgang neu gelesen und vereinigt wird (``execution/risiko_zustand.py``,
+        „Zwei Schreiber auf einer Datei"), kennt sie den Stand eines zweiten Prozesses.
+        Ihn nur auf der Platte stehen zu lassen waere eine halbe Reparatur: der Halt
+        des zweiten Laufs ginge dann zwar nicht mehr verloren, DIESER Lauf aber wuesste
+        nichts davon und eroeffnete weiter. ``_nachziehen`` holt ihn deshalb in den
+        Speicher -- ausschliesslich in die strenge Richtung.
         """
-        if self._zustand is not None:
-            self._schreibfehler = self._zustand.sichern(self._lage())
+        if self._zustand is None:
+            return
+        self._schreibfehler = self._zustand.sichern(self._lage())
+        gesehen = self._zustand.zuletzt_gesehen
+        if gesehen is not None:
+            self._nachziehen(gesehen)
+
+    def _nachziehen(self, lage: RisikoLage) -> None:
+        """Uebernimm, was auf der Platte stand -- aber nur, wenn es strenger ist.
+
+        Der Filter ist der ganze Punkt. ``lage`` ist bereits die Vereinigung beider
+        Staende und damit je Abschnitt die strengere Seite; hier wird trotzdem noch
+        einmal einzeln geprueft, damit ein spaeterer Eingriff an ``lage_vereinen``
+        nicht unbemerkt eine milde Richtung hereinreicht. Ein gesetzter Halt wird
+        uebernommen, ein fehlender loescht keinen -- fuer den Halt gilt derselbe Satz
+        wie auf der Platte: er faellt nur durch ``release_drawdown``.
+
+        Nicht uebernommen wird der **Handelstag** als solcher: ihn setzt
+        ``_roll_trade_day`` aus der Uhr des Aufrufers. Ein Tag von der Platte koennte
+        aus einer abweichenden Uhr stammen, und ein Tagessprung nach vorn wuerde beim
+        naechsten Rollen als „echter Tageswechsel" gelesen -- und loeste damit die
+        Zaehlersperre auf, statt sie zu tragen.
+        """
+        if lage.halt and not self._halt:
+            self._halt = True
+            self._halt_grund = lage.halt_grund or "zustand_fremder_halt"
+            self._halt_seit = lage.halt_seit
+        if lage.zaehler_gesperrt:
+            self._zaehler_gesperrt = True
+        for symbol, anzahl in lage.trades_je_instrument.items():
+            if anzahl > self._trades_today_instrument.get(symbol, 0):
+                self._trades_today_instrument[symbol] = anzahl
+        if lage.trades_konto > self._trades_today_account:
+            self._trades_today_account = lage.trades_konto
+        for symbol, ts in lage.letzter_trade_at.items():
+            vorher = self._last_trade_at.get(symbol)
+            if vorher is None or ts > vorher:
+                self._last_trade_at[symbol] = ts
+        self._equity_obs = list(lage.equity_fenster)
+        if (
+            lage.equity_tag == self._equity_day
+            and lage.tagesstart_equity is not None
+            and (
+                self._day_start_equity is None
+                or lage.tagesstart_equity > self._day_start_equity
+            )
+        ):
+            self._day_start_equity = lage.tagesstart_equity
+        bekannt = {pos.instrument for pos in self._open_positions}
+        for symbol, ts in lage.offene_positionen:
+            if symbol not in bekannt:
+                self._open_positions.append(
+                    OpenPosition(instrument=symbol, opened_at=ts)
+                )
 
     # --- Zustandspflege ---------------------------------------------------
     def observe_equity(self, now: datetime, equity: Decimal) -> None:
@@ -563,10 +680,19 @@ class RiskManager:
         self._sichern()
 
     def record_close(self, instrument: str) -> None:
-        """Eine Schliessung: offene Positionen dieses Instruments entfernen."""
+        """Eine Schliessung: offene Positionen dieses Instruments entfernen.
+
+        Die Schliessung wird der Zustandsdatei **ausdruecklich angesagt**. Seit sie
+        vereinigt statt ueberschrieben wird, verschwindet nichts mehr dadurch, dass es
+        in einem Speicherstand fehlt -- sonst holte der naechste Schreibvorgang die
+        geschlossene Position von der Platte zurueck, und der Positionsdeckel fuellte
+        sich unumkehrbar.
+        """
         self._open_positions = [
             pos for pos in self._open_positions if pos.instrument != instrument
         ]
+        if self._zustand is not None:
+            self._zustand.schliessung_vormerken(instrument)
         self._sichern()
 
     @property
@@ -585,6 +711,12 @@ class RiskManager:
         gerade freigegeben hat. Die Freigabe selbst wird ausdruecklich **nicht**
         gesichert (Begruendung in ``execution/risiko_zustand.py``): sie ist eine
         Aussage ueber eine Lage, die dieser Mensch gerade gesehen hat.
+
+        Sie ist zugleich der **einzige** Weg, auf dem ein Halt von der Platte
+        verschwindet. Seit dort vereinigt statt ueberschrieben wird, gewinnt ein
+        gesetzter Halt gegen jeden Speicherstand; ``freigabe_vormerken`` ist die
+        Ausnahme, und sie wird einmalig verbraucht -- von einem gelungenen
+        Schreibvorgang, nicht von einem versuchten.
 
         Eine leere Kennung ist keine Freigabe (``freigabe_gueltig``) und wird
         **abgewiesen, nicht ignoriert**: sie wirft, bevor irgendetwas geaendert ist.
@@ -606,6 +738,8 @@ class RiskManager:
         self._halt = False
         self._halt_grund = ""
         self._halt_seit = None
+        if self._zustand is not None:
+            self._zustand.freigabe_vormerken()
         self._sichern()
 
     # --- Kostenbasis ------------------------------------------------------
@@ -705,6 +839,46 @@ class RiskManager:
         return grund
 
     # --- Autorisierung ----------------------------------------------------
+    def _freigabe_episode_pflegen(self, drawdown: Decimal) -> None:
+        """Gilt die Freigabe fuer DIESE Lage noch? Vor der Limit-Auswertung.
+
+        Eine Freigabe deckt genau die Halt-Episode, die der Mensch gesehen hat.
+        Erholt sich der Drawdown unter die Grenze, ist die Episode vorbei und der
+        Kill-Switch wieder scharf; vertieft er sich ueber das freigegebene Niveau, ist
+        es eine andere Lage als die, ueber die entschieden wurde. Beide Zweige
+        **verbrauchen** die Freigabe -- die einzigen Wege hier heraus sind strenger,
+        nie milder.
+        """
+        max_dd = self._policy.loss_limits.max_drawdown_fraction
+        if self._manual_release_id is None:
+            return
+        if drawdown < max_dd:
+            self._manual_release_id = None
+            self._release_ceiling = None
+        elif self._release_ceiling is None:
+            self._release_ceiling = drawdown
+        elif drawdown > self._release_ceiling:
+            self._manual_release_id = None
+            self._release_ceiling = None
+
+    def _limits_pruefen(
+        self, *, account: AccountState, peak: Decimal, now: datetime
+    ) -> LimitDecision:
+        """Der Kill-Switch mit dem Zustand dieser Schicht -- genau einmal je Order."""
+        snapshot = AccountSnapshot(
+            now=now,
+            equity=account.equity,
+            day_start_equity=self._day_start_equity
+            if self._day_start_equity is not None
+            else account.equity,
+            window_peak_equity=peak,
+            open_positions=len(self._open_positions),
+            trading_day=now.date(),
+            manual_release_id=self._manual_release_id,
+            upcoming_gap_events=self._gap_events,
+        )
+        return evaluate_limits(snapshot, self._policy.loss_limits)
+
     def authorize_opening(
         self,
         *,
@@ -773,6 +947,37 @@ class RiskManager:
                 },
             )
 
+        # 0b1) Die Limit-Auswertung steht ab hier VOR dem Plattenbefund -- genauer:
+        # ihr Halt-Anteil. Vorher kam der Schreibfehler zuerst, und damit wurde
+        # waehrend eines Plattenausfalls der Drawdown gar nicht erst bewertet: der
+        # Lauf lehnte zwar ab, latchte aber nichts. Erholten sich Platte UND Equity,
+        # stand kein Halt mehr im Weg und ``approved`` war wieder ``True`` -- ein
+        # Not-Aus, den ein Plattenproblem verschluckt hat. Gemessen: 16,7 % Drawdown
+        # auf blockierter Platte, danach Erholung -> Order angenommen.
+        # Beide Ausgaenge lehnen ab; die Reihenfolge entscheidet nur, WELCHE Aussage
+        # gilt, und der Halt ist die schwerere: er braucht einen Menschen.
+        peak = self._window_peak(account.equity)
+        drawdown = (
+            Decimal("1")
+            if peak <= 0
+            else max(Decimal("0"), peak - account.equity) / peak
+        )
+        self._freigabe_episode_pflegen(drawdown)
+        limit = self._limits_pruefen(account=account, peak=peak, now=now)
+        if limit.state is TradingState.HALTED:
+            self._halt = True
+            self._halt_grund = "drawdown_halt_gelatcht"
+            self._halt_seit = now
+            self._sichern()
+            return RiskAuthorization(
+                approved=False,
+                reason=(
+                    f"risk_{limit.reasons[0]}" if limit.reasons else "risk_blocked"
+                ),
+                latch_halt=True,
+                detail={"limit_state": limit.state.value},
+            )
+
         # 0b2) Der Zustand kommt nicht auf die Platte (Begruendung: ``_sichern``).
         # Nach dem Halt, weil der Halt die aeltere und schwerere Aussage ist -- und
         # weil die Reihenfolge sonst einen gelatchten Halt hinter einem Plattenfehler
@@ -809,59 +1014,15 @@ class RiskManager:
                 detail={"handelstag": now.date().isoformat()},
             )
 
-        # Freigabe-Gueltigkeit VOR der Limit-Auswertung bestimmen, damit die AKTUELLE
-        # Order korrekt entscheidet: die Freigabe deckt nur die aktuelle Halt-Episode.
-        peak = self._window_peak(account.equity)
-        drawdown = (
-            Decimal("1")
-            if peak <= 0
-            else max(Decimal("0"), peak - account.equity) / peak
-        )
-        max_dd = self._policy.loss_limits.max_drawdown_fraction
-        if self._manual_release_id is not None:
-            if drawdown < max_dd:
-                # Erholt -> Episode vorbei, Kill-Switch wieder scharf.
-                self._manual_release_id = None
-                self._release_ceiling = None
-            elif self._release_ceiling is None:
-                # Erstes Sehen in der Episode -> freigegebenes Niveau festhalten.
-                self._release_ceiling = drawdown
-            elif drawdown > self._release_ceiling:
-                # Drawdown vertieft sich ueber das freigegebene Niveau -> neuer Halt.
-                self._manual_release_id = None
-                self._release_ceiling = None
-
-        # 1) Kill-Switch (evaluate_limits): Tagesverlust, Drawdown, Deckel, Gap.
-        snapshot = AccountSnapshot(
-            now=now,
-            equity=account.equity,
-            day_start_equity=self._day_start_equity
-            if self._day_start_equity is not None
-            else account.equity,
-            window_peak_equity=peak,
-            open_positions=len(self._open_positions),
-            trading_day=now.date(),
-            manual_release_id=self._manual_release_id,
-            upcoming_gap_events=self._gap_events,
-        )
-        limit = evaluate_limits(snapshot, self._policy.loss_limits)
+        # 1) Kill-Switch (evaluate_limits) -- der Rest davon: Tagesverlust, Deckel,
+        # Gap. Der Halt ist schon oben entschieden (0b1); hier bleiben die Gruende
+        # ohne Latch. Ausgewertet wurde einmal, nicht zweimal: eine zweite Auswertung
+        # koennte anders ausgehen als die erste.
         if not limit.may_open:
-            halt = limit.state is TradingState.HALTED
-            reason = f"risk_{limit.reasons[0]}" if limit.reasons else "risk_blocked"
-            if halt:
-                # Der Latch wird HIER gesetzt, nicht nur im Venue. Ohne ihn loeste sich
-                # der Halt bei erholter Equity von selbst -- „ein System, das sich nach
-                # einem Drawdown-Halt selbst wieder freischaltet, hat keinen Halt"
-                # (``risk/limits.py``). Und ohne ihn gaebe es nichts zu sichern, was
-                # einen Neustart ueberdauern koennte.
-                self._halt = True
-                self._halt_grund = "drawdown_halt_gelatcht"
-                self._halt_seit = now
-                self._sichern()
             return RiskAuthorization(
                 approved=False,
-                reason=reason,
-                latch_halt=halt,
+                reason=f"risk_{limit.reasons[0]}" if limit.reasons else "risk_blocked",
+                latch_halt=False,
                 detail={"limit_state": limit.state.value},
             )
 

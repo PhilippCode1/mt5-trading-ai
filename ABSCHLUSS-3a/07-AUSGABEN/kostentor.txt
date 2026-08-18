@@ -141,7 +141,7 @@ DE40       ic_markets_eu        52.0*     51.5*     53.0*     52.0*     52.6*   
 DE40       admirals_eu          51.9*     51.5*     52.8*     52.5*     52.4*     53.8*
 DE40       tickmill_eu          51.6*     51.5*     52.6*     51.6*     52.1*     53.1*
 DE40       pepperstone_eu       52.1*     51.5*     53.0*     52.1*     52.6*     53.1*
-NVDA       ic_markets_eu        62.7      61.8      63.2      62.7      64.9      64.6 
+NVDA       ic_markets_eu        62.7      61.8      63.2      62.9      64.9      64.8 
 NVDA       admirals_eu          52.3*     52.0*     52.8*     52.6*     52.7*     53.3*
   * = unter der 56-%-Schwelle
 
@@ -389,9 +389,9 @@ XAUUSD     admirals_eu                 -1.764        12.5 %                  4.4
 DE40       admirals_eu                 -1.302        50.0 %                  3.3 %
 DE40       admirals_eu                 -1.302        25.0 %                  3.3 %
 DE40       admirals_eu                 -1.302        12.5 %                  3.3 %
-NVDA       ic_markets_eu               -0.165        50.0 %                  0.4 %
-NVDA       ic_markets_eu               -0.165        25.0 %                  0.4 %
-NVDA       ic_markets_eu               -0.165        12.5 %                  0.4 %
+NVDA       ic_markets_eu               -1.647        50.0 %                  4.1 %
+NVDA       ic_markets_eu               -1.647        25.0 %                  4.1 %
+NVDA       ic_markets_eu               -1.647        12.5 %                  4.1 %
 NVDA       admirals_eu                 -2.081        50.0 %                  5.2 %
 NVDA       admirals_eu                 -2.081        25.0 %                  5.2 %
 NVDA       admirals_eu                 -2.081        12.5 %                  5.2 %
