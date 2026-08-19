@@ -2084,3 +2084,75 @@ jedes Terminalaufrufs zu uebersetzen ist ein eigener Umbau mit eigener Messung, 
 Auftrag verlangt genau eine Stufe. **Und der Befund (B) bleibt unberuehrt:** diese Stufe
 misst keinen Vorteil. Dass ein dichterer Risikokern an einem System ohne belegten Vorteil
 kein Geld verdient, bleibt wahr.
+
+---
+
+## ERLEDIGT — Stufe 5 des Dauerauftrags: Ausfuehrungserfahrung (teilweise, auf Anweisung)
+
+**Zur Zulassung:** unveraendert wie bei Stufe 4 -- §1 schlieszt die Stufen 4 bis 10 fuer
+den Ausgang (B) aus, der Auftraggeber hat sie angewiesen (E-009). Diese Stufe misst keinen
+Vorteil.
+
+**Berichtigung vorweg:** Im Schlussbericht der Stufe 4 stand, Stufe 5 sei ohne Demokonto
+nicht fahrbar. Das war zu weit gefasst. Es trifft auf drei der fuenf aufzuzeichnenden
+Situationen zu, nicht auf die Stufe.
+
+**Gemessen (Beleg gegen einen eigenen Arbeitsbaum auf 64b4423, also gegen den echten
+Vorher-Stand):** Der Zustand "Antwort blieb aus, Auftrag koennte leben" existierte, aber
+als dict im Prozessgedaechtnis. Zwei echte Luecken:
+
+- **`clear_halt()` gab die Eroeffnung frei, waehrend der ungeklaerte Eintrag noch stand.**
+  Der Sendeversuch latcht den Halt UND vermerkt die Kennung; `clear_halt()` loest nur den
+  Halt. Wer im Betrieb den Halt sieht und freigibt, eroeffnet an einer Order vorbei, die
+  beim Broker liegen koennte.
+- **Der Zustand ueberlebte keinen Neustart.** Dieselbe Fehlerklasse wie beim Halt-Latch vor
+  `risiko_zustand.py` -- hier schwerer: was verschwindet, ist die Kenntnis davon, dass
+  moeglicherweise Geld am Markt steht, und ein Neustart ist der wahrscheinlichste Zustand
+  nach genau diesem Zwischenfall.
+
+**Geaendert:** `execution/schwebende_auftraege.py` -- ein eigener kleiner Speicher, KEIN
+zweiter Risikozustand (andere Lebensdauer, andere Vereinigungsregeln), aber mit
+demselben ORT (`standard_zustandsordner`, dessen Begruendung nicht zweimal hingeschrieben
+wird). Fail-closed je Befund: fehlt/leer = nichts schwebt, unlesbar/defekt/unbekannte
+Fassung = Sperre mit Grund. Sofort geschrieben, ueber Nebendatei und Umbenennen.
+`_verweigere_bei_schwebendem_auftrag()` sperrt jede Eroeffnung mit eigenem Grund
+(`schwebender_auftrag`), gelesen wird die Akte und nicht der Prozessspeicher.
+`sendeversuch_aufloesen(kennung, befund=...)` verlangt einen Befund vom Gegenueber -- ein
+leerer wirft. Reduzierende Auftraege bleiben unberuehrt (V5).
+
+**Persistenz nur auf Ansage, und ablesbar** (`SchwebeAkte.dauerhaft`) -- dieselbe Regel wie
+`RiskManager._zustand_waehlen`. Keine Theorie: ohne sie schrieb der Testlauf in
+%LOCALAPPDATA% des Entwicklers, und die dort hinterlassenen Kennungen sperrten 87 fremde
+Testfaelle. Rueckstaende entfernt.
+
+**Aufzeichnungen eingecheckt:** Die echten Antworten existierten bereits -- 21 Journale mit
+17.166 Saetzen aus einem Demolauf am 2026-08-17, aber unter dem ignorierten `/betrieb/`.
+`tools/aufzeichnung_redigieren.py` schreibt daraus `aufzeichnungen/demo-2026-08-17.jsonl`:
+**110 Saetze**, Kennungen durch laufende Nummern ersetzt (nicht umkehrbar -- kein Salz,
+keine gespeicherte Zuordnung; ein Hash einer Kontonummer waere in Sekunden
+zurueckgerechnet). Darin 16 Platzierungen mit Einstiegspreis, 26 Schliessungen, **7
+Abbrueche im Wortlaut des Handelsplatzes**, 6 Broker-Schliessungen, 4 Halt-Erklaerungen.
+17.056 Saetze weggelassen -- **je Art gezaehlt im Kopf der Datei**, weil eine stille
+Verkleinerung eine Aufzeichnung waere, die vollstaendig aussieht und es nicht ist.
+Gegenprobe auf der eingecheckten Datei: 0 Treffer fuer Ziffernfolgen 6-12, Windows-Pfade,
+Benutzernamen und Original-Kennungen.
+
+**Abnahme:** `tests/test_stufe5_ausfuehrung.py`, 17 Eichfaelle -- die drei namentlich
+verlangten Faelle (Datenbankzustand, genau ein Auftrag beim Gegenueber, Riegelzustand) je
+rot und gruen. Vier Mutationen gefahren (Sperre entfernt, Akte nur im Speicher, Aufloesung
+ohne Befund, Kontonummer in die Aufzeichnung geschmuggelt) -- 4, 8, 1 und 2 Faelle gehen
+rot. Torlauf inkl. `aufzeichnung_redigieren --pruefen` je Exit 0; pytest 1.448 bestanden,
+0 fehlgeschlagen.
+
+**Eigener Fehler (F-011):** Der erste Anlauf des Vorher-Belegs lief gegen den Nachher-Stand
+und behauptete trotzdem im Kopf den alten Commit. Aufgefallen, weil die Ausgabe einen
+Ablehnungsgrund nannte, den es vor der Stufe nicht gab. Berichtigt ueber einen eigenen
+`git worktree` auf 64b4423 -- das Arbeitsverzeichnis blieb unberuehrt, anders als bei dem
+`git checkout`, der in derselben Sitzung schon Arbeit zerstoert hat (F-010).
+
+**Ehrliche Grenze / offen:** Von den fuenf aufzuzeichnenden Situationen liegen **zwei** vor
+(Platzierung, Abbruch). Drei fehlen -- doppelte Auftragskennung AM HANDELSPLATZ, falsche
+Signatur, abweichende Uhr -- und alle drei brauchen ein verbundenes Demokonto.
+MetaTrader5 ist installiert, eine Terminal-Konfiguration liegt nicht vor. Die Abnahme der
+Stufe ist erfuellt (sie verlangt "mindestens eine echte, aufgezeichnete Antwort" und drei
+Testfaelle); die Aufzaehlung der fuenf Situationen ist es nicht.

@@ -21,6 +21,7 @@ from mt5_trading_ai.execution.cost_gate import CostGate
 from mt5_trading_ai.execution.leverage_preflight import evaluate_leverage_preflight
 from mt5_trading_ai.execution.private_sync import PrivateSync
 from mt5_trading_ai.execution.risk_manager import RiskManager, RiskPolicy
+from mt5_trading_ai.execution.schwebende_auftraege import SchwebeAkte
 from mt5_trading_ai.venue.demo_run import (
     MIN_DEMO_DAYS,
     DemoAccount,
@@ -314,6 +315,7 @@ def _venue(
     clock: Callable[[], datetime] | None = None,
     jetzt: datetime = TS,
     ohne_risiko: bool = False,
+    schwebeakte: SchwebeAkte | None = None,
 ) -> tuple[Mt5Venue, FakeMt5Terminal]:
     """Ein verbundenes Venue mit Fake-Terminal.
 
@@ -356,6 +358,7 @@ def _venue(
         demo_registration=demo_registration,
         demo_live_verdict=demo_live_verdict,
         clock=clock if clock is not None else (lambda: jetzt),
+        schwebeakte=schwebeakte,
     )
     venue.connect()
     return venue, terminal

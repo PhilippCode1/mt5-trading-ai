@@ -1,0 +1,25 @@
+=== ruff ===
+All checks passed!
+
+=== mypy --strict ===
+Success: no issues found in 71 source files
+
+=== check_docs_claims ===
+ok - 30/32 gezaehlte Markdown-Dateien (+16 in AUFTRAG/, auf Behauptungen geprueft, nicht gezaehlt), keine Zusicherung ohne Beleg
+
+=== check_doc_numbers ===
+ok - Code: 39 Module, 1267 Testfunktionen, 15754 Quellzeilen; Doku widerspruchsfrei.
+
+=== gen_docs --check ===
+ok � MODULES.md ist aktuell (559 Zeilen).
+
+=== kopien_abgleichen ===
+ok — 1 Kopie(n) wortgleich mit ihren Originalen.
+
+=== aufzeichnung_redigieren --pruefen ===
+ok — 110 redigierte Saetze, wortgleich mit den Journalen.
+
+=== pytest ===
+........................................................................ [ 99%]
+........                                                                 [100%]
+1448 passed in 56.53s

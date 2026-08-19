@@ -1,0 +1,28 @@
+MESSUNG VOR DER STUFE
+=====================
+Gefahren gegen einen eigenen Arbeitsbaum auf Commit 64b4423 -- also gegen den
+tatsaechlichen Stand VOR den Aenderungen dieser Stufe, nicht gegen den neuen.
+(Der erste Anlauf dieses Belegs lief versehentlich gegen den neuen Code und
+ zeigte darum die neue Antwort. Berichtigt; siehe fehler.md, F-011.)
+
+Der Auftrag verlangt: der Zustand 'Antwort blieb aus, Auftrag koennte leben'
+(1) wird eingefuehrt, (2) bleibt SICHTBAR, (3) muss VOR DER NAECHSTEN EROEFFNUNG
+aufgeloest werden.
+==========================================================================
+
+1) Sendeversuch ohne Antwort  -> RuntimeError weitergereicht (richtig)
+2) Zustand eingefuehrt?      -> unklare_sendeversuche = ['unklar-1']
+   Halt gelatcht?            -> True  Grund: sendeversuch_unklar:unklar-1
+
+3) Naechste Eroeffnung MIT Halt      -> ABGELEHNT reason=global_halt
+
+4) Betreiber gibt den Halt frei (clear_halt)
+   Arbeitsliste danach       -> ['unklar-1']
+   Naechste Eroeffnung       -> DURCHGELASSEN (accepted=True)
+   ^^ Der Auftrag verlangt, dass sie erst NACH Aufloesung wieder geht.
+
+5) Ueberlebt der Zustand einen Neustart?
+   Frisch gebautes Venue     -> unklare_sendeversuche = []
+   ^^ Der Zustand liegt im Prozessgedaechtnis. Nach einem Neustart ist die
+      Arbeitsliste leer -- dieselbe Fehlerklasse, gegen die risiko_zustand.py
+      gebaut wurde (Halt-Latch begann bei jedem Start bei null).

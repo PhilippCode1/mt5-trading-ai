@@ -1,0 +1,27 @@
+============================= test session starts =============================
+platform win32 -- Python 3.11.7, pytest-8.3.4, pluggy-1.6.0 -- C:\Users\Acer\AppData\Local\Programs\Python\Python311\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\Acer\mt5_trading_ai
+configfile: pyproject.toml
+plugins: anyio-4.8.0, base-url-2.1.0, cov-6.0.0, playwright-0.7.2
+collecting ... collected 17 items
+
+tests/test_stufe5_ausfuehrung.py::test_datenbankzustand_ueberdauert_den_neustart PASSED [  5%]
+tests/test_stufe5_ausfuehrung.py::test_datenbankzustand_ist_ohne_zwischenfall_leer PASSED [ 11%]
+tests/test_stufe5_ausfuehrung.py::test_datenbankzustand_sperrt_wenn_die_akte_unlesbar_ist PASSED [ 17%]
+tests/test_stufe5_ausfuehrung.py::test_datenbankzustand_sperrt_bei_unbekannter_fassung PASSED [ 23%]
+tests/test_stufe5_ausfuehrung.py::test_fluechtige_akte_ist_als_fluechtig_ablesbar PASSED [ 29%]
+tests/test_stufe5_ausfuehrung.py::test_fluechtige_akte_haelt_innerhalb_des_prozesses PASSED [ 35%]
+tests/test_stufe5_ausfuehrung.py::test_dieselbe_kennung_erzeugt_genau_einen_auftrag PASSED [ 41%]
+tests/test_stufe5_ausfuehrung.py::test_zwei_verschiedene_kennungen_erzeugen_zwei_auftraege PASSED [ 47%]
+tests/test_stufe5_ausfuehrung.py::test_ein_schwebender_auftrag_sperrt_die_naechste_eroeffnung PASSED [ 52%]
+tests/test_stufe5_ausfuehrung.py::test_clear_halt_allein_gibt_die_eroeffnung_nicht_frei PASSED [ 58%]
+tests/test_stufe5_ausfuehrung.py::test_aufloesung_ohne_befund_wird_abgewiesen PASSED [ 64%]
+tests/test_stufe5_ausfuehrung.py::test_aufloesung_mit_befund_gibt_die_eroeffnung_frei PASSED [ 70%]
+tests/test_stufe5_ausfuehrung.py::test_der_erste_grund_bleibt_stehen PASSED [ 76%]
+tests/test_stufe5_ausfuehrung.py::test_die_aufzeichnung_liegt_im_repo_und_traegt_echte_antworten PASSED [ 82%]
+tests/test_stufe5_ausfuehrung.py::test_die_aufzeichnung_traegt_keine_unredigierten_kennungen PASSED [ 88%]
+tests/test_stufe5_ausfuehrung.py::test_die_aufzeichnung_weist_aus_was_weggelassen_wurde PASSED [ 94%]
+tests/test_stufe5_ausfuehrung.py::test_das_redigierwerkzeug_laeuft_und_bestaetigt_die_aufzeichnung PASSED [100%]
+
+============================= 17 passed in 0.67s ==============================

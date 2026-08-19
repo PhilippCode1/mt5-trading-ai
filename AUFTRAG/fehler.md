@@ -328,3 +328,37 @@ Datei mit nicht eingechecktem Stand wird eine Kopie in den Ablagebereich geschri
 gesperrt; er kennt den Zwischenstand nicht, den er wiederherstellen soll. Zweitbeste
 Reihenfolge, wenn der Stand ohnehin fertig ist: erst einchecken, dann mutieren, dann
 `checkout` — dann stimmen Ziel und Wirkung des Befehls überein.
+
+---
+
+## F-011 — Einen „Vorher"-Beleg gegen den Nachher-Stand gefahren
+
+**Wann:** 2026-08-19, Stufe 5. Bemerkt und berichtigt, bevor der Bericht geschrieben war.
+
+**Was falsch war.** Der Beleg `stufen/05-ausfuehrung/belege/01-messung-vorher.txt` sollte
+zeigen, wie sich der Stand **vor** dieser Stufe verhielt. Ich habe dafür dasselbe
+Prüfskript noch einmal laufen lassen — gegen den Arbeitsbaum, in dem die Änderung bereits
+stand. Das Ergebnis war die neue Antwort unter der Überschrift „vorher", mit einem Kopf,
+der ausdrücklich Commit `64b4423` behauptete.
+
+**Warum das schwerer wiegt als ein Tippfehler.** Der ganze Bericht dieser Stufe steht auf
+dem Vergleich zweier Zustände. Ein „Vorher", das in Wahrheit ein „Nachher" ist, macht die
+gefundene Lücke unsichtbar und den Beleg zu einer Bestätigung dessen, was ich ohnehin
+schreiben wollte. Genau davor warnt §6 des Auftrags: „Abgelesenes von Erwartetem
+trennen."
+
+**Wie es aufgefallen ist.** Beim Durchsehen der geschriebenen Datei stand in Zeile 4
+`ABGELEHNT reason=schwebender_auftrag` — ein Grund, den es vor dieser Stufe nicht gab.
+Eine Ausgabe, die einen Namen kennt, den der gemessene Stand nicht kennt, ist kein
+Messwert dieses Standes.
+
+**Berichtigt.** Der Beleg ist gegen einen eigenen Arbeitsbaum auf `64b4423` neu gefahren
+(`git worktree add --detach`), danach wurde der Arbeitsbaum entfernt. Das Arbeitsverzeichnis
+ist dabei unberührt geblieben — anders als bei einem `git checkout`, der in dieser Sitzung
+schon einmal Arbeit zerstört hat (F-010). Der Unterschied steht jetzt in der Datei: vorher
+`DURCHGELASSEN` nach `clear_halt()`, nachher `ABGELEHNT reason=schwebender_auftrag`.
+
+**Was daraus folgt.** Ein Vorher-Beleg wird gegen einen **benannten Commit** gefahren, nicht
+gegen „den Stand von eben". Der Arbeitsbaum ist dafür das richtige Werkzeug: er kostet
+nichts, berührt die Arbeitskopie nicht, und der Kopf des Belegs kann den Commit nennen,
+weil er ihn wirklich gemessen hat.

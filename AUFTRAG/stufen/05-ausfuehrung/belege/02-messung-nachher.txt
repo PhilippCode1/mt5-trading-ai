@@ -1,0 +1,22 @@
+==========================================================================
+1) Sendeversuch ohne Antwort -> RuntimeError weitergereicht
+2) Akte auf der Platte        -> ['unklar-1']
+   Halt gelatcht              -> True
+3) Naechste Eroeffnung MIT Halt -> ABGELEHNT reason=schwebender_auftrag
+
+4) Betreiber gibt NUR den Halt frei (clear_halt):
+   Halt                       -> False
+   Naechste Eroeffnung        -> ABGELEHNT reason=schwebender_auftrag
+   ^^ verlangt: gesperrt, solange nicht aufgeloest
+
+5) NEUSTART -- frisches Venue auf derselben Akte:
+   Arbeitszettel              -> ['unklar-1']
+   Eroeffnung nach Neustart   -> ABGELEHNT reason=schwebender_auftrag
+
+6) Aufloesung OHNE Befund:
+   ABGEWIESEN: Eine schwebende Kennung wird nur mit einem Befund aufgeloest -- dem, was beim Broker nachgesehen wurde.
+
+7) Aufloesung MIT Befund (der Mensch hat beim Broker nachgesehen):
+   entfernt: True
+   Arbeitszettel              -> []
+   Eroeffnung danach          -> DURCHGELASSEN (accepted=True)

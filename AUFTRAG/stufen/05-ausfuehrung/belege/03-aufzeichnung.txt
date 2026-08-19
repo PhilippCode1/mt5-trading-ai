@@ -1,0 +1,22 @@
+AUFZEICHNUNG -- redigiert und eingecheckt
+=========================================
+geschrieben: aufzeichnungen/demo-2026-08-17.jsonl
+  behalten    : 110 Saetze (buch_uebernommen 6, ende 19, eroeffnet 16, geschlossen 26, halt_erklaert 4, schliessen_fehlgeschlagen 7, start 21, stoppdatei 5, vom_broker_geschlossen 6)
+  weggelassen : 17056 Saetze (eroeffnungsversuch 4343, kurs 7010, signal 4343, takt 1360)
+
+--- Gegenprobe: traegt die eingecheckte Datei noch Originalwerte? ---
+  Ziffernfolge 6-12 (Konto/Ticket)     0 Treffer
+  Windows-Pfad                         0 Treffer
+  Benutzername                         0 Treffer
+  Original-Kennung open-/fl-           0 Treffer
+
+Zeilen: 111 | Bytes: 32186
+
+--- Erste echte Broker-Antwort in der Aufzeichnung ---
+{"art": "eroeffnet", "client_order_id": "KENNUNG-0001", "einstiegspreis": "1.15789", "lauf": "LAUF-02", "position_id": "POSITION-01", "seit": "2026-08-17T17:43:05+00:00", "signal": "LONG", "symbol": "EURUSD", "ts": "2026-08-17T17:43:06+00:00", "version": "4ad1683+aenderungen", "volumen": "0.11"}
+
+--- Ein aufgezeichneter Abbruch (der Handelsplatz hat abgelehnt) ---
+{"art": "schliessen_fehlgeschlagen", "fehler": "Handelsplatz hat abgelehnt: Done", "grund": "lauf_beendet", "symbol": "EURUSD", "ts": "2026-08-17T14:57:23+00:00"}
+
+--- Ein aufgezeichneter Halt ---
+{"art": "halt_erklaert", "durch": "broker_schliessung", "grund": "reconcile_drift:notional_drift_exceeds_limit", "lauf": "LAUF-04", "ts": "2026-08-17T18:33:52+00:00", "version": "d5c7133"}

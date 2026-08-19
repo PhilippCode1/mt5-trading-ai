@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib
+import os
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
@@ -42,7 +43,17 @@ from mt5_trading_ai.execution.reconcile import (
     reconcile_positions,
 )
 from mt5_trading_ai.execution.release import live_release_blocks_opening_order
+from mt5_trading_ai.execution.risiko_zustand import (
+    UMGEBUNG_ZUSTANDSDATEI,
+    UMGEBUNG_ZUSTANDSORDNER,
+)
 from mt5_trading_ai.execution.risk_manager import RiskManager
+from mt5_trading_ai.execution.schwebende_auftraege import (
+    UMGEBUNG_SCHWEBEDATEI,
+    SchwebeAkte,
+    SchwebenderAuftrag,
+    standard_schwebedatei,
+)
 from mt5_trading_ai.venue.catalog import (
     MINUTEN_JE_TAG,
     CatalogEntry,
@@ -330,6 +341,29 @@ def stop_level_in_tickschritten(
     return int(schritte.to_integral_value(rounding=ROUND_CEILING))
 
 
+def _schwebeakte_waehlen() -> SchwebeAkte:
+    """Umgebung -> Datei, sonst fluechtig. Dieselbe Regel wie fuer den Risikozustand.
+
+    ``RiskManager._zustand_waehlen`` entscheidet genauso, und aus demselben Grund: eine
+    Bibliothek schreibt nicht ungefragt in das Zustandsverzeichnis des Benutzers, nur
+    weil jemand ein Objekt gebaut hat. Wer die Akte dauerhaft will -- und im Betrieb
+    will man das --, setzt ``MT5_SCHWEBENDE_AUFTRAEGE`` oder eine der beiden
+    Zustandsordner-Variablen.
+
+    Die Regel ist hier keine Bequemlichkeit, sondern eine Messung: ohne sie schrieb der
+    Testlauf dieses Repos in ``%LOCALAPPDATA%`` des Entwicklers -- und die dort
+    hinterlassenen Kennungen sperrten anschliessend 87 Faelle, die mit der Sache nichts
+    zu tun hatten.
+    """
+    if (
+        os.environ.get(UMGEBUNG_SCHWEBEDATEI)
+        or os.environ.get(UMGEBUNG_ZUSTANDSDATEI)
+        or os.environ.get(UMGEBUNG_ZUSTANDSORDNER)
+    ):
+        return SchwebeAkte(standard_schwebedatei())
+    return SchwebeAkte(None)
+
+
 def _halt_grund_fortschreiben(bisher: str | None, neu: str) -> str:
     """Neuer Halt-Grund, **ohne** den bestehenden zu loeschen.
 
@@ -475,6 +509,7 @@ class Mt5Venue(TradingVenue):
         demo_live_verdict: EdgeVerdict | None = None,
         clock: Callable[[], datetime] | None = None,
         max_account_age: timedelta = MAX_SNAPSHOT_AGE,
+        schwebeakte: SchwebeAkte | None = None,
     ) -> None:
         self.name = name
         self._terminal = terminal
@@ -488,6 +523,13 @@ class Mt5Venue(TradingVenue):
         #: Gegenwart fuer den Frische-Latch. Injizierbar, damit die Sperre pruefbar ist.
         self._clock = clock if clock is not None else (lambda: datetime.now(UTC))
         self._max_account_age = max_account_age
+        #: Die Akte der Auftraege, deren Antwort ausblieb. Sie ueberdauert einen
+        #: Neustart -- anders als der frueher hier gefuehrte Speicherzettel, der bei
+        #: jedem Prozessstart leer war und damit gerade die Kenntnis verlor, dass
+        #: moeglicherweise Geld am Markt steht (Stufe 5).
+        self._schwebeakte = (
+            schwebeakte if schwebeakte is not None else _schwebeakte_waehlen()
+        )
         self._connected = False
         #: Idempotenz je ``client_order_id`` — nur angenommene Orders.
         #:
@@ -892,6 +934,12 @@ class Mt5Venue(TradingVenue):
                 )
         else:
             self._validate_volume(instrument, request.volume)
+            # Stufe 5: „Antwort blieb aus, Auftrag koennte leben" muss VOR der naechsten
+            # Eroeffnung aufgeloest sein. Diese Sperre steht bewusst vor dem Global-Halt
+            # und traegt einen eigenen Grund: beide latchen zwar gemeinsam, aber
+            # ``clear_halt()`` loest nur den Halt. Wer nur den Halt sieht, gibt ihn frei
+            # und eroeffnet weiter -- gemessen genau so, bevor es diese Sperre gab.
+            self._verweigere_bei_schwebendem_auftrag()
             if self._halted:
                 raise OrderRejectedError(
                     "Global-Halt aktiv (Reconcile-Drift) — keine Eroeffnung",
@@ -947,8 +995,17 @@ class Mt5Venue(TradingVenue):
             # ist ein Fehlalarm bei Ausgaengen, die nachweislich nichts gesendet haben
             # (etwa ein gesperrter Schreibpfad); ein Halt zu viel ist geraeuschvoll,
             # ein Halt zu wenig ist eine unbemerkte Position.
-            self._unklare_sendeversuche[request.client_order_id] = (
-                f"{type(exc).__name__}: {exc}"
+            grund = f"{type(exc).__name__}: {exc}"
+            self._unklare_sendeversuche[request.client_order_id] = grund
+            # Und auf die Platte, sofort: der Zustand entsteht genau in dem Augenblick,
+            # in dem auch der Prozess wegbrechen kann.
+            self._schwebeakte.vermerken(
+                SchwebenderAuftrag(
+                    client_order_id=request.client_order_id,
+                    grund=grund,
+                    seit=self._clock(),
+                    symbol=request.symbol,
+                )
             )
             self._halted = True
             self._halt_reason = f"sendeversuch_unklar:{request.client_order_id}"
@@ -1545,6 +1602,46 @@ class Mt5Venue(TradingVenue):
 
     def is_halted(self) -> bool:
         return self._halted
+
+    def _verweigere_bei_schwebendem_auftrag(self) -> None:
+        """Keine Eroeffnung, solange ein Sendeversuch ohne Antwort ungeklaert ist.
+
+        Gelesen wird die **Akte**, nicht der Speicher dieses Prozesses: nach einem
+        Neustart ist der Speicher leer, die Akte nicht. Genau dieser Fall ist der
+        gefaehrliche -- der Prozess, der die Order abgesetzt hat, ist weg, und mit ihm
+        das Wissen, dass beim Broker etwas liegen koennte.
+
+        Ein unlesbarer Befund sperrt ebenfalls (``Schwebebefund.schwebt``): die Frage
+        „schwebt etwas?" ist dann unbeantwortet, und unbeantwortet gilt als „ja".
+        """
+        befund = self._schwebeakte.laden()
+        if not befund.schwebt:
+            return
+        kennungen = ", ".join(e.client_order_id for e in befund.eintraege) or "?"
+        raise OrderRejectedError(
+            "Ungeklaerter Sendeversuch -- beim Broker nachsehen und aufloesen: "
+            f"{kennungen}"
+            + (f" ({befund.sperrgrund})" if befund.sperrgrund else ""),
+            reason="schwebender_auftrag",
+            retryable=False,
+        )
+
+    def sendeversuch_aufloesen(self, client_order_id: str, *, befund: str) -> bool:
+        """Nimm eine Kennung aus der Akte -- mit dem Befund vom Gegenueber.
+
+        Die einzige Geste, die den Zustand beendet, und sie gehoert einem Menschen: der
+        ``befund`` ist das, was beim Broker nachgesehen wurde. Ein leerer Befund wirft.
+
+        Der Global-Halt bleibt davon **unberuehrt**. Das sind zwei Entscheidungen: „ich
+        habe nachgesehen, was aus dieser Order wurde" und „ich gebe den Handel wieder
+        frei". Sie faellt derselbe Mensch, aber nicht notwendig im selben Augenblick.
+        """
+        self._unklare_sendeversuche.pop(client_order_id, None)
+        return self._schwebeakte.aufloesen(client_order_id, befund=befund)
+
+    def schwebende_auftraege(self) -> tuple[SchwebenderAuftrag, ...]:
+        """Der Arbeitszettel aus der Akte -- ueberdauert den Neustart."""
+        return self._schwebeakte.laden().eintraege
 
     def unklare_sendeversuche(self) -> dict[str, str]:
         """Kennungen, deren Sendeversuch ohne Antwort endete -- Ausgang unbekannt.

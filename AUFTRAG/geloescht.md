@@ -119,6 +119,26 @@ Syntaxbaum hält fest, dass daneben keine ungeprüfte Lesestelle entsteht.
 
 ---
 
+## In Stufe 5 gelöscht
+
+**Nichts aus dem Repository.** Die Stufe hat einen Speicher hinzugefügt
+(`execution/schwebende_auftraege.py`), eine Sperre in den Orderpfad gehängt, ein
+Redigierwerkzeug gebaut und eine Aufzeichnung eingecheckt.
+
+**Entfernt wurde eine Datei außerhalb des Repositoriums:**
+`%LOCALAPPDATA%\mt5_trading_aiisiko\schwebende_auftraege.json`. Sie war ein Rückstand
+meines eigenen Testlaufs — die erste Fassung der Akte griff ohne Umgebungsvariable auf den
+Standardpfad zu, und der Testlauf legte dort synthetische Kennungen ab, die anschließend
+87 fremde Testfälle sperrten. Inhalt vor dem Entfernen angesehen: ausschließlich
+Kennungen aus `tests/` (`o-timeout`, `fl-…`), kein Betriebsdatum. Die Ursache ist behoben
+(Persistenz nur auf Ansage, `stufen/05-ausfuehrung/bericht.md` §3.4).
+
+Zur Sperre V1: der neue Code hat Aufrufer im Ausführungspfad — `SchwebeAkte` wird von
+`Mt5Venue` gerufen (Vermerk beim Sendeversuch, Prüfung vor jeder Eröffnung, Auflösung),
+`tools/aufzeichnung_redigieren.py` ist ein Werkzeug mit eigenem Dauertor.
+
+---
+
 ## Was nach dem Ergebnistor **nicht** gelöscht wurde, obwohl es naheläge
 
 Befund (B) heißt nach §1: *„Es wird zurückgebaut oder aufgegeben."* Beides ist eine

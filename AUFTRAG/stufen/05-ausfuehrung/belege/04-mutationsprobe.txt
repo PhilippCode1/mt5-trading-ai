@@ -1,0 +1,35 @@
+MUTATIONSPROBE ZU STUFE 5
+=========================
+Vor jedem Eingriff eine Kopie ausserhalb des Repos; zurueckgestellt AUS DER KOPIE
+(Lehre aus F-010, nicht mit git checkout).
+
+M1: die Sperre aus dem Orderpfad nehmen
+FAILED tests/test_stufe5_ausfuehrung.py::test_datenbankzustand_sperrt_wenn_die_akte_unlesbar_ist
+FAILED tests/test_stufe5_ausfuehrung.py::test_datenbankzustand_sperrt_bei_unbekannter_fassung
+FAILED tests/test_stufe5_ausfuehrung.py::test_ein_schwebender_auftrag_sperrt_die_naechste_eroeffnung
+FAILED tests/test_stufe5_ausfuehrung.py::test_clear_halt_allein_gibt_die_eroeffnung_nicht_frei
+4 failed, 13 passed in 1.75s
+
+M2: die Akte nur noch im Speicher fuehren (Pfad ignorieren)
+FAILED tests/test_stufe5_ausfuehrung.py::test_clear_halt_allein_gibt_die_eroeffnung_nicht_frei
+FAILED tests/test_stufe5_ausfuehrung.py::test_aufloesung_ohne_befund_wird_abgewiesen
+FAILED tests/test_stufe5_ausfuehrung.py::test_aufloesung_mit_befund_gibt_die_eroeffnung_frei
+FAILED tests/test_stufe5_ausfuehrung.py::test_der_erste_grund_bleibt_stehen
+8 failed, 9 passed in 0.73s
+
+M3: Aufloesung auch ohne Befund zulassen
+tests\test_stufe5_ausfuehrung.py:230: Failed
+=========================== short test summary info ===========================
+FAILED tests/test_stufe5_ausfuehrung.py::test_aufloesung_ohne_befund_wird_abgewiesen
+1 failed, 16 passed in 0.76s
+
+M4: eine Kontonummer in die eingecheckte Aufzeichnung schmuggeln
+=========================== short test summary info ===========================
+FAILED tests/test_stufe5_ausfuehrung.py::test_die_aufzeichnung_traegt_keine_unredigierten_kennungen
+FAILED tests/test_stufe5_ausfuehrung.py::test_das_redigierwerkzeug_laeuft_und_bestaetigt_die_aufzeichnung
+2 failed, 15 passed in 0.90s
+
+WIEDERHERGESTELLT. Pruefsummen (je Paar gleich):
+bead558ddb9ef07eb93c647f3adbaa86 bead558ddb9ef07eb93c647f3adbaa86 
+1fc5a98d1124dc1d34628fdfb2981796 1fc5a98d1124dc1d34628fdfb2981796 
+7d4794c69ae098ad090b0f4ddfcbe67d 7d4794c69ae098ad090b0f4ddfcbe67d 

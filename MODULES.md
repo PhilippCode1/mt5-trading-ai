@@ -338,6 +338,17 @@ Treiber-Loop/Scheduler (Paket 7): Frische, Drift und Drawdown-Peak getaktet prue
 - `class TickResult`
 - `class SyncScheduler`
 
+## `mt5_trading_ai/execution/schwebende_auftraege.py`
+
+Zeilen: 305
+
+Auftraege, deren Sendeversuch ohne Antwort endete -- „koennte beim Broker leben".
+
+- `def standard_schwebedatei`
+- `class SchwebenderAuftrag`
+- `class Schwebebefund`
+- `class SchwebeAkte`
+
 ## `mt5_trading_ai/gates/criteria.py`
 
 Zeilen: 393
@@ -491,7 +502,7 @@ Paket 5: Registrierung und Fortschritts-Tor des Demo-Betriebs (§8.5).
 
 ## `mt5_trading_ai/venue/mt5.py`
 
-Zeilen: 2620
+Zeilen: 2717
 
 MT5-Anbindung an das ``TradingVenue``-Protokoll.
 
