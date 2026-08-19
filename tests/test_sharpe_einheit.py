@@ -4,7 +4,7 @@ WORUM ES GEHT
 -------------
 Stufe 3 des Dauerauftrags verlangt, Rechenfehler in geldnahen Groessen **vor** dem
 ersten Lauf zu korrigieren: Maximalverlust, Stueckzahlberechnung, Kennzahleinheiten.
-Alle drei waren im verworfenen Stand ``bitget-btc-ai`` defekt. Hier wurde jede
+Alle drei waren im verworfenen Stand defekt. Hier wurde jede
 nachgerechnet (Beleg: ``AUFTRAG/stufen/03-simulator/belege/01-geldnahe-groessen.txt``):
 die ersten beiden rechnen richtig.
 

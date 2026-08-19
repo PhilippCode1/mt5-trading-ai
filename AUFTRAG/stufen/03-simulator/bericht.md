@@ -131,6 +131,11 @@ kostenfreien Modus — sind Spread, Slippage und Kommission alle 0, wirft es.
 Der eine rote Fall ist unverändert der seit `6cf80a6` eingecheckte `datetime`-Defekt in
 `tools/live_betrieb.py:604` — Stufe 4 (V5), nicht diese Stufe.
 
+> **Berichtigung 2026-08-19:** Die hier als Produktionsdefekt geführte Stelle war keiner.
+> Der rote Fall entstand allein aus dem Testaufbau (ausgetauschte Uhr, geteilter Modulname
+> für Uhr und Typ). Vollständige Ursachenanalyse: [`fehler.md`, F-008](../../fehler.md#f-008--ich-habe-einen-testfehler-drei-stufen-lang-als-produktionsdefekt-geführt).
+> Behoben am 2026-08-19.
+
 ---
 
 ## 4. Der Lauf — und wie er zustande kam

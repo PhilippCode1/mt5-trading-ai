@@ -153,9 +153,6 @@ def _kette_trocken(
     """Die volle Kette durchlassen -- der Schreibschritt scheitert absichtlich."""
     config = RunnerConfig(
         cost_gate=CostGate(max_roundturn_cost_fraction=Decimal("0.0005")),
-        account_swap_free=True,
-        interest_bearing_margin=False,
-        scholar_review_id="scholar-demo/eurusd-cfd",
     )
     # Ohne --vorfuehrung wird KEINE Zulassung erfunden: es gibt keine bestandene, und
     # die Kette bleibt bei Stufe A stehen. Das ist der wahre Zustand des Vorhabens.

@@ -42,7 +42,7 @@ Bedingung 6 ist ausgeloest.
 ``--scharf "<Begruendung>"`` uebergeht dieses eine Tor. Es tut das **sichtbar**: mit
 Banner, mit der Begruendung im Journal, und mit einem Eintrag, der festhaelt, dass zum
 Zeitpunkt des Laufs keine Strategie zugelassen war. Alle anderen Sperren bleiben scharf
--- Frische, Halal, Hebel, Kostentor, Kill-Switch, Drossel, Stop-Budget, Sizing.
+-- Frische, Hebel, Kostentor, Kill-Switch, Drossel, Stop-Budget, Sizing.
 
 Ohne ``--scharf`` laeuft alles gleich, nur bleibt die Kette an der Zulassung stehen und
 es wird nichts gesendet. Das ist die Vorgabe.
@@ -173,10 +173,22 @@ class Journal:
             fh.write(json.dumps(zeile, ensure_ascii=False) + "\n")
 
 
+#: Die Klasse fuer die Typpruefung im Journal -- bewusst NICHT ueber den Modulnamen
+#: ``datetime``. Der Name ist zugleich die Uhr dieses Moduls (jedes
+#: ``datetime.now(UTC)`` liest ihn), und eine Uhr wird zum Einfrieren
+#: ausgetauscht. Wird sie durch eine
+#: Unterklasse ersetzt, urteilt ein ``isinstance`` gegen denselben Namen gegen die
+#: Ersatzklasse: echte Zeitstempel sind keine Instanzen von ihr, fallen unkonvertiert
+#: durch und lassen ``json.dumps`` werfen -- mitten im Schreiben eines Betriebssatzes.
+#: Der Alias bindet die echte Klasse einmal beim Import und trennt damit die beiden
+#: Aufgaben, die sonst auf einem Namen liegen: Uhr sein und Typ sein.
+_DATETIME = datetime
+
+
 def _jsonfaehig(wert: Any) -> Any:
     if isinstance(wert, Decimal):
         return str(wert)
-    if isinstance(wert, datetime):
+    if isinstance(wert, _DATETIME):
         return wert.isoformat(timespec="seconds")
     if isinstance(wert, list | tuple):
         return [_jsonfaehig(x) for x in wert]
@@ -392,8 +404,6 @@ def _eroeffne(
 ) -> None:
     config = RunnerConfig(
         cost_gate=CostGate(max_roundturn_cost_fraction=Decimal("0.0005")),
-        account_swap_free=True, interest_bearing_margin=False,
-        scholar_review_id="scholar-demo/eurusd-cfd",
     )
     try:
         bericht = run_signal(

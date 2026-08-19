@@ -105,6 +105,11 @@ Nach Sperre V5 des Auftrags („Keine Sperre blockiert den Risikoabbau") ist das
 empfindlichste Ort, den ein solcher Fehler treffen kann. Er gehört nach Stufe 4; er wird
 hier **gemeldet, nicht behoben**, weil Stufe 0 nicht in fremde Stufen greift.
 
+> **Berichtigung 2026-08-19:** Die hier als Produktionsdefekt geführte Stelle war keiner.
+> Der rote Fall entstand allein aus dem Testaufbau (ausgetauschte Uhr, geteilter Modulname
+> für Uhr und Typ). Vollständige Ursachenanalyse: [`fehler.md`, F-008](../../fehler.md#f-008--ich-habe-einen-testfehler-drei-stufen-lang-als-produktionsdefekt-geführt).
+> Behoben am 2026-08-19.
+
 **Was ich ausdrücklich nicht gemessen habe:** ob die 15 Reihen-Manifeste vollständig und
 prüfsummengedeckt sind, ob der Simulator gegen echte Historie läuft, ob die Kostenzahlen
 tragen. Das ist Stufe 1 und 3. Alle Aussagen dazu in diesem Bericht sind mit „gelesen,

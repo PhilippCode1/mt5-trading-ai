@@ -139,7 +139,7 @@ negativ gefahren).
 | `venue/smoke.py` | **Demo-Smoke-Orchestrierung** (`run_smoke`): feste Prüffolge gegen einen Venue, harter Demo-Abbruch, optionale abgesicherte Schreib-Probe. |
 
 Belegt durch drei Testdateien (je eine Fallzahl pro Zeile, vom Zahlen-Tor geprüft):
-`test_mt5_venue.py` mit 57 Fällen (der Vertragstest);
+`test_mt5_venue.py` mit 54 Fällen (der Vertragstest);
 `test_instrument_catalog.py` mit 18 Fällen (davon 9 Fail-closed);
 `test_mt5_smoke.py` mit 9 Fällen.
 
@@ -169,7 +169,6 @@ Eröffnende Order
   → Stop-Pflicht       (ohne gültigen Stop wird nicht eröffnet)
   → [1] Frische-Latch  (Kontozustand älter als 5 s = nicht bewertbar → abgelehnt)
   → Live-Freigabe      (nur Live-Konto: vier Schalter + Kennung, sonst abgelehnt)
-  → Halal-Screen       (nur Live-Konto: swapfrei + Gelehrten-Freigabe)
   → Hebel-Preflight    (Klasse handelbar? Hebel ≤ 10 geklammert? Marge frei?)
   → Kostentor          (nur Live-Konto: Roundturn-Kosten unter der Backtest-Schwelle)
   → [2] Verlustgrenzen (Tagesverlust, Drawdown-Halt, Positionsdeckel, Gap-Sperre)
@@ -180,8 +179,8 @@ Eröffnende Order
 ```
 
 Die fünf mit **[1]–[5]** bezeichneten Sperren sind die Sollsperren aus Paket 2, A3.2. Sie
-laufen auf **jedem** Konto, auch auf dem Demokonto — anders als Live-Freigabe, Halal-Screen
-und Kostentor, die dort entfallen, weil es kein Echtgeld und keine reale Zinsbelastung gibt.
+laufen auf **jedem** Konto, auch auf dem Demokonto — anders als Live-Freigabe und
+Kostentor, die dort entfallen, weil es kein Echtgeld gibt.
 Bis Paket 2 stieg die Risikoschicht bei einem Demokonto sofort wieder aus und lief damit an
 keinem erreichbaren Konto; das Dauertor `tests/test_orderpfad_verdrahtung.py` zählt seither
 an einer echten Order nach, dass alle fünf laufen, und wird rot, sobald es weniger sind.

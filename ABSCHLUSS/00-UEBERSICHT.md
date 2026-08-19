@@ -6,6 +6,17 @@ ausgeführt".*
 
 ---
 
+> **Nachtrag 2026-08-19 — der Halal-Strang ist aus dem Stand entfernt.** Dieser Ordner
+> ist eingefroren und wird deshalb *nicht* umgeschrieben: er bleibt der Beleg dessen, was
+> zum genannten Stichtag vorlag. Die darin erwähnte Vorfrage, die zugehörigen Module
+> (`costs/halal.py`, `venue/halal.py`), das Live-Tor `_enforce_halal` und die Datei
+> `HALAL-VORFRAGE.md` gibt es seit dem 2026-08-19 nicht mehr — auf Anweisung des
+> Auftraggebers. Was genau entfernt wurde und was der Wegfall am Orderpfad ändert, steht
+> in [`../AUFTRAG/geloescht.md`](../AUFTRAG/geloescht.md). Verweise unten, die auf
+> Halal-Dateien zeigen, laufen entsprechend ins Leere.
+
+---
+
 ## Die eine Zahl vorweg
 
 **M1 = GRÜN, aber ohne Reserve — und M2 ist gerissen.**
@@ -45,7 +56,7 @@ Round-Turns je Tag mit Hebel 2** — jeweils je Instrument beim günstigsten Bro
 | **A4.1 Zahlenwächter** | **GRÜN** | Regel 5 neu; **18 von 18** falschen Zeilenzahlen entfernt, Zahl jetzt erzeugt statt gepflegt | [03-DOKU-WAHRHEIT.md](03-DOKU-WAHRHEIT.md) |
 | **A4.4 Geheimnisprüfung** | **GRÜN** | **0** echte Funde bei **130** verfolgten Dateien und **342** Blobs aus **50** Commits | [`geheimnispruefung.txt`](07-AUSGABEN/geheimnispruefung.txt) |
 | **A5 Alpha-Hypothese** | **ROT** | **1 von 4** Fragen beantwortet; auf Quelle, Gegenpartei und Fortbestand keine haltbare Antwort | [04-ALPHA.md](04-ALPHA.md) |
-| **A6 Halal-Vorfrage** | **GRÜN** | **3 getrennte** Fragen formuliert, Alternativkonstruktion daneben; nicht beantwortet (das ist Auftrag) | [05-HALAL-VORFRAGE.md](05-HALAL-VORFRAGE.md) |
+| **A6 Halal-Vorfrage** | **GRÜN** | **3 getrennte** Fragen formuliert, Alternativkonstruktion daneben; nicht beantwortet (das ist Auftrag) | entfernt am 2026-08-19 |
 | **Prüfstand §5** | **GRÜN** | **10 von 10** Läufen mit Exit 0; **581 von 581** Tests grün | [07-AUSGABEN/](07-AUSGABEN/pytest.txt) |
 
 ---

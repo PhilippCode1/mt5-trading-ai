@@ -50,7 +50,6 @@ from mt5_trading_ai.venue.catalog import (
     session_minutes,
 )
 from mt5_trading_ai.venue.demo_run import DemoRegistration, pruefe_demo_beleg
-from mt5_trading_ai.venue.halal import screen_halal
 from mt5_trading_ai.venue.protocol import (
     AccountState,
     Bar,
@@ -366,8 +365,8 @@ class Mt5Venue(TradingVenue):
 
     ``risk_manager`` traegt die Risikoschicht (``execution/risk_manager.py``):
     Kill-Switch (Tagesverlust/Drawdown/Deckel/Gap), Drossel, Stop-Budget und
-    Positionsgroesse. **Anders als Kostentor und Halal-Screen ist sie fuer JEDE
-    eroeffnende Order Pflicht, auch auf Demo** (Paket 2, A3): Kostentor und Halal
+    Positionsgroesse. **Anders als das Kostentor ist sie fuer JEDE
+    eroeffnende Order Pflicht, auch auf Demo** (Paket 2, A3): das Kostentor
     schuetzen vor realem Geld und realer Zinsbelastung — auf einem Demokonto gibt es
     beides nicht. Die Risikoschicht dagegen prueft, ob der **Mechanismus** traegt, und
     genau das muss auf dem Demokonto laufen, weil das Demokonto der Beweisplatz vor
@@ -406,8 +405,6 @@ class Mt5Venue(TradingVenue):
     ``venue/demo_run.py`` unter "DIE GRENZE DIESER STUFE"; festgenagelt in
     ``tests/test_demo_beleg_grenze.py``.
 
-    Der Halal-Screen (``venue/halal.py``) laeuft ebenfalls je eroeffnender Live-Order
-    und liest swapfrei/zinsfrei/Freigabe aus ``settings``.
     """
 
     def __init__(
@@ -840,8 +837,6 @@ class Mt5Venue(TradingVenue):
             self._enforce_account_freshness(request.symbol)
             # Live-Freigabe (inkl. Demo-Reife): nur eroeffnende Orders am Live-Konto.
             self._require_live_release_for_opening()
-            # Halal-Screen: mechanische Konformitaet + hinterlegte Gelehrten-Freigabe.
-            self._enforce_halal(instrument)
             # Hebelklammer am Order-Pfad: handelbar, geklammert, Marge frei?
             effective_leverage = self._enforce_leverage(instrument, request)
             # Pre-Trade-Kostentor: reale Roundturn-Kosten unter der Backtest-Schwelle?
@@ -1227,46 +1222,6 @@ class Mt5Venue(TradingVenue):
             raise OrderRejectedError(
                 f"Demo-Reife nicht belegt: {', '.join(ready.reasons)}",
                 reason="demo_not_ready",
-                retryable=False,
-            )
-
-    def _enforce_halal(self, instrument: Instrument) -> None:
-        """Halal-Screen fuer eine eroeffnende Live-Order (Demo-frei).
-
-        Zweiteilig, beide fail-closed: (1) **mechanische** Konformitaet -- swapfreies
-        Konto, zinsfreie Margin, Instrument nicht verboten (``screen_halal``, liest die
-        Kontokonfiguration aus ``settings``, Defaults konservativ = nicht konform);
-        (2) **Gelehrten-Freigabe** -- ``requires_scholar_review`` ist per Kernregel 16
-        IMMER wahr; der Code entscheidet die fiqh-Grundfrage nicht. Eine Live-Order kann
-        daher nur eroeffnen, wenn ein Mensch die Gelehrten-Entscheidung als
-        ``halal_scholar_review_id`` hinterlegt hat. Auf Demo entfaellt der Screen.
-        """
-        if self._terminal.account().is_demo:
-            return  # Demokonto: kein Echtgeld, Halal-Screen nicht bindend.
-        # Defaults konservativ (fail-closed): unbekannt = nicht swapfrei / zinsbehaftet.
-        verdict = screen_halal(
-            asset_class=instrument.asset_class,
-            account_swap_free=getattr(
-                self._settings, "halal_account_swap_free", False
-            )
-            is True,
-            interest_bearing_margin=getattr(
-                self._settings, "halal_interest_bearing_margin", True
-            )
-            is not False,
-        )
-        if not verdict.mechanically_conformant:
-            raise OrderRejectedError(
-                f"Halal-Screen nicht bestanden: {', '.join(verdict.reasons)}",
-                reason="halal_not_conformant",
-                retryable=False,
-            )
-        # Kernregel 16: die fiqh-Grundfrage entscheidet ein Gelehrter, nicht der Code.
-        review_id = getattr(self._settings, "halal_scholar_review_id", None)
-        if not (review_id is not None and str(review_id).strip()):
-            raise OrderRejectedError(
-                "Halal: keine Gelehrten-Freigabe (halal_scholar_review_id) hinterlegt",
-                reason="halal_scholar_review_missing",
                 retryable=False,
             )
 

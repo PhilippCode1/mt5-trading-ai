@@ -21,7 +21,7 @@ Das Sechs-Bedingungen-Tor des Edge-Tests (Paket 4, §7.2).
 
 ## `mt5_trading_ai/backtest/engine.py`
 
-Zeilen: 689
+Zeilen: 685
 
 Backtest-Maschine: fuehrt Splits, Daten und Kostenmodell zusammen.
 
@@ -163,18 +163,9 @@ Broker-Kostentabelle — versioniert, belegt, fail-closed.
 - `def default_costs_path`
 - `def load_broker_costs`
 
-## `mt5_trading_ai/costs/halal.py`
-
-Zeilen: 50
-
-Der Halal-Pfad: swapfreie Finanzierung ohne Zins (S4, Kernregel 16).
-
-- `class HalalFinancingPolicy`
-- `def halal_financing`
-
 ## `mt5_trading_ai/costs/model.py`
 
-Zeilen: 238
+Zeilen: 229
 
 Kostenmodell: die realen Kosten einer Order, gemessen statt angenommen.
 
@@ -329,7 +320,7 @@ Risikoschicht am Order-Pfad: die vier Grenzen als letzte Verteidigungslinie.
 
 ## `mt5_trading_ai/execution/runner.py`
 
-Zeilen: 448
+Zeilen: 428
 
 Integrierender Paper/Dry-Run-Runner (Paket 7): die eine beweisbare Kette.
 
@@ -498,18 +489,9 @@ Paket 5: Registrierung und Fortschritts-Tor des Demo-Betriebs (§8.5).
 - `def pruefe_demo_beleg`
 - `def evaluate_demo_progress`
 
-## `mt5_trading_ai/venue/halal.py`
-
-Zeilen: 64
-
-Der Halal-Screen: das mechanisch Pruefbare erzwingen, die fiqh-Grenze benennen (S4).
-
-- `class HalalVerdict`
-- `def screen_halal`
-
 ## `mt5_trading_ai/venue/mt5.py`
 
-Zeilen: 2561
+Zeilen: 2516
 
 MT5-Anbindung an das ``TradingVenue``-Protokoll.
 

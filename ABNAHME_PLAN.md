@@ -12,7 +12,7 @@ aus §2 belegt erfüllt sind.*
 
 Der Forschungs-/Backtest-Kern ist stark und **echt verdrahtet**: bitgenaue Reproduktion, das
 Sechs-Bedingungen-Tor greift real bis zum Edge, Leckageschutz per `LookAheadError`, das
-Kostenmodell ist die einzige Kostenquelle im Backtest, Halal-Financing ist durchgereicht.
+Kostenmodell ist die einzige Kostenquelle im Backtest.
 
 Die **Live-Ausführungsseite** dagegen ist eine Sammlung getesteter, aber **nicht verdrahteter
 Inseln**. Der zentrale Order-Pfad `Mt5Venue.submit_order` sendet heute eine eröffnende Order
@@ -20,7 +20,6 @@ Inseln**. Der zentrale Order-Pfad `Mt5Venue.submit_order` sendet heute eine erö
 - **ohne Positionsgrößen-/Stop-Floor-Berechnung** (`risk/sizing.py` verwaist),
 - **ohne Verlust-/Drawdown-Halt** (`risk/limits.py` nicht im Pfad),
 - **ohne Frequenzdrossel** (`gates/evaluation.py` verwaist),
-- **ohne Halal-Screen** (`venue/halal.py` screent keine reale Order).
 
 Ebenso läuft das **Datenqualitätstor am Backtest-Rand fail-OPEN**: die Backtest-Treiber laden
 per `from_csv` und gehen ohne `assess_or_raise` direkt in den Lauf; Prüfsumme/Manifest werden
@@ -36,7 +35,7 @@ statt der Trade-Sharpe.
 | **Paket 2 — Datenfundament** | **nein** | Qualitätstor läuft nicht am Backtest-Rand; Manifest write-only; S6 Kalender fehlt |
 | **Paket 3 — Backtest-Maschine** | fast | Walk-Forward-Fit fehlt (S7); Deflation auf Bar- statt Trade-Sharpe (S8) |
 | **Paket 4 — Edge-Test-Apparat** | fast | `main()` ohne Verhaltenstest; kein E2E-Fixture; Provenienz nicht erzwungen |
-| **Paket 5 + Halal** | **nein** | Compliance-Tore (Halal/Demo/LLM) nicht am Order-/Live-Pfad durchgesetzt |
+| **Paket 5** | **nein** | Compliance-Tore (Demo/LLM) nicht am Order-/Live-Pfad durchgesetzt |
 | **Verdrahtung/Integration** | **nein** | Risikoschicht verwaist (S1); kein Ende-zu-Ende-Runner; kein Treiber-Loop (S2) |
 
 Drei Teile stehen auf „fast", drei auf „nein/Blocker". Der Weg zur vollständigen Abnahme ist
@@ -152,27 +151,20 @@ Eröffnung; (d) zu schneller zweiter Bewertungstakt wird von der Drossel abgewie
 Module hat mindestens einen Aufrufer im Order-Pfad (nachweisbar), nicht nur Tests. SPAETER **S1**
 erledigt. CI grün.
 
-### Paket 5 — Compliance-Tore an den Live-/Demo-Pfad (Halal, Demo, LLM)  *(mittel)*
+### Paket 5 — Compliance-Tore an den Live-/Demo-Pfad (Demo, LLM)  *(mittel)*
 
-**Ziel:** Halal-Screen, Demo-Reife und LLM-Zulassung sind als **Tore wirksam** statt als Funktionen —
-keine reale Order / kein Live-Schritt ohne bestandenes Tor. *Die fiqh-Bewertung selbst bleibt beim
-Gelehrten (Kernregel 16).*
+**Ziel:** Demo-Reife und LLM-Zulassung sind als **Tore wirksam** statt als Funktionen —
+kein Live-Schritt ohne bestandenes Tor.
 
 **Inhalt:**
-- **`screen_halal`** in `submit_order` aufrufen: jede eröffnende reale Order wird gegen
-  Instrument/Kontokonfiguration gescreent, `requires_scholar_review` bleibt fail-closed wahr;
-  Nicht-Bestehen → Ablehnung. Kernregel 16 systemseitig durchgesetzt.
 - **Demo-Fortschritts-Tor binden:** `venue/smoke.py` (echte Demo-Harness) füttert
   `register_for_demo`/`evaluate_demo_progress` mit realen Edge-Verdicts, und das Live-Freigabe-Tor
   fragt `DemoReadiness` ab → keine Live-Frage vor ≥ 180 Tagen + weiter bestandenem Edge.
 - **`evaluate_llm_gate`** verankern: entweder einen Durchsetzungspunkt schaffen, bevor je ein Modell
   in den Entscheidungspfad käme, oder dokumentiert festhalten, dass der Pfad LLM-frei ist und dieses
   Tor die einzige Zulassungsstelle bleibt.
-- Fiqh-Inhalt bewusst ausklammern: kein Engineering an der religiösen Bewertung; Verweis, dass die
-  scholar-review-Frage an einen Gelehrten geht (S4).
 
-**Abnahme:** Test: `submit_order` lehnt ein nicht-halal-Instrument fail-closed ab (Screen im
-Order-Pfad, nachweisbar außerhalb Tests). Test: Live-Freigabe scheitert, solange `DemoReadiness`
+**Abnahme:** Test: Live-Freigabe scheitert, solange `DemoReadiness`
 < 180 Tage oder Edge nicht bestanden; besteht mit realem `run_backtest → evaluate_edge →
 register_for_demo`-Fluss. LLM-Tor hat einen verankerten Aufrufpunkt **oder** einen dokumentierten
 Frei-Vermerk. CI grün.
@@ -209,7 +201,7 @@ Frische-Prüfungen laufen getaktet statt passiv, und eine Checkliste stellt die 
 fest.
 
 **Inhalt:**
-- **Integrierender Runner** mit `main()`: `Signal → Halal-Screen → Sizing → Stop-Budget → Limits →
+- **Integrierender Runner** mit `main()`: `Signal → Sizing → Stop-Budget → Limits →
   Evaluation-Gate → submit_order` als ein Paper-/Dry-Run-Kommando, das die in Paket 3–5 verdrahteten
   Nähte in einem Durchlauf zusammenführt (heute existiert kein solcher Runner außer der
   Forschungs-Kette `edge_test`).
@@ -218,7 +210,7 @@ fest.
 - Gesamt-Doku angleichen: `MASTERBERICHT`/`MODULES`/`SPAETER` auf den verdrahteten Endzustand
   bringen; keine Kill-Switch-/Risikoschicht-Zusage ohne realen Aufrufer, keine Insel-Restvermerke.
 - **Abnahme-Checkliste** gegen den Runner abarbeiten: jede Naht (Daten-Tor, Kostentor, Sizing,
-  Budget, Limits, Evaluation, Halal, Demo-Freigabe, Provenienz, Deflation) einmal im integrierten
+  Budget, Limits, Evaluation, Demo-Freigabe, Provenienz, Deflation) einmal im integrierten
   Lauf grün quittiert; SPAETER **S1/S2** erledigt.
 - Vollständigen Testlauf + CI grün bestätigen (Baseline plus alle neuen Naht-Tests).
 
@@ -240,8 +232,6 @@ Ausstieg entfernt und ein zaehlendes Dauertor dagegen gestellt.
 - **Keine neue Strategie, kein neuer Edge-Versuch.** Die Edge-Frage ist dreifach, reproduzierbar und
   ehrlich mit „kein Edge" beantwortet (`BERICHT_TEIL3.md`). Weiter zu bauen jagt einen bewiesenen
   Negativbefund.
-- **Keine fiqh-Bewertung.** Ob gehebelte CFDs grundsätzlich zulässig sind (gharar), entscheidet ein
-  Gelehrter + Philipp, nicht der Code (S4). Der Code erzwingt nur das mechanisch Prüfbare.
 - **Kein Echtgeld.** Der ganze Plan bleibt Backtest/Paper/Demo; die vierteilige Live-Freigabe bleibt
   unberührt und geschlossen.
 

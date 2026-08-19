@@ -198,3 +198,54 @@ Der Streuungsmangel steht als `SPAETER.md`, S9.
 **Was daraus folgt.** Vor einer Sperre die Aufrufer und ihre Daten messen, nicht nur die
 Funktion. Eine Sperre, die richtige Eingaben abweist, ist kein strengerer Maßstab — sie
 ist ein Fehler mit gutem Ruf.
+
+---
+
+## F-008 — Ich habe einen Testfehler drei Stufen lang als Produktionsdefekt geführt
+
+**Wann:** gefunden in Stufe 0 (2026-08-17), berichtigt am 2026-08-19.
+
+**Was ich behauptet habe.** In `stufen/00-bestand/bericht.md`, `stufen/02-zeitschranken/
+bericht.md`, `stufen/03-simulator/bericht.md`, `zustand.md` und
+`rueckbau-bestandsaufnahme.md` steht derselbe Satz: `tools/live_betrieb.py:604` schreibe
+ein rohes `datetime` ins Journal, `json.dumps` werfe darauf `TypeError`, und das treffe
+den risikoreduzierenden Pfad. Ich habe ausdrücklich hinzugefügt: „Das ist kein Testfehler,
+sondern Produktionscode."
+
+**Was tatsächlich der Fall war.** Der Produktionscode wandelt Zeitstempel korrekt.
+`_jsonfaehig` hat rekursiv über Listen und Verschachtelungen gearbeitet und `datetime`
+nach ISO-8601 umgesetzt — im Betrieb ist nie ein roher Zeitstempel ins Journal gelangt.
+Rot war der Fall nur unter dem Testaufbau: der Fall friert die Uhr ein, indem er
+`tools.live_betrieb.datetime` durch eine Unterklasse ersetzt. Derselbe Modulname trug aber
+zwei Aufgaben — er war die Uhr **und** der Typ, gegen den `_jsonfaehig` prüfte. Nach dem
+Austausch prüfte `isinstance` gegen die Ersatzklasse; ein echter `datetime` ist keine
+Instanz von ihr, fiel unkonvertiert durch, und **erst dort** warf `json.dumps`.
+
+**Wie ich es hätte merken müssen.** Der Beleg, den ich selbst angelegt habe
+(`stufen/00-bestand/belege/05-defekt-journal-datetime.txt`), enthält die Rückverfolgung.
+Zwei Bildschirmzeilen über der Stelle, die ich zitiert habe, steht der `monkeypatch` auf
+`tools.live_betrieb.datetime`. Ich habe die letzte Zeile des Traceback gelesen und die
+Diagnose daraus abgeleitet, statt zu fragen, warum ein Pfad, der ohne Uhrmanipulation seit
+`6cf80a6` läuft, ausgerechnet in einem Fall bricht. Eine Messung wäre ein Dreizeiler
+gewesen — `_jsonfaehig([{"seit": datetime.now(UTC)}])` außerhalb des Falls aufrufen. Die
+habe ich nicht gemacht.
+
+**Was der Fehler gekostet hat.** Drei Stufenberichte tragen den falschen Satz, `zustand.md`
+hat ihn als offenen Punkt für Stufe 4 vorgemerkt, und `rueckbau-bestandsaufnahme.md` hat
+ihn dem Auftraggeber als einen von zwei H-004-unabhängigen Punkten vorgelegt. Ein
+Auftraggeber, der auf dieser Grundlage entscheidet, entscheidet über einen Defekt, den es
+so nicht gab. Die Berichte bleiben stehen — sie sind datierte Belege —, tragen aber ab
+sofort je einen Verweis auf diesen Eintrag.
+
+**Behoben.** `tools/live_betrieb.py` bindet die echte Klasse einmal beim Import als
+`_DATETIME` und prüft dagegen; die Uhr bleibt austauschbar, der Typ nicht mehr. Drei Fälle
+in `tests/test_live_betrieb_sperren.py` halten das fest: einer mit eingefrorener Uhr (rot
+vor der Änderung), einer ohne (der grüne Gegenfall, sonst wäre nur belegt, dass es unter
+Eingriff geht), und einer, der am Syntaxbaum nachsieht, dass die Typprüfung nicht wieder
+auf dem Namen der Uhr liegt.
+
+**Was daraus folgt.** Die letzte Zeile eines Traceback nennt den Ort, nicht die Ursache.
+Bevor ein roter Fall „Produktionsdefekt" heißt, muss der Pfad **einmal außerhalb des
+Testaufbaus** gefahren worden sein. Und: ein Name, der zugleich Uhr und Typ ist, ist eine
+Fehlerquelle unabhängig von diesem Fall — Tests tauschen Uhren aus, das ist ihr gutes
+Recht.

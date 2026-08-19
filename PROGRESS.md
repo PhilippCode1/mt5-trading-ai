@@ -1965,3 +1965,57 @@ grün; `ruff`, `mypy --strict`, `gen_docs --check`, `check_docs_claims`, `check_
 
 **Der eigene Fehler dieses Eintrags** steht oben im Widerruf und ausfuehrlich in
 `ABSCHLUSS/09-EIGENE-FEHLER.md`.
+
+---
+
+## ERLEDIGT — Halal-Strang ersatzlos entfernt (Anweisung des Auftraggebers)
+
+**Was geschehen ist:** Auf ausdrueckliche Anweisung ("Entferne halal-vorfrage komplett aus
+dem gesamten Projekt mit Code") ist der gesamte Strang geloescht worden — nicht stillgelegt,
+nicht hinter einen Schalter gelegt. Dieser Eintrag steht hier, weil dieses Dokument
+angehaengt und nie ueberschrieben wird: die aelteren Eintraege zum Halal-Pfad bleiben als
+datierter Beleg stehen und sind durch diesen hier ueberholt.
+
+**Geloeschte Dateien:** `mt5_trading_ai/costs/halal.py`, `mt5_trading_ai/venue/halal.py`,
+`tests/test_halal.py`, `HALAL-VORFRAGE.md`, `ABSCHLUSS/05-HALAL-VORFRAGE.md`.
+
+**Aus bestehenden Dateien entfernt:** `Mt5Venue._enforce_halal` **samt Aufruf** in
+`submit_order`; Schritt 3 der Runner-Kette (Folgeschritte lueckenlos neu nummeriert); die
+drei `RunnerConfig`-Felder (`account_swap_free`, `interest_bearing_margin`,
+`scholar_review_id`) und ihre vier Aufrufstellen; `order_roundturn_cost(financing_policy=)`
+— die Swap-Rechnung laeuft jetzt unbedingt; `MarketSpec.financing_policy`;
+`edge_test.py --halal`; fuenf Testfaelle in `test_mt5_venue.py` (57 → 54) und
+`test_paper_runner.py`.
+
+**Was das am Orderpfad aendert — ausdruecklich:** `_enforce_halal` war ein fail-closed-Tor
+auf **jeder eroeffnenden Live-Order**. Es ist weg, ein Ersatz ist nicht gebaut worden.
+Unberuehrt und weiterhin an einer echten Order nachgezaehlt
+(`tests/test_orderpfad_verdrahtung.py`): Idempotenz, Global-Halt-Latch, Stop-Pflicht,
+Frische-Latch, vierteilige Live-Freigabe, Hebel-Preflight, Kostentor, Verlustgrenzen,
+Drossel, Stop-Budget, Positionsgroesse; darunter `allow_write=False` und die Demo-Pflicht.
+
+**Nebenbefund, korrigiert:** Der seit Stufe 0 als "Produktionsdefekt" gefuehrte
+`datetime`-Fehler im Journal (`tools/live_betrieb.py`) war keiner. Der Produktionspfad hat
+Zeitstempel immer korrekt gewandelt; rot war der Fall nur unter dem Testaufbau, weil
+`tools.live_betrieb.datetime` zugleich die Uhr (die zum Einfrieren ausgetauscht wird) und
+der Typ war, gegen den `_jsonfaehig` prueft. Getrennt: die echte Klasse wird beim Import
+als `_DATETIME` gebunden. Drei Faelle halten das fest (roter Eichfall mit eingefrorener
+Uhr, gruener ohne, einer am Syntaxbaum). Meine Fehldiagnose steht als **F-008** in
+`AUFTRAG/fehler.md`.
+
+**Abnahme:** `ruff` und `mypy --strict` Exit 0; `check_docs_claims`, `check_doc_numbers`,
+`gen_docs --check`, `kopien_abgleichen --pruefen` je Exit 0; `pytest` **1.392 bestanden,
+0 fehlgeschlagen** (vorher 1.405/1 rot). Umfang gemessen: Python +117/−425 Zeilen,
+Markdown +236/−579 Zeilen ueber 35 Dateien.
+
+**Entscheidungen, die ich selbst getroffen habe:** die Reichweite der Entfernung
+(`AUFTRAG/entscheidungen.md`, E-006) — vollstaendig statt stillgelegt, weil ein Tor, das
+dasteht und nicht mehr sperrt, die schlechtere Lage ist; und die Behandlung der
+eingefrorenen Belege (E-007) — `ABSCHLUSS/`, `ABSCHLUSS-3a/`, `docs/audit/` und dieses
+Dokument werden **ergaenzt, nicht umgeschrieben**, weil ein Bericht vom 2026-08-17
+rueckwirkend zu aendern eine Faelschung waere.
+
+**Ehrliche Grenze / offen:** Der Altbestand `bitget-btc-ai` ist **nicht** geloescht. Er
+liegt ausserhalb dieses Repositoriums, enthaelt Zugangsdaten im Klartext, und der Widerruf
+kann nur vom Kontoinhaber kommen (H-003). In diesem Repositorium traegt der Name nur noch
+Herkunftsangaben — kein Produktionscode, kein Test, kein Import.

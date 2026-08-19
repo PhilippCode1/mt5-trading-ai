@@ -143,18 +143,18 @@ realisierter **Round-Turn**-Kosten mit Slippage, und es stammt von einem Demokon
 
 ---
 
-## Bedingung 4 — Halal-Vorfrage negativ
+## Bedingung 4 — aufgehoben
 
 | | |
 |---|---|
-| **Messbare Schwelle** | Die Antwort auf `HALAL-VORFRAGE.md` fällt zu **Frage 1** (kein Eigentum am Basiswert) oder zu **Frage 2** (Margin und Hebel) negativ aus |
-| **Messzeitpunkt** | Sobald die Antwort des Gelehrten vorliegt |
-| **Wer misst** | Der Auftraggeber; die Entscheidung wird als `halal_scholar_review_id` hinterlegt und vom Code an jeder eröffnenden Live-Order erzwungen (`venue/mt5.py::_enforce_halal`) |
-| **Beim Auslösen** | Handelsplatzwechsel auf die Alternativkonstruktion aus `HALAL-VORFRAGE.md` §3 (physischer Kassahandel ohne Hebel) **oder** Ende. **Kein Weiterbauen auf dem verworfenen Konstrukt** — insbesondere kein „swap-freies Konto" als Ausweg, denn das beantwortet nur Frage 3 |
+| **Stand** | **Aufgehoben am 2026-08-19** durch den Auftraggeber, zusammen mit der Vorfrage und den Modulen, auf die sie sich stützte |
+| **Wer hat aufgehoben** | Der Auftraggeber — eine Bedingung, die auf seine eigene Entscheidung zeigt, kann nur er zurücknehmen |
+| **Wirkung auf die übrigen Bedingungen** | Keine. Die Nummer bleibt besetzt, damit 1, 2, 3, 5 und 6 ihre Nummern behalten und ältere Verweise nicht ins Leere zeigen |
 
-**Stand am 2026-08-17:** nicht ausgelöst, weil noch nicht gefragt. Nach der gemeinsamen
-Regel oben gilt „nicht bewertbar = nicht erfüllt": solange keine Antwort vorliegt, ist der
-Live-Pfad gesperrt — technisch, nicht nur organisatorisch.
+**Was der Wegfall nicht bedeutet:** Der Live-Pfad ist dadurch nicht offener geworden. Er
+bleibt durch die vierteilige Live-Freigabe, `allow_write=False`, die Demo-Pflicht, die
+Hebelklammer, das Kostentor, den Not-Aus, die Drossel und das Stop-Budget gesperrt — acht
+Sperren, von denen keine an dieser Bedingung hing.
 
 ---
 
@@ -247,8 +247,8 @@ erreichen, hebt die Bedingung nicht auf, sondern schafft sie ab — und das ist 
 Mehrfachvergleich, gegen den dieses Dokument gebaut ist. Die einzige zulässige Änderung
 einer Schwelle ist ihre **Verschärfung**.
 
-**Bedingung 4 und 6 kennen keine Aufhebung durch Messung allein.** Bedingung 4 verlangt
-eine benannte Gelehrten-Antwort, Bedingung 6 eine Zwangslage, die M6 vollständig besteht.
+**Bedingung 6 kennt keine Aufhebung durch Messung allein.** Sie verlangt eine Zwangslage,
+die M6 vollständig besteht.
 
 **Ein Neuanfang ist keine Aufhebung.** Wer nach einem Ende neu beginnt, beginnt ein neues
 Vorhaben mit eigener Vorregistrierung, eigenem Versuchsregister und eigener Frist. Das ist

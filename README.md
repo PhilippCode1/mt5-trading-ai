@@ -39,9 +39,9 @@ Gemessen, nicht behauptet — gegen den Code geprueft von `tests/test_readme_num
 Aendert sich der Code, ohne dass diese Zahlen nachgezogen werden, wird der Test rot.
 
 <!-- KENNZAHLEN-ANFANG (geprueft von tests/test_readme_numbers.py) -->
-- module_count: 40
-- test_function_count: 1233
-- source_lines: 15440
+- module_count: 38
+- test_function_count: 1219
+- source_lines: 15248
 <!-- KENNZAHLEN-ENDE -->
 
 ## Oberflaeche
@@ -177,7 +177,6 @@ verlinkt, damit sie von aussen abrufbar ist — Verzeichnisseiten sind es nicht.
 - [ABSCHLUSS/02-VERDRAHTUNG.md](ABSCHLUSS/02-VERDRAHTUNG.md) — Eintrittspunkte gezaehlt, Quote vorher/nachher, Eichfaelle
 - [ABSCHLUSS/03-DOKU-WAHRHEIT.md](ABSCHLUSS/03-DOKU-WAHRHEIT.md) — Widersprueche geschlossen, Geheimnispruefung mit Bezugsgroesse
 - [ABSCHLUSS/04-ALPHA.md](ABSCHLUSS/04-ALPHA.md) — Kopie von `ALPHA.md`
-- [ABSCHLUSS/05-HALAL-VORFRAGE.md](ABSCHLUSS/05-HALAL-VORFRAGE.md) — Kopie von `HALAL-VORFRAGE.md`
 - [ABSCHLUSS/06-ABBRUCHKRITERIUM.md](ABSCHLUSS/06-ABBRUCHKRITERIUM.md) — Kopie von `ABBRUCH.md`
 - [ABSCHLUSS/08-SPAETER.md](ABSCHLUSS/08-SPAETER.md) — bewusst zurueckgestellte Funde, je einer mit Begruendung
 - [ABSCHLUSS/09-EIGENE-FEHLER.md](ABSCHLUSS/09-EIGENE-FEHLER.md) — was schiefging, ohne Beschoenigung
@@ -199,4 +198,3 @@ Wurzeldokumente, die in diesem Auftrag entstehen:
 
 - [ABBRUCH.md](ABBRUCH.md) — beziffertes Abbruchkriterium fuer das Gesamtvorhaben
 - [ALPHA.md](ALPHA.md) — woher der Vorteil kommen soll, auf einer Seite
-- [HALAL-VORFRAGE.md](HALAL-VORFRAGE.md) — Vorlage fuer einen qualifizierten Gelehrten

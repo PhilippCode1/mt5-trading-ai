@@ -5,36 +5,25 @@ Empfehlung, Alternative. Der ausführende Agent entscheidet hier nichts.*
 
 ---
 
-## H-001 — Die Halal-Vorfrage ist unbeantwortet
+## H-001 — ERLEDIGT (aufgehoben am 2026-08-19)
 
-**Grundlage:** §4 des Auftrags („Der offenen Halal-Vorfrage"), zugleich Abbruchbedingung 4
-des Standes selbst.
+**Grundlage:** §4 des Auftrags, zugleich Abbruchbedingung 4 des Standes selbst.
 
-**Sachlage.** `HALAL-VORFRAGE.md` liegt fertig im Wurzelverzeichnis: eine Vorlage für eine
-Fatwa-Anfrage an einen qualifizierten Gelehrten, mit drei getrennten Fragen — (1) kein
-Eigentum am Basiswert, (2) Margin und Hebel, (3) Finanzierungskosten über Nacht. Das
-Dokument ist ausdrücklich so verfasst, dass es **unverändert** weitergegeben werden kann,
-und es hält fest, dass das Produktetikett „swap-frei" allein Frage 3 berührt und zu den
-Fragen 1 und 2 nichts sagt.
+**Wie er endete.** Nicht durch eine Antwort, sondern durch eine Entscheidung des
+Auftraggebers: Die Vorfrage samt allem, was an ihr hing, ist am 2026-08-19 ersatzlos aus
+dem Stand entfernt worden — Module, Live-Tor, Runner-Schritt, Konfiguration, Tests, die
+Vorlage und ihre Kopie. Bezifferung in [`geloescht.md`](geloescht.md), Begründung und
+Reichweite in [`entscheidungen.md`](entscheidungen.md), E-006.
 
-**Gemessen:** Der Stand des Vorhabens führt diese Bedingung als **„offen — keine der drei
-Fragen beantwortet"** (`ABSCHLUSS-3a/05-URTEIL.md`, Tabelle in §3, Zeile 4). Gelesen, nicht
-ausgeführt — es gibt nichts auszuführen; die Antwort kann nur von außen kommen.
+**Was daraus folgt und benannt gehört.** Das entfernte Tor war fail-closed und lief auf
+**jeder eröffnenden Live-Order**. Der Live-Pfad ist um diese eine Sperre ärmer; ein Ersatz
+ist nicht gebaut worden, weil keiner gefordert war. Die übrigen elf Sperren des Orderpfads
+sind unberührt und werden weiterhin an einer echten Order nachgezählt
+(`tests/test_orderpfad_verdrahtung.py`).
 
-**Warum das jetzt zählt.** Die gewählte Anlageklasse ist der Differenzkontrakt. Alle
-folgenden Stufen bauen darauf. Fällt die Antwort negativ aus, ist nicht eine Stufe
-betroffen, sondern die Instrumentenwahl — und damit der größte Teil dessen, was in Stufe 1
-bis 5 entstünde.
-
-**Empfehlung:** Die Anfrage jetzt versenden, vor Stufe 1. Sie kostet nichts und läuft
-parallel; die Antwortzeit ist die einzige Größe, die sich durch frühen Versand verkleinern
-lässt.
-
-**Alternative:** Weiterarbeiten und die Frage offenhalten. Zulässig, solange kein echtes
-Kapital eingesetzt wird — aber jede Stunde Arbeit an CFD-spezifischer Logik ist dann
-Arbeit unter Vorbehalt.
-
-**Der Agent tut hier nichts von selbst.** Nach §4 wird gemeldet, nicht unterstellt.
+**Der Agent hat hier nichts von selbst entschieden.** Angewiesen war die Entfernung;
+festgelegt hat der Agent nur ihre Reichweite (E-006) und die Behandlung der eingefrorenen
+Belege (E-007).
 
 ---
 
@@ -51,7 +40,7 @@ und §6 des projekteigenen `ABBRUCH.md`.
 | 1 | Kostentor rot | nicht ausgelöst (M1 grün, **ohne Reserve**; M2 gerissen: 13 von 18 Kostenzeilen über 50 % bei 4 Round-Turns/Tag und Hebel 5) |
 | 2 | Kein Kandidat übersteht die Deflation | **nicht** ausgelöst — höchster Deflated Sharpe 0,686 gegen Schwelle 0,95, aber der Messzeitpunkt ist 60 Versuche und das Register hält 7 |
 | 3 | Realisierte Kosten weichen ab | **ausgelöst mangels Messung** (kein Handelsbetrieb) |
-| 4 | Halal-Vorfrage negativ | offen → H-001 |
+| 4 | Halal-Vorfrage negativ | **aufgehoben am 2026-08-19** (H-001, E-006) |
 | 5 | Aufwandsgrenze | Frist **2027-08-17**, Uhr läuft |
 | 6 | Keine benennbare Vorteilsquelle | **ausgelöst** — fünf Zwangslagen benannt und gemessen, keine trägt die Kosten |
 
@@ -131,6 +120,22 @@ Neuausstellung kann nur der Kontoinhaber (§9.3).
 **Alternative:** Die Dateien nur löschen, ohne zu widerrufen. Nicht empfohlen: das
 beseitigt die Kopie, nicht die Gültigkeit.
 
+**Nachtrag 2026-08-19.** Der Auftraggeber hat angewiesen, den Altbestand vollständig zu
+entfernen. Der Haltepunkt bleibt trotzdem offen, und zwar aus zwei Gründen, die
+nebeneinander stehen:
+
+1. **Die Reihenfolge ist nicht verhandelbar.** Löschen vor Widerrufen beseitigt die Kopie
+   und lässt die Schlüssel gültig — die Lage wird unübersichtlicher, nicht sicherer.
+2. **Der Agent löscht die Daten nicht selbst.** Ein Verzeichnis mit 121 Commits und rund
+   1,4 GB Archiven unwiderruflich zu entfernen, ist eine Handlung, die niemand für den
+   Auftraggeber vornimmt. Die Befehle liegen ihm vor; ausführen muss er sie.
+
+**Was der Agent dazu getan hat:** in `mt5_trading_ai` gemessen, was den Namen des
+Altbestands noch trägt. Ergebnis: **kein Produktionscode, kein Test, kein Import** — nur
+Herkunfts- und Chronikangaben in `MASTERBERICHT.md` §1, `VERLUST.md`, `PROGRESS.md`,
+`docs/audit/` und den Stufenberichten. Die bleiben stehen (`geloescht.md`, Abschnitt zum
+Altbestand).
+
 ---
 
 ## H-004 — Das Ergebnistor ist erreicht: Befund (B)
@@ -209,10 +214,6 @@ Zeitrahmen und drei Hypothesen. Er sagt nicht, dass nirgends ein Vorteil existie
 
 ---
 
-*Stand dieser Datei: 4 Haltepunkte. H-004 ist der einzige, der den Auftrag beendet.*
-
-
----
-
-*Stand dieser Datei: 4 Eintraege. H-001 und H-003 offen, H-002 mit Nachtrag
-erledigt, H-004 beendet den Auftrag und liegt beim Auftraggeber.*
+*Stand dieser Datei am 2026-08-19: 4 Einträge. **H-001 erledigt** (aufgehoben, E-006),
+H-002 mit Nachtrag erledigt, **H-003 offen** — er wartet auf den Widerruf durch den
+Kontoinhaber, nicht auf Arbeit —, H-004 beendet den Auftrag und liegt beim Auftraggeber.*

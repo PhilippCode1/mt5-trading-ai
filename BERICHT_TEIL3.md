@@ -5,7 +5,7 @@ war: existiert auf EURUSD nach realistischen Kosten ein Edge? Getestet wurden na
 **drei** vorab festgeschriebene Hypothesen (Trendfolge, Mittelwertrückkehr, Volatilitäts-
 Ausbruch — jeweils nach E5 = weiterbauen). **Die Antwort ist Nein** — und ein sauber belegtes
 Nein ist der auftragsgemäße Ausgang, kein Scheitern. §11 dokumentiert das spätere Paket 5 auf
-ausdrückliche Anweisung, §12 den Halal-Pfad.*
+ausdrückliche Anweisung.*
 
 ---
 
@@ -93,9 +93,9 @@ habe ich es mit vier §9-Blickwinkeln und eigenen Gegenproben zerlegt:
   Deflated Sharpe **0,066** (6,6 % Wahrscheinlichkeit, echt zu sein, gegen 12 Versuche). Die
   **Minimum Track Record Length ist ≈ 79–97 Jahre** (§5) — mit 0,9 Jahren OoS ist das Ergebnis
   statistisch **nicht von null zu unterscheiden**.
-- **0,74 der 3,22 Prozentpunkte sind riba-Carry, kein Alpha.** Die 2024 short-lastige Strategie
-  kassiert positiven Short-EUR-Overnight-Swap (+1,51/Lot/Nacht laut Katalog, am optimistischen
-  Rand). Auf einem swapfreien Halal-Konto (S4) entfiele er. Der carry-freie Handelsertrag ist
+- **0,74 der 3,22 Prozentpunkte sind Overnight-Swap-Carry, kein Alpha.** Die 2024 short-lastige
+  Strategie kassiert positiven Short-EUR-Overnight-Swap (+1,51/Lot/Nacht laut Katalog, am
+  optimistischen Rand). Auf einem swapfreien Konto entfiele er. Der carry-freie Handelsertrag ist
   **+2,48 %** — das ist genau `net_over_hurdle` = gross − Hürde, der den Carry bereits ausschließt
   (nicht zu verwechseln mit dem Netto +3,22 %, das den Carry enthält).
 - **+3,22 % ist der selektierte Bessere aus zwei Hypothesen** auf demselben OoS-Block. Die
@@ -165,7 +165,7 @@ diesem Bericht (Tor E5, §10).
 | 5 | Kostenmodell | 8 % | 1 | 9 | 9 | abgenommen, negativ gefahren, Handrechnung stimmt |
 | 6 | Ausführungsqualität | 8 % | 2 | 6 | 6 | A/B-Book belegt, E3 vorgelegt |
 | 7 | Kapitalbasis | 6 % | 3 | 6 | 3 | Philipps Entscheidung, nicht baubar |
-| 8 | Regulatorische Passung | 5 % | 6 | 9 | 8 | E2 entschieden; Halal offen (S4) |
+| 8 | Regulatorische Passung | 5 % | 6 | 9 | 8 | E2 entschieden |
 | 9 | Betriebssicherheit | 5 % | 4 | 9 | 8 | CI grün, Seed/Prüfsumme/Commit je Lauf, reproduzierbar |
 | 10 | Nachweislage | 7 % | 0 | 6 | 1 | nur durch Zeit erreichbar (Monate Demo) |
 | 11 | Modellrisiko | 5 % | 3 | 8 | 6 | kein LLM im Entscheidungspfad |
@@ -257,7 +257,7 @@ Am schwächsten belegt ist die Aussage des zweiten Versuchs: **„der Handelsert
 Kostenhürde (+2,48 %) / das Signal ist positiv (+3,22 %)."** Nachgeprüft und auf drei Wegen
 entkräftet: (a) **Selektionsbias** — +3,22 % ist das Maximum aus zwei Hypothesen auf demselben
 OoS-Block; (b) **Zins statt Alpha** — 0,74 der 3,22 Prozentpunkte sind Overnight-Carry, auf
-einem Halal-Konto nicht vorhanden; (c) **statistisch null** — Deflated Sharpe 0,066, MinTRL
+einem swapfreien Konto nicht vorhanden; (c) **statistisch null** — Deflated Sharpe 0,066, MinTRL
 ≈ 79–97 Jahre, per-Trade-Sharpe ≈ 0,016. Ein vierter Einwand der Review (die Zahl hänge an der
 optimistischen Füllung zur Signal-Kerze) wurde an den echten Daten geprüft und **verworfen** —
 das Brutto bleibt bei Füllung eine Kerze später praktisch gleich (+17,31 % → +17,94 %). Das
@@ -272,8 +272,7 @@ Korrekturen erreichbar.
 - **S1** — vier Risikomodule (Verlustgrenzen, Sizing, Stop-Budget, Bewertungstor) sind nicht
   im Order-Pfad verdrahtet.
 - **S2** — kein Frische-Latch am Global-Halt (Befund 1 offen).
-- **S4** — **Halal:** gehebelte CFDs gelten mehrheitlich als *haram* — braucht Philipps
-  Entscheidung + Fatwa (Kernregel 16).
+- **S4** — entfallen (am 2026-08-19 ersatzlos aus dem Stand entfernt).
 - **S6** — Qualitätstor-/FX-Session-Härtung (NY-17:00-Anker, Feiertagskalender).
 - **S7** — Walk-Forward-Trainingsschritt (damit Purge/Embargo greifen) + volle
   Kriterien-Auswertung.
@@ -314,9 +313,9 @@ bereits sichtbar bestraft (der Mittelwertrückkehr-DSR fiel allein durch die dri
 von 0,066 auf 0,045). **TEIL 3 ist damit abgeschlossen.** Paket 5 (Ausbau, LLM, Demo-Betrieb)
 bleibt gesperrt — es gibt keinen bestandenen Test, auf dem es aufsetzen könnte (§7.3, §8). Der
 geprüfte Sicherheits-, Kosten-, Daten- und Backtest-Apparat bleibt bestehen und ist für einen
-künftigen, ehrlich registrierten Versuch bereit. Größter offener Block bleibt **S4 (Halal)** —
-der riba-Carry im zweiten Versuch hat konkret gezeigt, warum: ohne swapfreien Pfad ist weitere
-Arbeit auf gehebelten CFDs fraglich.
+künftigen, ehrlich registrierten Versuch bereit. Der Overnight-Swap-Carry im zweiten Versuch
+bleibt als Sachbefund stehen: 0,74 der 3,22 Prozentpunkte kamen aus der Finanzierung, nicht aus
+dem Signal.
 
 ---
 
@@ -328,7 +327,7 @@ umentschieden** und angewiesen, **Paket 5 dennoch zu bauen**. Das ist ein bewuss
 ausdrückliche Anweisung, hier klar als solche gekennzeichnet (Kernregel 6: eigene bzw. fremde
 Entscheidungen benennen). Die harten Sicherheitsregeln bleiben **unberührt**: kein Echtgeld,
 `allow_write` auf dem Live-Pfad geschlossen, ESMA-Hebel (konservativ 5:1), kein LLM im
-Entscheidungspfad ohne Beleg, Halal benannt.
+Entscheidungspfad ohne Beleg.
 
 Gebaut wurde die **Infrastruktur**, die §8 beschreibt — und ihre eigenen Tore bestätigen die
 Integrität, indem sie (korrekt) **nichts** durchlassen, solange kein Edge existiert:
@@ -367,44 +366,18 @@ der dieses Paket unter der gegebenen Faktenlage existieren kann — es widerspri
 
 ---
 
-## 12. Der Halal-Pfad (S4) — das mechanisch Erzwingbare, und die fiqh-Grenze
+## 12. Entfallen
 
-Halal-Konformität war von Anfang an Anforderung, nicht Präferenz (Kernregel 16), und der größte
-offene Block des Auftrags. Der konkrete Konflikt zeigte sich im zweiten Edge-Versuch: **+0,74
-Prozentpunkte des Netto waren reiner Overnight-Swap-Carry** — Zins (riba), den die short-lastige
-Strategie kassierte. Der Swap ist an **beiden** Enden Zins: gezahlt (negativer Swap) und, bei
-positivem Swap, als Gutschrift erhalten. Auf Nutzeranweisung wurde der Halal-Pfad gebaut.
+Dieser Abschnitt beschrieb einen Finanzierungs- und Screening-Pfad, den es seit dem
+2026-08-19 nicht mehr gibt: er wurde auf Anweisung des Auftraggebers ersatzlos aus dem
+Stand entfernt (`costs/halal.py`, `venue/halal.py`, das Live-Tor `_enforce_halal`, der
+Runner-Schritt und die zugehörigen Tests). Die Nummer bleibt besetzt, damit die Verweise
+in §1 und §10 nicht verrutschen.
 
-**Was gebaut wurde — und was der Code bewusst NICHT tut:**
+Der eine Messwert daraus, der zur Sache gehört und darum in §4 stehen bleibt: von den
++3,22 % Netto des zweiten Versuchs waren **160,06 USD** empfangener Overnight-Carry und
+damit 0,74 Prozentpunkte Finanzierung statt Signal. Am Sechs-Bedingungen-Tor änderte das
+nichts — mit wie ohne Carry lautete das Urteil **KEIN EDGE**.
 
-- **Swapfreie Finanzierung** (`costs/halal.py`): eine Politik ganz **ohne Zins** — weder gezahlt
-  noch erhalten —, stattdessen eine pauschale Verwaltungsgebühr je gehaltener Nacht (eine
-  Dienstleistungsgebühr, nicht zinsbasiert), kein Dreifach-Tag. Invariante, per Test gesichert:
-  die Finanzierung ist **nie negativ** → nie eine Gutschrift → nie riba-Ertrag. Ins Kostenmodell
-  additiv verdrahtet (`financing_policy`); der konventionelle Pfad bleibt unverändert (alle
-  bestehenden Tests grün).
-- **Halal-Screen** (`venue/halal.py`): prüft fail-closed nur das **mechanisch** Prüfbare —
-  swapfreies Konto, zinsfreie Margin, Instrument nicht offensichtlich verboten — und
-  zertifiziert **niemals** „halal". `requires_scholar_review` ist **immer** wahr: die
-  grundsätzliche fiqh-Frage (ob ein gehebelter CFD überhaupt zulässig ist — gharar, fehlendes
-  Eigentum, Termincharakter) entscheidet der Code nicht (Kernregel 16, „nicht allein").
+Was entfernt wurde und was der Wegfall am Orderpfad ändert: `AUFTRAG/geloescht.md`.
 
-**Gemessen (Mittelwertrückkehr, EURUSD OoS, konventionell vs. swapfrei):**
-
-| Größe | Konventionell | Swapfrei (Halal) |
-|---|---|---|
-| Carry-Gutschrift (riba) | **160,06 USD** | **0,00 USD** |
-| Netto | +3,22 % | +3,15 % |
-| Ergebnis am Sechs-Bedingungen-Tor | KEIN EDGE | **KEIN EDGE** |
-
-Die **riba ist eliminiert** (Gutschrift 0). Das Netto ändert sich kaum, weil die pauschale
-Gebühr (Schätzung: 5 USD/Lot/Nacht, Broker-Bestätigung nötig) zufällig nahe an der
-konventionellen Netto-Finanzierung liegt; die exakte Zahl hängt an dieser Schätzung, das
-**qualitative** Ergebnis nicht: **auf dem Halal-Pfad existiert genauso wenig ein Edge.** Der
-Halal-Pfad rettet nichts — er entfernt den Zins, mehr nicht.
-
-**Ehrliche Grenze:** Erledigt ist die mechanische Riba-Vermeidung (swapfreie Finanzierung +
-Screen). **Offen bleibt die fiqh-Grundentscheidung** — ob gehebelte CFDs für Philipp überhaupt
-zulässig sind. Das ist keine Codefrage; sie braucht einen Gelehrten und Philipps Entscheidung.
-Der Code erzwingt das Prüfbare und markiert diese Grenze bei jedem Screen, statt sie zu
-verwischen.

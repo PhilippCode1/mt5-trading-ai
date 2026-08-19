@@ -523,9 +523,6 @@ def test_strikte_politik_laesst_die_volle_kette_trotzdem_durch() -> None:
         side=Signal.LONG,
         config=RunnerConfig(
             cost_gate=CostGate(max_roundturn_cost_fraction=Decimal("0.0005")),
-            account_swap_free=True,
-            interest_bearing_margin=False,
-            scholar_review_id="scholar-test/eurusd-cfd",
         ),
         now=modul._TS,
         client_order_id="k3-strikt",
@@ -566,9 +563,6 @@ def test_der_runner_rechnet_die_spanne_mit_der_politik_des_managers() -> None:
         side=Signal.LONG,
         config=RunnerConfig(
             cost_gate=CostGate(max_roundturn_cost_fraction=Decimal("0.0005")),
-            account_swap_free=True,
-            interest_bearing_margin=False,
-            scholar_review_id="scholar-test/eurusd-cfd",
         ),
         now=modul._TS,
         client_order_id="k3-politik",

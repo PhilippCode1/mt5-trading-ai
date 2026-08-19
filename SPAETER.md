@@ -127,20 +127,12 @@ korrekt für den nicht-optimierten Edge-Test). Ebenfalls erledigt: die volle
 `evaluate_criteria`-Auswertung ist über `criteria_evidence(...)` an den Lauf gebunden und läuft
 im Edge-Test als Zusatz-Report neben dem Sechs-Bedingungen-Tor.
 
-## S4 — Halal-Konformität: mechanisch erledigt, fiqh-Grundfrage offen
+## S4 — entfallen
 
-**Mechanischer Teil erledigt** (BERICHT §12, `costs/halal.py` + `venue/halal.py`): swapfreie
-Finanzierung ohne Zins (nie riba-Gutschrift, per Test gesichert) + Halal-Screen (fail-closed,
-prüft swapfreies Konto / zinsfreie Margin / Instrument-Screen). Nachgewiesen: unter der
-swapfreien Politik fällt die riba-Carry-Gutschrift von 160,06 auf 0,00 USD; Ergebnis am
-Sechs-Bedingungen-Tor bleibt „kein Edge".
-
-**Offen bleibt die fiqh-Grundentscheidung:** ob ein gehebelter CFD überhaupt zulässig ist
-(gharar, fehlendes Eigentum, Termincharakter). Das entscheidet der Code bewusst **nicht** --
-`screen_halal` setzt `requires_scholar_review` immer auf wahr (Kernregel 16, „nicht allein
-entscheiden"). Braucht einen Gelehrten + Philipps Entscheidung, keine Codeänderung. Ebenso
-offen: der swapfreie Admin-Gebühr-Satz ist eine Schätzung (Broker-Bestätigung), und die
-Krypto-/Aktien-Geschäftsfeldprüfung ist markiert, aber nicht mit einer AAOIFI-Liste hinterlegt.
+Der Punkt ist am 2026-08-19 auf Anweisung des Auftraggebers samt der zugehörigen Module
+ersatzlos aus dem Stand entfernt worden. Die Nummer bleibt unbesetzt stehen, damit die
+Verweise S1…S9 in den älteren Berichten weiterhin auf dasselbe zeigen. Was entfernt wurde
+und was der Wegfall am Orderpfad ändert, steht in `AUFTRAG/geloescht.md`.
 
 ## S8 — Deflation auf die Trade-Level-Sharpe umstellen — ERLEDIGT (Abnahme-Paket 2)
 

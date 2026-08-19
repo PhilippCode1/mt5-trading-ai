@@ -194,9 +194,6 @@ def _admitted() -> CriteriaVerdict:
 def _config(**overrides: object) -> RunnerConfig:
     base: dict[str, object] = {
         "cost_gate": LENIENT_GATE,
-        "account_swap_free": True,
-        "interest_bearing_margin": False,
-        "scholar_review_id": "scholar-2026/eurusd-cfd",
     }
     base.update(overrides)
     return RunnerConfig(**base)  # type: ignore[arg-type]
@@ -224,7 +221,7 @@ def _run(**overrides: object):
 # --- Runner: die volle Kette ---------------------------------------------
 
 _SEAMS = {
-    "zulassung", "signal", "daten-tor", "halal", "hebel", "stop-preis",
+    "zulassung", "signal", "daten-tor", "hebel", "stop-preis",
     "kostentor", "limits", "evaluation", "stop-budget", "sizing", "submit", "buchung",
 }
 
@@ -265,18 +262,6 @@ def test_flat_signal_opens_nothing() -> None:
     assert not report.opened
     assert report.submitted is None
     assert {s.name for s in report.steps} == {"zulassung", "signal"}
-
-
-def test_halal_rejects_crypto() -> None:
-    report = _run(symbol="BTCUSD")
-    assert not report.opened
-    assert report.reject_reason == "halal_not_conformant"
-
-
-def test_missing_scholar_review_rejects() -> None:
-    report = _run(config=_config(scholar_review_id=""))
-    assert not report.opened
-    assert report.reject_reason == "halal_scholar_review_missing"
 
 
 def test_cost_gate_rejects_when_over_threshold() -> None:

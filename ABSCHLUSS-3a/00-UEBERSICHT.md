@@ -6,6 +6,17 @@ Broker-Konto, kein Handelsbetrieb, kein Schreibpfad. `allow_write=False` und
 
 ---
 
+> **Nachtrag 2026-08-19 — der Halal-Strang ist aus dem Stand entfernt.** Dieser Ordner
+> ist eingefroren und wird deshalb *nicht* umgeschrieben: er bleibt der Beleg dessen, was
+> zum genannten Stichtag vorlag. Die darin erwähnte Vorfrage, die zugehörigen Module
+> (`costs/halal.py`, `venue/halal.py`), das Live-Tor `_enforce_halal` und die Datei
+> `HALAL-VORFRAGE.md` gibt es seit dem 2026-08-19 nicht mehr — auf Anweisung des
+> Auftraggebers. Was genau entfernt wurde und was der Wegfall am Orderpfad ändert, steht
+> in [`../AUFTRAG/geloescht.md`](../AUFTRAG/geloescht.md). Verweise unten, die auf
+> Halal-Dateien zeigen, laufen entsprechend ins Leere.
+
+---
+
 ## Das Ergebnis in einer Zeile
 
 **M5 = GELB. Keine Strategiearbeit. Paket 3b wird nicht geschrieben.** Fünf strukturelle
@@ -124,7 +135,7 @@ zeigt, dass er nicht einmal an die Zwangslage gebunden ist, an der er hängen so
 | `ABSCHLUSS/06-ABBRUCHKRITERIUM.md` | Als auf Paket 2 eingefroren gekennzeichnet |
 
 **Was offen bleibt und bewusst offen bleibt:** die drei Fragen aus
-[`../HALAL-VORFRAGE.md`](../HALAL-VORFRAGE.md), die technische Restschuld aus
+`../HALAL-VORFRAGE.md` (entfernt am 2026-08-19), die technische Restschuld aus
 [`08-SPAETER.md`](08-SPAETER.md), und **53 von 60** Versuchen des Kampagnenbudgets,
 befristet bis 2027-08-17.
 

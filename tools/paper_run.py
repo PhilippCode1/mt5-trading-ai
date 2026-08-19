@@ -177,8 +177,6 @@ def run_paper(symbol: str, *, now: datetime | None = None) -> tuple[RunnerReport
     venue.adopt_book()  # Buch = Meldung -> ein sauberer erster Reconcile
     config = RunnerConfig(
         cost_gate=CostGate(max_roundturn_cost_fraction=Decimal("0.0005")),
-        account_swap_free=True, interest_bearing_margin=False,
-        scholar_review_id="scholar-demo/eurusd-cfd",
     )
     report = run_signal(
         venue=venue, risk_manager=risk_manager, admission=_demo_admission(),

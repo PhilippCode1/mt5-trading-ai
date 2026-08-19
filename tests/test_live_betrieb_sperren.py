@@ -57,6 +57,7 @@ from tools.live_betrieb import (
     Journal,
     Lage,
     _codestand,
+    _jsonfaehig,
     _notbremse,
     _schliesse,
     _verbindung_sichern,
@@ -767,3 +768,77 @@ def test_ohne_git_bleibt_der_codestand_unbekannt(
 
     monkeypatch.setattr(subprocess, "run", fake_run)
     assert _codestand() == "unbekannt"
+
+
+# --- Das Journal und die eingefrorene Uhr ----------------------------------
+def test_das_journal_wandelt_zeitstempel_auch_bei_ausgetauschter_uhr(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Roter Eichfall zu einem Defekt, der nur unter eingefrorener Uhr auftrat.
+
+    ``tools.live_betrieb.datetime`` ist zweierlei zugleich: die Uhr des Moduls
+    (jedes ``datetime.now(UTC)`` liest diesen Namen) und frueher auch der Typ, gegen
+    den ``_jsonfaehig`` prueft. Wer die Uhr zum Einfrieren durch eine Unterklasse
+    ersetzt -- wie es mehrere Faelle in dieser Datei tun --, verschob damit
+    unbeabsichtigt auch die Typpruefung: ein echter ``datetime`` ist keine Instanz
+    der Ersatzklasse, fiel unkonvertiert durch, und ``json.dumps`` warf mitten im
+    Schreiben eines Betriebssatzes.
+
+    Der Fall friert die Uhr genauso ein und schreibt einen Zeitstempel, der NICHT
+    von der Ersatzklasse stammt. Bindet ``_jsonfaehig`` seine Typpruefung wieder an
+    den Modulnamen, wird er rot.
+    """
+    fix = datetime(2026, 8, 17, 12, 0, tzinfo=UTC)
+
+    class _StehendeUhr(datetime):
+        @classmethod
+        def now(cls, tz: Any = None) -> datetime:  # noqa: ARG003 - Signatur der Basis
+            return fix
+
+    monkeypatch.setattr("tools.live_betrieb.datetime", _StehendeUhr)
+
+    j = _journal(tmp_path)
+    j.schreib("probe", seit=T0, verschachtelt=[{"seit": T0}])
+    satz = _saetze(j)[0]
+    assert satz["seit"] == T0.isoformat(timespec="seconds")
+    assert satz["verschachtelt"][0]["seit"] == T0.isoformat(timespec="seconds")
+
+
+def test_das_journal_wandelt_zeitstempel_ohne_ausgetauschte_uhr(tmp_path: Path) -> None:
+    """Der gruene Eichfall daneben: ohne Eingriff muss dasselbe herauskommen.
+
+    Ohne ihn belegte der rote Fall nur, dass es unter Eingriff geht -- nicht, dass
+    der Normalfall unveraendert blieb.
+    """
+    j = _journal(tmp_path)
+    j.schreib("probe", seit=T0, verschachtelt=[{"seit": T0}])
+    satz = _saetze(j)[0]
+    assert satz["seit"] == T0.isoformat(timespec="seconds")
+    assert satz["verschachtelt"][0]["seit"] == T0.isoformat(timespec="seconds")
+
+
+def test_jsonfaehig_prueft_nicht_gegen_den_modulnamen_datetime() -> None:
+    """Dieselbe Regel am Syntaxbaum festgenagelt, nicht an ihrer Wirkung.
+
+    Die beiden Faelle oben pruefen das Verhalten. Dieser haelt die Ursache fest:
+    die Typpruefung darf nicht auf dem Namen liegen, der zugleich die Uhr ist --
+    sonst kehrt der Defekt bei der naechsten Umformulierung still zurueck.
+    """
+    import ast
+    import inspect
+
+    baum = ast.parse(inspect.getsource(_jsonfaehig))
+    namen = {
+        arg.id
+        for aufruf in ast.walk(baum)
+        if isinstance(aufruf, ast.Call)
+        and isinstance(aufruf.func, ast.Name)
+        and aufruf.func.id == "isinstance"
+        for arg in ast.walk(aufruf.args[1])
+        if isinstance(arg, ast.Name)
+    }
+    assert "datetime" not in namen, (
+        "_jsonfaehig prueft wieder gegen den Modulnamen 'datetime' -- genau der wird "
+        "zum Einfrieren der Uhr ausgetauscht. Den Alias _DATETIME benutzen."
+    )
+    assert "_DATETIME" in namen, "Die Zeitstempel-Wandlung fehlt ganz."

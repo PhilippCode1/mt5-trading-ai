@@ -155,3 +155,70 @@ Skript legt nur Rohdateien an den Ort, an dem `--cache` sie ohnehin sucht.
 verworfen, sondern **vertagt**: sinnvoll, sobald belegt ist, dass die Drosselung kein
 Einzelfall dieser Umgebung ist. Eine Änderung am geprüften Werkzeug wegen einer einmal
 beobachteten Netzlage wäre verfrüht.
+
+---
+
+## E-006 — Der Halal-Strang wird ersatzlos entfernt, nicht stillgelegt
+
+**Datum:** 2026-08-19 · **Stufe:** nach dem Ergebnistor · **Entschieden von:**
+**Auftraggeber** (Anweisung: „Entferne halal-vorfrage komplett aus dem gesamten Projekt
+mit Code"). Die Ausführung und ihre Reichweite hat der ausführende Agent festgelegt.
+
+**Entscheidung.** Beide Module (`costs/halal.py`, `venue/halal.py`), das Live-Tor
+`Mt5Venue._enforce_halal`, der Runner-Schritt, die drei Konfigurationsfelder
+(`account_swap_free`, `interest_bearing_margin`, `scholar_review_id`), der Schalter
+`edge_test.py --halal`, das Feld `MarketSpec.financing_policy`, die zugehörigen Testfälle
+und die Datei `HALAL-VORFRAGE.md` samt ihrer Kopie sind gelöscht — nicht auskommentiert,
+nicht hinter einen Schalter gelegt, nicht als toter Zweig behalten. Bezifferung in
+`geloescht.md`.
+
+**Begründung.** Ein stillgelegtes Tor ist die schlechtere Lage als ein entferntes: Es steht
+weiter in der Doku, es wird weiter mitgetestet, und es erweckt den Eindruck einer Sperre,
+die nicht mehr sperrt. V1 verlangt für Code ohne Aufrufer im Ausführungspfad ohnehin die
+Löschung. Der Auftraggeber hat die Entfernung angewiesen; die halbe Ausführung hätte den
+Stand unehrlicher gemacht als beide Vollvarianten.
+
+**Was dadurch am Orderpfad wegfällt — ausdrücklich benannt.** `_enforce_halal` war ein
+fail-closed-Tor auf **jeder eröffnenden Live-Order**. Es hat zwei Dinge erzwungen: eine
+mechanische Kontokonfiguration und das Vorliegen einer hinterlegten menschlichen Freigabe.
+Beides ist weg. Der Live-Pfad ist damit um eine Sperre ärmer.
+
+**Was bleibt — gemessen, nicht behauptet** (`tests/test_orderpfad_verdrahtung.py` zählt es
+an einer echten Order nach): Idempotenz, Global-Halt-Latch, Stop-Pflicht, Frische-Latch,
+vierteilige Live-Freigabe, Hebel-Preflight, Kostentor, Verlustgrenzen, Drossel,
+Stop-Budget, Positionsgröße — und darunter `allow_write=False` sowie die Demo-Pflicht am
+Terminal. Der Wegfall betrifft keine dieser Sperren; die Zahl der zählenden Sollsperren
+aus Paket 2 A3.2 bleibt fünf.
+
+**Verworfene Alternative.** Das Tor behalten und nur die Vorfrage-Dokumente entfernen.
+Verworfen: Ein Tor, dessen Begründungsdokument fehlt, ist nicht prüfbar — man kann weder
+sagen, wogegen es schützt, noch wann es fallen dürfte. Das ist genau die Sorte Sperre, die
+später aus Unkenntnis entfernt wird.
+
+---
+
+## E-007 — Eingefrorene Belege werden ergänzt, nicht umgeschrieben
+
+**Datum:** 2026-08-19 · **Stufe:** nach dem Ergebnistor · **Entschieden von:** ausführender
+Agent
+
+**Entscheidung.** Die Anweisung „komplett aus dem gesamten Projekt" ist auf alle Dokumente
+angewandt worden, die den **heutigen** Stand beschreiben — und **nicht** auf die vier
+Bestände, die sich selbst als datierten Beleg ausweisen: `ABSCHLUSS/`, `ABSCHLUSS-3a/`,
+`docs/audit/` und `PROGRESS.md`. Diese vier haben stattdessen einen datierten Nachtrag
+bzw. einen angehängten Eintrag bekommen, und tote Verweise auf gelöschte Dateien sind
+entschärft.
+
+**Begründung.** `ABSCHLUSS/06` trägt im Kopf wörtlich „EINGEFROREN AUF DEM STAND VON
+PAKET 2 … wird bewusst NICHT mehr nachgezogen"; `PROGRESS.md` trägt „Angehaengt, nie
+ueberschrieben"; `check_doc_numbers.py` nimmt `PROGRESS.md` und `docs/audit/`
+ausdrücklich als historische Belege von der Prüfung aus. Ein Bericht vom 2026-08-17 so
+umzuschreiben, dass er 2026-08-19 nie etwas anderes gesagt hätte, ist keine Bereinigung,
+sondern eine Fälschung — und der ganze Auftrag steht darauf, dass diese Ordner belegen,
+was **vorher** gedacht wurde.
+
+**Was das konkret heißt.** In den vier Beständen stehen weiterhin Sätze über einen Strang,
+den es nicht mehr gibt. Jeder von ihnen ist über den Nachtrag am Kopf des jeweiligen
+Ordners bzw. den Schlusseintrag als überholt gekennzeichnet. Wer die vier Bestände
+ebenfalls bereinigt haben will, muss das anweisen — es ist eine Entscheidung über die
+Beweislage, nicht über den Code.

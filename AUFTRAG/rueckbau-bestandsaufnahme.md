@@ -29,28 +29,32 @@ hängt.
 Gemessen über alle `.py` ohne `__pycache__`; Bezugsgrößen getrennt nach Paket und
 Werkzeugen, weil das Vermischen die Prozentzahlen unlesbar macht.
 
-### Paket `mt5_trading_ai/` — 49 Dateien, 15.440 Zeilen
+### Paket `mt5_trading_ai/` — 47 Dateien, 15.248 Zeilen
+
+*Neu gemessen am 2026-08-19 nach dem Halal-Rückbau. Die Anteile verschieben sich dadurch
+nicht nennenswert: der entfernte Strang lag mit einem Modul in Gruppe A und einem in
+Gruppe B.*
 
 | Gruppe | Dateien | Zeilen | Anteil |
 |---|---:|---:|---:|
-| **A — Messapparat** (`backtest`, `data`, `costs`, `gates`) | 23 | **5.563** | 36 % |
-| **B — Handelsstrecke** (`venue`, `execution`, `betrieb`) | 20 | **8.889** | **58 %** |
+| **A — Messapparat** (`backtest`, `data`, `costs`, `gates`) | 22 | **5.500** | 36 % |
+| **B — Handelsstrecke** (`venue`, `execution`, `betrieb`) | 19 | **8.760** | **57 %** |
 | **C — Risikoschicht** (`risk`) | 5 | 975 | 6 % |
 | nicht klassifiziert (`__init__.py`) | 1 | 13 | — |
 
-### Werkzeuge `tools/` — 21 Dateien, 7.510 Zeilen
+### Werkzeuge `tools/` — 21 Dateien, 7.507 Zeilen
 
 | Gruppe | Dateien | Zeilen |
 |---|---:|---:|
-| **A — Messapparat** (`edge_test`, `fetch_data`, `aufloesung`, `ereignisstudie`, `atr_messung`, `kostentor`) | 6 | 3.326 |
-| **B — Handelsstrecke** (`live_betrieb`, `live_konsole`, `oberflaeche`, `paper_run`, `mt5_smoke`, `betrieb_auswerten`, `betrieb_reihe`, `journal_sichern`) | 8 | 3.109 |
+| **A — Messapparat** (`edge_test`, `fetch_data`, `aufloesung`, `ereignisstudie`, `atr_messung`, `kostentor`) | 6 | 3.318 |
+| **B — Handelsstrecke** (`live_betrieb`, `live_konsole`, `oberflaeche`, `paper_run`, `mt5_smoke`, `betrieb_auswerten`, `betrieb_reihe`, `journal_sichern`) | 8 | 3.114 |
 | Doku- und Prüfwerkzeuge (`check_*`, `gen_docs`, `geheimnis_scan`, …) | 7 | 1.075 |
 
 ### Die eine Zahl, auf die es ankommt
 
-**58 % des Pakets ist Handelsstrecke.** Sie existiert ausschließlich, um zu handeln — und
+**57 % des Pakets ist Handelsstrecke.** Sie existiert ausschließlich, um zu handeln — und
 für das Handeln gibt es nach dem Ergebnistor keinen belegten Grund. Rechnet man die
-Werkzeuge dazu, sind es **11.998 von 22.950 Zeilen**.
+Werkzeuge dazu, sind es **11.874 von 22.755 Zeilen**.
 
 ---
 
@@ -72,10 +76,10 @@ ist: ein Apparat, der eine Frage ehrlich beantwortet hat.
 Gruppe B entfernen, damit das Repository nicht länger eine Handelsfähigkeit vorhält, für
 die es keinen Grund gibt.
 
-- **Fällt weg:** 20 Paketdateien mit 8.889 Zeilen plus 8 Werkzeuge mit 3.109 Zeilen.
-- **Bleibt:** der Messapparat (A) und die Risikoschicht (C) — zusammen 6.538 Zeilen im
+- **Fällt weg:** 19 Paketdateien mit 8.760 Zeilen plus 8 Werkzeuge mit 3.114 Zeilen.
+- **Bleibt:** der Messapparat (A) und die Risikoschicht (C) — zusammen 6.475 Zeilen im
   Paket. Das ist genau der Teil, der den Befund getragen hat.
-- **Nebenwirkung, gemessen:** von den 1.406 Testfällen hängen große Teile an Gruppe B
+- **Nebenwirkung, gemessen:** von den 1.392 Testfällen hängen große Teile an Gruppe B
   (`test_mt5_venue`, `test_bar_geschlossen`, `test_live_betrieb_sperren`,
   `test_oberflaeche_kacheln`, `test_handelszeiten` …). Ein Rückbau ist keine Löschaktion,
   sondern ein Umbau mit eigener Abnahme.
@@ -114,13 +118,18 @@ Unabhängig von der Wahl — das ist keine Empfehlung zur Sache, sondern zur Auf
 
 ---
 
-## Zwei offene Punkte, die von H-004 unabhängig sind
+## Ein offener Punkt, der von H-004 unabhängig ist
 
-Sie fallen unter keine der drei Optionen und bleiben in jedem Fall:
+Hier standen am 2026-08-19 zwei. Einer ist seither erledigt; er bleibt durchgestrichen
+stehen, weil er dem Auftraggeber als Entscheidungsgrundlage vorgelegen hat und ein still
+verschwundener Punkt nicht nachprüfbar wäre.
 
-- **`tools/live_betrieb.py:604`** schreibt ein rohes `datetime` ins Journal und wirft
-  `TypeError` — auf dem risikoreduzierenden Pfad. Der einzige rote Testfall des Standes.
-  Bei Option 2 fällt die Datei ohnehin weg; bei Option 1 und 3 bleibt der Defekt.
+- ~~`tools/live_betrieb.py:604` — roher `datetime` im Journal.~~ **Am 2026-08-19
+  berichtigt und erledigt.** Es war kein Produktionsdefekt: der Produktionspfad wandelte
+  Zeitstempel immer korrekt, rot war der Fall nur unter dem Testaufbau. Meine Fehldiagnose
+  steht als F-008 in [`fehler.md`](fehler.md); die Ursache (ein Modulname, der zugleich Uhr
+  und Typ war) ist behoben und mit rotem und grünem Eichfall festgehalten. **Damit hängt an
+  H-004 ein Punkt weniger.**
 - **`SPAETER.md` S9** — bei entarteter Streuung sättigt die Deflation der Ereignisstudie
   auf 1,0. Für die gefahrenen Läufe folgenlos, aber unbemerkt in die schmeichelnde
   Richtung.

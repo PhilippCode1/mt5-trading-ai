@@ -110,9 +110,84 @@ die Feldwahl per Syntaxbaum festgenagelt — steht in `stufen/03-simulator/beric
 
 Befund (B) heißt nach §1: *„Es wird zurückgebaut oder aufgegeben."* Beides ist eine
 Entscheidung des Auftraggebers (H-004), und beide Wege sind noch offen. **Ich habe
-deshalb nichts entfernt** — 58 % des Pakets (8.889 von 15.440 Zeilen) sind
+deshalb nichts entfernt** — 58 % des Pakets (8.889 von 15.440 Zeilen, gemessen am
+2026-08-19 vor dem Halal-Rückbau; danach 8.760 von 15.248, also 57 %) sind
 Handelsstrecke und stünden bei Option 2 zur Disposition, aber ein Rückbau, der die Wahl
 vorwegnimmt, wäre keine Ausführung des Vertrags, sondern ihre Umgehung.
 
 Was an jeder der drei Optionen hängt, ist beziffert in
 [`rueckbau-bestandsaufnahme.md`](rueckbau-bestandsaufnahme.md).
+
+---
+
+## Am 2026-08-19 gelöscht — der Halal-Strang
+
+Auf Anweisung des Auftraggebers (E-006), nach dem Ergebnistor. Gemessen, nicht geschätzt:
+**Python +117/−425 Zeilen, Markdown +236/−579 Zeilen** über 35 Dateien.
+
+### Ganz entfernte Dateien
+
+| Datei | Was sie war |
+|---|---|
+| `mt5_trading_ai/costs/halal.py` | swapfreie Finanzierungspolitik ohne Zins |
+| `mt5_trading_ai/venue/halal.py` | der mechanische Screen samt Urteilsobjekt |
+| `tests/test_halal.py` | die Testfälle beider Module |
+| `HALAL-VORFRAGE.md` | die Vorlage für die Anfrage |
+| `ABSCHLUSS/05-HALAL-VORFRAGE.md` | ihre wortgleiche Kopie im Abschlussordner |
+
+### Aus bestehenden Dateien entfernt
+
+| Ort | Was |
+|---|---|
+| `venue/mt5.py` | Methode `_enforce_halal` (40 Zeilen) **und ihr Aufruf** in `submit_order` |
+| `execution/runner.py` | Schritt 3 der Kette; die Folgeschritte sind lückenlos neu nummeriert |
+| `execution/runner.py` | `RunnerConfig.account_swap_free` / `.interest_bearing_margin` / `.scholar_review_id` |
+| `costs/model.py` | Parameter `financing_policy`; die Swap-Rechnung läuft jetzt unbedingt |
+| `backtest/engine.py` | Feld `MarketSpec.financing_policy` samt Durchreichung |
+| `tools/edge_test.py` | Schalter `--halal` |
+| `tools/live_betrieb.py`, `tools/live_konsole.py`, `tools/paper_run.py` | die drei Konfigurationswerte an den Aufrufstellen |
+| `tests/test_mt5_venue.py` | drei Fälle (57 → 54) |
+| `tests/test_paper_runner.py` | zwei Fälle; die Naht `halal` aus der Nahtliste |
+| `tests/test_stop_budget_kostenbasis.py` | zwei Aufrufstellen |
+
+### Was der Wegfall am Orderpfad ändert — und was nicht
+
+`_enforce_halal` war ein **fail-closed-Tor auf jeder eröffnenden Live-Order**. Es ist weg;
+der Live-Pfad hat eine Sperre weniger. Es ist **kein** Ersatz gebaut worden, weil kein
+Ersatz gefordert war.
+
+Was den Orderpfad weiterhin sperrt, gezählt an einer echten Order von
+`tests/test_orderpfad_verdrahtung.py`: Idempotenz, Global-Halt-Latch, Stop-Pflicht,
+Frische-Latch, vierteilige Live-Freigabe, Hebel-Preflight, Kostentor, Verlustgrenzen,
+Drossel, Stop-Budget, Positionsgröße — darunter `allow_write=False` und die Demo-Pflicht
+am Terminal. Die fünf zählenden Sollsperren aus Paket 2 A3.2 sind unverändert fünf.
+
+### Was **nicht** gelöscht wurde, obwohl es „Halal" sagt
+
+`ABSCHLUSS/`, `ABSCHLUSS-3a/`, `docs/audit/` und `PROGRESS.md` weisen sich selbst als
+eingefrorene bzw. angehängte Belege aus. Sie sind ergänzt, nicht umgeschrieben (E-007):
+Nachtrag am Kopf des jeweiligen Ordners, Schlusseintrag in `PROGRESS.md`, tote Verweise auf
+gelöschte Dateien entschärft. Wer auch dort bereinigt haben will, muss es anweisen.
+
+---
+
+## Zum Altbestand `bitget-btc-ai` — Stand 2026-08-19
+
+Die Anweisung, ihn vollständig zu entfernen, liegt vor. **Ausgeführt ist sie nicht.** Zwei
+getrennte Gründe, beide unverändert:
+
+1. **Das Verzeichnis und die Archive liegen außerhalb dieses Repositoriums** — unter
+   `C:\Users\Acer\OneDrive\Documents\Cursor1\` — und enthalten Zugangsdaten im Klartext
+   (H-003). Eine Löschung vor dem Widerruf beseitigt die Kopie, nicht die Gültigkeit der
+   Schlüssel. Widerrufen kann sie nur der Kontoinhaber.
+2. **Ich lösche keine Daten des Auftraggebers unwiderruflich.** Ein `.git` mit 121 Commits
+   und rund 1,4 GB Archiven ist über keinen Papierkorb dieser Größenordnung
+   wiederherstellbar. Die Befehle stehen im Schlussbericht; ausführen muss sie der
+   Auftraggeber.
+
+**In diesem Repositorium** trägt der Name nur noch Herkunftsangaben: `MASTERBERICHT.md` §1
+(woraus der Kern gelöst wurde), `VERLUST.md` (was dabei bewusst zurückblieb), `PROGRESS.md`
+und `docs/audit/` (Chronik) sowie die Berichte unter `AUFTRAG/stufen/` (die Messung, auf
+der die Wahl des Standes beruht). **Kein Produktionscode, kein Test, kein Import.** Diese
+Angaben bleiben: Ein Paket, das nicht mehr sagen kann, woraus es gelöst wurde, ist nicht
+sauberer, sondern herkunftslos.

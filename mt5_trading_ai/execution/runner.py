@@ -3,7 +3,7 @@
 Die Naehte aus Paket 3-5 sind einzeln verdrahtet und getestet; dieser Runner fuehrt sie
 in EINEM Durchlauf je Signal zusammen und quittiert jede als Checklisten-Punkt:
 
-    Zulassung(§9.3) -> Signal -> Daten-Tor -> Halal -> Hebel -> Kostentor -> Stop-Preis
+    Zulassung(§9.3) -> Signal -> Daten-Tor -> Hebel -> Kostentor -> Stop-Preis
     -> Limits -> Evaluation -> Stop-Budget -> Sizing -> submit_order -> Buchung.
 
 **Warum das Kostentor vor dem Stop-Preis steht.** Die Budget-Untergrenze ist eine
@@ -19,7 +19,7 @@ wird jetzt weiterverwendet, statt nur protokolliert zu werden.
 **Warum die Tore hier explizit stehen und nicht nur ueber submit_order laufen:** der
 Runner quittiert jede Naht einzeln. ``submit_order`` faellt bei der ersten Sperre mit
 einer Begruendung aus; die Checkliste braucht dagegen je Naht ein Ergebnis, auch fuer
-die Naehte hinter der ersten roten. Ausserdem sind Kostentor und Halal-Screen am Venue
+die Naehte hinter der ersten roten. Ausserdem ist das Kostentor am Venue
 demo-frei (kein Echtgeld, keine reale Zinsbelastung) -- der Runner faehrt sie trotzdem,
 damit die Nachweisfahrt sie belegt.
 
@@ -51,7 +51,6 @@ from mt5_trading_ai.gates.criteria import CriteriaVerdict
 from mt5_trading_ai.risk.leverage import clamp_leverage
 from mt5_trading_ai.risk.sizing import StopFloorInputs, executable_stop_floor
 from mt5_trading_ai.risk.stop_budget import cost_bps_from_fraction
-from mt5_trading_ai.venue.halal import screen_halal
 from mt5_trading_ai.venue.mt5 import Mt5Venue
 from mt5_trading_ai.venue.protocol import (
     AccountState,
@@ -74,10 +73,8 @@ RUNNER_VERSION = "paper-runner-v1"
 class RunnerConfig:
     """Politik/Konfiguration des Runners fuer eine eroeffnende Order.
 
-    ``account_swap_free``/``interest_bearing_margin``/``scholar_review_id`` speisen den
-    Halal-Screen (Defaults konservativ = nicht konform, wie am Venue). ``cost_gate``
-    traegt die im Backtest vorausgesetzte Kostenobergrenze; ``requested_leverage`` den
-    Hebelwunsch (fehlt er -> konservativer Klassendefault).
+    ``cost_gate`` traegt die im Backtest vorausgesetzte Kostenobergrenze;
+    ``requested_leverage`` den Hebelwunsch (fehlt er -> konservativer Klassendefault).
 
     Ein Feld ``measured_cost_bps`` gibt es hier bewusst **nicht** mehr. Es stand hier,
     wurde von keinem Aufrufer je gefuellt, und daneben mass der Runner die Kosten
@@ -89,9 +86,6 @@ class RunnerConfig:
     """
 
     cost_gate: CostGate
-    account_swap_free: bool = False
-    interest_bearing_margin: bool = True
-    scholar_review_id: str = ""
     requested_leverage: object | None = None
     #: Gleichzeitig erlaubte Positionen -- Bezugsgroesse des Margendeckels. Gleich
     #: der Vorgabe in ``ThrottlePolicy``/``LossLimits``, damit die erste Position
@@ -225,21 +219,7 @@ def run_signal(
             detail="Paper-Runner laeuft nur auf einem Demokonto")
     report.add("daten-tor", True, f"ref={ref} spread={quote.spread}")
 
-    # 3) Halal-Screen (am Venue demo-frei -> hier bindend, damit belegt).
-    halal = screen_halal(
-        asset_class=instrument.asset_class,
-        account_swap_free=config.account_swap_free,
-        interest_bearing_margin=config.interest_bearing_margin,
-    )
-    if not halal.mechanically_conformant:
-        return report._reject("halal", "halal_not_conformant",
-                              detail=", ".join(halal.reasons))
-    if not config.scholar_review_id.strip():
-        return report._reject("halal", "halal_scholar_review_missing",
-                              detail="keine Gelehrten-Freigabe hinterlegt")
-    report.add("halal", True, "mechanisch konform + Gelehrten-Freigabe hinterlegt")
-
-    # 4) Hebel-Klammer: effektiver Hebel (einzige gueltige Quelle fuer Budget + Sizing).
+    # 3) Hebel-Klammer: effektiver Hebel (einzige gueltige Quelle fuer Budget + Sizing).
     lev = clamp_leverage(
         requested=config.requested_leverage,
         asset_class=instrument.asset_class.value,
@@ -249,7 +229,7 @@ def run_signal(
     eff_lev = lev.leverage
     report.add("hebel", True, f"eff_lev={eff_lev} ({lev.binding})")
 
-    # 5) Kostentor (am Venue demo-frei -> hier bindend, damit belegt). Es steht VOR dem
+    # 4) Kostentor (am Venue demo-frei -> hier bindend, damit belegt). Es steht VOR dem
     # Stop-Preis, weil seine Kostenquote die Budget-Untergrenze traegt (s. Docstring).
     # Gemessen wird am Mindestvolumen, obwohl die endgueltige Groesse erst in Schritt 8
     # feststeht: die Quote ist volumeninvariant -- Spread, Kommission und Slippage sind
@@ -275,7 +255,7 @@ def run_signal(
                f"cost_fraction={cost.cost_fraction} "
                f"({gemessene_kosten_bps:.2f} bp roundturn, gemessen)")
 
-    # 6) Stop-Distanz (bps) -> Stop-PREIS. Floor gegen Budget-Spanne je Klasse/Hebel.
+    # 5) Stop-Distanz (bps) -> Stop-PREIS. Floor gegen Budget-Spanne je Klasse/Hebel.
     floor = executable_stop_floor(
         StopFloorInputs(
             spread_bps=_spread_bps(quote.bid, quote.ask),
@@ -345,7 +325,7 @@ def run_signal(
         wirksam_bps = abs(ref - stop_loss) / ref * Decimal("10000")
     report.add("stop-preis", True, f"{wirksam_bps:.1f}bps -> stop={stop_loss}")
 
-    # 7) Kandidaten-OrderRequest (vorlaeufiges Volumen = Mindestvolumen). Die gemessene
+    # 6) Kandidaten-OrderRequest (vorlaeufiges Volumen = Mindestvolumen). Die gemessene
     # Kostenlage reist im ``meta`` mit: ``submit_order`` faehrt die Risikoschicht ein
     # zweites Mal, und diese zweite Pruefung darf nicht milder rechnen als die erste --
     # ohne die Zahl griffe sie zur Annahmetabelle und liesse einen Stop durch, den der
@@ -363,7 +343,7 @@ def run_signal(
         },
     )
 
-    # 8) Risikoschicht: Limits -> Evaluation -> Stop-Budget -> Sizing (fusioniert).
+    # 7) Risikoschicht: Limits -> Evaluation -> Stop-Budget -> Sizing (fusioniert).
     auth = risk_manager.authorize_opening(
         instrument=instrument, request=request, account=account, price=ref,
         spread_bps=_spread_bps(quote.bid, quote.ask), leverage=eff_lev, now=now,
@@ -416,9 +396,9 @@ def run_signal(
     else:
         report.add("margen-deckel", True, "nicht bindend")
 
-    # 9) Submit: die eigentliche Paper-Order. ``submit_order`` erzwingt Hebel, Frische
+    # 8) Submit: die eigentliche Paper-Order. ``submit_order`` erzwingt Hebel, Frische
     # und die volle Risikoschicht erneut (auf jedem Konto), auf Live zusaetzlich
-    # Halal-Screen, Live-Freigabe und Kostentor -- Defense-in-Depth.
+    # Live-Freigabe und Kostentor -- Defense-in-Depth.
     request = replace(request, volume=sized_volume)
     try:
         result = venue.submit_order(request)
@@ -428,7 +408,7 @@ def run_signal(
     report.submitted = result
     report.add("submit", result.accepted, f"venue_order_id={result.venue_order_id}")
 
-    # 10) Buchung: den akzeptierten Fill der Risikoschicht melden (Frequenz/Deckel).
+    # 9) Buchung: den akzeptierten Fill der Risikoschicht melden (Frequenz/Deckel).
     # Genau EINMAL. Seit Paket 2 (A3) faehrt ``submit_order`` die Risikoschicht auf
     # jedem Konto und bucht den Fill selbst. Teilt sich der Runner denselben Manager
     # mit dem Venue -- der Regelfall, weil zwei getrennte Zaehlerstaende keiner

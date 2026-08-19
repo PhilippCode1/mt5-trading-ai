@@ -120,10 +120,6 @@ def _released_settings() -> SimpleNamespace:
         live_release_risk_limits_configured=True,
         live_release_venue_demo_verified=True,
         live_release_id="2026-08-11/eurusd/v1",
-        # Halal-Config (Paket 5): swapfrei, zinsfreie Margin, Gelehrten-Freigabe belegt.
-        halal_account_swap_free=True,
-        halal_interest_bearing_margin=False,
-        halal_scholar_review_id="scholar-2026-08-11/eurusd-cfd",
     )
 
 
@@ -781,44 +777,8 @@ def test_der_konstruktor_nimmt_kein_fertiges_reifeurteil_mehr() -> None:
     assert "demo_live_verdict" in params
 
 
-def test_non_halal_instrument_rejected() -> None:
-    # Krypto ist fiqh-umstritten -> mechanisch nicht konform -> Ablehnung vor dem Send.
-    venue, terminal = _venue(
-        is_demo=False, settings=_released_settings(), demo_registration=_reifer_demo_beleg()
-    )
-    with pytest.raises(OrderRejectedError) as ex:
-        venue.submit_order(_order(symbol="BTCUSD", stop_loss=Decimal("59000")))
-    assert ex.value.reason == "halal_not_conformant"
-    assert terminal.order_send_calls == 0
-
-
-def test_swap_bearing_account_rejected() -> None:
-    settings = _released_settings()
-    settings.halal_account_swap_free = False  # nicht swapfrei -> overnight-Zins (riba)
-    venue, terminal = _venue(
-        is_demo=False, settings=settings, demo_registration=_reifer_demo_beleg()
-    )
-    with pytest.raises(OrderRejectedError) as ex:
-        venue.submit_order(_order(volume=Decimal("0.01")))
-    assert ex.value.reason == "halal_not_conformant"
-
-
-def test_missing_scholar_review_rejected() -> None:
-    # Kernregel 16: ohne hinterlegte Gelehrten-Freigabe keine Live-Eroeffnung -- auch
-    # bei mechanisch konformem, swapfreiem EURUSD. Der Code entscheidet fiqh nicht.
-    settings = _released_settings()
-    settings.halal_scholar_review_id = ""  # keine Gelehrten-Entscheidung hinterlegt
-    venue, terminal = _venue(
-        is_demo=False, settings=settings, demo_registration=_reifer_demo_beleg()
-    )
-    with pytest.raises(OrderRejectedError) as ex:
-        venue.submit_order(_order(volume=Decimal("0.01")))
-    assert ex.value.reason == "halal_scholar_review_missing"
-    assert terminal.order_send_calls == 0
-
-
 def test_demo_opening_skips_compliance_gates() -> None:
-    # Demo: kein Echtgeld -> Halal-Screen und Demo-Reife entfallen; Krypto ginge durch.
+    # Demo: kein Echtgeld -> die Demo-Reife entfaellt; Krypto ginge durch.
     # Die RISIKOschicht entfaellt seit A3 NICHT -- der Stop liegt darum ueber der
     # Kostenuntergrenze der Klasse (Krypto: 400 bp).
     venue, terminal = _venue(is_demo=True, risk_manager=_krypto_risk())

@@ -235,3 +235,8 @@ schreibt ein rohes `datetime` ins Journal und wirft `TypeError` — auf dem
 risikoreduzierenden Pfad. Er liegt seit `6cf80a6` im eingecheckten Code; der ihn zeigende
 Test kam mit `cc0d340` dazu. **Er wird hier nicht behoben:** das ist Stufe 4 (V5), und der
 Auftrag verlangt genau eine Stufe.
+
+> **Berichtigung 2026-08-19:** Die hier als Produktionsdefekt geführte Stelle war keiner.
+> Der rote Fall entstand allein aus dem Testaufbau (ausgetauschte Uhr, geteilter Modulname
+> für Uhr und Typ). Vollständige Ursachenanalyse: [`fehler.md`, F-008](../../fehler.md#f-008--ich-habe-einen-testfehler-drei-stufen-lang-als-produktionsdefekt-geführt).
+> Behoben am 2026-08-19.

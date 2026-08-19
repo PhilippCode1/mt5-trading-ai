@@ -135,34 +135,16 @@ Flow-Transparenz nicht messbar.
 
 ---
 
-## 7. Halal-Prüfung (R1.6) — ein gravierender Konflikt (Kernregel 16)
+## 7. Entfallen
 
-**Zinsbestandteile (riba):** (1) Der **Overnight-Swap ist riba al-nasī'a** (Verzugszins aus
-Zinsdifferenzial + Aufschlag). (2) **Verzinste Margin/Hebel** ist riba, wenn auf das Darlehen
-Zins berechnet wird. (3) **Spread + Kommission sind KEIN Zins** — Entgelt/Marge, unproblematisch.
+Dieser Abschnitt trug die Prüfung, die am 2026-08-19 auf Anweisung des Auftraggebers
+ersatzlos aus dem Stand entfernt wurde. Die Nummer bleibt besetzt, damit §8 bis §10 ihre
+Nummern behalten. Was entfernt wurde: `AUFTRAG/geloescht.md`.
 
-**Swapfreie Konten lösen das nur teilweise:** Sie streichen den Swap, ersetzen ihn aber meist
-durch eine Admin-/Haltegebühr (z. B. Exness 75 USD/Lot/Nacht nach Karenz; Pepperstone-EU
-50 USD/Lot je 10 Tage) oder einen verbreiterten Spread. **Neuer Konflikt:** Skaliert die Gebühr
-mit Haltedauer oder Zinsdifferenzial, ist sie „riba in Verkleidung" (halal-washing); die
-Karenz-Falle (frei, dann Tagesgebühr) = aufgeschobener Zins. Halal nur als **fixes, zeit-/
-zinsunabhängiges** Service-Entgelt.
-
-**Gelehrten-Sicht auf CFDs allgemein — Mehrheitskonsens: haram.** AAOIFI (Shariah Standard
-Nr. 1, 2000-05-31), Islamic Fiqh Council der MWL, FCNA stufen konventionelle **gehebelte CFDs/
-Forex mehrheitlich als haram** ein, aus vier Gründen: (i) **kein Eigentum/Besitz (qabd)** — der
-CFD ist ein Differenzkontrakt, verletzt die bai-al-sarf-Regel; (ii) **gharar** (übermäßige
-Unsicherheit durch Hebel); (iii) **maysir/qimār** (reine Preisspekulation, Glücksspielcharakter);
-(iv) **riba** über Swap und verzinste Margin. Mufti Taqi Usmani: haram außer bei Spot,
-ungehebelt, Zug-um-Zug. Minderheit: Spot ohne Hebel, swapfrei, mit echtem Besitz ggf. erlaubt.
-
-**Tragfähige Alternativen** (Kernregel 16): Sharia-gescreente Aktien, Halal-/Islamic-ETFs (real
-gehaltene Basiswerte, z. B. UMMA, SPUS), Sukuk (SPSK), physisches voll-allokiertes Gold.
-
-> **Das ist kein Randdetail.** Der gesamte MT5-**CFD**-Ansatz kollidiert mit der
-> Halal-Anforderung. Ich benenne den Konflikt (Regel 16) und **entscheide ihn nicht**. Für eine
-> verbindliche Bewertung ist eine persönliche Fatwa eines qualifizierten Gelehrten nötig; die
-> hier zitierten Blogs sind Sekundärquellen. Dies ist keine Rechts-/Finanzberatung.
+Was sachlich davon bleibt und in §3 steht: swapfreie Konten ersetzen den Overnight-Swap
+in der Regel durch eine Admin-/Haltegebühr (Exness 75 USD/Lot/Nacht nach Karenz,
+Pepperstone-EU 50 USD/Lot je 10 Tage) oder einen verbreiterten Spread — sie sind also
+nicht kostenlos, sondern anders bepreist.
 
 ---
 
@@ -197,5 +179,6 @@ Aktien) liegt die Hürde deutlich höher.
    nachmessen (gehört zum Datenfundament, Paket 2).
 2. Gold-Kommission (spread-only vs. Razor-Gold) und AAPL-Short-Swap-Vorzeichen am Ziel-Broker
    verifizieren.
-3. Halal-Konflikt (§7) — Entscheidung Philipps + Fatwa; als **S4** in `SPAETER.md` vermerkt.
+3. Swapfreie Kontogebühren (§7) — am Ziel-Broker verbindlich bestätigen; die
+   veröffentlichten Sätze sind Sekundärquellen.
 4. Broker-Wahl → **Tor E3** (unten).
