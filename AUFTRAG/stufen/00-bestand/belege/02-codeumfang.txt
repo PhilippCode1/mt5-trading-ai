@@ -1,0 +1,10 @@
+# Beleg 2 — Produktionscode (Zeilen), erhoben 2026-08-19T15:15:26Z
+## mt5_trading_ai (Paket mt5_trading_ai/)
+15376
+Dateien: 49
+## bitget-btc-ai (services/*/src + shared/python/src + config, ohne .venv)
+101323
+## strategy-validation (src/ eigener Code)
+871
+## strategy-validation (vendor/ fremder Code)
+3577

@@ -1,0 +1,29 @@
+# Beleg 5 — der eine sachliche Testfehler, ausgefuehrt 2026-08-19T15:17:09Z
+Kommando: python -m pytest tests/test_live_betrieb_sperren.py::test_die_hoechsthaltedauer_greift_genau_auf_der_grenze -q
+
+>       j, _, _ = _takt(tmp_path, venue, max_haltedauer=timedelta(hours=4))
+
+tests\test_live_betrieb_sperren.py:586: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\test_live_betrieb_sperren.py:443: in _takt
+    lage, gestoppt = takt(
+tools\live_betrieb.py:604: in takt
+    journal.schreib(
+tools\live_betrieb.py:173: in schreib
+    fh.write(json.dumps(zeile, ensure_ascii=False) + "\n")
+..\AppData\Local\Programs\Python\Python311\Lib\json\__init__.py:238: in dumps
+    **kw).encode(obj)
+..\AppData\Local\Programs\Python\Python311\Lib\json\encoder.py:200: in encode
+    chunks = self.iterencode(o, _one_shot=True)
+..\AppData\Local\Programs\Python\Python311\Lib\json\encoder.py:258: in iterencode
+    return _iterencode(o, 0)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <json.encoder.JSONEncoder object at 0x0000021888CFE410>
+o = datetime.datetime(2026, 8, 17, 8, 0, tzinfo=datetime.timezone.utc)
+
+    def default(self, o):
+        """Implement this method in a subclass such that it returns
+=========================== short test summary info ===========================
+FAILED tests/test_live_betrieb_sperren.py::test_die_hoechsthaltedauer_greift_genau_auf_der_grenze
+1 failed in 0.48s

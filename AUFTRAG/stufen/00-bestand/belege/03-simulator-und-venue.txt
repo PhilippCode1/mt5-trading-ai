@@ -1,0 +1,62 @@
+# Beleg 3 — Simulator und Handelsplatz-Adapter, erhoben 2026-08-19T15:15:45Z
+
+## Frage A: Wo liegt ein Simulator mit Kostenmodell?
+### mt5_trading_ai
+Dateien unter mt5_trading_ai/backtest/:
+__init__.py
+edge.py
+engine.py
+ereignisstudie.py
+kalender.py
+llm_compare.py
+provenance.py
+resolution.py
+splits.py
+strategies.py
+Zeilen backtest/: 2492
+Kostenmodell im Simulator verdrahtet (grep auf den Import):
+37:    order_roundturn_cost,
+292:        breakdown = order_roundturn_cost(
+Lookahead-Sperre im Simulator:
+6
+
+### strategy-validation
+Eigene Quelldateien:
+src/strategy_validation/bootstrap.py
+src/strategy_validation/config.py
+src/strategy_validation/costs.py
+src/strategy_validation/data/bars.py
+src/strategy_validation/data/binance.py
+src/strategy_validation/data/__init__.py
+src/strategy_validation/splits.py
+src/strategy_validation/spread.py
+src/strategy_validation/__init__.py
+Treffer fuer Simulator/Engine/Backtest-Definitionen im eigenen Code: 0
+Ergebnisartefakte (jsonl/parquet/csv) im Baum: 0
+
+### bitget-btc-ai
+Dateien unter services/learning-engine/.../backtest/:
+__init__.py
+determinism_manifest.py
+metrics.py
+routes.py
+runner_replay.py
+splits.py
+Vorkommen von fee|slippage|funding|commission|spread in runner_replay.py: 0
+
+## Frage B: Welcher Handelsplatz-Adapter?
+mt5_trading_ai — Dateien mit 'bitget': 0
+mt5_trading_ai — Dateien mit 'MetaTrader5|mt5': 76
+bitget-btc-ai — Dienste unter services/: 15
+bitget-btc-ai — Broker-Adapter:
+__init__.py
+mt5_adapter.py
+strategy-validation — Datenquelle: __init__.py __pycache__ bars.py binance.py 
+
+## Berichtigung zu Frage B (der Ordner brokers/ war nicht die ganze Antwort)
+bitget-btc-ai bindet Bitget nicht ueber brokers/, sondern direkt im live-broker:
+bitget_exchange_handling.py
+exchange_client.py
+private_rest.py
+private_ws
+Dateien mit 'bitget' unter services/*/src (ohne .venv): 445

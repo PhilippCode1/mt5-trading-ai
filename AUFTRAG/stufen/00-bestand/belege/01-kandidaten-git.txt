@@ -1,0 +1,19 @@
+# Beleg 1 — Kandidaten (git-Stand), erhoben 2026-08-19T15:15:25Z
+## /c/Users/Acer/mt5_trading_ai
+letzter Commit: 6cf80a6 2026-08-18 04:12:59 +0200 feat(pruefbarkeit): Welle 3 -- Testschicht fuer die Beweiswerkzeuge, 29 Defekte gefunden
+Commits gesamt: 79
+Commits letzte 30 Tage: 79
+
+## /c/Users/Acer/OneDrive/Documents/Cursor1/bitget-btc-ai
+letzter Commit: 5c39ebb 2026-08-11 07:10:20 +0200 style(ui): Feinschliff Gruen/Weiss -- Alt-Theme-Farben vereinheitlicht
+Commits gesamt: 121
+Commits letzte 30 Tage: 85
+
+## /c/Users/Acer/OneDrive/Documents/Cursor1/strategy-validation
+letzter Commit: 8aca814 2026-08-06 01:39:07 +0200 step 2-3: vendor exit_engine (leverage stop-budget curve), correct entry 1, hand over
+Commits gesamt: 10
+Commits letzte 30 Tage: 10
+
+## Verworfen ohne git (keine Kandidaten)
+HelioswarmTrading-Ai: 25 Dateien, kein .git
+Ki Trading: 0 Dateien

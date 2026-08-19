@@ -1,0 +1,44 @@
+# Beleg 6 — Zustand des Arbeitsbaums, erhoben 2026-08-19T15:22:23Z
+
+## git status --short
+ M ABSCHLUSS-3a/04-EREIGNISSTUDIE.md
+ M ABSCHLUSS-3a/07-AUSGABEN/ereignisstudie.txt
+ M mt5_trading_ai/execution/risiko_zustand.py
+ M mt5_trading_ai/execution/risk_manager.py
+ M tests/test_aufloesung_gegenprobe.py
+ M tests/test_aufloesung_werkzeug.py
+ M tests/test_ereignisstudie_werkzeug.py
+ M tests/test_kostentor_ampel.py
+ M tests/test_kostentor_rechnungen.py
+ M tests/test_live_betrieb_sperren.py
+ M tests/test_oberflaeche_kacheln.py
+ M tests/test_risiko_zustand_zwei_schreiber.py
+ M tools/ereignisstudie.py
+?? AUFTRAG/
+
+## git diff --stat
+ ABSCHLUSS-3a/04-EREIGNISSTUDIE.md           |  62 +++++-
+ ABSCHLUSS-3a/07-AUSGABEN/ereignisstudie.txt |  14 ++
+ mt5_trading_ai/execution/risiko_zustand.py  |  53 +++--
+ mt5_trading_ai/execution/risk_manager.py    |  46 +++-
+ tests/test_aufloesung_gegenprobe.py         |  28 +++
+ tests/test_aufloesung_werkzeug.py           |  48 ++++
+ tests/test_ereignisstudie_werkzeug.py       | 261 ++++++++++++++++++++++
+ tests/test_kostentor_ampel.py               |  46 ++++
+ tests/test_kostentor_rechnungen.py          | 332 ++++++++++++++++++++++++++--
+ tests/test_live_betrieb_sperren.py          |  37 ++++
+ tests/test_oberflaeche_kacheln.py           |  74 +++++--
+ tests/test_risiko_zustand_zwei_schreiber.py | 143 ++++++++++++
+ tools/ereignisstudie.py                     |  70 +++++-
+ 13 files changed, 1162 insertions(+), 52 deletions(-)
+
+## Ist der rote Test schon eingecheckt?
+Vorkommen in HEAD:tests/test_live_betrieb_sperren.py = 0
+Vorkommen im Arbeitsbaum = 1
+
+## Ist die defekte Stelle veraendert?
+git diff --stat -- tools/live_betrieb.py:
+(leere Ausgabe = unveraendert seit HEAD)
+
+## Doku-Waechter mit dem neuen Ordner
+ok - 32/32 Markdown-Dateien, keine Zusicherung ohne Beleg

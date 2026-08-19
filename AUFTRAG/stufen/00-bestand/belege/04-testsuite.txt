@@ -1,0 +1,11 @@
+# Beleg 4 — Testsuite des gewaehlten Stands, ausgefuehrt 2026-08-19T15:16:04Z
+Kommando: python -m pytest -q
+
+E        +  where 15376 = _source_lines()
+
+tests\test_readme_numbers.py:96: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_live_betrieb_sperren.py::test_die_hoechsthaltedauer_greift_genau_auf_der_grenze
+FAILED tests/test_readme_numbers.py::test_readme_test_function_count_matches_code
+FAILED tests/test_readme_numbers.py::test_readme_source_lines_matches_code - ...
+3 failed, 1381 passed in 56.17s
