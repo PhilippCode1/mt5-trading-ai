@@ -1,0 +1,50 @@
+============================= test session starts =============================
+platform win32 -- Python 3.11.7, pytest-8.3.4, pluggy-1.6.0 -- C:\Users\Acer\AppData\Local\Programs\Python\Python311\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\Acer\mt5_trading_ai
+configfile: pyproject.toml
+plugins: anyio-4.8.0, base-url-2.1.0, cov-6.0.0, playwright-0.7.2
+collecting ... collected 40 items
+
+tests/test_stufe10_betrieb.py::test_jede_alarmregel_hat_eine_existierende_metrik PASSED [  2%]
+tests/test_stufe10_betrieb.py::test_jede_alarmregel_hat_eine_existierende_handlungsanweisung PASSED [  5%]
+tests/test_stufe10_betrieb.py::test_die_andere_richtung_kein_verwaister_runbook_abschnitt PASSED [  7%]
+tests/test_stufe10_betrieb.py::test_jedes_dienstgueteziel_hat_eine_existierende_metrik PASSED [ 10%]
+tests/test_stufe10_betrieb.py::test_rot_eine_regel_auf_eine_fehlende_metrik_wirft_statt_zu_schweigen PASSED [ 12%]
+tests/test_stufe10_betrieb.py::test_gruen_vollstaendige_werte_ergeben_eine_pruefbare_antwort PASSED [ 15%]
+tests/test_stufe10_betrieb.py::test_rot_unterschrittene_schwelle_schlaegt_an_und_nennt_die_anweisung PASSED [ 17%]
+tests/test_stufe10_betrieb.py::test_leerer_nenner_ergibt_keinen_ersatzwert_und_keinen_alarm PASSED [ 20%]
+tests/test_stufe10_betrieb.py::test_zustellung_schreibt_die_datei_und_scheitert_laut PASSED [ 22%]
+tests/test_stufe10_betrieb.py::test_rot_scheiternde_zustellung_wirft_statt_still_zu_versagen PASSED [ 25%]
+tests/test_stufe10_betrieb.py::test_schwellen_stehen_vorher_fest_und_stimmen_mit_den_zielen_ueberein PASSED [ 27%]
+tests/test_stufe10_betrieb.py::test_jedes_ziel_traegt_seine_begruendung PASSED [ 30%]
+tests/test_stufe10_betrieb.py::test_gruen_die_unberuehrte_datei_laedt_und_ergibt_den_entscheidungswert PASSED [ 32%]
+tests/test_stufe10_betrieb.py::test_manipulierte_schlagzeile_kommt_ueber_die_aufnahmegrenze_nicht_herein[0] PASSED [ 35%]
+tests/test_stufe10_betrieb.py::test_manipulierte_schlagzeile_kommt_ueber_die_aufnahmegrenze_nicht_herein[1] PASSED [ 37%]
+tests/test_stufe10_betrieb.py::test_manipulierte_schlagzeile_kommt_ueber_die_aufnahmegrenze_nicht_herein[2] PASSED [ 40%]
+tests/test_stufe10_betrieb.py::test_manipulierte_schlagzeile_kommt_ueber_die_aufnahmegrenze_nicht_herein[3] PASSED [ 42%]
+tests/test_stufe10_betrieb.py::test_manipulierte_schlagzeile_kommt_ueber_die_aufnahmegrenze_nicht_herein[4] PASSED [ 45%]
+tests/test_stufe10_betrieb.py::test_manipulierte_schlagzeile_kommt_ueber_die_aufnahmegrenze_nicht_herein[5] PASSED [ 47%]
+tests/test_stufe10_betrieb.py::test_manipulierte_schlagzeile_kommt_ueber_die_aufnahmegrenze_nicht_herein[6] PASSED [ 50%]
+tests/test_stufe10_betrieb.py::test_manipulierte_schlagzeile_kommt_ueber_die_aufnahmegrenze_nicht_herein[7] PASSED [ 52%]
+tests/test_stufe10_betrieb.py::test_manipulierte_schlagzeile_kommt_ueber_die_aufnahmegrenze_nicht_herein[8] PASSED [ 55%]
+tests/test_stufe10_betrieb.py::test_manipulierte_schlagzeile_kommt_ueber_die_aufnahmegrenze_nicht_herein[9] PASSED [ 57%]
+tests/test_stufe10_betrieb.py::test_manipulierte_schlagzeilen_verschieben_keinen_entscheidungswert PASSED [ 60%]
+tests/test_stufe10_betrieb.py::test_zweite_lage_getarnte_zeile_faellt_auch_bei_mitgedrehter_pruefsumme PASSED [ 62%]
+tests/test_stufe10_betrieb.py::test_rot_echte_kursaenderung_verschiebt_den_entscheidungswert PASSED [ 65%]
+tests/test_stufe10_betrieb.py::test_rot_ohne_die_verifizierte_grenze_kommt_die_getarnte_zeile_durch PASSED [ 67%]
+tests/test_stufe10_betrieb.py::test_kein_modul_des_pakets_zieht_eine_sprachmodell_bibliothek PASSED [ 70%]
+tests/test_stufe10_betrieb.py::test_rot_der_scan_findet_eine_eingeschleuste_zeile PASSED [ 72%]
+tests/test_stufe10_betrieb.py::test_ausfall_kursanbieter_sperrt_die_eroeffnung PASSED [ 75%]
+tests/test_stufe10_betrieb.py::test_ausfall_handelsplatz_latcht_den_ungeklaerten_sendeversuch PASSED [ 77%]
+tests/test_stufe10_betrieb.py::test_ausfall_positionsauskunft_sperrt_statt_durchzulassen PASSED [ 80%]
+tests/test_stufe10_betrieb.py::test_ausfall_platte_unterdrueckt_den_drawdown_halt_nicht PASSED [ 82%]
+tests/test_stufe10_betrieb.py::test_v5_der_abbau_geht_trotz_ausfall_durch PASSED [ 85%]
+tests/test_stufe10_betrieb.py::test_die_wiederanlaufprobe_laeuft_und_haelt PASSED [ 87%]
+tests/test_stufe10_betrieb.py::test_rot_ein_fluechtiger_zustand_verliert_den_halt PASSED [ 90%]
+tests/test_stufe10_betrieb.py::test_das_runbook_nennt_die_wiederanlaufprobe_und_sie_existiert PASSED [ 92%]
+tests/test_stufe10_betrieb.py::test_metriken_zaehlen_was_sie_behaupten PASSED [ 95%]
+tests/test_stufe10_betrieb.py::test_rot_ein_lauf_ohne_endsatz_zaehlt_als_abbruch PASSED [ 97%]
+tests/test_stufe10_betrieb.py::test_alarmregel_ist_unveraenderlich PASSED [100%]
+
+============================= 40 passed in 1.60s ==============================

@@ -2394,3 +2394,78 @@ Funktion sind nicht erfasst. Die Betriebszaehlung steht auf einem einzigen Demol
 2 von 41 Gruenden ausgeloest sagt mehr ueber die Zahl der Betriebstage als ueber die Tore.
 Drei Gruende haben keinen ausloesenden Test, und das ist eine Freistellung mit Nachweis,
 keine erfuellte Forderung.
+
+---
+
+## Stufe 10 — Betrieb und Analystenpfad absichern (2026-08-20)
+
+*Die letzte Stufe des Auftrags. Bericht und Belege in
+`AUFTRAG/stufen/10-betrieb/`.*
+
+**Gemessen (vier Forderungen, vier Lücken):** keine Alarmzustellung, keine
+Handlungsanweisungen, keine Dienstgüteziele; die Wiederanlauf-Mechanik existierte
+(Zustandsdatei, Schwebeakte), war aber **nie am Stück geprobt**. Ein Sprachmodellpfad und
+eine Schlagzeilenaufnahme existieren in diesem Stand nicht.
+
+**Der Befund — an den 21 echten Betriebsjournalen, nicht an erzeugten Daten:**
+
+| Ziel | Ist | Soll | Fehlerbudget verbraucht |
+|---|---:|---:|---:|
+| Buchtreue | 98,5 % (1.340/1.360 Takte) | 99,0 % | 147 % |
+| Ausstiegsverlässlichkeit | 78,8 % (26/33 Schließversuche) | 95,0 % | **424 %** |
+| Laufabschluss | 90,5 % (19/21 Läufe) | 95,0 % | 190 % |
+
+**Alle drei Ziele verfehlt, alle drei Alarmregeln schlagen an.** Die Ziele wurden vor der
+Messung gesetzt und mit Begründung im Code festgeschrieben; sie nachträglich zu senken,
+bis sie passen, wäre die Schwellenverschiebung, die V6 verbietet. Die schwerste Zahl ist
+die mittlere: jeder fünfte Schließversuch ist misslungen.
+
+**Neu:** `mt5_trading_ai/betrieb/dienstguete.py` (drei Metriken, drei Ziele mit
+Fehlerbudget, drei Alarmregeln — jede mit Metrik *und* exaktem Runbook-Abschnitt),
+`RUNBOOK.md` (eine Handlungsanweisung je Regel plus ein Abschnitt über den Kanal selbst),
+`tools/dienstguete.py` (Zustellstelle; Rückgabewert ungleich 0, sobald ein Alarm steht),
+`tools/wiederanlaufprobe.py` (12 Prüfungen, alle grün).
+
+**Zum ersten Abnahmesatz, ehrlich.** §8 verbietet „weitere geteilte Bibliotheken oder
+Kontrollmodule ohne Verdrahtung" — einen Bereiniger für einen nicht existierenden
+Sprachmodellpfad zu bauen wäre genau das. Deshalb an der bestehenden Textgrenze gemessen:
+zehn manipulierte Schlagzeilen gegen `load_verified_csv`, **0 von 10 verschieben einen
+Entscheidungswert**. Dabei gefunden: `from_csv` prüft Feldzahl und Typen, aber **keine
+Reihenfolge der Zeitstempel** — eine als CSV getarnte Zeile kommt dort durch. Gehalten
+wird sie erst eine Schicht höher, dort doppelt (Prüfsumme; und bei *mitgedrehter*
+Prüfsumme das Qualitätstor). Der Befund ist als eigener Fall gepinnt statt geglättet.
+
+**Zum zweiten Abnahmesatz:** vier Anbieterausfälle simuliert — Kursanbieter,
+Handelsplatz, Positionsauskunft, Platte. Jeder sperrt fail-closed; beim Plattenausfall
+wird geprüft, dass der Halt aus einem **Drawdown**-Grund latcht und nicht bloß der
+Schreibfehler gemeldet wird. Die Gegenrichtung hält: der reduzierende Auftrag geht trotz
+gesetztem Halt beim Broker an (V5).
+
+**Das Regel-Tor fand beim allerersten Lauf einen echten Fehler:** eine Alarmregel zeigte
+in ASCII-Schreibung auf einen Runbook-Abschnitt, dessen Überschrift einen Umlaut trägt.
+Der Verweis lief ins Leere — ein Alarm hätte jemanden ohne Anweisung geweckt.
+
+**Eigener Fehler (F-014):** Der erste Anlauf der Schlagzeilen-Messung war **10 von 10
+grün** — weil `to_csv` mit einem Zeilenumbruch endet und mein Anhängen eine Leerzeile
+erzeugte, an der der Loader scheiterte. Die Schlagzeile wurde nie gelesen. Aufgefallen
+daran, dass alle zehn Meldungen wortgleich `CSV-Zeile mit 1 Feldern: ''` lauteten: zehn
+völlig verschiedene Eingaben können nicht denselben Fehler mit demselben leeren Zitat
+auslösen.
+
+**Eigener Fehler (F-015):** Mein Stufe-9-Verdrahtungstor drängte auf schlechteren Code —
+es zählte nur `ast.Call` und sah Verteilertabellen nicht, also meldete es die drei
+verdrahteten Metriken als verwaist. Der Zähler zählt jetzt auch den Verweis, mit
+ausdrücklich benannter Grenze und rotem Eichfall (E-011).
+
+**Abnahme:** 40 Eichfälle in `tests/test_stufe10_betrieb.py`, jeder Abnahmesatz mit rotem
+*und* grünem Fall. **Elf** Tore je Exit 0; pytest 1.587 bestanden, 0 fehlgeschlagen;
+Tötungsrate 1,000 (16/16); Zweigdeckung jede Geldpfad-Datei über 80 %.
+
+**Ehrliche Grenze / offen:** Die Dienstgüteschicht **misst**, sie hat nichts verbessert —
+der Stand verfehlt alle drei Ziele, und die Ausstiegsverlässlichkeit von 78,8 % ist ein
+gemessener Betriebsmangel, der einen Menschen braucht. Zugestellt wird in eine Datei und
+auf die Fehlerausgabe; ein Kanal, der keine Kenntnisnahme bestätigt, ist **keine**
+Zustellung bis zu einem Menschen. Der Sprachmodell-Schutz ist nicht bewiesen, sondern
+gegenstandslos: bewiesen ist, dass es keinen Pfad gibt, auf dem Fremdtext zu einem
+Entscheidungswert würde. Käme je ein Modell hinzu, ist der markierte, längenbegrenzte,
+normalisierte Datenblock **dann** zu bauen.

@@ -317,3 +317,39 @@ zählt beide Seiten einzeln auf, damit die Ausnahme nicht zum Ablagefach wird.
 **Verworfene Alternative.** Die Zahl im Abschlussordner korrigieren. Verworfen: ein
 Bericht, der sich rückwirkend an den heutigen Code anpasst, ist als Beleg wertlos — und
 der ganze Auftrag steht darauf, dass diese Ordner belegen, was vorher gedacht wurde.
+
+---
+
+## E-011 — Der Verdrahtungszähler zählt auch Verweise, nicht nur Aufrufe
+
+**Datum:** 2026-08-20 · **Stufe:** 10 · **Entschieden von:** ausführender Agent
+
+**Anlass.** Der Stufe-9-Fall `test_keine_oeffentliche_funktion_ohne_aufrufer_im_
+ausfuehrungspfad` meldete die drei neuen Dienstgüte-Metriken als verwaist. Sie werden bei
+jedem Erheben gerufen — aber als Werte einer Verteilertabelle (`METRIKEN`), nie als
+`buchtreue(...)`. Der Zähler sah nur `ast.Call`.
+
+**Entscheidung.** Der Zähler zählt zusätzlich den Verweis (`ast.Name` im Load-Kontext).
+Die Lockerung ist im Docstring ausdrücklich als solche benannt — *ein Verweis belegt
+nicht, dass die Tabelle selbst erreichbar ist* — und durch einen roten Eichfall
+abgesichert (`test_rot_eine_nirgends_erwaehnte_funktion_gilt_als_verwaist`).
+
+**Begründung.** Ein Tor, das zu einer schlechteren Verdrahtung drängt, misst das Falsche.
+Die Alternative hätte geheißen: drei klar getrennte Metriken in eine Funktion gießen oder
+sie einmal künstlich direkt rufen — beides verschlechtert den Entwurf, um einen Zähler zu
+bedienen. Der Fall, um den es dem Auftrag geht (§0: Code ohne Aufrufer im Ausführungspfad),
+bleibt erfasst: eine Funktion, die im ganzen Paket und in allen Werkzeugen kein einziges
+Mal vorkommt, zählt weiterhin null.
+
+**Verworfene Alternative 1.** Die drei Metriken je einmal direkt aufrufen, damit der
+Zähler steigt. Verworfen: das ist eine Geste an den Prüfstand, keine Verdrahtung — genau
+die Sorte Schein-Kontrolle, gegen die dieser Fall gebaut wurde.
+
+**Verworfene Alternative 2.** Die drei Namen in eine Ausnahmeliste eintragen. Verworfen:
+Ausnahmelisten wachsen, und der nächste Eintrag begründet sich mit dem vorigen. Die
+Blindstelle des Zählers zu beheben ist ehrlicher als sie zu umgehen.
+
+**Was scharf bleibt.** Die Lockerung macht den Fall milder, und das steht so im Code.
+Wer ihn später verschärfen will, braucht eine echte Erreichbarkeitsanalyse — den Weg vom
+Einstiegspunkt zur Tabelle. Das ist Arbeit, die dieser Stand nicht hat, und sie wird hier
+nicht behauptet.

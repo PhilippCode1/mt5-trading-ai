@@ -84,14 +84,39 @@ def _oeffentliche_funktionen() -> list[tuple[Path, str]]:
 
 
 def _aufrufe(name: str, dateien: list[Path]) -> int:
+    """Wie oft wird ``name`` im Ausfuehrungspfad benutzt -- direkt ODER als Verweis.
+
+    Der direkte Aufruf ``f(...)`` ist der Normalfall. Er reicht aber nicht: eine
+    Funktion kann auch als **Wert** in den Pfad kommen, etwa als Eintrag einer
+    Verteilertabelle::
+
+        METRIKEN = {"buchtreue": buchtreue, ...}
+        return {name: fn(saetze) for name, fn in METRIKEN.items()}
+
+    Hier steht nirgends ``buchtreue(...)``, und trotzdem laeuft sie bei jedem Erheben.
+    Der Scan zaehlte anfangs nur ``ast.Call`` und meldete genau diese drei Metriken als
+    verwaist (Stufe 10). Ein Tor, das zu einer schlechteren Verdrahtung draengt -- drei
+    Funktionen in eine zu giessen, nur damit ein Zaehler steigt -- misst das Falsche.
+
+    **Grenze, ausdruecklich:** ein blosser Verweis belegt nicht, dass die Tabelle
+    selbst erreichbar ist. Der Fall bleibt damit etwas milder als der Aufrufzaehler.
+    Was er weiterhin faengt, ist der Fall, um den es geht: eine Funktion, die im ganzen
+    Paket und in allen Werkzeugen **kein einziges Mal vorkommt** -- siehe
+    ``test_rot_eine_nirgends_erwaehnte_funktion_gilt_als_verwaist``.
+    """
     n = 0
     for pfad in dateien:
-        for knoten in ast.walk(ast.parse(pfad.read_text(encoding="utf-8"))):
+        baum = ast.parse(pfad.read_text(encoding="utf-8"))
+        for knoten in ast.walk(baum):
             if isinstance(knoten, ast.Call):
                 f = knoten.func
                 if (isinstance(f, ast.Name) and f.id == name) or (
                     isinstance(f, ast.Attribute) and f.attr == name
                 ):
+                    n += 1
+            elif isinstance(knoten, ast.Name) and isinstance(knoten.ctx, ast.Load):
+                # Der Verweis: die Funktion wird weitergereicht statt gerufen.
+                if knoten.id == name:
                     n += 1
     return n
 
@@ -117,6 +142,24 @@ def test_keine_oeffentliche_funktion_ohne_aufrufer_im_ausfuehrungspfad() -> None
         f"Ohne Aufrufer im Ausfuehrungspfad: {verwaist}. Entweder einen Schreiber "
         "schaffen oder den Leser entfernen."
     )
+
+
+def test_rot_eine_nirgends_erwaehnte_funktion_gilt_als_verwaist(tmp_path: Path) -> None:
+    """Roter Eichfall fuer den Zaehler, seit er auch Verweise mitzaehlt (Stufe 10).
+
+    Ohne ihn koennte die Lockerung den Fall oben still leerlaufen lassen. Gemessen
+    wird beides: die nirgends erwaehnte Funktion bleibt bei 0, die als Tabellenwert
+    weitergereichte kommt auf mehr.
+    """
+    modul = tmp_path / "probe.py"
+    modul.write_text(
+        "def nie_erwaehnt() -> None: ...\n"
+        "def nur_verwiesen() -> None: ...\n"
+        "TABELLE = {'x': nur_verwiesen}\n",
+        encoding="utf-8",
+    )
+    assert _aufrufe("nie_erwaehnt", [modul]) == 0
+    assert _aufrufe("nur_verwiesen", [modul]) == 1
 
 
 def test_die_pruefung_findet_ihren_gegenstand() -> None:

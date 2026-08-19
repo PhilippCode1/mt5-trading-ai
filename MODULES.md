@@ -129,6 +129,23 @@ Einfache, ernsthafte Signallogiken fuer den Edge-Test -- ohne Optimierung.
 - `def mean_reversion_zscore`
 - `def volatility_breakout`
 
+## `mt5_trading_ai/betrieb/dienstguete.py`
+
+Zeilen: 269
+
+Alarmregeln, Dienstgüteziele und Fehlerbudget -- aus dem Betriebsjournal.
+
+- `class Messwert`
+- `class Dienstgueteziel`
+- `class Alarmregel`
+- `class Alarm`
+- `def buchtreue`
+- `def ausstiegsverlaesslichkeit`
+- `def laufabschluss`
+- `def erhebe`
+- `def pruefe_alarme`
+- `def stelle_zu`
+
 ## `mt5_trading_ai/betrieb/journal.py`
 
 Zeilen: 596

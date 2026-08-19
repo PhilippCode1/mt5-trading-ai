@@ -443,3 +443,70 @@ entschieden wird, nie den Zeitpunkt der Entscheidung. Und: ein einzelner, nicht
 reproduzierbarer Fehlschlag ist kein Rauschen, solange man in derselben Sitzung etwas
 eingebaut hat, das würfelt. Die erste Frage lautet dann nicht „war das ein Ausrutscher",
 sondern „was von dem, was ich gerade gebaut habe, ist nicht deterministisch".
+
+---
+
+## F-014 — Zehn von zehn grün, weil die Eingabe nie ankam
+
+**Stufe 10.** Der erste Anlauf des Abnahmesatzes „manipulierte Schlagzeilen verschieben
+keinen Entscheidungswert" gab die zehn Schlagzeilen an `data/loader.py::from_csv` und
+meldete: alle zehn abgewiesen, kein Entscheidungswert bewegt.
+
+**Was wirklich geschah.** `to_csv` endet mit einem Zeilenumbruch. Mein Anhängen
+(`to_csv(bars) + "\n" + schlagzeile`) erzeugte damit eine **Leerzeile** vor der
+Schlagzeile, und `from_csv` scheiterte an ihr — die Schlagzeile wurde nie gelesen. Der
+Test bestand über eine Eigenschaft, die er gar nicht berührt hat.
+
+**Wie es aufgefallen ist.** Die zehn Ablehnungsmeldungen waren wortgleich:
+`CSV-Zeile mit 1 Feldern: ''`. Zehn völlig verschiedene Eingaben — Steuerzeichen,
+100.000 Zeichen Überlänge, eine als CSV getarnte Zahlenzeile — können nicht denselben
+Fehler mit demselben leeren Zitat auslösen. Das leere `''` in der Meldung war der Beleg,
+dass die Eingabe nicht angekommen ist.
+
+**Was die Korrektur zutage förderte.** Nach dem `rstrip("\n")` starben neun Schlagzeilen
+an Feldzahl und Typen — und die zehnte, mit sechs gültigen Feldern getarnt, **kam an
+`from_csv` vorbei**: `from_csv` prüft Feldzahl und Typen, aber keine Reihenfolge der
+Zeitstempel. Gehalten wird sie erst eine Schicht höher (`load_verified_csv`), dort
+doppelt (Prüfsumme, Qualitätstor). Der Befund ist als eigener Fall gepinnt statt
+geglättet.
+
+**Was daraus folgt.** Ein grünes Ergebnis, das für alle Eingaben **denselben Wortlaut**
+liefert, ist ein Verdachtsfall — unabhängig davon, wie plausibel das Ergebnis ist. Die
+Prüffrage lautet nicht „stimmt das Ergebnis", sondern „unterscheiden sich die Ergebnisse
+so, wie sich die Eingaben unterscheiden". Und: einen Testsatz gegen die **innerste**
+Funktion zu fahren, statt gegen die Grenze, an der die Daten wirklich hereinkommen, misst
+die falsche Schicht.
+
+---
+
+## F-015 — Ein eigenes Tor drängte auf schlechteren Code
+
+**Stufe 10.** Der Stufe-9-Fall `test_keine_oeffentliche_funktion_ohne_aufrufer_im_
+ausfuehrungspfad` meldete die drei neuen Dienstgüte-Metriken (`buchtreue`,
+`ausstiegsverlaesslichkeit`, `laufabschluss`) als verwaist.
+
+**Der Befund war formal richtig und sachlich falsch.** Die drei werden bei jedem Erheben
+gerufen — aber als **Werte einer Verteilertabelle**:
+
+```python
+METRIKEN = {"buchtreue": buchtreue, ...}
+return {name: fn(saetze) for name, fn in METRIKEN.items()}
+```
+
+Nirgends steht `buchtreue(...)`. Der Zähler sah nur `ast.Call` und damit nichts.
+
+**Die Versuchung.** Der bequeme Weg wäre gewesen, die drei Funktionen in eine zu gießen
+oder sie einmal künstlich direkt zu rufen, damit der Zähler steigt. Ein Tor, das zu
+schlechterem Entwurf drängt, misst das Falsche — und ihm nachzugeben hieße, die
+Verdrahtung zu verschlechtern, um eine Metrik zu bedienen.
+
+**Behoben.** Der Zähler zählt jetzt auch den Verweis (`ast.Name` im Load-Kontext). Die
+Grenze steht ausdrücklich im Docstring: **ein Verweis belegt nicht, dass die Tabelle
+selbst erreichbar ist** — der Fall ist damit milder als zuvor. Dazu ein roter Eichfall
+(`test_rot_eine_nirgends_erwaehnte_funktion_gilt_als_verwaist`), der prüft, dass eine
+nirgends erwähnte Funktion weiterhin bei 0 bleibt.
+
+**Was daraus folgt.** Wenn ein eigenes Tor gegen neuen, guten Code rot wird, sind zwei
+Antworten möglich, und die Reihenfolge zählt: erst prüfen, ob das Tor eine echte Lücke
+misst; erst wenn nicht, das Tor korrigieren — und die Lockerung dann **benennen und mit
+einem roten Eichfall absichern**, statt sie zu verschweigen.

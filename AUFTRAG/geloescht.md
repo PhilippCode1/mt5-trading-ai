@@ -302,3 +302,18 @@ und `docs/audit/` (Chronik) sowie die Berichte unter `AUFTRAG/stufen/` (die Mess
 der die Wahl des Standes beruht). **Kein Produktionscode, kein Test, kein Import.** Diese
 Angaben bleiben: Ein Paket, das nicht mehr sagen kann, woraus es gelöst wurde, ist nicht
 sauberer, sondern herkunftslos.
+
+---
+
+## Stufe 10 — nichts gelöscht
+
+Diese Stufe hat **keine Zeile Produktionscode entfernt.** Das ist kein Versäumnis, sondern
+das Ergebnis der Prüfung: die vier Forderungen der Stufe waren vier Lücken, keine
+Altlasten. Es gab nichts, was verdrahtet oder entfernt hätte werden müssen — es gab
+schlicht keine Alarmschicht, keine Handlungsanweisungen und keine Dienstgüteziele.
+
+Der einzige Fall, in dem V1 (neuer Code ohne Aufrufer wird gelöscht) hätte greifen können,
+war der eigene Neubau: `betrieb/dienstguete.py`. Er ist verdrahtet — `tools/dienstguete.py`
+ruft `erhebe`, `pruefe_alarme` und `stelle_zu`, die drei Metriken hängen über `METRIKEN` an
+`erhebe`. Dass der Stufe-9-Zähler das zunächst nicht sah, ist in F-015 und E-011
+festgehalten; die Antwort war, den Zähler zu korrigieren, nicht den Code zu verbiegen.
