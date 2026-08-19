@@ -1,7 +1,7 @@
 Stufe:            0 — Bestand und Wahl des Stands
 Zustand:          abgenommen
-Zuletzt:          2026-08-19, Commit siehe git log -1 (Stufe-0-Commit)
-Abnahme belegt:   ja — AUFTRAG/stufen/00-bestand/bericht.md §6, Belege in stufen/00-bestand/belege/ (5 Dateien)
+Zuletzt:          2026-08-19, Commit 8346e47 (Stufe 0)
+Abnahme belegt:   ja — AUFTRAG/stufen/00-bestand/bericht.md §6, Belege in stufen/00-bestand/belege/ (6 Dateien)
 Nächster Schritt: Stufe 1 beginnen — die in ABSCHLUSS-3a/00-UEBERSICHT.md behauptete Historie (15 Reihen, 5 Instrumente x 3 Zeitrahmen, D1/H4 bis 33,3 J, H1 bis 17,1 J, SHA-256-Manifeste unter config/reihen/) selbst nachmessen: Zeilenzahl je Reihe und Zeitrahmen, Pruefsumme gegen Manifest, Luecken- und Ausreisserbericht, und pruefen ob die Quelle vom Handelsplatz unabhaengig ist; erst wenn diese Zahlen aus eigener Ausfuehrung vorliegen, ueber Beschaffung entscheiden.
 Offene Haltepunkte: 3 — siehe haltepunkte.md
 Ehrliche Restschätzung: 10 von 11 Stufen offen (1 bis 10). Unsicher sind drei Dinge, in dieser Reihenfolge: (a) H-002 — ob Stufe 3 nach der projekteigenen Abbruchregel ueberhaupt begonnen werden darf, das entscheidet der Auftraggeber und kann den Auftrag vor Stufe 3 beenden; (b) ob die vorhandene Historie unabhaengig beschafft ist oder vom Handelsplatz stammt, das entscheidet, ob Stufe 1 eine Nachmessung oder eine Neubeschaffung ist; (c) Stufe 3 selbst, deren Ergebnis (A) oder (B) sein kann und in beiden Faellen den Auftrag beendet. Stufe 1 und 2 sind nach heutiger Lage die einzigen, die ohne fremde Entscheidung durchlaufen koennen.
