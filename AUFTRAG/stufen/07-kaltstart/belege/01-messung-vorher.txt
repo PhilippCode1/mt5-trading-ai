@@ -1,0 +1,60 @@
+MESSUNG VOR DER STUFE
+=====================
+Gegen einen eigenen Arbeitsbaum auf Commit 3f4bc6c -- den Stand VOR dieser Stufe.
+(Die Journale unter betrieb/ sind nicht versioniert und deshalb in beiden Baeumen
+ dieselben; gemessen wird der CODE des alten Standes.)
+
+==========================================================================
+A1 -- ERKUNDUNGSPFAD IM PAPIERKONTO MIT ABLEHNUNGSGRUENDEN
+==========================================================================
+  Eroeffnungsversuche protokolliert : 0
+    davon eroeffnet                 : 0
+    davon ABGELEHNT (mit Grund)     : 0
+  -> Ablehnungsgruende WERDEN mitgeschrieben. Forderung 1 zur Haelfte erfuellt.
+
+  Aber: GIBT ES EINEN ERKUNDUNGSPFAD? Also einen Fall, in dem ein abgelehntes
+  Signal auf dem Papierkonto TROTZDEM gefahren wird, um zu erfahren, was daraus
+  geworden waere?
+  Treffer fuer Erkundung/Exploration im Paket: 0
+    KEINE. Der Kreis ist nicht aufgebrochen.
+
+==========================================================================
+A2 -- GEWICHTUNG NACH AUSWAHLWAHRSCHEINLICHKEIT IM TRAINING
+==========================================================================
+  Treffer im Modellpfad (gates/): 3
+    mt5_trading_ai/gates/criteria.py:8:* **Alle Kriterien. Kein „fast".** Es gibt keine Gewichtung, ke
+    mt5_trading_ai/gates/herausforderer.py:10:    Trainingsendpunkte authentifizieren. Ueberlappende Zie
+    mt5_trading_ai/gates/herausforderer.py:34:* **Ueberlappende Zielwerte:** ungewichtet. Fuenf vollstae
+
+==========================================================================
+A3 -- HERKUNFTSSPALTE IN DEN AUSWERTUNGEN
+==========================================================================
+  TradeRow-Felder      : ['strategy_id', 'version', 'instrument', 'asset_class', 'opened_at', 'closed_at', 'net_pnl_r', 'execution_mode']
+  EvaluationRow-Felder : ['strategy_id', 'instrument', 'ts', 'score_total', 'decision']
+  -> Traegt eine Zeile, WOHER sie stammt (gefahren / erkundet / abgelehnt)?
+     NEIN -- es gibt keine Herkunftsspalte.
+
+==========================================================================
+A4 -- SCHWELLEN EXAKT AUF DEM MAXIMUM DER ERSATZHEURISTIK
+==========================================================================
+  Die Ersatzheuristik (ASSUMED_ROUND_TURN_COST_BPS):
+    crypto               40.0 bp
+    equity               20.0 bp
+    commodity_non_gold   7.0 bp
+    index_minor          5.0 bp
+    fx_minor             4.0 bp
+    gold                 1.5 bp
+    index_major          1.5 bp
+    fx_major             0.65 bp
+  Maximum der Heuristik: 40.0 bp
+
+  Wo sitzt eine Schwelle GENAU auf diesem Maximum oder einer daraus
+  abgeleiteten Groesse?
+    commodity_non_gold   Untergrenze     7E+1 bp  Obergrenze(Hebel 10) 166.6666666666666666666666667 bp
+    crypto               Untergrenze   4.0E+2 bp  Obergrenze(Hebel 10) 166.6666666666666666666666667 bp  <== Untergrenze >= Obergrenze: das Fenster ist LEER
+    equity               Untergrenze   2.0E+2 bp  Obergrenze(Hebel 10) 166.6666666666666666666666667 bp  <== Untergrenze >= Obergrenze: das Fenster ist LEER
+    fx_major             Untergrenze      6.5 bp  Obergrenze(Hebel 10) 166.6666666666666666666666667 bp
+    fx_minor             Untergrenze     4E+1 bp  Obergrenze(Hebel 10) 166.6666666666666666666666667 bp
+    gold                 Untergrenze       15 bp  Obergrenze(Hebel 10) 166.6666666666666666666666667 bp
+    index_major          Untergrenze       15 bp  Obergrenze(Hebel 10) 166.6666666666666666666666667 bp
+    index_minor          Untergrenze     5E+1 bp  Obergrenze(Hebel 10) 166.6666666666666666666666667 bp

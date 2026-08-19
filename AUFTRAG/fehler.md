@@ -362,3 +362,44 @@ schon einmal Arbeit zerstört hat (F-010). Der Unterschied steht jetzt in der Da
 gegen „den Stand von eben". Der Arbeitsbaum ist dafür das richtige Werkzeug: er kostet
 nichts, berührt die Arbeitskopie nicht, und der Kopf des Belegs kann den Commit nennen,
 weil er ihn wirklich gemessen hat.
+
+---
+
+## F-012 — Eine Aufzeichnung nach Umfang verkleinert statt nach Aussagekraft
+
+**Wann:** Entstanden in Stufe 5 (2026-08-19), aufgefallen und berichtigt in Stufe 7
+desselben Tages.
+
+**Was ich getan habe.** Beim Redigieren der Betriebsjournale habe ich vier Satzarten
+weggelassen, die zusammen 98 % des Umfangs ausmachten: `kurs`, `signal`, `takt` — und
+`eroeffnungsversuch`. Die Begründung im Werkzeug lautete: „tragen keine Antwort des
+Handelsplatzes".
+
+**Was daran falsch war.** Für drei der vier stimmt das. Für `eroeffnungsversuch` nicht:
+diese 4.343 Sätze tragen die **4.311 abgelehnten Signale samt Grund** — also genau die
+Auskunft darüber, was das System *nicht* getan hat und warum. Eine Stufe später verlangt
+die Abnahme wörtlich, dass „die Auswertungstabelle gekennzeichnete Zeilen aus abgelehnten
+Signalen" enthält. Die Daten dafür lagen vor; ich hatte sie weggeworfen.
+
+**Der Fehler hat einen Namen.** Ich habe nach **Umfang** beurteilt statt nach
+**Aussagekraft**. Vier Satzarten machten 98 % aus, also sahen alle vier nach Rauschen
+aus. Eine Verkleinerung, die das Häufige für Rauschen hält, wirft das Seltene weg und
+behält das Laute — und hier war das Häufige das Aussagekräftigste, das dieser Stand
+besitzt.
+
+**Was den Fehler verdeckt hat.** Der Kopf der Datei wies die weggelassenen Sätze je Art
+ordentlich aus — 4.343 `eroeffnungsversuch`, sichtbar für jeden. Die Zahl stand da, und
+ich habe sie selbst hingeschrieben. Sichtbarkeit ersetzt kein Urteil: eine deklarierte
+Auslassung ist nicht dadurch richtig, dass sie deklariert ist.
+
+**Berichtigt.** `eroeffnungsversuch` ist wieder in `BEHALTEN`. Statt der Sätze fällt
+jetzt ein **Feld** weg (`schritte`), und die Begründung ist diesmal inhaltlich: die erste
+rote Naht steht bereits als `grund` im selben Satz, die übrigen Einträge sind die grünen
+davor. Dass das 72 % des Umfangs spart (4,15 → 1,18 MB), steht im Kommentar
+ausdrücklich als Nebeneffekt und nicht als Grund. Der Feldwegfall wird im Kopf der Datei
+ausgewiesen wie die Satzwegfälle auch, und ein Dauertor hält beides fest.
+
+**Was daraus folgt.** Vor jeder Auslassung die Frage stellen, die ich mir nicht gestellt
+habe: *wofür könnte jemand diese Zeilen brauchen, der später kommt?* Umfang ist ein
+Argument für eine andere Ablageform, nie eines für das Weglassen. Und wenn eine
+Auslassung doch sein muss, entscheidet die seltenste Verwendung mit, nicht die häufigste.

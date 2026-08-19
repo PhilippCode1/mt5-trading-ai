@@ -120,8 +120,52 @@ ASSUMED_ROUND_TURN_COST_BPS: dict[str, Decimal] = {
     "crypto": Decimal("40.0"),
 }
 
+#: **Plausibilitaetsboden je Klasse -- NICHT die Annahme.** Unterhalb dieser Zahl ist
+#: eine gemeldete Round-Turn-Kostenmessung unglaubwuerdig, weil schon der halbe Spread
+#: darueber liegt.
+#:
+#: Warum es diese Tabelle ueberhaupt gibt (Stufe 7, „Schwellen, die exakt auf dem
+#: Maximum der Ersatzheuristik liegen, davon entkoppeln"): Bis hierher benutzte
+#: ``RiskManager._kostenbasis`` **dieselbe** Zahl in zwei Rollen -- als Rueckfallwert,
+#: wenn nichts gemessen wurde, UND als Schwelle, unter der eine gemessene Zahl
+#: verworfen wird. Gemessen an fx_major: eine echte Messung von 0,30 bp wurde gegen
+#: die Annahme 0,65 bp verworfen, und danach galt 0,65 bp. Ein Zugang, der wirklich
+#: billiger ist, konnte so nie erkannt werden -- die Schwelle mass ihre eigene Ausgabe
+#: (Sperre V2).
+#:
+#: Die Zahlen sind bewusst **deutlich unter** der Annahme angesetzt: sie sollen Unsinn
+#: abweisen (0 bp, 0,001 bp), nicht eine bessere Ausfuehrung. Hergeleitet aus dem
+#: halben typischen Roh-Spread der Klasse ohne Kommission und ohne Slippage -- also
+#: der Groesse, die ein Round-Turn selbst dann nicht unterschreiten kann, wenn der
+#: Handelsplatz nichts weiter berechnet.
+#:
+#: Sie sind **getrennt** von ``ASSUMED_ROUND_TURN_COST_BPS`` zu pflegen. Ein Dauertor
+#: haelt fest, dass jeder Boden echt unter der zugehoerigen Annahme liegt; wer beide
+#: gleichsetzt, stellt die Kopplung wieder her.
+KOSTENPRAEMISSE_BPS: dict[str, Decimal] = {
+    "fx_major": Decimal("0.05"),
+    "fx_minor": Decimal("0.30"),
+    "gold": Decimal("0.10"),
+    "index_major": Decimal("0.10"),
+    "index_minor": Decimal("0.40"),
+    "commodity_non_gold": Decimal("0.50"),
+    "equity": Decimal("1.00"),
+    "crypto": Decimal("2.00"),
+}
+
 #: Margin-Close-out fuer Kleinanleger in der EU: 50 % der Ersteinschusszahlung.
 MARGIN_CLOSE_OUT_FRACTION = Decimal("0.5")
+
+
+def kostenpraemisse_bps(asset_class: str) -> Decimal | None:
+    """Der Plausibilitaetsboden dieser Klasse -- ``None`` bei unbekannter Klasse.
+
+    Getrennt von :func:`assumed_cost_bps` gehalten, und das ist der ganze Punkt: die
+    eine Zahl sagt „womit rechnen wir, wenn nichts gemessen wurde", die andere „ab
+    wann glauben wir einer Messung nicht mehr". Sie in einer Zahl zu fuehren machte
+    aus der Annahme eine Schwelle gegen sich selbst.
+    """
+    return KOSTENPRAEMISSE_BPS.get(_klassen_schluessel(asset_class))
 
 
 @dataclass(frozen=True)

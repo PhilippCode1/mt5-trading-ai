@@ -2218,3 +2218,61 @@ oekonomisch**: korrelierte Instrumente sieht sie nicht. Und ein Nebenbefund blei
 `evaluate_llm_gate` hat keinen Aufrufer im Ausfuehrungspfad -- V1 verlangte die Loeschung,
 aber das Tor haelt gerade den LLM-freien Zustand. Das ist eine Entscheidung des
 Auftraggebers, keine Aufraeumarbeit, und der Widerspruch steht ausdruecklich offen.
+
+---
+
+## ERLEDIGT — Stufe 7 des Dauerauftrags: Kaltstart geoeffnet (auf Anweisung)
+
+**Zur Zulassung:** unveraendert wie bei Stufe 4 bis 6 -- §1 schlieszt die Stufen 4 bis 10
+fuer den Ausgang (B) aus, der Auftraggeber hat sie angewiesen (E-009). Diese Stufe misst
+keinen Vorteil.
+
+**Der Kreis, in einer Zahl:** von **4.343** protokollierten Eroeffnungsversuchen wurden
+**32** gefahren (0,74 %), **4.311** abgelehnt. Ueber 99,26 % aller Signale weiss dieses
+System nichts -- nicht, weil sie schlecht waren, sondern weil sie nie gefahren wurden.
+Ein Tor, das zu streng ist, sieht dabei genauso aus wie eines, das richtig liegt.
+
+**Wichtigster Befund -- die Kostenschwelle WAR die Ersatzheuristik.**
+`risk_manager.py:829` benutzte dieselbe Zahl in zwei Rollen: als Rueckfall, wenn nichts
+gemessen wurde, UND als Schwelle, unter der eine gemessene Zahl verworfen wird.
+Durchgerechnet fuer fx_major (Annahme 0,65 bp): eine echte Messung von 0,30 bp wurde
+verworfen, und danach galt 0,65 bp. **Ein Handelsplatz, der wirklich billiger ist, konnte
+nicht erkannt werden** -- die Schwelle mass ihre eigene Ausgabe (Sperre V2). Der Fall fiel
+bisher nicht auf, weil die in Stufe 3 gemessene Zahl (1,6756 bp) ueber der Annahme lag.
+
+**Geaendert:** `KOSTENPRAEMISSE_BPS` als getrennt gepflegter Plausibilitaetsboden (fx_major
+0,05 gegen Annahme 0,65) -- er weist Unsinn ab, nicht eine bessere Ausfuehrung; ein
+Dauertor ueber alle acht Klassen haelt fest, dass jeder Boden echt unter seiner Annahme
+liegt. `gates/erkundung.py`: Positivliste von vier erkundbaren Ablehnungsgruenden (nie
+eine Sicherheitssperre), nur Papierkonto, gesaet und reproduzierbar per Hash ueber die
+Gelegenheit, mit mitgeschriebener Auswahlwahrscheinlichkeit; inverse Gewichtung
+(Horvitz-Thompson). `tools/auswertung.py`: die Auswertungstabelle mit Herkunftsspalte
+(gefahren / erkundet / abgelehnt), in der die Absagen **darin stehen** -- gekennzeichnet,
+mit Grund, ohne Ergebnis. `tools/modelllauf.py` weist den Anteil erkundender
+Beobachtungen aus.
+
+**Ein verdaechtig guter Befund, der sich nicht bestaetigt hat:** zuerst sah es aus, als
+seien fuer crypto und equity die Stopfenster leer (Untergrenze ueber Obergrenze). Ich
+hatte alle Klassen gegen Hebel 10 gerechnet; gegen ihren jeweils geklammerten Hebel ist
+kein Fenster leer. §6 des Auftrags verlangt genau diese Gegenprobe.
+
+**Eigener Fehler (F-012), der meine eigene Stufe 5 betrifft:** die eingecheckte
+Aufzeichnung enthielt die 4.311 Absagen NICHT -- ich hatte `eroeffnungsversuch` als
+Messrauschen weggelassen, weil er 98 % des Umfangs ausmachte. Ich habe nach Umfang
+beurteilt statt nach Aussagekraft. Zurueckgenommen; stattdessen faellt jetzt ein FELD weg
+(`schritte`), begruendet inhaltlich und im Kopf der Datei ausgewiesen. Zweiter Befund
+derselben Art: die Auswertung lieferte zunaechst null Zeilen mit Ergebnis -- der Abschluss
+traegt nicht die Kennung der Eroeffnung (Schnittmenge 0), verbunden wird ueber die
+Positionskennung in einem dritten Satz.
+
+**Abnahme:** 37 Eichfaelle, je Tor rot und gruen. Vier Mutationen gefahren (Positivliste
+zum Filter, Erkundung auf Echtgeld, Gewichtung aus, Schwelle zurueck auf die Heuristik) --
+8, 1, 2 und 9 Faelle gehen rot. Sieben Tore je Exit 0; pytest 1.516 bestanden, 0
+fehlgeschlagen.
+
+**Ehrliche Grenze / offen:** **Es ist noch nichts erkundet worden.** Der Pfad ist gebaut
+und geprueft, aber `erkundet` steht in der Auswertung bei 0,00 %, weil der einzige
+vorhandene Betriebslauf vor dieser Stufe lief. Die Verdrahtung in `tools/live_betrieb.py`
+-- also das tatsaechliche Fahren eines erkundeten Signals -- verlangt einen Lauf gegen ein
+Demokonto und ist nicht Teil dieser Stufe. Die Erkundungsrate (5 %) ist gesetzt, nicht
+hergeleitet.

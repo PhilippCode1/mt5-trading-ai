@@ -156,6 +156,23 @@ Der Widerspruch zu V1 steht damit offen und ist nicht stillschweigend ausgesesse
 
 ---
 
+## In Stufe 7 gelöscht
+
+**Nichts — im Gegenteil: eine Auslassung wurde zurückgenommen.** Die eingecheckte
+Aufzeichnung enthielt die 4.311 abgelehnten Signale nicht; ich hatte sie in Stufe 5 als
+Messrauschen weggelassen (F-012). Sie sind wieder drin. Stattdessen fällt jetzt ein
+**Feld** weg (`schritte`), begründet nach Aussagekraft und im Kopf der Datei
+ausgewiesen.
+
+Hinzugekommen: `gates/erkundung.py`, `tools/auswertung.py`, `KOSTENPRAEMISSE_BPS` in
+`risk/stop_budget.py`, 37 Eichfälle.
+
+Zur Sperre V1: `gates/erkundung.py` wird von `tools/auswertung.py` und
+`tools/modelllauf.py` gerufen, `kostenpraemisse_bps` von
+`execution/risk_manager.py::_kostenbasis` im Orderpfad. Kein Modul ohne Aufrufer.
+
+---
+
 ## Was nach dem Ergebnistor **nicht** gelöscht wurde, obwohl es naheläge
 
 Befund (B) heißt nach §1: *„Es wird zurückgebaut oder aufgegeben."* Beides ist eine

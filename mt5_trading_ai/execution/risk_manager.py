@@ -163,7 +163,7 @@ from mt5_trading_ai.risk.sizing import (
 )
 from mt5_trading_ai.risk.stop_budget import (
     StopBudget,
-    assumed_cost_bps,
+    kostenpraemisse_bps,
     stop_budget,
 )
 from mt5_trading_ai.venue.protocol import (
@@ -826,7 +826,16 @@ class RiskManager:
         """
         klasse = instrument.asset_class.value
         kampagne = self._policy.measured_cost_bps.get(klasse)
-        praemisse = kampagne if kampagne is not None else assumed_cost_bps(klasse)
+        # Stufe 7: die Praemisse ist NICHT mehr die Annahmetabelle. Bis dahin stand
+        # hier ``assumed_cost_bps(klasse)`` -- dieselbe Zahl, die weiter unten als
+        # Rueckfall dient. Gemessen an fx_major: eine echte Messung von 0,30 bp wurde
+        # gegen die Annahme 0,65 bp verworfen, und danach galt 0,65 bp. Ein Zugang, der
+        # wirklich billiger ist, war so nicht erkennbar; die Schwelle mass ihre eigene
+        # Ausgabe (V2). Jetzt entscheidet ein getrennt gepflegter Plausibilitaetsboden,
+        # der Unsinn abweist (0 bp) und eine bessere Ausfuehrung durchlaesst.
+        praemisse = (
+            kampagne if kampagne is not None else kostenpraemisse_bps(klasse)
+        )
         mitgereist = measured_cost_from_meta(request)
         verworfen = ""
         if mitgereist is not None and praemisse is not None and mitgereist < praemisse:

@@ -36,8 +36,11 @@ Handelsplatzes. Das ist der Inhalt, um dessentwillen die Aufzeichnung existiert.
 
 WAS WEGGELASSEN WIRD -- UND WARUM ES DASTEHT
 --------------------------------------------
-Vier Satzarten machen 98 % des Umfangs aus und tragen keine Antwort des Handelsplatzes:
-``kurs``, ``signal``, ``eroeffnungsversuch`` und ``takt``. Sie werden weggelassen.
+Drei Satzarten machen den Grossteil des Umfangs aus und tragen keine Auskunft ueber
+eine Entscheidung: ``kurs``, ``signal`` und ``takt``. Sie werden weggelassen.
+
+``eroeffnungsversuch`` wurde in der ersten Fassung ebenfalls weggelassen -- ein Fehler,
+der erst in Stufe 7 auffiel und dort korrigiert wurde. Begruendung an :data:`BEHALTEN`.
 
 **Die Zahl der weggelassenen Saetze steht je Art im Kopf jeder Datei.** Eine stille
 Verkleinerung waere eine Aufzeichnung, die vollstaendig aussieht und es nicht ist --
@@ -66,6 +69,15 @@ ZIEL = ROOT / "aufzeichnungen"
 #: Alles andere ist Messrauschen des Laufs.
 BEHALTEN: frozenset[str] = frozenset(
     {
+        # Nachtrag Stufe 7: ``eroeffnungsversuch`` stand hier zuerst NICHT drin -- ich
+        # habe ihn in Stufe 5 als Messrauschen weggelassen, weil er 4.343 der 17.166
+        # Saetze ausmacht. Das war falsch, und zwar auf eine Weise, die erst eine Stufe
+        # spaeter auffiel: die Abnahme der Stufe 7 verlangt ausdruecklich, dass die
+        # Auswertungstabelle „gekennzeichnete Zeilen aus abgelehnten Signalen" enthaelt.
+        # Genau diese Saetze tragen die 4.311 Absagen samt Grund. Eine Verkleinerung,
+        # die den Umfang nach Haeufigkeit beurteilt statt nach Aussagekraft, wirft das
+        # Seltene weg und behaelt das Laute.
+        "eroeffnungsversuch",
         "start",
         "ende",
         "eroeffnet",
@@ -91,6 +103,19 @@ KENNUNGSFELDER: dict[str, tuple[str, int]] = {
 #: sagt ueber den Handelsplatz nichts.
 ENTFERNEN: frozenset[str] = frozenset({"pfad"})
 
+#: Felder, die ganz wegfallen -- **nach Aussagekraft, nicht nach Umfang.**
+#:
+#: ``schritte`` traegt die Naht-fuer-Naht-Liste eines Eroeffnungsversuchs. Was daraus
+#: fuer eine Auswertung zaehlt, ist die erste rote Naht -- und die steht bereits als
+#: ``grund`` im selben Satz. Die uebrigen Eintraege sind die gruenen Nahte davor:
+#: Diagnose ueber den Weg, nicht ueber die Entscheidung.
+#:
+#: Dass es zugleich 72 % des Umfangs spart (4,15 MB gegen 1,18 MB), ist ein
+#: willkommener Nebeneffekt und ausdruecklich **nicht** die Begruendung. Genau diese
+#: Verwechslung -- Umfang statt Aussagekraft -- hat in Stufe 5 dazu gefuehrt, die
+#: Absagen komplett wegzulassen.
+FELDER_WEGLASSEN: frozenset[str] = frozenset({"schritte"})
+
 
 class Redaktion:
     """Vergibt laufende Nummern je Feld und haelt gleiche Werte gleich."""
@@ -113,6 +138,9 @@ class Redaktion:
     def satz(self, roh: dict[str, Any]) -> dict[str, Any]:
         aus: dict[str, Any] = {}
         for k, v in roh.items():
+            if k in FELDER_WEGLASSEN:
+                self._zaehler[f"feld:{k}"] += 1
+                continue
             if k in ENTFERNEN:
                 aus[k] = "<entfernt>"
             elif k in KENNUNGSFELDER and v is not None:
@@ -165,6 +193,7 @@ def schreibform(
         "saetze_behalten": dict(sorted(behalten.items())),
         "saetze_weggelassen": dict(sorted(weg.items())),
         "weggelassen_gesamt": sum(weg.values()),
+        "felder_weggelassen": sorted(FELDER_WEGLASSEN),
         "behalten_gesamt": sum(behalten.values()),
     }
     zeilen = [json.dumps(kopf, ensure_ascii=False, sort_keys=True)]

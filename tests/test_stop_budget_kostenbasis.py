@@ -37,6 +37,7 @@ from mt5_trading_ai.execution.runner import RunnerConfig, run_signal
 from mt5_trading_ai.gates.criteria import CriteriaVerdict
 from mt5_trading_ai.risk.stop_budget import (
     ASSUMED_ROUND_TURN_COST_BPS,
+    KOSTENPRAEMISSE_BPS,
     cost_bps_from_fraction,
     stop_budget,
 )
@@ -57,6 +58,8 @@ JOURNAL_COST_FRACTION = Decimal("0.0001554")
 #: Dieselbe Lage in Basispunkten -- und die Annahme, gegen die sie antritt.
 GEMESSEN_BPS = Decimal("1.554")
 ANGENOMMEN_BPS = ASSUMED_ROUND_TURN_COST_BPS["fx_major"]  # 0,65 bp
+#: Der getrennt gepflegte Plausibilitaetsboden (Stufe 7). BEWUSST eine andere Zahl.
+BODEN_BPS = KOSTENPRAEMISSE_BPS["fx_major"]  # 0,05 bp
 
 
 def _instrument() -> Instrument:
@@ -320,14 +323,18 @@ def test_auftragsdaten_koennen_die_politik_nicht_unterbieten() -> None:
     )
 
 
-def test_auftragsdaten_koennen_auch_die_annahme_nicht_unterbieten() -> None:
+def test_auftragsdaten_koennen_den_plausibilitaetsboden_nicht_unterbieten() -> None:
     """ROTER EICHFALL: ohne Messkampagne war die Luecke noch weiter offen.
 
-    Ohne ``RiskPolicy.measured_cost_bps`` gab es in der Vorfassung gar keine Zahl,
+    Ohne ``RiskPolicy.measured_cost_bps`` gab es in der ersten Fassung gar keine Zahl,
     gegen die die mitgereiste haette antreten koennen -- 0,001 bp aus dem ``meta``
-    drueckten die Untergrenze auf 0,01 bp (vorher 6,5 bp aus der Annahmetabelle).
-    Die Praemisse ist deshalb die Messkampagne, und wo keine steht, die Annahme der
-    Klasse.
+    drueckten die Untergrenze auf 0,01 bp statt 6,5 bp.
+
+    **Geaendert in Stufe 7:** Die Praemisse ist nicht mehr die Annahmetabelle, sondern
+    ein getrennt gepflegter Plausibilitaetsboden (``KOSTENPRAEMISSE_BPS``). Der Grund
+    steht dort: dieselbe Zahl als Rueckfall UND als Schwelle zu benutzen hiess, dass
+    ein wirklich billigerer Zugang nie erkannt werden konnte. Die Sache dieses Falls
+    ist davon unberuehrt -- 0,001 bp liegt auch unter dem Boden und wird verworfen.
     """
     auth = _autorisiere(
         RiskManager(), meta={MEASURED_COST_BPS_META_KEY: Decimal("0.001")}
@@ -337,7 +344,26 @@ def test_auftragsdaten_koennen_auch_die_annahme_nicht_unterbieten() -> None:
     assert auth.budget.cost_is_measured is False
     assert auth.detail["cost_basis"] == (
         f"annahme {ANGENOMMEN_BPS} bp "
-        f"(Auftrag 0.001 bp verworfen: unter Praemisse {ANGENOMMEN_BPS} bp)"
+        f"(Auftrag 0.001 bp verworfen: unter Praemisse {BODEN_BPS} bp)"
+    )
+
+
+def test_eine_wirklich_bessere_ausfuehrung_wird_jetzt_erkannt() -> None:
+    """GRUENER EICHFALL zur Entkopplung -- vor Stufe 7 war er rot.
+
+    0,30 bp liegen unter der Annahme (0,65 bp) und ueber dem Plausibilitaetsboden
+    (0,05 bp). In der alten Fassung wurde die Zahl gegen die Annahme verworfen, und
+    danach galt die Annahme: ein Handelsplatz, der wirklich billiger ist, war nicht
+    erkennbar. Jetzt gilt die Messung.
+    """
+    auth = _autorisiere(
+        RiskManager(), meta={MEASURED_COST_BPS_META_KEY: Decimal("0.30")}
+    )
+    assert auth.budget is not None
+    assert auth.detail["cost_basis"].startswith("auftrag 0.30 bp")
+    assert "verworfen" not in auth.detail["cost_basis"]
+    assert auth.budget.lower_bps < Decimal("6.5"), (
+        "Eine billigere gemessene Ausfuehrung muss die Untergrenze senken duerfen."
     )
 
 

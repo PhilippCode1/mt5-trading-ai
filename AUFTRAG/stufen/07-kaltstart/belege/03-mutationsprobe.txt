@@ -1,0 +1,31 @@
+MUTATIONSPROBE ZU STUFE 7
+=========================
+Kopie vor dem Eingriff; zurueckgestellt AUS DER KOPIE (Lehre aus F-010).
+
+M1: die Positivliste zu einem Filter machen (jeder Grund erkundbar)
+FAILED tests/test_stufe7_kaltstart.py::test_keine_sicherheitssperre_wird_je_erkundet[insufficient_margin]
+FAILED tests/test_stufe7_kaltstart.py::test_keine_sicherheitssperre_wird_je_erkundet[volume_below_min]
+FAILED tests/test_stufe7_kaltstart.py::test_keine_sicherheitssperre_wird_je_erkundet[risk_drawdown_halt]
+8 failed, 29 passed in 0.97s
+
+M2: Erkundung auch auf dem Echtgeldkonto zulassen
+tests\test_stufe7_kaltstart.py:105: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_stufe7_kaltstart.py::test_auf_einem_echtgeldkonto_wird_nie_erkundet
+1 failed, 36 passed in 0.89s
+
+M3: die Gewichtung ausschalten (jede Zeile wiegt 1)
+=========================== short test summary info ===========================
+FAILED tests/test_stufe7_kaltstart.py::test_eine_erkundete_zeile_wiegt_invers_zu_ihrer_wahrscheinlichkeit
+FAILED tests/test_stufe7_kaltstart.py::test_die_gewichtung_verschiebt_den_mittelwert_in_die_richtige_richtung
+2 failed, 35 passed in 0.95s
+
+M4: die Schwelle wieder auf die Ersatzheuristik setzen (der alte Zustand)
+FAILED tests/test_stufe7_kaltstart.py::test_der_plausibilitaetsboden_liegt_echt_unter_der_annahme[index_major]
+FAILED tests/test_stufe7_kaltstart.py::test_der_plausibilitaetsboden_liegt_echt_unter_der_annahme[index_minor]
+FAILED tests/test_stop_budget_kostenbasis.py::test_eine_wirklich_bessere_ausfuehrung_wird_jetzt_erkannt
+9 failed, 58 passed in 1.19s
+
+WIEDERHERGESTELLT. Pruefsummen je Paar:
+547ddd230c14d34e7e7f663bc57b2d0e 547ddd230c14d34e7e7f663bc57b2d0e 
+3a325511861a32ef0db9e09c85b61178 3a325511861a32ef0db9e09c85b61178 

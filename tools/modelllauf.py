@@ -42,6 +42,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from mt5_trading_ai.gates.erkundung import erkundungsanteil  # noqa: E402
 from mt5_trading_ai.gates.herausforderer import (  # noqa: E402
     HerausfordererAblage,
     HerausfordererFehler,
@@ -149,8 +150,18 @@ def main() -> int:
     print("=" * 74)
     print("TRAININGSLAUF — er erzeugt einen Herausforderer, nie einen Champion")
     print("=" * 74)
+    # Stufe 7, Abnahme: „ein Trainingslauf weist den Anteil erkundender Beobachtungen
+    # aus." Ohne diese Zahl weiss niemand, ob ein Vorschlag aus dem Regelbetrieb kommt
+    # oder ueberwiegend aus Faellen, die das System selbst abgelehnt haette.
+    from tools.auswertung import tabelle_aus_journal
+
+    zeilen = tabelle_aus_journal(args.journal)
+    anteil = erkundungsanteil(zeilen)
+
     print(f"Journal           : {args.journal}")
     print(f"Geschlossene Trades: {len(spannen)}")
+    print(f"Erkundende Beobachtungen: {anteil * 100:.2f} % "
+          f"(von {sum(1 for z in zeilen if z.ergebnis_bp is not None)} mit Ergebnis)")
     print(f"Parametersatz     : {parameter}")
     noetig = mindestbeobachtungen(len(parameter))
     print(f"Noetig dafuer     : {noetig} effektive Beobachtungen")

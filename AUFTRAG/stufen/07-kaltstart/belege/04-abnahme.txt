@@ -1,0 +1,45 @@
+cachedir: .pytest_cache
+rootdir: C:\Users\Acer\mt5_trading_ai
+configfile: pyproject.toml
+plugins: anyio-4.8.0, base-url-2.1.0, cov-6.0.0, playwright-0.7.2
+collecting ... collected 37 items
+
+tests/test_stufe7_kaltstart.py::test_auswahlgruende_sind_auf_dem_papierkonto_erkundbar[risk_concurrent_position_cap] PASSED [  2%]
+tests/test_stufe7_kaltstart.py::test_auswahlgruende_sind_auf_dem_papierkonto_erkundbar[strategy_not_admitted] PASSED [  5%]
+tests/test_stufe7_kaltstart.py::test_auswahlgruende_sind_auf_dem_papierkonto_erkundbar[throttle_cooldown_active] PASSED [  8%]
+tests/test_stufe7_kaltstart.py::test_auswahlgruende_sind_auf_dem_papierkonto_erkundbar[throttle_instrument_daily_cap] PASSED [ 10%]
+tests/test_stufe7_kaltstart.py::test_keine_sicherheitssperre_wird_je_erkundet[global_halt] PASSED [ 13%]
+tests/test_stufe7_kaltstart.py::test_keine_sicherheitssperre_wird_je_erkundet[missing_stop_loss] PASSED [ 16%]
+tests/test_stufe7_kaltstart.py::test_keine_sicherheitssperre_wird_je_erkundet[schwebender_auftrag] PASSED [ 18%]
+tests/test_stufe7_kaltstart.py::test_keine_sicherheitssperre_wird_je_erkundet[account_unevaluable] PASSED [ 21%]
+tests/test_stufe7_kaltstart.py::test_keine_sicherheitssperre_wird_je_erkundet[cost_gate] PASSED [ 24%]
+tests/test_stufe7_kaltstart.py::test_keine_sicherheitssperre_wird_je_erkundet[insufficient_margin] PASSED [ 27%]
+tests/test_stufe7_kaltstart.py::test_keine_sicherheitssperre_wird_je_erkundet[volume_below_min] PASSED [ 29%]
+tests/test_stufe7_kaltstart.py::test_keine_sicherheitssperre_wird_je_erkundet[risk_drawdown_halt] PASSED [ 32%]
+tests/test_stufe7_kaltstart.py::test_auf_einem_echtgeldkonto_wird_nie_erkundet PASSED [ 35%]
+tests/test_stufe7_kaltstart.py::test_dieselbe_gelegenheit_ergibt_dieselbe_entscheidung PASSED [ 37%]
+tests/test_stufe7_kaltstart.py::test_die_rate_trifft_ueber_viele_gelegenheiten PASSED [ 40%]
+tests/test_stufe7_kaltstart.py::test_eine_unsinnige_rate_wirft PASSED    [ 43%]
+tests/test_stufe7_kaltstart.py::test_eine_erkundete_zeile_wiegt_invers_zu_ihrer_wahrscheinlichkeit PASSED [ 45%]
+tests/test_stufe7_kaltstart.py::test_eine_regulaere_zeile_wiegt_eins PASSED [ 48%]
+tests/test_stufe7_kaltstart.py::test_eine_erkundete_zeile_ohne_wahrscheinlichkeit_laesst_sich_nicht_gewichten PASSED [ 51%]
+tests/test_stufe7_kaltstart.py::test_die_gewichtung_verschiebt_den_mittelwert_in_die_richtige_richtung PASSED [ 54%]
+tests/test_stufe7_kaltstart.py::test_ohne_zeile_mit_ergebnis_gibt_es_keinen_mittelwert PASSED [ 56%]
+tests/test_stufe7_kaltstart.py::test_der_erkundungsanteil_zaehlt_gegen_die_zeilen_mit_ergebnis PASSED [ 59%]
+tests/test_stufe7_kaltstart.py::test_der_plausibilitaetsboden_liegt_echt_unter_der_annahme[commodity_non_gold] PASSED [ 62%]
+tests/test_stufe7_kaltstart.py::test_der_plausibilitaetsboden_liegt_echt_unter_der_annahme[crypto] PASSED [ 64%]
+tests/test_stufe7_kaltstart.py::test_der_plausibilitaetsboden_liegt_echt_unter_der_annahme[equity] PASSED [ 67%]
+tests/test_stufe7_kaltstart.py::test_der_plausibilitaetsboden_liegt_echt_unter_der_annahme[fx_major] PASSED [ 70%]
+tests/test_stufe7_kaltstart.py::test_der_plausibilitaetsboden_liegt_echt_unter_der_annahme[fx_minor] PASSED [ 72%]
+tests/test_stufe7_kaltstart.py::test_der_plausibilitaetsboden_liegt_echt_unter_der_annahme[gold] PASSED [ 75%]
+tests/test_stufe7_kaltstart.py::test_der_plausibilitaetsboden_liegt_echt_unter_der_annahme[index_major] PASSED [ 78%]
+tests/test_stufe7_kaltstart.py::test_der_plausibilitaetsboden_liegt_echt_unter_der_annahme[index_minor] PASSED [ 81%]
+tests/test_stufe7_kaltstart.py::test_beide_tabellen_kennen_dieselben_klassen PASSED [ 83%]
+tests/test_stufe7_kaltstart.py::test_der_boden_weist_unsinn_weiterhin_ab PASSED [ 86%]
+tests/test_stufe7_kaltstart.py::test_die_auswertung_enthaelt_gekennzeichnete_zeilen_aus_abgelehnten_signalen PASSED [ 89%]
+tests/test_stufe7_kaltstart.py::test_die_eingecheckte_aufzeichnung_traegt_die_abgelehnten_signale PASSED [ 91%]
+tests/test_stufe7_kaltstart.py::test_die_aufzeichnung_weist_auch_weggelassene_FELDER_aus PASSED [ 94%]
+tests/test_stufe7_kaltstart.py::test_der_trainingslauf_weist_den_anteil_erkundender_beobachtungen_aus PASSED [ 97%]
+tests/test_stufe7_kaltstart.py::test_die_auswertung_laeuft_gegen_die_eingecheckte_aufzeichnung PASSED [100%]
+
+============================= 37 passed in 0.80s ==============================

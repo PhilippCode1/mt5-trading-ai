@@ -308,7 +308,7 @@ Der Risikozustand, der einen Neustart ueberdauert -- und wie er fail-closed lies
 
 ## `mt5_trading_ai/execution/risk_manager.py`
 
-Zeilen: 1183
+Zeilen: 1192
 
 Risikoschicht am Order-Pfad: die vier Grenzen als letzte Verteidigungslinie.
 
@@ -364,6 +364,20 @@ Vorregistrierte Kriterien und ihre Auswertung (Phase 9.3).
 - `def deflated_sharpe_ratio`
 - `def annualise_sharpe`
 - `def percentile_against_random`
+
+## `mt5_trading_ai/gates/erkundung.py`
+
+Zeilen: 231
+
+Kaltstart: den Kreis aufbrechen, ohne die Sperren aufzuweichen.
+
+- `class Herkunft`
+- `class Erkundungsentscheidung`
+- `def erkundung_erlaubt`
+- `def entscheide_erkundung`
+- `class Auswertungszeile`
+- `def erkundungsanteil`
+- `def gewichteter_mittelwert`
 
 ## `mt5_trading_ai/gates/evaluation.py`
 
@@ -478,10 +492,11 @@ Risiko je Trade, ausfuehrbarer Stop-Floor und Positionsgroesse (Phase 6.2/6.3).
 
 ## `mt5_trading_ai/risk/stop_budget.py`
 
-Zeilen: 325
+Zeilen: 369
 
 Stop-Budget je Anlageklasse — hergeleitet, nicht uebertragen (Phase 6.5).
 
+- `def kostenpraemisse_bps`
 - `class StopBudget`
 - `def assumed_cost_bps`
 - `def cost_bps_from_fraction`
