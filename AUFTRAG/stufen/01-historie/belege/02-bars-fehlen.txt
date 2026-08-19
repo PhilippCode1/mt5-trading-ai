@@ -1,0 +1,23 @@
+# Beleg 2 — Liegen die Bars vor?, erhoben 2026-08-19T15:37:58Z
+
+## Suche nach Bar-Dateien im Repo
+CSV/bi5/parquet ausserhalb tests/fixtures: 0
+Gefundene CSV insgesamt:
+./tests/fixtures/smoke_eurusd_d1.csv
+./tests/fixtures/smoke_eurusd_h1.csv
+
+## Woher nehmen die Werkzeuge ihre Kerzen?
+tools/ereignisstudie.py:200-218 (_lade_kerzen):
+def _lade_kerzen(symbol: str) -> list[Kerze]:
+    """Stundenkerzen aus dem Terminal, Zeitstempel in ECHTES UTC gedreht."""
+    terminal = RealMt5Terminal(allow_write=False)
+    if not terminal.initialize():
+        raise StudienError("Terminal nicht erreichbar")
+    try:
+        ende = datetime.now(UTC)
+
+## Befund
+Die 15 Manifeste tragen Pruefsummen, aber die Bars, gegen die sie pruefen wuerden,
+liegen nicht auf der Platte. Die Reihen werden bei jedem Lauf live aus dem
+Broker-Terminal gelesen (RealMt5Terminal). Ohne laufendes, angemeldetes Terminal
+desselben Brokers ist keine dieser 15 Pruefsummen nachpruefbar.

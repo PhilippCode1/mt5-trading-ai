@@ -1,0 +1,24 @@
+# Beleg 1 — Bestand der 15 Reihen-Manifeste, erhoben 2026-08-19T15:37:58Z
+Kommando: Auswertung von config/reihen/*.manifest.json
+
+Symbol   TF       Bars  von        bis          Jahre  Quelle
+------------------------------------------------------------------------------------
+DE40     D1       3537  2012-08-06 2026-08-17    14.0  mt5-terminal-read-only
+DE40     H1      60450  2012-08-06 2026-08-17    14.0  mt5-terminal-read-only
+DE40     H4      16739  2012-08-06 2026-08-17    14.0  mt5-terminal-read-only
+EURUSD   D1       7181  1999-01-04 2026-08-17    27.6  mt5-terminal-read-only
+EURUSD   H1      99998  2010-07-07 2026-08-17    16.1  mt5-terminal-read-only
+EURUSD   H4      43012  1999-01-04 2026-08-17    27.6  mt5-terminal-read-only
+GBPJPY   D1       8658  1993-04-19 2026-08-17    33.3  mt5-terminal-read-only
+GBPJPY   H1      99998  2010-07-06 2026-08-17    16.1  mt5-terminal-read-only
+GBPJPY   H4      44470  1993-04-19 2026-08-17    33.3  mt5-terminal-read-only
+NVDA     D1       5760  2003-09-10 2026-08-14    22.9  mt5-terminal-read-only
+NVDA     H1      40566  2003-09-10 2026-08-14    22.9  mt5-terminal-read-only
+NVDA     H4      11539  2003-09-10 2026-08-14    22.9  mt5-terminal-read-only
+XAUUSD   D1       5699  2004-06-11 2026-08-17    22.2  mt5-terminal-read-only
+XAUUSD   H1      99998  2009-07-17 2026-08-17    17.1  mt5-terminal-read-only
+XAUUSD   H4      33976  2004-06-11 2026-08-17    22.2  mt5-terminal-read-only
+
+Quellen ueber alle 15: {'mt5-terminal-read-only': 15}
+Reihen mit genau 99998 Bars: 3 (EURUSD/GBPJPY/XAUUSD H1)
+Reihen aus einer vom Handelsplatz UNABHAENGIGEN Quelle: 0

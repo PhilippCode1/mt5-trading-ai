@@ -1,0 +1,29 @@
+# Beleg 4 — Ende-zu-Ende am Backtest-Rand, ausgefuehrt 2026-08-19T15:42:27Z
+Kommando: load_verified_csv(daten/reihen/EURUSD_D1.csv, ...) + assess_bars
+
+load_verified_csv am Backtest-Rand: BESTANDEN
+  Bars gelesen        : 782
+  Pruefsumme Lader    : 78683f92b090b99c9204ebbb0e700efd0abeebd87cf03b63e2089f7ae2cc8602
+  Pruefsumme Manifest : 78683f92b090b99c9204ebbb0e700efd0abeebd87cf03b63e2089f7ae2cc8602
+  identisch           : True
+  Zeitraum            : 2022-01-03 .. 2024-12-31
+
+Qualitaetsbericht (Zahlen, nicht 'unbekannt'):
+  expected_bars         = 781
+  present_bars          = 782
+  gap_ratio             = 0.0
+  duplicate_timestamps  = 0
+  unaligned_timestamps  = 0
+  non_monotonic         = 0
+  naive_timestamps      = 0
+  passed                = True
+  outlier_bars          = 0
+  zero_volume_bars      = 0
+  outside_session_bars  = 0
+  invalid_ohlc_bars     = 0
+  reasons               = ()
+
+## Hinweis zu present_bars > expected_bars
+782 vorhanden gegen 781 erwartet. Das ist keine Luecke, sondern die Gegenrichtung:
+DEFAULT_FX_HOLIDAYS zieht einen Tag von der Erwartung ab, den Dukascopy tatsaechlich
+liefert. gap_ratio bleibt 0,0. Die Erwartung ist an dieser Stelle konservativ.

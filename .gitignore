@@ -34,3 +34,7 @@ htmlcov/
 # vorhanden war. Ein frischer Klon konnte tools/betrieb_auswerten.py,
 # tools/betrieb_reihe.py, tools/oberflaeche.py und drei Testdateien nicht importieren.
 /betrieb/
+
+# Marktdaten: Lizenz erlaubt nur private Nutzung/Backtest. Nur Manifest+Pruefsumme
+# gehen ins Repo, nie die Bars selbst.
+daten/

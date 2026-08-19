@@ -1,0 +1,13 @@
+{
+  "loader_version": "data-loader-v1",
+  "instrument": "EURUSD",
+  "timeframe": "D1",
+  "source": "dukascopy-bid-day",
+  "price_divisor": 100000.0,
+  "session": "weekday-utc",
+  "bar_count": 782,
+  "first_ts": "2022-01-03T00:00:00+00:00",
+  "last_ts": "2024-12-31T00:00:00+00:00",
+  "bars_checksum": "78683f92b090b99c9204ebbb0e700efd0abeebd87cf03b63e2089f7ae2cc8602",
+  "quality_reasons": []
+}

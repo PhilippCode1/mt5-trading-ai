@@ -1,0 +1,23 @@
+# Beleg 3 — Abruf EURUSD D1 aus unabhaengiger Quelle, ausgefuehrt 2026-08-19T15:41:27Z
+Kommando: python tools/fetch_data.py --instrument EURUSD --timeframe D1 --from-year 2022 --to-year 2024 --out daten/reihen
+
+Dukascopy EURUSD D1 2022-2024 ...
+  2022: 365 Rohkerzen
+  2023: 365 Rohkerzen
+  2024: 366 Rohkerzen
+
+Qualitaetstor: BESTANDEN | Bars 782 (erwartet 779) | Luecke 0.000 % | Ausreisser 0
+Zeitraum: 2022-01-03 .. 2024-12-31
+Bars-Pruefsumme: 78683f92b090b99c9204ebbb0e700efd0abeebd87cf03b63e2089f7ae2cc8602
+Manifest-Pruefsumme (inkl. Herkunft/Divisor/Urteil): 0b3b8b5c2a433298e7d62aaacf58fac5f7caff3ff90671456ae08bf20c238a1c
+Ablage: daten\reihen\EURUSD_D1.csv
+
+Gegenprobe R2.2 (Dukascopy vs Yahoo, Close-zu-Close):
+  Yahoo 782 Bars (16 OHLC-ungueltige verworfen) | verglichene Tage: 766
+  Abweichung: Median 28.20 bps | Mittel 37.00 bps | max 209.45 bps
+EXIT=0
+
+## Gegenprobe der Reproduzierbarkeit
+Die Bars-Pruefsumme 78683f92... stimmt mit der eines frueheren, unabhaengig
+gefahrenen Abrufs desselben Zeitraums ueberein (Paket 2 des Vorhabens).
+Zwei getrennte Laeufe, dieselbe Zahl -- die Reihe ist reproduzierbar beschaffbar.
