@@ -1,6 +1,6 @@
 Stufe:            3 — Simulator und Ergebnistor
 Zustand:          angehalten (Vorlauf erledigt, Lauf steht aus)
-Zuletzt:          2026-08-19, Commit siehe git log (Stufe-3-Vorlauf)
+Zuletzt:          2026-08-19, Commit b5fa159 (Stufe-3-Vorlauf)
 Abnahme belegt:   nein — der Vorlauf ist belegt (AUFTRAG/stufen/03-simulator/bericht.md, Belege 01-04), die Stufe selbst ist NICHT abgenommen: der Lauf hat nicht stattgefunden.
 Naechster Schritt: H-002 entscheiden lassen. Lautet die Entscheidung "zulaessig": (1) AUFTRAG/vorregistrierung/<datum>.md schreiben mit Mindestzahl Trades, Mindest-Erwartungswert nach Kosten, Signifikanzmass, Kostenannahme inkl. 1,5-fach und Versuchszaehlerstand 7 von 60 -- danach unveraenderlich; (2) run_registered_backtest gegen die Reihe aus Stufe 1 fahren (EURUSD H1, 18.715 Bars, 2022-01-02..2024-12-31, Pruefsumme 8cdebf05...); (3) faellt das Ergebnis unter die vorregistrierte Schwelle, ist das Befund (B) aus §1 und ein gueltiges Ende des Auftrags.
 Offene Haltepunkte: 3 — siehe haltepunkte.md (H-002 blockiert JETZT, H-001 Halal-Vorfrage, H-003 Widerruf der Zugangsdaten im verworfenen Stand)
