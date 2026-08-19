@@ -1,7 +1,7 @@
 Stufe:            1 — Historie beschaffen
 Zustand:          abgenommen
-Zuletzt:          2026-08-19, Commit siehe git log (Stufe-1-Abschluss)
-Abnahme belegt:   ja — AUFTRAG/stufen/01-historie/bericht.md §3, Belege in stufen/01-historie/belege/ (7 Dateien)
+Zuletzt:          2026-08-19, Commit d3ba605 (Stufe 1)
+Abnahme belegt:   ja — AUFTRAG/stufen/01-historie/bericht.md §3, Belege in stufen/01-historie/belege/ (8 Dateien)
 Nächster Schritt: Stufe 2 beginnen — alle Querabfragen, die "neuester Datenbankzustand" statt "Zustand zum Zeitpunkt des Bars" lesen, mit einer oberen Zeitgrenze versehen und ein Determinismus-Tor bauen, das denselben Kursabschnitt zweimal verarbeitet (einmal chronologisch, einmal mit bereits vorhandenen spaeteren Zeilen) und Byte-Gleichheit erzwingt; ohne den roten Eichfall (Zeitschranke entfernen -> Tor wird rot) ist die Stufe nicht abgenommen.
 Offene Haltepunkte: 3 — siehe haltepunkte.md (H-001 Halal-Vorfrage, H-002 Auslegung von ABBRUCH.md vor Stufe 3, H-003 Widerruf der Zugangsdaten im verworfenen Stand)
 Ehrliche Restschätzung: 9 von 11 Stufen offen (2 bis 10). Unsicher, in dieser Reihenfolge: (a) H-002 entscheidet, ob Stufe 3 ueberhaupt beginnen darf, und kann den Auftrag davor beenden; (b) Stufe 2 beruehrt Struktur- und Zeichenlogik, deren Umfang erst beim Lesen sichtbar wird — ein Determinismus-Tor kann mehr Zeitschranken aufdecken als erwartet; (c) Stufe 3 selbst, deren Ergebnis (A) oder (B) sein kann und in beiden Faellen den Auftrag beendet. Nicht unsicher, aber offen: die unabhaengige Historie deckt EIN Instrument (EURUSD) ueber drei Jahre; vier weitere Instrumente des Pruefuniversums haben keine unabhaengige Reihe, und fuer XAUUSD/DE40/NVDA fehlt dafuer die Divisor- und Symbolzuordnung. Ebenfalls offen und nicht meine Arbeit: 13 fremde, nicht eingecheckte Dateien im Arbeitsbaum ("Welle 4"), die drei Tore rot faerben.
