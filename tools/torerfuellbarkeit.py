@@ -219,6 +219,47 @@ def noetige_sharpe_fuer_dsr(*, ziel: float, beobachtungen: int, versuche: int) -
     return oben
 
 
+def hellseher_sharpe(
+    closes: list[float], horizont: int, kosten_bp: float
+) -> tuple[float, float, float, int]:
+    """Die Obergrenze: was perfekte Voraussicht auf dieser Reihe je Trade erreicht.
+
+    Ein Hellseher kennt das Vorzeichen der naechsten ``horizont``-Bar-Bewegung und nimmt
+    sie ganz mit. Seine Auszahlung je Trade ist ``|Bewegung| - K``. Das ist keine
+    Hypothese und nicht handelbar -- es ist die Schranke, unter der jede handelbare
+    Strategie auf **dieser** Reihe, bei **dieser** Frequenz und **diesen** Kosten liegen
+    muss.
+
+    Warum die Zahl gebraucht wird: ``f`` sagt, welchen Anteil der Bewegung das Tor
+    verlangt. Sie sagt nicht, wie weit dieser Anspruch vom ueberhaupt Moeglichen
+    entfernt liegt. Ein Tor bei 90 % der Obergrenze und eines bei 10 % sind beide
+    „erfuellbar" und bedeuten voellig Verschiedenes.
+
+    Gerechnet wird auf **nicht ueberlappenden** Fenstern -- anders als in
+    :func:`bewegung_bp`. Das ist hier zwingend: die Rede ist von einer Folge
+    tatsaechlich nacheinander gehaltener Positionen, und ueberlappende Trades waeren
+    dieselbe Bewegung mehrfach kassiert.
+
+    Rueckgabe: (Sharpe je Trade, mittlerer Netto-Ertrag in bp, Streuung in bp, Trades).
+    """
+    if horizont < 1:
+        raise TorFehler(f"Horizont {horizont} < 1 Bar -- kein Hellseher-Lauf moeglich.")
+    netto = [
+        abs(closes[i + horizont] - closes[i]) / closes[i] * 10_000.0 - kosten_bp
+        for i in range(0, len(closes) - horizont, horizont)
+    ]
+    if len(netto) < 2:
+        raise TorFehler(
+            f"Nur {len(netto)} nicht ueberlappende Fenster -- fuer eine Streuung "
+            "braucht es mindestens zwei."
+        )
+    mittel = statistics.fmean(netto)
+    streuung = statistics.pstdev(netto)
+    if streuung <= 0:
+        raise TorFehler("Streuung der Hellseher-Auszahlung ist null.")
+    return mittel / streuung, mittel, streuung, len(netto)
+
+
 def spanne_jahre(erster: datetime, letzter: datetime) -> float:
     """Kalenderspanne eines Blocks in Jahren, aus den Zeitstempeln der Randbars."""
     stunden = (letzter - erster).total_seconds() / 3600.0
@@ -429,6 +470,31 @@ def main() -> int:
     print("Herkunft der Slippage: config/broker_costs.json fuehrt sie als")
     print("                       'ANNAHME, keine Messung'. Der groesste Einzelposten")
     print("                       der Kostenrechnung ist damit nicht gemessen.")
+    print()
+
+    hs_sharpe, hs_mittel, hs_streuung, hs_trades = hellseher_sharpe(
+        kurse, horizont, k_bp
+    )
+    print("-" * 78)
+    print("8) DIE OBERGRENZE -- was perfekte Voraussicht hergibt")
+    print("-" * 78)
+    print(f"Nicht ueberlappende Trades : {hs_trades}")
+    print(f"Netto je Trade (|Bew.| - K): {hs_mittel:.4f} bp")
+    print(f"Streuung                   : {hs_streuung:.4f} bp")
+    print(f"-> Sharpe JE TRADE         : {hs_sharpe:.4f}")
+    print(f"-> annualisiert            : {hs_sharpe * faktor:.2f}")
+    print()
+    print(f"Das Tor verlangt je Trade  : {sharpe_je_trade:.5f}")
+    print(
+        f"==> DAS TOR LIEGT BEI      : {sharpe_je_trade / hs_sharpe * 100:.1f} % "
+        "der Obergrenze"
+    )
+    print()
+    print("Lesehilfe -- und ihre Grenze: die Sharpe waechst NICHT linear mit dem")
+    print("Koennen, der Prozentsatz ist also kein 'so viel Koennen wird gebraucht'.")
+    print("Er sagt nur, wo im Moeglichen der Anspruch liegt: nahe an der Obergrenze")
+    print("hiesse praktisch unerreichbar, weit darunter heiszt anspruchsvoll, aber")
+    print("nicht durch die Reihe selbst ausgeschlossen.")
     print()
 
     print("." * 78)

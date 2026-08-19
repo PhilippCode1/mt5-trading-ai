@@ -33,7 +33,7 @@ Hypothesen. Sie lässt sich ohne Backtest beantworten. Der Nachtrag tut genau da
   Stationarität daneben und geht in keine Zahl ein, die etwas entscheidet.
 
 Werkzeug: [`tools/torerfuellbarkeit.py`](../../../tools/torerfuellbarkeit.py), Eichfälle in
-`tests/test_torerfuellbarkeit.py` (7 Fälle, drei davon rot fahrend).
+`tests/test_torerfuellbarkeit.py` (12 Fälle, fünf davon rot fahrend).
 
 ---
 
@@ -181,6 +181,44 @@ Größe, die bei jeder Auslegung eines künftigen Versuchs auf dem Tisch liegen 
 
 ---
 
+## 5b. Befund V — wo der Anspruch im überhaupt Möglichen liegt
+
+`f = 29,1 %` sagt, welchen Anteil der Bewegung das Tor verlangt. Es sagt **nicht**, wie
+weit dieser Anspruch vom überhaupt Erreichbaren entfernt liegt — und ein Tor bei 90 % der
+Obergrenze und eines bei 10 % sind beide „erfüllbar" und bedeuten völlig Verschiedenes.
+
+Die Obergrenze ist berechenbar: ein Hellseher, der das Vorzeichen jeder Zwei-Stunden-
+Bewegung kennt, sie ganz mitnimmt und dabei jedes Mal die vollen Kosten zahlt. Gerechnet
+auf **nicht überlappenden** Fenstern — es geht um eine Folge tatsächlich nacheinander
+gehaltener Positionen, nicht um dieselbe Bewegung mehrfach kassiert.
+
+| | |
+|---|---:|
+| nicht überlappende Trades | 6.549 |
+| Netto je Trade (\|Bewegung\| − K) | 8,9741 bp |
+| Streuung | 12,2494 bp |
+| **Sharpe je Trade** | **0,7326** |
+| dasselbe annualisiert | 34,55 |
+| das Tor verlangt je Trade | 0,08942 |
+| **→ das Tor liegt bei** | **12,2 % der Obergrenze** |
+
+Die annualisierte 34,55 ist die Plausibilitätsprobe: perfekte Voraussicht *muss* eine
+absurde Zahl ergeben. Täte sie es nicht, wäre etwas an Kosten oder Horizont falsch.
+
+**Was die 12,2 % sagen — und was nicht.** Sie sagen, dass der Anspruch des Tors weit
+unterhalb dessen liegt, was diese Reihe bei dieser Frequenz und diesen Kosten hergibt. Er
+ist also nicht durch die Daten selbst ausgeschlossen. Sie sagen **nicht**, dass „12 %
+Können genügen": die Sharpe wächst nicht linear mit der Trefferquote, der Prozentsatz ist
+eine Ortsangabe im Möglichen, keine Anforderung an das Können. Die Anforderung an das
+Können steht in §3 und lautet 64,6 % Trefferquote.
+
+Der Eichfall dazu prüft die Eigenschaft, wegen der die Zahl überhaupt taugt: der
+Hellseher muss auf denselben Fenstern sowohl eine Immer-Long- als auch eine
+Immer-Short-Strategie im Netto-Ertrag schlagen. Eine Obergrenze, die unterboten werden
+kann, ist keine.
+
+---
+
 ## 6. Was daraus für die drei gefahrenen Läufe folgt
 
 Die drei Hypothesen erreichten 59, 123 und 58 Trades. Das Tor verlangt 2.000. Sie waren
@@ -266,6 +304,7 @@ entstanden ist.
 | Was heißt das praktisch? | **64,6 % Trefferquote** über 2.000 Trades à 2 Stunden | 57,8 % kostet allein der Nulldurchgang |
 | Auf dem OoS-Block? | **69,0 %** | der Block bewegt sich 34,9 % weniger |
 | Wie belastbar ist die Kostenzahl? | **55,6 % davon ist eine Annahme** | Slippage, nie gemessen |
+| Wo liegt der Anspruch im Möglichen? | bei **12,2 % der Obergrenze** | Hellseher: Sharpe je Trade 0,7326 |
 
 **Für den Auftraggeber heißt das:** Option 3 aus [`../../rueckbau-bestandsaufnahme.md`](../../rueckbau-bestandsaufnahme.md)
 — eine neu begründete Hypothese — hat jetzt eine Zahl. Wer sie zieht, muss eine Strategie

@@ -30,6 +30,7 @@ from tools.torerfuellbarkeit import (
     STUNDEN_JE_JAHR,
     TorFehler,
     bewegung_bp,
+    hellseher_sharpe,
     spanne_jahre,
 )
 
@@ -136,3 +137,80 @@ def test_die_kette_von_der_schwelle_bis_zur_trefferquote() -> None:
     )
     assert float(p) == pytest.approx(0.5 + anteil / 2, rel=1e-9)
     assert 0.5 < float(p) < 1.0
+
+
+# --- Die Obergrenze: perfekte Voraussicht -------------------------------------
+def test_hellseher_faengt_jede_bewegung_und_zahlt_jedes_mal_die_kosten() -> None:
+    """Der gruene Eichfall der Obergrenze, von Hand nachzurechnen.
+
+    Reihe 100, 110, 100, 110, ... Bei Horizont 1 betraegt jede Bewegung dem Betrag nach
+    1000,00 bp (aufwaerts) bzw. 909,09 bp (abwaerts). Der Hellseher nimmt jede mit und
+    zahlt je Trade K.
+    """
+    closes = [100.0, 110.0] * 8
+    sharpe, mittel, streuung, trades = hellseher_sharpe(closes, horizont=1, kosten_bp=5.0)
+
+    # 16 Bars, Horizont 1, nicht ueberlappend: range(0, 15, 1) -> genau 15 Trades.
+    assert trades == 15
+    auf, ab = 1000.0, 100_000.0 / 110.0
+    erwartet = [(auf if i % 2 == 0 else ab) - 5.0 for i in range(trades)]
+    assert mittel == pytest.approx(statistics.fmean(erwartet), rel=1e-12)
+    assert streuung == pytest.approx(statistics.pstdev(erwartet), rel=1e-12)
+    assert sharpe == pytest.approx(mittel / streuung, rel=1e-12)
+
+
+def test_hellseher_rechnet_ohne_ueberlappung() -> None:
+    """Der Fall, der die zweite naheliegende Verwechslung ausschlieszt.
+
+    ``bewegung_bp`` rechnet ueberlappend (jede Startposition zaehlt), ``hellseher_sharpe``
+    darf das NICHT: eine Folge tatsaechlich gehaltener Positionen kassiert dieselbe
+    Bewegung nur einmal. Bei Horizont 2 auf 21 Bars sind das 10 Trades und nicht 19.
+    """
+    closes = [100.0 + i for i in range(21)]
+    _, _, _, trades = hellseher_sharpe(closes, horizont=2, kosten_bp=0.1)
+    assert trades == 10, "Ueberlappend waeren es 19 -- dieselbe Bewegung mehrfach."
+
+
+def test_hellseher_schlaegt_jede_richtungsstrategie_auf_derselben_reihe() -> None:
+    """Die Eigenschaft, wegen der die Zahl ueberhaupt taugt: sie muss dominieren.
+
+    Eine Obergrenze, die eine handelbare Strategie unterbieten kann, ist keine. Der Fall
+    baut deshalb auf derselben Reihe zwei Vergleiche: eine Strategie, die IMMER long
+    geht, und eine, die IMMER short geht. Beide zahlen dieselben Kosten. Der Hellseher
+    muss beide im mittleren Netto-Ertrag schlagen -- und zwar auf denselben nicht
+    ueberlappenden Fenstern, sonst vergleicht der Fall zwei verschiedene Dinge.
+
+    Geprueft wird der Ertrag, nicht die Sharpe: eine Richtungsstrategie kann auf einer
+    kurzen Reihe zufaellig eine kleinere Streuung und damit eine hoehere Sharpe haben,
+    ohne mehr zu verdienen. Die Obergrenzen-Eigenschaft ist eine des Ertrags.
+    """
+    closes = [100.0 + (7 * i % 13) * 0.1 for i in range(200)]
+    horizont, kosten = 2, 0.5
+
+    sharpe, hellseher_mittel, _, trades = hellseher_sharpe(closes, horizont, kosten)
+
+    fenster = [
+        (closes[i + horizont] - closes[i]) / closes[i] * 10_000.0
+        for i in range(0, len(closes) - horizont, horizont)
+    ]
+    assert len(fenster) == trades, "Die Vergleiche muessen dieselben Fenster benutzen."
+    immer_long = statistics.fmean([x - kosten for x in fenster])
+    immer_short = statistics.fmean([-x - kosten for x in fenster])
+
+    assert hellseher_mittel > immer_long
+    assert hellseher_mittel > immer_short
+    assert hellseher_mittel == pytest.approx(
+        statistics.fmean([abs(x) - kosten for x in fenster]), rel=1e-12
+    )
+    assert sharpe > 0
+
+
+def test_hellseher_scheitert_laut_bei_zu_wenig_fenstern() -> None:
+    """Ein einziges nicht ueberlappendes Fenster hat keine Streuung -- kein Ergebnis."""
+    with pytest.raises(TorFehler, match="Fenster"):
+        hellseher_sharpe([100.0, 101.0, 102.0], horizont=2, kosten_bp=0.1)
+
+
+def test_hellseher_scheitert_laut_bei_horizont_null() -> None:
+    with pytest.raises(TorFehler, match="Horizont"):
+        hellseher_sharpe([100.0, 101.0, 102.0], horizont=0, kosten_bp=0.1)

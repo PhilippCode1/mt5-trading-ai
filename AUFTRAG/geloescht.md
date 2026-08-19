@@ -180,8 +180,10 @@ getrennte Gründe, beide unverändert:
    `C:\Users\Acer\OneDrive\Documents\Cursor1\` — und enthalten Zugangsdaten im Klartext
    (H-003). Eine Löschung vor dem Widerruf beseitigt die Kopie, nicht die Gültigkeit der
    Schlüssel. Widerrufen kann sie nur der Kontoinhaber.
-2. **Ich lösche keine Daten des Auftraggebers unwiderruflich.** Ein `.git` mit 121 Commits
-   und rund 1,4 GB Archiven ist über keinen Papierkorb dieser Größenordnung
+2. **Ich lösche keine Daten des Auftraggebers unwiderruflich.** Gemessen am 2026-08-19:
+   das Verzeichnis **2,0 GB** (mit einem `.git` von 121 Commits), dazu die Archive
+   `bitget-btc-ai.7z` **693.431.340 Bytes** und `bitget-btc-ai.zip` **742.253.246 Bytes**
+   = 1,44 GB. Zusammen rund **3,4 GB**, über keinen Papierkorb dieser Größenordnung
    wiederherstellbar. Die Befehle stehen im Schlussbericht; ausführen muss sie der
    Auftraggeber.
 

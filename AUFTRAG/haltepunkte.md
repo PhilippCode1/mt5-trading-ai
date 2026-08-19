@@ -126,9 +126,10 @@ nebeneinander stehen:
 
 1. **Die Reihenfolge ist nicht verhandelbar.** Löschen vor Widerrufen beseitigt die Kopie
    und lässt die Schlüssel gültig — die Lage wird unübersichtlicher, nicht sicherer.
-2. **Der Agent löscht die Daten nicht selbst.** Ein Verzeichnis mit 121 Commits und rund
-   1,4 GB Archiven unwiderruflich zu entfernen, ist eine Handlung, die niemand für den
-   Auftraggeber vornimmt. Die Befehle liegen ihm vor; ausführen muss er sie.
+2. **Der Agent löscht die Daten nicht selbst.** Gemessen am 2026-08-19: Verzeichnis
+   **2,0 GB** (`.git` mit 121 Commits) plus **1,44 GB** Archive, zusammen rund **3,4 GB**.
+   Das unwiderruflich zu entfernen ist eine Handlung, die niemand für den Auftraggeber
+   vornimmt. Die Befehle liegen ihm vor; ausführen muss er sie.
 
 **Was der Agent dazu getan hat:** in `mt5_trading_ai` gemessen, was den Namen des
 Altbestands noch trägt. Ergebnis: **kein Produktionscode, kein Test, kein Import** — nur

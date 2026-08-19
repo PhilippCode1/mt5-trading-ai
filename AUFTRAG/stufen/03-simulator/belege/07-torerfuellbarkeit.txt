@@ -82,6 +82,24 @@ Herkunft der Slippage: config/broker_costs.json fuehrt sie als
                        'ANNAHME, keine Messung'. Der groesste Einzelposten
                        der Kostenrechnung ist damit nicht gemessen.
 
+------------------------------------------------------------------------------
+8) DIE OBERGRENZE -- was perfekte Voraussicht hergibt
+------------------------------------------------------------------------------
+Nicht ueberlappende Trades : 6549
+Netto je Trade (|Bew.| - K): 8.9741 bp
+Streuung                   : 12.2494 bp
+-> Sharpe JE TRADE         : 0.7326
+-> annualisiert            : 34.55
+
+Das Tor verlangt je Trade  : 0.08942
+==> DAS TOR LIEGT BEI      : 12.2 % der Obergrenze
+
+Lesehilfe -- und ihre Grenze: die Sharpe waechst NICHT linear mit dem
+Koennen, der Prozentsatz ist also kein 'so viel Koennen wird gebraucht'.
+Er sagt nur, wo im Moeglichen der Anspruch liegt: nahe an der Obergrenze
+hiesse praktisch unerreichbar, weit darunter heiszt anspruchsvoll, aber
+nicht durch die Reihe selbst ausgeschlossen.
+
 ..............................................................................
 GEGENPROBE STATIONARITAET (OoS-Block; geht in keine Entscheidung ein)
   Mittel |Bewegung| : 6.9919 bp gegen 10.7446 bp In-Sample (-34.9 %)

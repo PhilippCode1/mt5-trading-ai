@@ -287,3 +287,44 @@ verlangt, gehört in den Docstring, **welche** — und ein Fall, der die andere 
 Das ist derselbe Fehlertyp wie F-005 (Wort statt Aufruf gesucht) und die
 Sharpe-Feldwahl aus Stufe 3: drei gleich skalierte Zahlen nebeneinander, von denen genau
 eine richtig ist.
+
+---
+
+## F-010 — Zum zweiten Mal nicht eingecheckte Arbeit mit `git checkout` zerstört
+
+**Wann:** 2026-08-19, unmittelbar nach der Mutationsprobe zur Obergrenzen-Rechnung.
+
+**Was ich getan habe.** Um die Erfüllbarkeitsrechnung zu prüfen, habe ich `tools/
+torerfuellbarkeit.py` absichtlich mutiert (die Nicht-Überlappung entfernt), den Testlauf
+gefahren — zwei Fälle gingen korrekt rot — und die Mutation dann mit
+`git checkout -- tools/torerfuellbarkeit.py` zurückgenommen.
+
+**Was dabei passiert ist.** Der Befehl stellt den Stand des **letzten Commits** her, nicht
+den Stand vor der Mutation. Die Funktion `hellseher_sharpe` und der ganze Abschnitt 8
+waren zu diesem Zeitpunkt noch nicht eingecheckt. Der Befehl hat also nicht die Mutation
+entfernt, sondern die gesamte Arbeit an dieser Datei seit dem letzten Commit — rund 65
+Zeilen.
+
+**Das ist derselbe Fehler wie F-006**, sechs Einträge zuvor, in derselben Sitzung, mit
+demselben Befehl. Dort hieß die Lehre: „nach verschränkenden Operationen gegen eine
+bekannte Größe messen". Sie war richtig und hat hier nicht geholfen, weil der Fehler
+schon eine Stufe früher liegt: **`git checkout` ist kein Rücknahmebefehl für eine
+absichtliche Mutation.** Für die Rücknahme gibt es genau einen richtigen Weg, und der
+heißt, vorher eine Kopie anzulegen.
+
+**Wie es aufgefallen ist.** Sofort — der nächste Befehl in derselben Zeile war der
+Testlauf, und er brach bei der Sammlung ab (`hellseher_sharpe` nicht importierbar). Ein
+stiller Verlust war es dadurch nicht.
+
+**Wiederhergestellt und geprüft.** Der Inhalt lag vollständig im Arbeitsprotokoll dieser
+Sitzung und ist wortgleich zurückgeschrieben worden. Die Gegenprobe gegen eine bekannte
+Größe — die Lehre aus F-006, hier korrekt angewandt: der Lauf liefert nach der
+Wiederherstellung dieselben Zahlen wie davor, Ziffer für Ziffer (6.549 Trades, Netto
+8,9741 bp, Streuung 12,2494 bp, Sharpe je Trade 0,7326, 12,2 % der Obergrenze).
+
+**Was daraus folgt — konkreter als bei F-006.** Vor einer absichtlichen Mutation an einer
+Datei mit nicht eingechecktem Stand wird eine Kopie in den Ablagebereich geschrieben und
+**aus dieser Kopie** zurückgestellt. `git checkout -- <datei>` ist für diesen Zweck
+gesperrt; er kennt den Zwischenstand nicht, den er wiederherstellen soll. Zweitbeste
+Reihenfolge, wenn der Stand ohnehin fertig ist: erst einchecken, dann mutieren, dann
+`checkout` — dann stimmen Ziel und Wirkung des Befehls überein.
