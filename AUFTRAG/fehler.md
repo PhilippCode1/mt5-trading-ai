@@ -76,3 +76,35 @@ Validierungsapparat" wäre falsch gewesen, wenn sie so dort gestanden hätte. Si
 nicht dort; sie war auf das Repository bezogen. Knapp daneben ist trotzdem der Grund,
 warum Stufe 0 des neuen Auftrags mit einer Suche über das gesamte Benutzerverzeichnis
 beginnt und nicht mit dem Arbeitsverzeichnis.
+
+---
+
+## F-004 — Ich habe vor dem Stufe-0-Push das Gate-Set nicht vollständig gefahren
+
+**Stufe:** 0, bemerkt in Stufe 1 · **Datum:** 2026-08-19 · **Folge:** zwei Tore rot
+gepusht
+
+**Was passiert ist.** Vor dem Stufe-0-Commit habe ich `tools/check_docs_claims.py`
+gefahren — es meldete „ok - 32/32" — und daraus geschlossen, `AUFTRAG/` breche kein Tor.
+Der Schluss war falsch, weil die Messung zu früh lag: der Ordner war zu diesem Zeitpunkt
+**untracked**, und beide Doku-Tore zählen `git ls-files`. Der Commit hat die neun
+Markdown-Dateien getrackt gemacht; erst danach wurden die Tore rot. Ich habe also nicht
+den Zustand gemessen, den ich erzeugen wollte, sondern den davor.
+
+`tools/check_doc_numbers.py` und `tools/gen_docs.py --check` habe ich vor dem Push gar
+nicht gefahren, obwohl beide zum Pflicht-Gate-Set dieses Standes gehören und in der CI
+laufen.
+
+**Ursache.** Zwei Fehler in einem: eine Messung vor der Änderung statt danach, und ein
+unvollständiges Gate-Set, weil ich das eine Tor für repräsentativ hielt. Nach §6 des
+Auftrags: „Über alle Instanzen messen … nie am Vertreter."
+
+**Behoben.** Beide Tore laufen jetzt grün, ohne dass eine Schwelle gesenkt wurde
+(E-004); die Behebung ist mit rotem und grünem Eichfall belegt
+(`stufen/01-historie/belege/05-doku-tore.txt`). Das Gate-Set wird künftig **nach** dem
+Staging und vollständig gefahren.
+
+**Was daraus für die Bewertung folgt.** Der Stufe-0-Push war nicht CI-grün. Die Abnahme
+von Stufe 0 selbst berührt das nicht — sie betraf die Bestandsaufnahme, und deren Zahlen
+stimmen —, aber der Satz „AUFTRAG/ bricht kein bestehendes Tor" im Stufe-0-Bericht war
+zum Zeitpunkt des Schreibens bereits überholt. Er ist in Stufe 1 berichtigt.

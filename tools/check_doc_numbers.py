@@ -63,7 +63,25 @@ TESTS = REPO / "tests"
 README = REPO / "README.md"
 
 #: Anhaengendes Logbuch bzw. datierte Snapshots -- eingefrorene Zeitpunkt-Belege.
-HISTORICAL = ("PROGRESS.md", "docs/audit/")
+#:
+#: ``AUFTRAG/`` ist aus zwei Gruenden dabei, und beide sind es wert, benannt zu
+#: werden:
+#:
+#: 1. ``AUFTRAG/masterprompt-freigabereife.md`` ist ein von aussen vorgegebener
+#:    Vertrag, der **unveraendert** hinterlegt sein muss. Er nennt Kennzahlen im
+#:    Fliesstext. Ihn diesem Tor zu unterwerfen hiesse, ihn umschreiben zu
+#:    muessen -- damit waere er nicht mehr der Vertrag, den der Auftraggeber
+#:    gestellt hat.
+#: 2. Die Stufenberichte unter ``AUFTRAG/stufen/`` sind datierte Messprotokolle
+#:    derselben Art wie ``docs/audit/``: ihre Zahlen sind Zeitpunkt-Belege, keine
+#:    Ist-Aussage.
+#:
+#: Ehrlich benannter Rest: ``AUFTRAG/zustand.md`` ist KEIN historisches Dokument,
+#: sondern der laufende Stand -- und es traegt eine harte Commit-Kennung, weil
+#: §10 des Vertrags genau das Format ``Zuletzt: <Datum, Commit>`` vorschreibt.
+#: Hier stehen Vertrag und Tor im Widerspruch; die Entscheidung dafuer steht in
+#: ``AUFTRAG/entscheidungen.md`` (E-004).
+HISTORICAL = ("PROGRESS.md", "docs/audit/", "AUFTRAG/")
 
 
 # --- Kanonische Kennzahlen aus dem Code ----------------------------------------

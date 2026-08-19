@@ -151,6 +151,16 @@ Messung mehrdeutig.
 `python tools/check_docs_claims.py` → `ok - 32/32 Markdown-Dateien, keine Zusicherung ohne
 Beleg`, Exit 0. `AUFTRAG/` bricht kein bestehendes Tor.
 
+> **Berichtigung vom 2026-08-19 (Stufe 1), alter Stand bleibt oben stehen.**
+> Der letzte Satz war schon beim Schreiben überholt. Die Messung lag **vor** dem Commit,
+> und beide Doku-Tore zählen `git ls-files` — `AUFTRAG/` war zu diesem Zeitpunkt untracked
+> und wurde gar nicht mitgezählt. Nach dem Commit meldete `check_docs_claims` Exit 1
+> („41 Markdown-Dateien, erlaubt sind 32") und `check_doc_numbers` Exit 1 (zwei Treffer in
+> `AUFTRAG/`). Zwei weitere Pflicht-Tore hatte ich vor dem Push gar nicht gefahren.
+> Ursache und Behebung: `fehler.md` F-004, `entscheidungen.md` E-004,
+> Beleg `stufen/01-historie/belege/05-doku-tore.txt`. Die Zahlen der Bestandsaufnahme
+> selbst sind davon nicht berührt.
+
 ---
 
 ## 6. Abnahme dieser Stufe

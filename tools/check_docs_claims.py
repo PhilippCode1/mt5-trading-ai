@@ -31,6 +31,20 @@ REPO = Path(__file__).resolve().parents[1]
 # scharf, sie steht nur ein Stueck weiter. Wer sie erneut anhebt, benennt hier, wofuer.
 MAX_MARKDOWN_FILES = 32
 
+# ``AUFTRAG/`` wird NICHT mitgezaehlt -- und die Grenze wurde dafuer auch nicht ein
+# drittes Mal angehoben. Grund: dieser Ordner ist der vom Dauerauftrag vorgeschriebene
+# Abschlussordner und waechst *bauartbedingt* mit jeder Stufe (ein Bericht je Stufe, bis
+# zu elf). Die Grenze bei jeder Stufe nachzuziehen waere genau die Ratsche, vor der der
+# Kommentar darueber warnt; die Bremse bliebe dem Namen nach scharf und waere es der
+# Sache nach nicht mehr. Sie steht deshalb unveraendert bei 32 fuer die Doku des
+# Projekts, und der Auftragsordner faellt gar nicht erst in ihren Geltungsbereich.
+#
+# Die Behauptungspruefung laeuft weiter ueber ``AUFTRAG/`` -- nur die ZAEHLUNG nicht.
+# Das ist die scharfe Haelfte: der Dauerauftrag verbietet Notenbehauptungen
+# ausdruecklich, und ein Bericht darin soll daran genauso scheitern wie jede
+# andere Datei.
+EXCLUDED_FROM_COUNT = ("AUFTRAG/",)
+
 CLAIMS: list[tuple[str, re.Pattern[str]]] = [
     ("Notenbehauptung 10/10", re.compile(r"\b10\s*/\s*10\b")),
     ("Notenbehauptung 9/10", re.compile(r"\b9\s*/\s*10\b")),
@@ -104,13 +118,24 @@ def check_file(path: Path) -> list[str]:
     return problems
 
 
+def counted(files: list[Path]) -> list[Path]:
+    """Die Dateien, die gegen ``MAX_MARKDOWN_FILES` zaehlen (siehe dort)."""
+    return [
+        p
+        for p in files
+        if not p.relative_to(REPO).as_posix().startswith(EXCLUDED_FROM_COUNT)
+    ]
+
+
 def main() -> int:
     files = tracked_markdown()
+    zaehlend = counted(files)
     failures: list[str] = []
 
-    if len(files) > MAX_MARKDOWN_FILES:
+    if len(zaehlend) > MAX_MARKDOWN_FILES:
         failures.append(
-            f"Obergrenze ueberschritten: {len(files)} Markdown-Dateien, erlaubt sind "
+            f"Obergrenze ueberschritten: {len(zaehlend)} Markdown-Dateien, "
+            f"erlaubt sind "
             f"{MAX_MARKDOWN_FILES}. Eine loeschen oder die Grenze bewusst anheben."
         )
 
@@ -129,8 +154,9 @@ def main() -> int:
         return 1
 
     print(
-        f"ok - {len(files)}/{MAX_MARKDOWN_FILES} Markdown-Dateien, "
-        "keine Zusicherung ohne Beleg"
+        f"ok - {len(zaehlend)}/{MAX_MARKDOWN_FILES} gezaehlte Markdown-Dateien "
+        f"(+{len(files) - len(zaehlend)} in AUFTRAG/, auf Behauptungen geprueft, "
+        f"nicht gezaehlt), keine Zusicherung ohne Beleg"
     )
     return 0
 

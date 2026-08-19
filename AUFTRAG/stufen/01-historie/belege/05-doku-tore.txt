@@ -1,0 +1,34 @@
+# Beleg 5 — Doku-Tore: was ist meine Regression, was Vorbefund
+erhoben 2026-08-19T15:47:22Z
+
+## Ausgangslage nach dem Stufe-0-Commit
+check_docs_claims EXIT=1  -> 41 Markdown-Dateien, erlaubt 32  (MEINE Regression:
+                             AUFTRAG/ wurde mit dem Commit getrackt und zaehlte mit)
+check_doc_numbers EXIT=1  -> AUFTRAG/masterprompt...:64 und AUFTRAG/zustand.md:3
+                             (MEINE Regression)
+gen_docs --check  EXIT=1  -> MODULES.md veraltet
+
+## Zuordnung von gen_docs: nicht meine
+git diff HEAD --stat -- mt5_trading_ai/ zeigt 2 fremde Dateien (+78/-21);
+ich habe keinen Produktionscode geaendert.
+Gegenprobe mit beiseitegelegter Fremdarbeit: gen_docs --check EXIT=0.
+
+## Behebung meiner Regression
+check_docs_claims.py: AUFTRAG/ aus der ZAEHLUNG genommen, Grenze bleibt bei 32.
+check_doc_numbers.py: AUFTRAG/ zu HISTORICAL, wie PROGRESS.md und docs/audit/.
+
+## Eichfaelle check_docs_claims (beide gefahren)
+rot:   Notenbehauptung '10/10 und produktionsreif' in AUFTRAG/zustand.md -> EXIT=1,
+       zwei Treffer gemeldet. Die Behauptungspruefung deckt AUFTRAG/ also weiter ab.
+gruen: nach Ruecknahme -> EXIT=0.
+
+## Abschliessende Gegenprobe: Gate-Set mit MEINEN Aenderungen, ohne die fremde Arbeit
+git stash push -- mt5_trading_ai/ tests/ tools/ereignisstudie.py ABSCHLUSS-3a/
+  check_docs_claims EXIT=0
+  check_doc_numbers EXIT=0
+  gen_docs --check  EXIT=0
+git stash pop  (Fremdarbeit unveraendert zurueck, 13 Dateien)
+
+Befund: meine Aenderungen lassen das Gate-Set gruen. Die Rotfaerbung im Arbeitsbaum
+stammt vollstaendig aus der nicht eingecheckten Fremdarbeit (Welle 4), die auch die
+beiden README-Zahlentests rot faerbt (1190->1215 Testfunktionen, 15319->15376 Zeilen).
