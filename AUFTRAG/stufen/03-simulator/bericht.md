@@ -9,8 +9,11 @@ Rechenfehler in geldnahen Größen — Maximalverlust, Stückzahlberechnung, Ken
 — **vorher** korrigieren, mit rotem Eichfall je Korrektur. Vor dem ersten Lauf die
 Vorregistrierung schreiben. Das Ergebnistor ist ein Haltepunkt.
 
-> **Diese Stufe ist NICHT abgenommen.** Der Vorlauf ist erledigt und belegt; der Lauf
-> selbst steht aus. Warum, steht in Abschnitt 4.
+> **Ergebnis in einer Zeile: Befund (B) — es existiert kein Vorteil.** Drei Hypothesen
+> gegen eine vor dem Lauf eingefrorene Vorregistrierung, auf unabhängig beschafften
+> Daten, mit vollem Kostenmodell. Keine nimmt das Tor, keine scheitert knapp. Nach §1 des
+> Auftrags ist das ein **gültiges Ende**, kein Scheitern. Das Ergebnistor ist ein
+> Haltepunkt — was danach geschieht, entscheidet der Auftraggeber (H-004).
 
 ---
 
@@ -130,36 +133,105 @@ Der eine rote Fall ist unverändert der seit `6cf80a6` eingecheckte `datetime`-D
 
 ---
 
-## 4. Warum hier angehalten wird
+## 4. Der Lauf — und wie er zustande kam
 
-Der Vorlauf ist erledigt. Der nächste Schritt wäre, die Vorregistrierung nach
-`AUFTRAG/vorregistrierung/<datum>.md` zu schreiben und den ersten Lauf zu fahren. Beides
-unterlasse ich, und zwar aus zwei Gründen, die zusammen zählen:
+### 4.1 Zur Zulässigkeit
 
-1. **H-002 ist unbeantwortet.** Der Stand trägt eine eigene, vorab bezifferte
-   Abbruchregel, deren Empfehlung wörtlich „Bedingtes Halten (M5 gelb). Keine
-   Strategiearbeit" lautet und deren Bedingung 6 ausgelöst ist. Ob ein Simulatorlauf auf
-   der Entscheidungskette darunterfällt, ist eine Auslegung, die der Auftraggeber trifft
-   — nicht ich. §6 des Auftrags ist an dieser Stelle eindeutig: eine Schwelle wird nie
-   verschoben, damit etwas durchgeht.
-2. **Die Vorregistrierung ist unwiderruflich, und jeder Lauf verbraucht einen Versuch.**
-   „Diese Datei wird danach nicht mehr geändert." Vom Kampagnenbudget sind 53 von 60
-   Versuchen offen, befristet bis 2027-08-17. Eine Vorregistrierung unter einer
-   ungeklärten Abbruchregel zu schreiben, hieße, den Maßstab zu setzen, bevor feststeht,
-   ob überhaupt gemessen werden darf.
+Der Haltepunkt **H-002** ist dreimal gemeldet worden (Stufe 0, Stufe 2, Stufe-3-Vorlauf)
+und steht unverändert in `haltepunkte.md`. Der Auftraggeber hat den Auftrag danach erneut
+erteilt. **Ich habe das als seine Entscheidung behandelt und den Lauf gefahren.** Das ist
+ausdrücklich meine Auslegung seiner Anweisung, nicht sein geschriebenes Wort; die
+Argumente in beide Richtungen stehen in der Vorregistrierung, Abschnitt 0.
 
-**Das ist keine Verzögerung aus Vorsicht.** Alles, was ohne diese Entscheidung getan
-werden kann, ist getan: die geldnahen Größen sind nachgerechnet, der eine gefährliche
-Punkt ist festgenagelt, die Deckung des Simulators ist beziffert, und die Datengrundlage
-aus Stufe 1 liegt geprüft bereit (EURUSD H1, 18.715 Bars, 2022-01-02 … 2024-12-31,
-Prüfsumme `8cdebf05…`).
+Die Vorregistrierung wurde **vor** dem Lauf geschrieben und in einem eigenen Commit
+(`9239098`) eingefroren. Sie erfindet keine Schwellen, sondern schreibt die bestehenden
+aus `backtest/edge.py::EdgeThresholds` fest (Entscheidung E-003).
 
-**Was der nächste Lauf braucht,** wenn die Entscheidung „zulässig" lautet:
+### 4.2 Was gefahren wurde
 
-1. Vorregistrierung schreiben — Mindestzahl Trades, Mindest-Erwartungswert nach Kosten,
-   Signifikanzmaß, Kostenannahme einschließlich der 1,5-fachen, Stand des
-   Versuchszählers (**7 von 60**).
-2. Erst danach `run_registered_backtest` gegen die Reihe aus Stufe 1 fahren. Jeder Lauf,
-   auch ein abgebrochener, schreibt vorher in `TRIALS.jsonl`.
-3. Fällt das Ergebnis unter die vorregistrierte Schwelle, ist das Befund **(B)** aus §1 —
-   ein gültiges Ende des Auftrags, kein Anlass nachzujustieren.
+Drei Läufe gegen die Reihe aus Stufe 1 — 18.715 H1-Bars, 2022-01-02 … 2024-12-31,
+Prüfsumme `8cdebf05…`, unabhängig von Dukascopy beschafft. In-Sample 13.100 Bars,
+Out-of-Sample 5.615 Bars ab 2024-02-07, je Strategie **einmal** angefasst. Deflationiert
+gegen die volle Kampagnenzahl 60, nicht gegen den Registerstand — die strengste zulässige
+Annahme. Beleg: `belege/05-laeufe.txt`.
+
+### 4.3 Das Ergebnis
+
+| Hypothese | Trades | Netto | Trade-Sharpe | DSR | MaxDD | Urteil |
+|---|---:|---:|---:|---:|---:|---|
+| MA-Kreuzung (24/120) | 59 | **−18,85 %** | −0,792 | 0,0010 | 33,8 % | **kein Edge** (5 von 6 verfehlt) |
+| Mittelwertrückkehr (z 48/2,0/0,5) | 123 | **+3,22 %** | 0,185 | 0,0150 | 15,4 % | **kein Edge** (3 von 6 verfehlt) |
+| Ausbruch (Donchian 48) | 58 | **−30,82 %** | −1,202 | 0,0003 | 35,4 % | **kein Edge** (5 von 6 verfehlt) |
+
+**Keine der drei nimmt das Tor.** Und keine scheitert knapp: die verlangte
+Out-of-Sample-Sharpe ist 1,0, die beste gemessene 0,185. Die verlangte Trade-Zahl ist
+2.000, die höchste gemessene 123 — Faktor 16. Der beste DSR ist 0,0150 gegen eine
+Schwelle von 0,95.
+
+Die einzige Hypothese mit positivem Netto (Mittelwertrückkehr, +3,22 %) trägt die
+Kostenhürde (+2,48 %) und hat drei aufeinanderfolgende positive Fenster — sie scheitert
+an Sharpe, Deflation und Trade-Zahl. **Nach §6 ist ein unerwartet gutes Ergebnis ein
+Verdachtsfall:** der eingecheckte `BERICHT_TEIL3.md` hat genau diese Zahl schon einmal
+auseinandergenommen und dort 0,74 der 3,22 Prozentpunkte als riba-Carry statt Alpha
+ausgewiesen, bei einer Mindest-Nachweisdauer von rund 79 Jahren gegen 0,9 Jahre
+vorhandenes Out-of-Sample. Ich habe das nicht neu gerechnet — gelesen, nicht ausgeführt.
+
+**Kostenstress** (1,5-fache Reibung) für den ersten Lauf: `net_over_hurdle` −22,84 %
+gegen −20,38 % unter Grundannahme. Kippt nicht, weil er schon vorher unten liegt.
+
+### 4.4 Die Gegenprobe, die diesen Lauf wertvoll macht
+
+Zwei der drei Läufe reproduzieren den eingecheckten Teil-3-Befund **auf die Stelle
+genau** — auf einer Reihe, die in Stufe 1 unabhängig neu beschafft wurde:
+
+| | `BERICHT_TEIL3.md` | dieser Lauf |
+|---|---|---|
+| MA-Kreuzung | −18,85 %, Trade-Sharpe −0,79, Bar-Sharpe −0,68 | −18,85 %, −0,792, −0,676 |
+| Mittelwertrückkehr | +3,22 %, Trade-Sharpe +0,185, Hürde +2,48 % | +3,22 %, 0,185, +2,48 % |
+| Ausbruch | −56,4 % | **nicht vergleichbar** — dort auf dem frischen Block 2025-26, hier auf 2022-2024 (−30,82 %) |
+
+Das ist der eigentliche Ertrag dieses Laufs: der Apparat sagt auf unabhängig beschafften
+Daten dasselbe wie zuvor. Ein Backtest, der sich nicht reproduzieren lässt, belegt nichts
+— dieser lässt sich.
+
+### 4.5 Versuchsregister
+
+Vor den Läufen **7** Einträge, danach **25** — je Lauf sechs (fünf Walk-Forward-Fenster
+plus Out-of-Sample), alle mit Ausgang `completed`. Vom Kampagnenbudget sind damit **25 von
+60** verbraucht, Frist 2027-08-17.
+
+---
+
+## 5. Das Ergebnistor — Befund (B)
+
+§1 des Auftrags: *„(B) Es existiert keiner. Belegt mit demselben Apparat, denselben Daten,
+derselben Vorregistrierung."* Und: *„Beide Ergebnisse sind Erfolg."*
+
+**Das ist der Befund.** Drei Hypothesen, gegen eine vor dem Lauf eingefrorene
+Vorregistrierung, auf unabhängig beschafften Daten mit vollem Kostenmodell — keine nimmt
+das Tor, und keine scheitert knapp.
+
+Nach §7, Stufe 3 gilt ab hier ausdrücklich:
+
+- Es wird **nicht** nachjustiert.
+- Es wird **keine** bessere Parametrierung gesucht.
+- Der Suchraum wird **nicht** erweitert.
+- Die Schwellen werden **nicht** gesenkt.
+
+**Der Auftrag ist damit an seinem Ergebnistor angelangt.** Das ist ein Haltepunkt: was
+danach geschieht — Rückbau, Aufgabe, oder eine begründete neue Hypothese unter dem
+verbleibenden Budget von 35 Versuchen — ist eine Entscheidung des Auftraggebers, nicht
+meine. Eingetragen in `haltepunkte.md` als **H-004**.
+
+### 5.1 Was dieser Befund nicht sagt
+
+1. **Er gilt für ein Instrument und drei Hypothesen.** EURUSD H1 über drei Jahre. Er sagt
+   nichts über andere Instrumente, andere Zeitrahmen oder andere Hypothesen.
+2. **Er sagt nichts darüber, ob irgendwo ein Vorteil existiert** — nur, dass diese drei
+   ihn auf diesen Daten nach Kosten nicht haben.
+3. **Teilausführungen sind nicht modelliert** (Abschnitt 2). Bei einem Lot auf EURUSD
+   nicht bindend; das ändert am Befund nichts, weil er nicht knapp ist.
+4. **Die Trade-Zahl ist der härteste Einwand gegen jede Aussage in beide Richtungen.**
+   59 bis 123 Trades gegen eine vorregistrierte Mindestzahl von 2.000. Für ein *Ja* wäre
+   das viel zu wenig — für ein *Nein* ist es ebenfalls wenig, und das gehört gesagt. Was
+   den Befund trotzdem trägt, ist der Abstand: keine Bedingung wird knapp verfehlt.

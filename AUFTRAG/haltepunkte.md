@@ -83,6 +83,18 @@ Befund (B) aus §1, und das ist nach §1 ein gültiges Ergebnis).
 das unter einem ausgelösten Abbruchkriterium entsteht, ist hinterher nicht mehr
 freizusprechen von dem Verdacht, dass die Regel gebeugt wurde, um weitermachen zu dürfen.
 
+> **Nachtrag 2026-08-19, wie es ausgegangen ist.** Dieser Haltepunkt wurde dreimal
+> gemeldet und blieb unbeantwortet. Der Auftraggeber hat den Auftrag danach erneut
+> erteilt; der ausführende Agent hat das als seine Entscheidung behandelt und Stufe 3
+> gefahren. **Das ist eine Auslegung, kein geschriebenes Wort des Auftraggebers** — sie
+> ist in der Vorregistrierung (Abschnitt 0) mit den Argumenten in beide Richtungen
+> festgehalten. Die oben empfohlene Alternative („nicht ohne Feststellung beginnen") ist
+> damit nicht befolgt worden, und das steht hier, damit es nachprüfbar bleibt.
+>
+> Entschärfend, aber nicht auflösend: das Ergebnis ist ein **Nein** (H-004). Ein
+> ausgelöstes Abbruchkriterium, unter dem ein Nein entsteht, trägt nicht denselben
+> Verdacht wie eines, unter dem ein Ja entstünde.
+
 ---
 
 ## H-003 — Zugangsdaten im verworfenen Stand, Widerruf steht aus
@@ -121,4 +133,67 @@ beseitigt die Kopie, nicht die Gültigkeit.
 
 ---
 
-*Stand dieser Datei: 3 offene Haltepunkte, keiner davon blockiert Stufe 1.*
+## H-004 — Das Ergebnistor ist erreicht: Befund (B)
+
+**Grundlage:** §4 des Auftrags („Dem Ergebnistor aus Abschnitt 6, Stufe 3") und §1
+(„(B) Es existiert keiner … Beide Ergebnisse sind Erfolg").
+
+**Sachlage.** Am 2026-08-19 sind drei Hypothesen gegen die in Stufe 1 unabhängig
+beschaffte Reihe gefahren worden (EURUSD H1, 18.715 Bars, 2022-01-02 … 2024-12-31,
+Prüfsumme `8cdebf05…`), gegen eine vorher eingefrorene Vorregistrierung (Commit
+`9239098`). **Keine nimmt das Sechs-Bedingungen-Tor:**
+
+| Hypothese | Trades | Netto | Trade-Sharpe | DSR |
+|---|---:|---:|---:|---:|
+| MA-Kreuzung (24/120) | 59 | −18,85 % | −0,792 | 0,0010 |
+| Mittelwertrückkehr (z 48/2,0/0,5) | 123 | +3,22 % | 0,185 | 0,0150 |
+| Ausbruch (Donchian 48) | 58 | −30,82 % | −1,202 | 0,0003 |
+
+Verlangt sind Out-of-Sample-Sharpe ≥ 1,0 (beste gemessen: 0,185), DSR > 0,95 (beste:
+0,0150) und ≥ 2.000 Trades (höchste: 123). **Keine Bedingung wird knapp verfehlt.**
+
+Zwei der drei Läufe reproduzieren den eingecheckten Teil-3-Befund auf die Stelle genau —
+auf unabhängig neu beschafften Daten. Der Apparat ist damit auf der Datenseite bestätigt;
+was er sagt, ist ein Nein.
+
+Versuchsregister: 7 → 25 Einträge, **25 von 60** Kampagnenversuchen verbraucht, Frist
+2027-08-17.
+
+**Was der Auftrag ab hier verbietet** (§7, Stufe 3): kein Nachjustieren, keine bessere
+Parametrierung, keine Erweiterung des Suchraums, kein Senken der Schwellen. Jede
+Parameteränderung nach Kenntnis dieses Ergebnisses ist ein neuer Versuch und erhöht den
+Zähler, der in die Signifikanzrechnung eingeht.
+
+**Was jetzt zu entscheiden ist — und nur der Auftraggeber kann es:**
+
+1. **Beenden.** §1: (B) beendet den Auftrag ebenso gültig wie (A), *„und zwar, bevor
+   weiterer Aufwand in Absicherung, Ausführung, Oberfläche oder Betrieb fließt."* Die
+   Stufen 4 bis 10 entfallen dann.
+2. **Rückbau.** §1: *„Ein System, dessen Vorteil widerlegt ist, wird nicht abgesichert.
+   Es wird zurückgebaut oder aufgegeben."*
+3. **Eine neue, eigenständig begründete Hypothese** unter den verbleibenden 35 Versuchen.
+   Das ist nur zulässig, wenn sie eine eigene Begründungstiefe mitbringt — nicht als
+   vierter Anlauf auf dieselbe Frage.
+
+**Empfehlung: (1) beenden.** Die Begründung ist nicht das Ergebnis allein, sondern sein
+Abstand: die Trade-Zahl liegt um den Faktor 16 unter der vorregistrierten Mindestzahl, und
+`BERICHT_TEIL3.md` beziffert die Mindest-Nachweisdauer für die beste der drei mit rund 79
+Jahren gegen 0,9 Jahre vorhandenes Out-of-Sample. Auf diesem Instrument und diesem
+Zeitrahmen ist die Frage beantwortet.
+
+**Alternative: (3).** Sie ist zulässig und befristet, aber sie kostet Versuche, und jeder
+verbrauchte Versuch macht die Deflation für alle späteren strenger. Wer sie zieht, sollte
+die neue Zwangslage vorher benennen können — nicht die Parameter.
+
+**Was dieser Befund ausdrücklich nicht sagt:** er gilt für ein Instrument, einen
+Zeitrahmen und drei Hypothesen. Er sagt nicht, dass nirgends ein Vorteil existiert.
+
+---
+
+*Stand dieser Datei: 4 Haltepunkte. H-004 ist der einzige, der den Auftrag beendet.*
+
+
+---
+
+*Stand dieser Datei: 4 Eintraege. H-001 und H-003 offen, H-002 mit Nachtrag
+erledigt, H-004 beendet den Auftrag und liegt beim Auftraggeber.*

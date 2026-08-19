@@ -1,0 +1,90 @@
+# Beleg 5 — Die drei Laeufe gegen die Historie aus Stufe 1
+ausgefuehrt 2026-08-19, NACH dem Einfrieren der Vorregistrierung (Commit 9239098)
+
+Kommando je Lauf:
+  python tools/edge_test.py --csv daten/reihen/EURUSD_H1.csv --ledger TRIALS.jsonl \
+      --strategy <ma_crossover|mean_reversion|breakout> --campaign-trials 60 \
+      --data-checksum 8cdebf057bce1ffc7489904d61f2fbb7d7d62b8658927e5c69574c9fb4247daa
+
+Gemeinsame Lage: 18715 H1-Bars 2022-01-02..2024-12-31 | obs/Jahr ~ 6254
+In-Sample 13100 | OoS (30%) 5615 Bars ab 2024-02-07 -- je Strategie EINMAL angefasst
+Finanzierung: konventionell (Swap). Zufalls-Referenz (5 Seeds) Mittel -218.3 % -> negativ=True
+Leckage gefangen=True in allen drei Laeufen.
+
+================================================================================
+LAUF 1/3  ma_crossover -- MA(24,120), Trendfolge
+================================================================================
+OoS: 59 Trades | Netto -18.85 % | Trade-Sharpe -0.792 | Bar-Sharpe -0.676
+     MaxDD 33.8 % | net_over_hurdle -20.38 %
+Deflated Sharpe: 0.0010
+WF In-Sample (Netto je Fenster): [0.0288, 0.3449, -0.3803, -0.0691, -0.2516]
+
+  [NICHT ERFUELLT] oos_sharpe_after_costs: -0.7918766501489537 (verlangt >= 1.0)
+  [NICHT ERFUELLT] deflated_sharpe_beats_threshold: 0.0010089217764073233 (verlangt > 0.95)
+  [NICHT ERFUELLT] trade_count: 59 (verlangt >= 2000)
+  [NICHT ERFUELLT] consecutive_positive_folds: 2 (verlangt >= 3)
+  [NICHT ERFUELLT] clears_cost_hurdle: -0.2037644043716857
+  [ERFUELLT]       leakage_green_and_random_negative
+ERGEBNIS: KEIN EDGE (5 von 6 nicht erfuellt)
+cost_stress bei 1.5x Kosten: net_over_hurdle -22.84 %
+
+================================================================================
+LAUF 2/3  mean_reversion -- z-Score(48, ein 2.0/aus 0.5), Mittelwertrueckkehr
+================================================================================
+OoS: 123 Trades | Netto 3.22 % | Trade-Sharpe 0.185 | Bar-Sharpe 0.167
+     MaxDD 15.4 % | net_over_hurdle 2.48 %
+Deflated Sharpe: 0.0150
+WF In-Sample (Netto je Fenster): [-0.2224, 0.0706, 0.3468, 0.0739, -0.0301]
+
+  [NICHT ERFUELLT] oos_sharpe_after_costs: 0.18541598942211418 (verlangt >= 1.0)
+  [NICHT ERFUELLT] deflated_sharpe_beats_threshold: 0.014989889829219949 (verlangt > 0.95)
+  [NICHT ERFUELLT] trade_count: 123 (verlangt >= 2000)
+  [ERFUELLT]       consecutive_positive_folds: 3
+  [ERFUELLT]       clears_cost_hurdle: 0.024766697928375436
+  [ERFUELLT]       leakage_green_and_random_negative
+ERGEBNIS: KEIN EDGE (3 von 6 nicht erfuellt)
+
+================================================================================
+LAUF 3/3  breakout -- Donchian(48), Volatilitaets-Ausbruch
+================================================================================
+OoS: 58 Trades | Netto -30.82 % | Trade-Sharpe -1.202 | Bar-Sharpe -1.081
+     MaxDD 35.4 % | net_over_hurdle -32.23 %
+Deflated Sharpe: 0.0003
+WF In-Sample (Netto je Fenster): [0.1844, -0.1159, -0.566, -0.0384, -0.4033]
+
+  [NICHT ERFUELLT] oos_sharpe_after_costs: -1.20161344311835 (verlangt >= 1.0)
+  [NICHT ERFUELLT] deflated_sharpe_beats_threshold: 0.000262256567163055 (verlangt > 0.95)
+  [NICHT ERFUELLT] trade_count: 58 (verlangt >= 2000)
+  [NICHT ERFUELLT] consecutive_positive_folds: 1 (verlangt >= 3)
+  [NICHT ERFUELLT] clears_cost_hurdle: -0.32233292785974915
+  [ERFUELLT]       leakage_green_and_random_negative
+ERGEBNIS: KEIN EDGE (5 von 6 nicht erfuellt)
+
+================================================================================
+VERSUCHSREGISTER
+================================================================================
+vor den Laeufen:  7 Eintraege
+nach den Laeufen: 25 Eintraege  (+18 = 3 Laeufe x 6 Eintraege: 5 WF-Fenster + OoS)
+Ausgaenge: alle 18 'completed'
+Kampagnenbudget: 25 von 60 verbraucht, Frist 2027-08-17.
+Deflationiert wurde gegen die volle 60, nicht gegen den Registerstand -- die
+strengste zulaessige Annahme.
+
+================================================================================
+GEGENPROBE: REPRODUZIERT DER APPARAT DEN EINGECHECKTEN TEIL-3-BEFUND?
+================================================================================
+BERICHT_TEIL3.md:62   "-18,85 %, Trade-Sharpe -0,79, Bar-Sharpe -0,68"
+dieser Lauf           -18.85 %, Trade-Sharpe -0.792, Bar-Sharpe -0.676     GLEICH
+
+BERICHT_TEIL3.md:89   "+3,22 %"        BERICHT_TEIL3.md:92 "Trade-Sharpe +0,185"
+dieser Lauf           +3.22 %,         Trade-Sharpe 0.185                  GLEICH
+BERICHT_TEIL3.md:257  "Kostenhuerde (+2,48 %)"
+dieser Lauf           net_over_hurdle +2.48 %                              GLEICH
+
+BERICHT_TEIL3.md:131  "-56,4 %" -- NICHT vergleichbar: dort auf dem FRISCHEN
+                      OoS-Block 2025-26 gemessen, hier auf 2022-2024.
+dieser Lauf           -30.82 % auf 2022-2024
+
+Zwei von drei Laeufen reproduzieren den frueheren Befund auf die Stelle genau, und
+zwar auf einer in Stufe 1 UNABHAENGIG neu beschafften Reihe. Der dritte ist mit dem
+frueheren nicht vergleichbar, weil dort ein anderer Zeitraum gemessen wurde.
