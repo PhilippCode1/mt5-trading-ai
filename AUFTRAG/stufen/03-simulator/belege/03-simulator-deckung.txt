@@ -1,0 +1,17 @@
+# Beleg 3 — Deckt der Simulator die geforderte Aufschluesselung? 2026-08-19T17:38:32Z
+Vorgabe §7 Stufe 3: je hypothetischem Trade Einstieg, Ausstieg, Gebuehren, Spread,
+Slippage, Finanzierungskosten, Teilausfuehrungen und Entscheidungslatenz.
+
+| Groesse              | vorhanden | wo |
+|----------------------|-----------|-----|
+| Einstieg             | ja        | TradeRecord.entry_ts |
+| Ausstieg             | ja        | TradeRecord.exit_ts |
+| Gebuehren            | ja        | BacktestReport.cost_commission |
+| Spread               | ja        | BacktestReport.cost_spread |
+| Slippage             | ja        | BacktestReport.cost_slippage |
+| Finanzierungskosten  | ja        | cost_financing + carry_income (getrennt) |
+| Entscheidungslatenz  | teilweise | shift(1): Entscheidung bei Bar i, gehalten ueber i+1 |
+| Teilausfuehrungen    | NEIN      | 0 Treffer fuer partial/teilausf im ganzen Backtest-Paket |
+
+Zusaetzlich vorhanden und nicht gefordert: ein Verbot des kostenfreien Modus
+(MarketSpec.__post_init__ wirft, wenn Spread, Slippage und Kommission alle 0 sind).

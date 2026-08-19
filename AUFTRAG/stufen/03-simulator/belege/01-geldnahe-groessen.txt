@@ -1,0 +1,41 @@
+# Beleg 1 — Die drei geldnahen Groessen, gemessen 2026-08-19T17:38:31Z
+Die Vorgabe nennt: Maximalverlust, Stueckzahlberechnung, Kennzahleinheiten.
+Alle drei waren im VERWORFENEN Stand defekt. Hier wurde jede einzeln nachgerechnet.
+
+## 1) Maximalverlust -- RICHTIG
+  reine Verluststrecke (Basis 1000, 5x -100)     -> 0.500000
+  kleiner Gewinn, dann Absturz                   -> 0.999001
+  Gewinn dann halbe Ruecknahme                   -> 0.045455
+  Grund: equity startet auf equity_base = cs*vol*preis/hebel (> 0, sonst Wurf),
+  und peak = equity[0]. Im verworfenen Stand startete peak bei 0, weshalb dort
+  eine reine Verluststrecke 0.0 meldete.
+
+## 2) Stueckzahlberechnung -- RICHTIG
+  risk_fraction 0.01 wird geklammert auf 0.005 (Bereich 0,25-0,5 %)
+  Risiko in Waehrung 50.000, Stopabstand 50 bps
+  Volumen 0.09 Lots, Notional 9900.0000, Marge 1980.0000
+  Handrechnung 50 / (1,10*50/10000 * 100000) = 0.090909 -> abgerundet 0,09
+  Einheiten stimmen: raw_volume = Waehrung / (Preisabstand * Kontraktgroesse) = Lots,
+  geprueft gegen volume_min/volume_step (ebenfalls Lots). Der Defekt des verworfenen
+  Stands -- ein Waehrungsbetrag im Feld 'qty' gegen Basiseinheiten geprueft -- fehlt hier.
+
+## 3) Kennzahleinheiten (Deflated Sharpe) -- DEFEKT, behoben
+  je Beobachtung 0.067    -> DSR 0.039193
+  annualisiert   1.0636 -> DSR 1.000000
+  Schwelle des Standes: 0,95 (min_deflated_sharpe)
+  Ein Einheitenfehler machte damit aus einem durchgefallenen Kandidaten einen mit
+  maximaler Bestaetigung -- lautlos, in die schmeichelnde Richtung.
+
+  ABER: kein AKTIVER Fehler in diesem Stand. Der einzige Aufrufer im Berichtspfad
+  liest report.trade_sharpe_per_obs, und das Feld traegt seine Einheit im Namen.
+  Die Ereignisstudie rechnet ihren Wert zwei Zeilen vorher selbst als
+  Mittel/Streuung -- eine falsche Einheit ist dort per Konstruktion unmoeglich.
+
+  Eine Laufzeitsperre wurde gebaut und wieder ZURUECKGENOMMEN: sie brach sieben
+  bestehende Faelle, deren synthetische Reihen fast keine Streuung haben und
+  darum Sharpes von 24 bis 3e13 erzeugen -- kein Einheitenfehler, sondern
+  deterministische Pruefdaten. Siehe AUFTRAG/fehler.md, F-007.
+
+  Geblieben ist, was ohne Preis wirkt: die Feldwahl ist ueber den Syntaxbaum
+  festgenagelt (tests/test_sharpe_einheit.py), rot gefahren gegen beide
+  Verwechslungskandidaten. Beleg 02-eichfaelle-feldwahl.txt.

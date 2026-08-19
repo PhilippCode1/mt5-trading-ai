@@ -1,0 +1,13 @@
+# Beleg 4 — Schlusspruefung des Stufe-3-Vorlaufs, ausgefuehrt 2026-08-19T17:50:35Z
+
+python tools/check_docs_claims.py   EXIT=0
+python tools/check_doc_numbers.py   EXIT=0
+python tools/gen_docs.py --check    EXIT=0
+python -m ruff check mt5_trading_ai tools tests config   EXIT=0
+python -m mypy mt5_trading_ai      Success: no issues found in 49 source files
+python -m pytest -q         1 failed, 1405 passed in 58.49s
+
+Der eine rote Fall ist unveraendert der seit 6cf80a6 eingecheckte datetime-Defekt
+in tools/live_betrieb.py:604 -- Stufe 4 (V5), nicht diese Stufe.
+
+Kennzahlen nachgezogen: test_function_count 1229 -> 1233, source_lines 15415 -> 15440.

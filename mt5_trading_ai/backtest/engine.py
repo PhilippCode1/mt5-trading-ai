@@ -559,6 +559,18 @@ def deflated_sharpe_for_report(
     # datenabhaengig (nicht generell strenger). Unter 2 Trades keine Deflation -> 0.
     if report.trades < 2:
         return 0.0
+    # WELCHES Sharpe-Feld hier steht, ist die ganze Frage. ``BacktestReport`` traegt
+    # drei verschieden skalierte: ``annualised_sharpe`` (Bar-Level, annualisiert),
+    # ``trade_sharpe`` (Trade-Level, annualisiert) und ``trade_sharpe_per_obs``
+    # (Trade-Level, NICHT annualisiert). Die Deflation verlangt das dritte.
+    #
+    # Gemessen, warum das kein Geschmack ist (N=500, T=1000): observed_sharpe=0,067
+    # ergibt DSR 0,039193 -- dieselbe Zahl annualisiert (1,0636) ergibt DSR 1,000000,
+    # also maximale Bestaetigung gegen eine Schwelle von 0,95. Eine Feldverwechslung
+    # an dieser einen Zeile drehte ein klares Nein in ein perfektes Ja.
+    #
+    # Festgenagelt in ``tests/test_sharpe_einheit.py`` -- dort ueber den Syntaxbaum,
+    # damit ein Umschreiben auf ein anderes Feld auffaellt.
     return deflated_sharpe_ratio(
         observed_sharpe=report.trade_sharpe_per_obs,
         observations=report.trades,

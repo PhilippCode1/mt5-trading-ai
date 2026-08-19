@@ -158,3 +158,43 @@ dieser Datei, nicht nur die eigenen. Ich habe den Befehl benutzt, als sei er sel
 **Was daraus folgt.** Bei verflochtenen Ständen zuerst eine vollständige Kopie sichern und
 danach gegen eine **gemessene Größe** prüfen, ob nichts fehlt — hier die Dateizahl und der
 Umfang aus dem Stufe-0-Beleg. Ohne diese Gegenprobe wäre der Verlust unbemerkt geblieben.
+
+---
+
+## F-007 — Ich habe eine Sperre gebaut, die legitime Prüfreihen bestraft
+
+**Stufe:** 3 · **Datum:** 2026-08-19 · **Folge:** keine — vor dem Einchecken gemessen,
+gebaut, zurückgenommen
+
+**Was passiert ist.** Die Vorgabe verlangt, „Kennzahleinheiten" vor dem ersten Lauf zu
+korrigieren. Ich habe gemessen, dass `deflated_sharpe_ratio` für eine annualisierte
+Sharpe stumm **1,000000** liefert — maximale Bestätigung gegen eine Schwelle von 0,95 —
+und daraus geschlossen, es brauche eine Laufzeitsperre gegen unplausible Werte.
+
+Die Sperre brach **18 Fälle**. Die Ursache war nicht der Fehler, gegen den sie gebaut war:
+die betroffenen Reihen sind synthetische Prüfdaten mit fast verschwindender Streuung und
+erzeugen Sharpes von **23,98** bis **3,06 × 10¹³**. Das ist ein Streuungsartefakt
+deterministischer Fixtures, kein Einheitenfehler.
+
+**Ursache.** Ich habe von einer richtigen Messung (die Sättigung ist real) auf eine
+falsche Ursache geschlossen (also passiert die Verwechslung) und die Sperre gebaut, bevor
+ich die Aufrufer und ihre Daten kannte. Die Aufrufer sagen: im Berichtspfad wird genau ein
+Feld gelesen, dessen Name die Einheit trägt; in der Ereignisstudie entsteht der Wert zwei
+Zeilen vorher lokal. Eine falsche Einheit ist an beiden Stellen **nicht möglich**.
+
+Zwei Zwischenschritte, die den Fehler verlängert haben: erst habe ich die Sperre aus der
+Ereignisstudie genommen (16 Fälle grün), dann festgestellt, dass dieselbe Ursache auch
+den Engine-Pfad trifft (7 Fälle). Ich habe also zweimal am Symptom geschoben, bevor ich
+die Ursache benannt habe.
+
+**Zurückgenommen.** `pruefe_sharpe_je_beobachtung` und die Konstante sind gelöscht — neuer
+Code ohne Aufrufer im Ausführungspfad wird nach V1 vor dem Abschluss entfernt, und ein
+Helfer, der nur noch in Tests lebt, ist genau das.
+
+**Geblieben ist, was ohne Preis wirkt:** die Feldwahl an der einen gefährlichen Zeile ist
+über den Syntaxbaum festgenagelt und gegen beide Verwechslungskandidaten rot gefahren.
+Der Streuungsmangel steht als `SPAETER.md`, S9.
+
+**Was daraus folgt.** Vor einer Sperre die Aufrufer und ihre Daten messen, nicht nur die
+Funktion. Eine Sperre, die richtige Eingaben abweist, ist kein strengerer Maßstab — sie
+ist ein Fehler mit gutem Ruf.

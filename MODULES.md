@@ -21,7 +21,7 @@ Das Sechs-Bedingungen-Tor des Edge-Tests (Paket 4, §7.2).
 
 ## `mt5_trading_ai/backtest/engine.py`
 
-Zeilen: 677
+Zeilen: 689
 
 Backtest-Maschine: fuehrt Splits, Daten und Kostenmodell zusammen.
 
@@ -43,7 +43,7 @@ Backtest-Maschine: fuehrt Splits, Daten und Kostenmodell zusammen.
 
 ## `mt5_trading_ai/backtest/ereignisstudie.py`
 
-Zeilen: 469
+Zeilen: 482
 
 Ereignisstudie — traegt eine bekannte Zwangslage mehr als ihre Kosten?
 

@@ -1,0 +1,28 @@
+# Beleg 2 — Eichfaelle zur Feldwahl an der Deflation, ausgefuehrt 2026-08-19T17:48:24Z
+Mutationen wirklich gefahren und zurueckgenommen.
+
+## GRUEN (unveraendert)
+.....                                                                    [100%]
+5 passed in 0.15s
+
+## ROT 1 -- Feld auf annualised_sharpe umgeschrieben
+=========================== short test summary info ===========================
+FAILED tests/test_sharpe_einheit.py::test_deflationiert_wird_die_nicht_annualisierte_trade_sharpe
+FAILED tests/test_sharpe_einheit.py::test_die_beiden_annualisierten_felder_stehen_nicht_dort[annualised_sharpe]
+2 failed, 3 passed in 0.42s
+
+## ROT 2 -- Feld auf trade_sharpe (ebenfalls annualisiert) umgeschrieben
+=========================== short test summary info ===========================
+FAILED tests/test_sharpe_einheit.py::test_deflationiert_wird_die_nicht_annualisierte_trade_sharpe
+FAILED tests/test_sharpe_einheit.py::test_die_beiden_annualisierten_felder_stehen_nicht_dort[trade_sharpe]
+2 failed, 3 passed in 0.37s
+
+## GRUEN nach Ruecknahme
+.....                                                                    [100%]
+5 passed in 0.12s
+
+## Was hier NICHT geprueft wird
+Der Fall pinnt die Feldwahl, nicht die Wirkung. Ein Aufrufer, der eine falsch
+skalierte Zahl von ausserhalb hereinreicht, faellt ihm nicht auf. Eine
+Laufzeitsperre dafuer wurde gebaut und wieder zurueckgenommen -- sie brach
+sieben bestehende Faelle mit deterministischen Pruefreihen (F-007).

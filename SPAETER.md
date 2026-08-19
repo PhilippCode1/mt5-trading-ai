@@ -252,3 +252,25 @@ warten auf spätere Ausbaustufen — jeder eine eigene Entscheidung:
   obwohl real noch +Δ offen ist → Deckel **unterzählt**). Beide sind auf die Ereignis-Latenz
   begrenzt; ein Ticket-genaues, **stromgetriebenes** Positionsbuch behebt beide Richtungen —
   später zu entscheiden.
+
+## S9 — Entartete Streuung in der Ereignisstudie sättigt die Deflation
+
+**Gefunden:** 2026-08-19, Stufe 3 des Dauerauftrags. **Gemessen, nicht vermutet.**
+
+`backtest/ereignisstudie.py` rechnet `sharpe = fmean(oos) / stdev(oos)` und schützt nur
+gegen `stdev == 0`. Bei *fast* verschwindender Streuung wird der Wert beliebig groß — an
+den synthetischen Reihen des Prüfstands gemessen **3,06 × 10¹³** —, und
+`deflated_sharpe_ratio` sättigt darauf auf **1,0**, also maximale Bestätigung. Die
+Schwelle des Standes ist 0,95.
+
+Für die realen Läufe aus Paket 3a ist das folgenlos: der höchste dort gemessene DSR war
+0,686. Der Mangel wirkt nur, wenn eine Reihe entartet — und dann in die schmeichelnde
+Richtung, unbemerkt.
+
+**Warum hier nicht behoben:** das ist ein Streuungs-, kein Einheitenproblem. Der Stand hat
+für die Frage „reicht die Auflösung überhaupt" bereits ein eigenes Werkzeug
+(`backtest/resolution.py`, `min_events_for_resolution`); die richtige Behebung hängt die
+Studie dort an, statt eine zweite Plausibilitätsregel danebenzustellen. Das ist mehr als
+eine Zeile und gehört zu dem, der die Statistik der Studie verantwortet.
+
+Beleg: `AUFTRAG/stufen/03-simulator/belege/01-geldnahe-groessen.txt`.

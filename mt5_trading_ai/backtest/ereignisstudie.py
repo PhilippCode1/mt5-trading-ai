@@ -424,8 +424,21 @@ def bestaetige(
     streuung = statistics.stdev(oos)
     sharpe = statistics.fmean(oos) / streuung if streuung > 0 else 0.0
     versuche = register.deflation_trials(kampagne(), register_pfad)
+    # Keine Einheitensperre an dieser Stelle, und der Grund gehoert hierher:
+    # ``sharpe`` entsteht zwei Zeilen darueber als Mittel/Streuung der Fensterrenditen.
+    # Er ist damit per Konstruktion je Beobachtung -- eine falsche Einheit ist hier
+    # nicht moeglich, anders als in ``engine.py``, wo drei verschieden skalierte
+    # Sharpe-Felder nebeneinander liegen und eines gewaehlt werden muss.
+    #
+    # Ein anderer Fehler ist hier moeglich und NICHT behoben: bei verschwindender
+    # Streuung wird ``sharpe`` beliebig gross (gemessen an den synthetischen Reihen
+    # des Pruefstands: 3,06e13), und die Deflation saettigt auf 1,0 -- maximale
+    # Bestaetigung aus einer entarteten Reihe. Das ist ein Streuungs- und kein
+    # Einheitenproblem; siehe SPAETER.md, S9.
     dsr = deflated_sharpe_ratio(
-        observed_sharpe=sharpe, observations=len(oos), trials=versuche
+        observed_sharpe=sharpe,
+        observations=len(oos),
+        trials=versuche,
     )
 
     # (2) Zeitliche Stabilitaet: beide Haelften.
