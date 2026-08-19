@@ -156,7 +156,8 @@ Zwei der drei Läufe reproduzieren den eingecheckten Teil-3-Befund auf die Stell
 auf unabhängig neu beschafften Daten. Der Apparat ist damit auf der Datenseite bestätigt;
 was er sagt, ist ein Nein.
 
-Versuchsregister: 7 → 25 Einträge, **25 von 60** Kampagnenversuchen verbraucht, Frist
+Versuchsregister: 7 → **31** Einträge (drei Hypothesen plus die swapfreie Zerlegung des
+einen positiven Ergebnisses, §6), **31 von 60** Kampagnenversuchen verbraucht, Frist
 2027-08-17.
 
 **Was der Auftrag ab hier verbietet** (§7, Stufe 3): kein Nachjustieren, keine bessere
@@ -171,7 +172,7 @@ Zähler, der in die Signifikanzrechnung eingeht.
    Stufen 4 bis 10 entfallen dann.
 2. **Rückbau.** §1: *„Ein System, dessen Vorteil widerlegt ist, wird nicht abgesichert.
    Es wird zurückgebaut oder aufgegeben."*
-3. **Eine neue, eigenständig begründete Hypothese** unter den verbleibenden 35 Versuchen.
+3. **Eine neue, eigenständig begründete Hypothese** unter den verbleibenden 29 Versuchen.
    Das ist nur zulässig, wenn sie eine eigene Begründungstiefe mitbringt — nicht als
    vierter Anlauf auf dieselbe Frage.
 

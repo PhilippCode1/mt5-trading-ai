@@ -85,12 +85,12 @@ die es keinen Grund gibt.
 
 ### Option 3 — Eine neu begründete Hypothese
 
-Zulässig unter den verbleibenden **35 von 60** Versuchen, befristet bis **2027-08-17**.
+Zulässig unter den verbleibenden **29 von 60** Versuchen, befristet bis **2027-08-17**.
 
 - **Bedingung:** eine eigene Begründungstiefe — eine benennbare Zwangslage, nicht andere
   Parameter derselben drei Hypothesen. Nachjustieren ist nach §7 ausdrücklich verboten.
 - **Preis:** jeder verbrauchte Versuch macht die Deflation für alle späteren strenger. Bei
-  25 verbrauchten Versuchen liegt die nötige Sharpe je Beobachtung bereits messbar höher
+  31 verbrauchten Versuchen liegt die nötige Sharpe je Beobachtung bereits messbar höher
   als bei 7.
 - **Was dagegen spricht, in Zahlen:** die höchste erreichte Trade-Zahl war 123 gegen eine
   vorregistrierte Mindestzahl von 2.000. Auf H1 über drei Jahre ist diese Schwelle mit
@@ -106,7 +106,7 @@ Unabhängig von der Wahl — das ist keine Empfehlung zur Sache, sondern zur Auf
 1. **Der Messapparat (Gruppe A).** Er hat die Frage beantwortet, und er hat sich dabei
    selbst reproduziert: zwei der drei Läufe geben auf unabhängig neu beschafften Daten
    dieselben Zahlen wie der frühere Bericht. Das ist der belastbarste Teil des Vorhabens.
-2. **Das Versuchsregister.** 25 Einträge, Abzug in
+2. **Das Versuchsregister.** 31 Einträge, Abzug in
    `stufen/03-simulator/belege/06-trials-abzug.jsonl`. Ohne es ist jede spätere Deflation
    wertlos, weil die Zahl der bisherigen Versuche fehlt.
 3. **Die Vorregistrierung und die Abschlussordner.** Sie belegen, was *vorher* gedacht

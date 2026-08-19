@@ -125,7 +125,7 @@ kostenfreien Modus — sind Spread, Slippage und Kommission alle 0, wirft es.
 ## 3. Zustand nach dem Vorlauf
 
 `belege/04-schlusspruefung.txt`: `check_docs_claims`, `check_doc_numbers`,
-`gen_docs --check`, `ruff` und `mypy` je **Exit 0**; `pytest` **1.403 bestanden,
+`gen_docs --check`, `ruff` und `mypy` je **Exit 0**; `pytest` **1.405 bestanden,
 1 fehlgeschlagen**.
 
 Der eine rote Fall ist unverändert der seit `6cf80a6` eingecheckte `datetime`-Defekt in
@@ -169,15 +169,54 @@ Out-of-Sample-Sharpe ist 1,0, die beste gemessene 0,185. Die verlangte Trade-Zah
 Schwelle von 0,95.
 
 Die einzige Hypothese mit positivem Netto (Mittelwertrückkehr, +3,22 %) trägt die
-Kostenhürde (+2,48 %) und hat drei aufeinanderfolgende positive Fenster — sie scheitert
-an Sharpe, Deflation und Trade-Zahl. **Nach §6 ist ein unerwartet gutes Ergebnis ein
-Verdachtsfall:** der eingecheckte `BERICHT_TEIL3.md` hat genau diese Zahl schon einmal
-auseinandergenommen und dort 0,74 der 3,22 Prozentpunkte als riba-Carry statt Alpha
-ausgewiesen, bei einer Mindest-Nachweisdauer von rund 79 Jahren gegen 0,9 Jahre
-vorhandenes Out-of-Sample. Ich habe das nicht neu gerechnet — gelesen, nicht ausgeführt.
+Kostenhürde und hat drei aufeinanderfolgende positive Fenster — sie scheitert an Sharpe,
+Deflation und Trade-Zahl. **Nach §6 ist ein unerwartet gutes Ergebnis ein Verdachtsfall,
+und den habe ich selbst nachgerechnet** — siehe Abschnitt 4.6.
 
 **Kostenstress** (1,5-fache Reibung) für den ersten Lauf: `net_over_hurdle` −22,84 %
 gegen −20,38 % unter Grundannahme. Kippt nicht, weil er schon vorher unten liegt.
+
+### 4.6 Das eine positive Ergebnis, zerlegt
+
+§6 verlangt, ein unerwartet gutes Ergebnis zuerst zu verstehen. Im ersten Anlauf hatte
+ich dafür nur `BERICHT_TEIL3.md` zitiert und als „gelesen, nicht ausgeführt"
+gekennzeichnet. Nachgeholt (Beleg: `belege/07-zerlegung-des-positiven.txt`).
+
+**Registrierter Lauf mit swapfreier Finanzierung** (kein Zins, weder gezahlt noch
+empfangen): Netto **+3,15 %** statt +3,22 %, Trade-Sharpe 0,183, DSR 0,0149 — **kein
+Edge**, an denselben drei Bedingungen. Dieser Lauf ist ein Versuch und zählt: Register
+25 → **31**.
+
+**Komponenten, über den nicht registrierenden Motorpfad** (kein neuer Versuch, keine neue
+Hypothese — dieselbe Rechnung mit sichtbaren Bestandteilen), Margin-Basis 21.538,60 USD:
+
+| | konventionell | swapfrei | Differenz |
+|---|---:|---:|---:|
+| `cost_financing` (gezahlt) | 980,56 USD | 835,00 USD | −145,56 |
+| `carry_income` (empfangen) | 160,06 USD | 0,00 USD | −160,06 |
+| `net_return` | 3,2198 % | 3,1525 % | **−0,0673 pp** |
+| `net_over_hurdle` | 2,4767 % | 3,1525 % | +0,6758 pp |
+
+**Was das auflöst.** `BERICHT_TEIL3.md` beziffert 0,74 der 3,22 Prozentpunkte als
+riba-Carry und setzt den „carry-freien Handelsertrag" mit `net_over_hurdle` = +2,48 %
+gleich. Nachgerechnet: 160,06 / 21.538,60 = **0,7431 %** — die 0,74 pp stimmen, sie sind
+die *empfangene* Gutschrift. Der Wechsel auf ein swapfreies Konto kostet aber nur
+**0,07 pp**, weil dabei auch die *gezahlte* Finanzierung entfällt und durch eine um
+145,56 USD günstigere Pauschale ersetzt wird. Beide Zahlen sind richtig; sie messen
+Verschiedenes.
+
+**In die unbequeme Richtung gesagt:** das positive Ergebnis ist damit **weniger** durch
+riba-Carry erklärt als bisher angenommen — es fällt swapfrei nicht auf 2,48 %, sondern
+bleibt bei 3,15 %. Am Befund ändert das nichts, und zwar nicht knapp: Trade-Sharpe 0,183
+gegen ≥ 1,0, DSR 0,0149 gegen > 0,95, 123 Trades gegen ≥ 2.000. Die
+Mindest-Nachweisdauer von rund 79 Jahren gegen 0,9 Jahre Out-of-Sample ist von der
+Zerlegung gar nicht berührt.
+
+**Eigene Berichtigung:** als der swapfreie Lauf +3,15 % statt der erwarteten +2,48 %
+ergab, habe ich zunächst geschrieben, meine Messung *widerspreche* dem früheren Bericht.
+Das war falsch — sie ergänzt die zweite Hälfte einer Rechnung, von der er nur die erste
+gemacht hatte. Aus einer Abweichung sofort auf einen Widerspruch zu schließen, statt sie
+zu Ende zu rechnen, ist derselbe Fehler wie F-007 im Kleinen.
 
 ### 4.4 Die Gegenprobe, die diesen Lauf wertvoll macht
 
@@ -196,8 +235,8 @@ Daten dasselbe wie zuvor. Ein Backtest, der sich nicht reproduzieren lässt, bel
 
 ### 4.5 Versuchsregister
 
-Vor den Läufen **7** Einträge, danach **25** — je Lauf sechs (fünf Walk-Forward-Fenster
-plus Out-of-Sample), alle mit Ausgang `completed`. Vom Kampagnenbudget sind damit **25 von
+Vor den Läufen **7** Einträge, nach den drei Läufen **25**, nach der Zerlegung aus 4.6 **31** — je Lauf sechs (fünf Walk-Forward-Fenster
+plus Out-of-Sample), alle mit Ausgang `completed`. Vom Kampagnenbudget sind damit **31 von
 60** verbraucht, Frist 2027-08-17.
 
 ---
@@ -220,7 +259,7 @@ Nach §7, Stufe 3 gilt ab hier ausdrücklich:
 
 **Der Auftrag ist damit an seinem Ergebnistor angelangt.** Das ist ein Haltepunkt: was
 danach geschieht — Rückbau, Aufgabe, oder eine begründete neue Hypothese unter dem
-verbleibenden Budget von 35 Versuchen — ist eine Entscheidung des Auftraggebers, nicht
+verbleibenden Budget von 29 Versuchen — ist eine Entscheidung des Auftraggebers, nicht
 meine. Eingetragen in `haltepunkte.md` als **H-004**.
 
 ### 5.1 Was dieser Befund nicht sagt

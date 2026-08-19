@@ -1,0 +1,87 @@
+# Beleg 7 — Zerlegung des einen positiven Ergebnisses (§6: Ueberraschendes erst verstehen)
+erhoben 2026-08-19
+
+ANLASS
+------
+Von den drei Hypothesen hatte genau eine ein positives Netto: Mittelwertrueckkehr,
++3,22 %. §6 des Auftrags: "Ein unerwartet gutes Ergebnis ist ein Verdachtsfall, kein
+Erfolg. Suche zuerst den Fehler, der es erklaeren wuerde." Im Stufe-3-Bericht hatte ich
+dafuer zunaechst nur BERICHT_TEIL3.md zitiert und "gelesen, nicht ausgefuehrt"
+gekennzeichnet. Das ist hier nachgeholt.
+
+TEIL 1 -- REGISTRIERTER LAUF MIT SWAPFREIER FINANZIERUNG
+--------------------------------------------------------
+Kommando: python tools/edge_test.py ... --strategy mean_reversion --halal
+          --campaign-trials 60 --data-checksum 8cdebf05...
+
+  OoS: 123 Trades | Netto 3.15 % | Trade-Sharpe 0.183 | Bar-Sharpe 0.164
+       MaxDD 15.7 % | net_over_hurdle 3.15 %
+  Deflated Sharpe: 0.0149
+  ERGEBNIS: KEIN EDGE (oos_sharpe_after_costs, deflated_sharpe, trade_count)
+
+Dieser Lauf ist ein VERSUCH und zaehlt: Register 25 -> 31 Eintraege.
+Nach §7 ausdruecklich vermerkt, damit die Versuchung sichtbar bleibt -- es ist keine
+Parameteraenderung zur Ergebnisverbesserung, sondern die Zerlegung eines bereits
+gezaehlten Ergebnisses; gezaehlt wird sie trotzdem.
+
+TEIL 2 -- KOMPONENTEN, UEBER DEN NICHT REGISTRIERENDEN MOTORPFAD
+-----------------------------------------------------------------
+run_backtest direkt auf demselben OoS-Block (5.615 Bars), kein neuer Versuch, keine
+neue Hypothese -- nur dieselbe Rechnung mit sichtbaren Bestandteilen.
+
+Margin-Basis (equity_base): 21.538,60 USD
+
+  Groesse                   konventionell        swapfrei      Differenz
+  ---------------------------------------------------------------------
+  gross_return                   0.173085        0.173085       0.000000
+  cost_spread                  123.00 USD      123.00 USD           0.00
+  cost_commission              861.00 USD      861.00 USD           0.00
+  cost_slippage               1230.00 USD     1230.00 USD           0.00
+  cost_financing               980.56 USD      835.00 USD        -145.56
+  carry_income                 160.06 USD        0.00 USD        -160.06
+  net_return                     0.032198        0.031525      -0.000673
+  net_over_hurdle                0.024767        0.031525      +0.006758
+
+TEIL 3 -- WAS DAS AUFLOEST
+---------------------------
+BERICHT_TEIL3.md:96 sagt: "0,74 der 3,22 Prozentpunkte sind riba-Carry, kein Alpha ...
+Der carry-freie Handelsertrag ist +2,48 % -- das ist genau net_over_hurdle."
+
+Nachgerechnet:
+  Carry-Gutschrift  160,06 / 21.538,60 = 0,7431 %   <- das ist die 0,74 pp. STIMMT.
+  Ersparnis gezahlt 145,56 / 21.538,60 = 0,6758 %   <- entspricht exakt der
+                                                       net_over_hurdle-Differenz 0,006758
+  Netto-Wirkung      -14,50 / 21.538,60 = -0,0673 % <- die gemessenen -0,07 pp
+
+BEIDE ZAHLEN SIND RICHTIG, sie messen Verschiedenes:
+  * Die 0,74 pp sind die EMPFANGENE Zinsgutschrift. Der fruehere Bericht hat sie
+    korrekt beziffert.
+  * Die 0,07 pp sind, was der WECHSEL auf ein swapfreies Konto tatsaechlich kostet --
+    denn dabei entfaellt nicht nur die Gutschrift, sondern die gezahlte Finanzierung
+    (980,56 USD) wird durch eine pauschale Verwaltungsgebuehr (835,00 USD) ersetzt,
+    die um 145,56 USD guenstiger ist.
+
+Der Satz "der carry-freie Handelsertrag ist +2,48 %" gilt also nur, wenn man die
+Gutschrift entfernt und die Zahlungsseite unveraendert laesst. Auf einem echten
+swapfreien Konto aendern sich beide Seiten, und dann bleiben +3,15 %.
+
+TEIL 4 -- WAS DAS FUER DEN BEFUND BEDEUTET
+-------------------------------------------
+Ehrlich in die unbequeme Richtung: das positive Ergebnis ist damit WENIGER durch
+riba-Carry erklaert als bisher angenommen. Es faellt bei swapfreier Finanzierung nicht
+auf 2,48 %, sondern bleibt bei 3,15 %.
+
+Am Befund (B) aendert das nichts, und zwar nicht knapp:
+  Trade-Sharpe   0,183 gegen verlangte >= 1,0
+  Deflated Sharpe 0,0149 gegen verlangte > 0,95
+  Trade-Zahl     123 gegen verlangte >= 2.000  (Faktor 16)
+Und die Minimum Track Record Length von rund 79 Jahren gegen 0,9 Jahre vorhandenes
+Out-of-Sample (BERICHT_TEIL3.md §5) ist von dieser Zerlegung gar nicht beruehrt.
+
+EIGENE BERICHTIGUNG
+-------------------
+Als der swapfreie Lauf +3,15 % statt der erwarteten +2,48 % ergab, habe ich zunaechst
+geschrieben, meine Messung WIDERSPRECHE dem frueheren Bericht. Das war falsch. Sie
+widerspricht ihm nicht -- sie ergaenzt die zweite Haelfte einer Rechnung, von der er
+nur die erste gemacht hatte. Der Fehler lag darin, aus einer Abweichung sofort auf
+einen Widerspruch zu schliessen, statt sie zu Ende zu rechnen.
