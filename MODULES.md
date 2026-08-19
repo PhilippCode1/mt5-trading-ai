@@ -299,7 +299,7 @@ Mehrteilige Freigabe fuer Order-Submit an einen echten Markt.
 
 ## `mt5_trading_ai/execution/risiko_zustand.py`
 
-Zeilen: 1570
+Zeilen: 1596
 
 Der Risikozustand, der einen Neustart ueberdauert -- und wie er fail-closed liest.
 
@@ -317,7 +317,7 @@ Der Risikozustand, der einen Neustart ueberdauert -- und wie er fail-closed lies
 
 ## `mt5_trading_ai/execution/risk_manager.py`
 
-Zeilen: 1151
+Zeilen: 1183
 
 Risikoschicht am Order-Pfad: die vier Grenzen als letzte Verteidigungslinie.
 
@@ -528,7 +528,7 @@ MT5-Anbindung an das ``TradingVenue``-Protokoll.
 
 ## `mt5_trading_ai/venue/protocol.py`
 
-Zeilen: 493
+Zeilen: 531
 
 Plattformunabhaengiger Handelsplatz-Vertrag.
 
@@ -546,6 +546,7 @@ Plattformunabhaengiger Handelsplatz-Vertrag.
 - `class Instrument`
 - `class Quote`
 - `class Bar`
+- `def ist_abgeschlossen`
 - `class OrderRequest`
 - `class OrderResult`
 - `class Position`

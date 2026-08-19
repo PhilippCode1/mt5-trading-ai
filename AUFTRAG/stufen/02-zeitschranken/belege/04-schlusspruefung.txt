@@ -1,0 +1,21 @@
+# Beleg 4 — Schlusspruefung Stufe 2, ausgefuehrt 2026-08-19T17:25:18Z
+
+python tools/check_docs_claims.py   EXIT=0
+python tools/check_doc_numbers.py   EXIT=0
+python tools/gen_docs.py --check    EXIT=0
+python -m ruff check mt5_trading_ai tools tests config   EXIT=0
+python -m mypy mt5_trading_ai      Success: no issues found in 49 source files
+python -m pytest -q                1400 passed, 1 failed in 50.58s
+
+## Der eine rote Fall
+tests/test_live_betrieb_sperren.py::test_die_hoechsthaltedauer_greift_genau_auf_der_grenze
+Das ist der in Stufe 0 gefundene Defekt: tools/live_betrieb.py:604 schreibt ein rohes
+datetime ins Journal -> TypeError, auf dem risikoreduzierenden Pfad. Er liegt im
+eingecheckten Code seit 6cf80a6, der ihn zeigende Test kam mit cc0d340 dazu.
+Behebung gehoert nach Stufe 4 (V5), nicht in diese Stufe.
+
+## Was unterwegs nachgezogen wurde
+- test_function_count 1198 -> 1229, source_lines 15319 -> 15415 (neue Testschicht)
+- MODULES.md neu erzeugt (gen_docs)
+- ABSCHLUSS-3a/01-AUFLOESUNG.md: '17 Faelle' -> '18 Faelle', mit Berichtigungsvermerk
+- eine zu lange Zeile in execution/risiko_zustand.py umgebrochen (aus cc0d340 geerbt)

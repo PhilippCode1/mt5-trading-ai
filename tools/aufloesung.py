@@ -56,7 +56,11 @@ from mt5_trading_ai.backtest.resolution import (  # noqa: E402
 )
 from mt5_trading_ai.costs.broker_costs import load_broker_costs  # noqa: E402
 from mt5_trading_ai.venue.mt5 import Mt5Rate, RealMt5Terminal  # noqa: E402
-from mt5_trading_ai.venue.protocol import Timeframe, VenueUnavailableError  # noqa: E402
+from mt5_trading_ai.venue.protocol import (  # noqa: E402
+    Timeframe,
+    VenueUnavailableError,
+    ist_abgeschlossen,
+)
 
 OUT = REPO / "config" / "aufloesung.json"
 MANIFESTE = REPO / "config" / "reihen"
@@ -148,11 +152,31 @@ def _hole(
     Scheibe wird vermerkt und nicht als Abbruch behandelt: vor dem Anfang des Archivs
     ist Leere die richtige Antwort. Erst wenn ALLE Scheiben leer sind, ist die
     Reihe leer.
+
+    **Die noch in Bildung befindliche Kerze bleibt draussen.** Sie kam frueher mit,
+    und das ist an den erzeugten Manifesten nachweisbar: bei 12 der 15 lag die letzte
+    Bar zum Abrufzeitpunkt noch offen (EURUSD H1 ``last=13:00`` gegen
+    ``retrieved_at=13:14`` -- die Kerze schliesst erst um 14:00). Die Pruefsumme im
+    Manifest deckte damit eine Bar, die sich noch aenderte; ein zweiter Abruf ergab
+    eine andere Zahl, und die Reihe war per Konstruktion nicht reproduzierbar.
+
+    ``jetzt`` kommt vom Tick des Symbols, nicht von der Rechneruhr -- Begruendung bei
+    ``protocol.ist_abgeschlossen``. Ohne Tick wird nicht geraten: die Reihe bleibt
+    leer und das Protokoll sagt warum.
     """
     ende = datetime.now(UTC)
     beginn = ende - timedelta(days=365 * jahre)
     protokoll: list[str] = []
     gesammelt: dict[datetime, Mt5Rate] = {}
+
+    tick = terminal.tick(symbol)
+    if tick is None:
+        protokoll.append(
+            f"{symbol}/{tf.value}: kein Tick -- ohne Platzzeit ist nicht entscheidbar, "
+            "welche Kerze abgeschlossen ist; Reihe bleibt leer (fail-closed)"
+        )
+        return (), protokoll
+    jetzt = tick.ts
 
     scheibe_ende = ende
     while scheibe_ende > beginn:
@@ -162,6 +186,8 @@ def _hole(
             reihe = terminal.rates(symbol, tf, scheibe_start, scheibe_ende)
             if reihe:
                 for r in reihe:
+                    if not ist_abgeschlossen(r.ts, tf, jetzt):
+                        continue
                     gesammelt[r.ts] = r
                 protokoll.append(
                     f"{symbol}/{tf.value} {scheibe_start.date()}.."
@@ -519,7 +545,21 @@ def gegenprobe(csv_pfad: Path, *, schwelle: float = 2.0) -> int:
     try:
         beginn = min(fremd) - timedelta(days=3)
         ende = max(fremd) + timedelta(days=3)
-        reihe = terminal.rates(symbol, tf, beginn, ende)
+        roh = terminal.rates(symbol, tf, beginn, ende)
+        # Diese Stelle ist die weniger ausgesetzte der beiden: ``ende`` kommt aus der
+        # Fremddatei, nicht aus ``jetzt``. Reicht die Vergleichsdatei aber bis heute,
+        # liegt die Grenze in der Zukunft und die laufende Kerze kaeme mit -- und
+        # verglichen wuerde ein Momentankurs gegen einen Schlusskurs. Dieselbe Regel
+        # wie oben, damit sie nicht an vier von fuenf Stellen gilt.
+        tick = terminal.tick(symbol)
+        if tick is None:
+            print(
+                f"FEHLGESCHLAGEN — kein Tick fuer {symbol}: ohne Platzzeit ist nicht "
+                "entscheidbar, welche Kerze abgeschlossen ist.",
+                file=sys.stderr,
+            )
+            return 2
+        reihe = tuple(r for r in roh if ist_abgeschlossen(r.ts, tf, tick.ts))
     finally:
         terminal.shutdown()
     eigen = {r.ts: float(r.close) for r in reihe}

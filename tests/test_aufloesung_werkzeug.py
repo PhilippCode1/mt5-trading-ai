@@ -25,7 +25,7 @@ from typing import Any
 import pytest
 from mt5_trading_ai.backtest.ereignisstudie import OOS_ANTEIL
 from mt5_trading_ai.backtest.resolution import deflation_observations
-from mt5_trading_ai.venue.mt5 import Mt5Rate
+from mt5_trading_ai.venue.mt5 import Mt5Rate, Mt5Tick
 from mt5_trading_ai.venue.protocol import Timeframe
 from tools import aufloesung
 from tools.aufloesung import (
@@ -65,8 +65,13 @@ def _rate(ts: datetime) -> Mt5Rate:
     )
 
 
+#: Uhr der Attrappen: weit hinter jeder erzeugten Kerze, damit alle als
+#: abgeschlossen gelten. Begruendung bei ``tick`` unten.
+_PLATZZEIT = datetime(2999, 1, 1, tzinfo=UTC)
+
+
 class _StubTerminal:
-    """Ein Terminal, das nur ``rates`` kann -- mehr fasst ``_hole`` nicht an.
+    """Ein Terminal, das ``rates`` und ``tick`` kann -- mehr fasst ``_hole`` nicht an.
 
     Bewusst ohne Mock-Rahmenwerk: die Faelle unten fragen, WELCHE Zeitscheiben abgefragt
     werden und in welcher Reihenfolge. Dafuer ist eine mitgeschriebene Liste lesbarer als
@@ -76,6 +81,17 @@ class _StubTerminal:
     def __init__(self, antwort: Any) -> None:
         self._antwort = antwort
         self.abfragen: list[tuple[datetime, datetime]] = []
+
+    def tick(self, name: str) -> Mt5Tick:
+        """Die Platzzeit -- seit Stufe 2 fragt der Aufrufer danach.
+
+        Bewusst weit voraus. Diese Faelle messen die Scheibenbildung, nicht die
+        Kante zwischen laufender und fertiger Kerze; mit einer Uhr, die hinter den
+        erzeugten Kerzen laege, fiele die juengste heraus und die Erwartungen unten
+        wuerden eine andere Frage beantworten als die, fuer die sie geschrieben sind.
+        Die Kante selbst misst ``tests/test_zeitschranken.py``.
+        """
+        return Mt5Tick(ts=_PLATZZEIT, bid=Decimal("1"), ask=Decimal("1"))
 
     def rates(
         self, name: str, timeframe: Timeframe, start: datetime, end: datetime

@@ -17,7 +17,12 @@ berührt — die kleinste Kombination führt N = 193 und damit 65 Beobachtungen.
 Beleg: `tests/test_resolution.py` (39 Fälle), Rohausgabe in
 [`07-AUSGABEN/aufloesung.txt`](07-AUSGABEN/aufloesung.txt), Messdatei
 `config/aufloesung.json`, Reihen-Manifeste in `config/reihen/`.
-Das messende Werkzeug selbst: `tests/test_aufloesung_werkzeug.py` (17 Fälle).
+Das messende Werkzeug selbst: `tests/test_aufloesung_werkzeug.py` (18 Fälle).
+
+> *Berichtigung 2026-08-19:* hier stand 17. Die Zahl stimmte, bis eine spätere
+> Welle einen Fall ergänzte; das Zahlen-Tor `tools/check_doc_numbers.py` hat die
+> Drift gemeldet. Am Ergebnis dieses Pakets ändert sie nichts — sie betrifft die
+> Größe der Testschicht, nicht die Messung.
 
 Parameter des Laufs: T = 12 Versuche, Deflationsschwelle 0,95, Kostenfaktor 3,0.
 

@@ -108,3 +108,53 @@ Staging und vollständig gefahren.
 von Stufe 0 selbst berührt das nicht — sie betraf die Bestandsaufnahme, und deren Zahlen
 stimmen —, aber der Satz „AUFTRAG/ bricht kein bestehendes Tor" im Stufe-0-Bericht war
 zum Zeitpunkt des Schreibens bereits überholt. Er ist in Stufe 1 berichtigt.
+
+---
+
+## F-005 — Mein eigener Wächter las Prosa und hielt sie für Code
+
+**Stufe:** 2 · **Datum:** 2026-08-19 · **Folge:** keine — der rote Eichfall hat ihn
+gefunden, bevor er eingecheckt war
+
+**Was passiert ist.** Der Fall, der prüft, ob ein direkter Kerzenleser die Zeitschranke
+kennt, suchte in der ersten Fassung die Zeichenkette `ist_abgeschlossen` im Quelltext.
+Beim Fahren der Mutation — Schranke aus `tools/ereignisstudie.py` entfernt — lief er
+**grün durch**: das Wort stand noch im Docstring („Begründung bei
+``protocol.ist_abgeschlossen``"). Der Wächter prüfte damit die Anwesenheit eines Wortes,
+nicht die eines Aufrufs.
+
+**Ursache.** Ich habe eine Textsuche für eine Codeprüfung gehalten. Genau die Fehlerklasse,
+die dieses Repository an anderer Stelle als Tautologie führt — und ich hatte sie in
+demselben Zug gebaut, in dem ich sie beheben sollte.
+
+**Behoben.** Der Fall parst jetzt den Syntaxbaum (`ast`) und verlangt einen echten
+`ast.Call` auf `ist_abgeschlossen`. Danach färbt dieselbe Mutation rot
+(Beleg: `stufen/02-zeitschranken/belege/03-eichfaelle.txt`).
+
+**Was daraus folgt.** Der rote Eichfall ist nicht Zierrat, sondern die einzige Prüfung des
+Prüfers. Ohne ihn wäre ein Wächter eingecheckt worden, der nichts bewacht — und er hätte
+in jedem grünen Lauf so ausgesehen wie einer, der es tut.
+
+---
+
+## F-006 — Ich habe beim Trennen von fremder Arbeit fast Fremdanteile verloren
+
+**Stufe:** 2 · **Datum:** 2026-08-19 · **Folge:** keine, im selben Zug bemerkt und
+zurückgeholt
+
+**Was passiert ist.** Um meinen Anteil an `tools/ereignisstudie.py` vom fremden zu
+trennen, habe ich `git checkout HEAD -- tools/ereignisstudie.py` gefahren und meine
+Änderung auf den HEAD-Stand neu aufgetragen. Damit war der **fremde** Anteil derselben
+Datei aus dem Arbeitsbaum verschwunden — er lag nur noch in einer Kopie unter `/tmp`, die
+ich zufällig vorher angelegt hatte.
+
+Aufgefallen ist es an einer Zahl: die isolierte Fremdarbeit zählte **12** Dateien, der
+Stufe-0-Befund nennt **13**. Zurückgeholt, danach stimmten Dateizahl und Umfang exakt
+(+1.162/−52).
+
+**Ursache.** `git checkout HEAD -- <datei>` verwirft *alle* nicht eingecheckten Änderungen
+dieser Datei, nicht nur die eigenen. Ich habe den Befehl benutzt, als sei er selektiv.
+
+**Was daraus folgt.** Bei verflochtenen Ständen zuerst eine vollständige Kopie sichern und
+danach gegen eine **gemessene Größe** prüfen, ob nichts fehlt — hier die Dateizahl und der
+Umfang aus dem Stufe-0-Beleg. Ohne diese Gegenprobe wäre der Verlust unbemerkt geblieben.

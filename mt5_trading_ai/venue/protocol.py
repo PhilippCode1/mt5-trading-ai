@@ -273,6 +273,44 @@ class Bar:
     spread_avg_points: Decimal | None = None
 
 
+def ist_abgeschlossen(ts: datetime, timeframe: Timeframe, jetzt: datetime) -> bool:
+    """Ist das Intervall, das bei ``ts`` beginnt, um ``jetzt`` vorbei?
+
+    WARUM DIESE FUNKTION UND NICHT DER AUSDRUCK
+    -------------------------------------------
+    Die Regel stand einmal, als Ausdruck, in ``venue/mt5.py:get_bars`` -- und
+    **fuenf** andere Stellen lasen ihre Kerzen an ``get_bars`` vorbei direkt aus dem
+    Terminal (``tools/atr_messung.py``, ``tools/aufloesung.py``,
+    ``tools/ereignisstudie.py``). Sie bekamen damit gar kein ``is_closed`` und nahmen
+    die letzte, noch in Bildung befindliche Kerze stillschweigend mit. Nachgemessen an
+    den 15 Reihen-Manifesten, die ``tools/aufloesung.py`` erzeugt hat: bei **12 von
+    15** lag die letzte Bar zum Abrufzeitpunkt noch offen (etwa EURUSD H1,
+    ``last=13:00``, ``retrieved_at=13:14`` -- die Kerze schliesst erst um 14:00).
+    Deren Pruefsumme deckt damit eine Bar, die sich noch aendert; ein zweiter Abruf
+    ergibt eine andere Zahl.
+
+    Eine Regel, die an einer Stelle steht und an fuenf anderen fehlt, ist keine Regel.
+    Darum hier, einmal, mit Namen.
+
+    ``jetzt`` MUSS vom Handelsplatz kommen (Tick-Zeitstempel), nicht von der
+    Rechneruhr: Kerzen- und Tick-Stempel laufen durch dieselbe Umrechnung, die
+    Rechneruhr nicht. Die ausfuehrliche Begruendung -- samt der Messung, dass ein
+    Vergleich gegen die Systemzeit je nach Serverzone in beide Richtungen falsch
+    liegt -- steht bei ``venue/mt5.py:get_bars``.
+
+    ``<=`` und nicht ``<``: zum Zeitpunkt ``ts + dauer`` laeuft bereits die naechste
+    Kerze, die vorige ist fertig.
+
+    Einschraenkung, unveraendert und bewusst nicht hier behoben: fuer D1 und H4 liegt
+    die echte Grenze an der Server-Mitternacht statt bei ``ts + duration``. Ueber eine
+    Zeitumstellung weichen beide um eine Stunde ab. Umfang und Begruendung stehen bei
+    :attr:`Timeframe.duration`. Fuer die fuenf Stellen oben ist das trotzdem ein
+    Fortschritt: sie nahmen die unfertige Kerze bisher **immer** mit, kuenftig nur
+    noch moeglicherweise an zwei Tagen im Jahr eine Stunde lang.
+    """
+    return ts + timeframe.duration <= jetzt
+
+
 @dataclass(frozen=True)
 class OrderRequest:
     """Ein Auftrag mit Stop. Ohne Stop wird nicht eroeffnet."""

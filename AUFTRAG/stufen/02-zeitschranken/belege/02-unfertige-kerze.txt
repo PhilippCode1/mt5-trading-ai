@@ -1,0 +1,31 @@
+# Beleg 2 — Die unfertige Kerze steckt nachweislich in den eingecheckten Manifesten
+erhoben 2026-08-19T17:10:00Z
+Kommando: Auswertung von config/reihen/*.manifest.json (last + Zeitrahmenlaenge gegen retrieved_at)
+
+Reihe          letzte Bar        abgerufen         schliesst         in Bildung?
+------------------------------------------------------------------------------------
+DE40 D1        2026-08-17 00:00  2026-08-17 13:14  2026-08-18 00:00  JA
+DE40 H1        2026-08-17 13:00  2026-08-17 13:14  2026-08-17 14:00  JA
+DE40 H4        2026-08-17 12:00  2026-08-17 13:14  2026-08-17 16:00  JA
+EURUSD D1      2026-08-17 00:00  2026-08-17 13:14  2026-08-18 00:00  JA
+EURUSD H1      2026-08-17 13:00  2026-08-17 13:14  2026-08-17 14:00  JA
+EURUSD H4      2026-08-17 12:00  2026-08-17 13:14  2026-08-17 16:00  JA
+GBPJPY D1      2026-08-17 00:00  2026-08-17 13:14  2026-08-18 00:00  JA
+GBPJPY H1      2026-08-17 13:00  2026-08-17 13:14  2026-08-17 14:00  JA
+GBPJPY H4      2026-08-17 12:00  2026-08-17 13:14  2026-08-17 16:00  JA
+NVDA D1        2026-08-14 00:00  2026-08-17 13:14  2026-08-15 00:00  nein
+NVDA H1        2026-08-14 23:00  2026-08-17 13:14  2026-08-15 00:00  nein
+NVDA H4        2026-08-14 20:00  2026-08-17 13:14  2026-08-15 00:00  nein
+XAUUSD D1      2026-08-17 00:00  2026-08-17 13:14  2026-08-18 00:00  JA
+XAUUSD H1      2026-08-17 13:00  2026-08-17 13:14  2026-08-17 14:00  JA
+XAUUSD H4      2026-08-17 12:00  2026-08-17 13:14  2026-08-17 16:00  JA
+
+Reihen mit unfertiger letzter Bar: 12 von 15
+Die drei Ausnahmen sind NVDA -- der US-Markt war am Abrufwochenende geschlossen,
+die letzte Bar lag drei Tage zurueck und war deshalb fertig.
+
+## Folge
+Die checksum im Manifest deckt eine Bar, die sich noch aendert. Ein zweiter Abruf
+ergibt eine andere Zahl. Die Reihen sind damit auch unabhaengig vom Quellenproblem
+aus Stufe 1 nicht reproduzierbar -- und dieselbe checksum steht als data_checksum
+in den sieben Eintraegen von TRIALS.jsonl.

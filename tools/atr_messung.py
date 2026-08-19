@@ -49,8 +49,12 @@ from mt5_trading_ai.costs.volatility import (  # noqa: E402
     true_ranges,
     wilder_atr,
 )
-from mt5_trading_ai.venue.mt5 import RealMt5Terminal  # noqa: E402
-from mt5_trading_ai.venue.protocol import Timeframe, VenueUnavailableError  # noqa: E402
+from mt5_trading_ai.venue.mt5 import Mt5Rate, RealMt5Terminal  # noqa: E402
+from mt5_trading_ai.venue.protocol import (  # noqa: E402
+    Timeframe,
+    VenueUnavailableError,
+    ist_abgeschlossen,
+)
 
 OUT = REPO / "config" / "atr_measurements.json"
 
@@ -84,11 +88,11 @@ def _messe_symbol(
             f"Symbol {symbol!r} auf dem erreichbaren Terminal nicht vorhanden",
         )
 
-    rates = terminal.rates(symbol, Timeframe.H1, start, ende)
+    rates = _geschlossene_rates(terminal, symbol, Timeframe.H1, start, ende)
     if len(rates) < ATR_PERIOD + 2:
         return not_measured(
             schluessel,
-            f"nur {len(rates)} H1-Kerzen im Fenster, "
+            f"nur {len(rates)} abgeschlossene H1-Kerzen im Fenster, "
             f"mindestens {ATR_PERIOD + 2} noetig",
         )
 
@@ -147,13 +151,48 @@ def _messe_symbol(
 FX_PAARE: tuple[str, ...] = ("EURUSD", "GBPUSD", "USDJPY")
 
 
+def _geschlossene_rates(
+    terminal: RealMt5Terminal,
+    symbol: str,
+    timeframe: Timeframe,
+    start: datetime,
+    ende: datetime,
+) -> tuple[Mt5Rate, ...]:
+    """Kerzen im Fenster, **ohne** die noch in Bildung befindliche.
+
+    ``terminal.rates`` liefert bei ``ende = jetzt`` die laufende Kerze mit; ihr
+    ``close`` ist der Momentankurs. Fuer :func:`_messe_fx` ist das unmittelbar
+    folgenreich -- dort wird genau ``rates[-1].close`` als Umrechnungskurs benutzt,
+    also ein Zwischenstand statt eines Schlusskurses. Fuer die ATR-Reihe verzerrt
+    dieselbe Kerze den Median um einen Beitrag, der sich noch aendert.
+
+    ``jetzt`` kommt vom Tick desselben Symbols, nicht von der Rechneruhr: Kerzen- und
+    Tick-Stempel laufen durch dieselbe Umrechnung des Terminals, die Rechneruhr nicht.
+    Ohne Tick wird **nichts** zurueckgegeben statt geraten -- der Aufrufer meldet das
+    als „nicht gemessen" weiter, und ein fehlender Messwert sperrt, statt einen
+    Vorgabewert zu erzeugen.
+    """
+    tick = terminal.tick(symbol)
+    if tick is None:
+        return ()
+    return tuple(
+        r
+        for r in terminal.rates(symbol, timeframe, start, ende)
+        if ist_abgeschlossen(r.ts, timeframe, tick.ts)
+    )
+
+
 def _messe_fx(
     terminal: RealMt5Terminal, start: datetime, ende: datetime
 ) -> dict[str, float]:
-    """Letzter H1-Schlusskurs je Umrechnungspaar. Fehlt eines, fehlt es sichtbar."""
+    """Letzter **abgeschlossener** H1-Schlusskurs je Umrechnungspaar.
+
+    Fehlt eines, fehlt es sichtbar -- und ein Paar ohne Tick zaehlt als fehlend,
+    nicht als „nimm die laufende Kerze".
+    """
     out: dict[str, float] = {}
     for paar in FX_PAARE:
-        rates = terminal.rates(paar, Timeframe.H1, start, ende)
+        rates = _geschlossene_rates(terminal, paar, Timeframe.H1, start, ende)
         if rates:
             out[paar] = float(rates[-1].close)
     return out

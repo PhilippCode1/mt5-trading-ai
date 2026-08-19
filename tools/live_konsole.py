@@ -109,8 +109,21 @@ def _signal(venue: Mt5Venue, symbol: str) -> tuple[Signal, str]:
         )
     except VenueError as exc:
         return Signal.FLAT, f"keine Kerzen: {exc}"
-    if len(bars) < LANGSAM:
-        return Signal.FLAT, f"nur {len(bars)} Kerzen, {LANGSAM} noetig"
+    # Nur abgeschlossene Kerzen. Der Handelsplatz liefert die laufende mit und
+    # kennzeichnet sie (``Bar.is_closed``); ungefiltert rechnete diese Konsole ihren
+    # gleitenden Durchschnitt auf einem Momentankurs, waehrend der wirkliche Treiber
+    # (``tools/live_betrieb.py``) auf Schlusskursen rechnet. Zwei Anzeigen desselben
+    # Signals, die auseinanderlaufen -- und die Konsole ist die, der der Betreiber
+    # glaubt, weil ihr Kopf verspricht, sie zeige "was das System entscheiden wuerde".
+    # Sie kann nichts ausloesen (``allow_write`` ist fest verdrahtet), aber eine
+    # Anzeige, die etwas anderes zeigt als die Wirklichkeit, ist kein harmloser Fehler.
+    fertig = [b for b in bars if b.is_closed]
+    if len(fertig) < LANGSAM:
+        return Signal.FLAT, (
+            f"nur {len(fertig)} abgeschlossene von {len(bars)} Kerzen, "
+            f"{LANGSAM} noetig"
+        )
+    bars = tuple(fertig)
     # ``Bar`` (Handelsplatz) und ``BarRow`` (Backtest) tragen dieselben Felder, sind
     # aber verschiedene Typen. Umgesetzt statt gecastet: die Strategie soll genau das
     # sehen, was sie im Backtest saehe, und nichts darueber hinaus.

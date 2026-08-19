@@ -51,7 +51,7 @@ from mt5_trading_ai.backtest.ereignisstudie import (
 )
 from mt5_trading_ai.backtest.kalender import Kandidat
 from mt5_trading_ai.gates import trials as register
-from mt5_trading_ai.venue.mt5 import Mt5Rate
+from mt5_trading_ai.venue.mt5 import Mt5Rate, Mt5Tick
 from mt5_trading_ai.venue.protocol import Timeframe
 from tools import ereignisstudie as werkzeug
 
@@ -332,6 +332,17 @@ def _terminal(
 
         def initialize(self) -> bool:
             return initialisierbar
+
+        def tick(self, name: str) -> Mt5Tick:
+            """Die Platzzeit -- seit Stufe 2 fragt ``_lade_kerzen`` danach.
+
+            Bewusst weit voraus, damit jede erzeugte Kerze als abgeschlossen gilt:
+            diese Faelle messen die Scheibenbildung und die Zeitdrehung, nicht die
+            Kante. Die misst ``tests/test_zeitschranken.py``.
+            """
+            return Mt5Tick(
+                ts=datetime(2999, 1, 1, tzinfo=UTC), bid=Decimal("1"), ask=Decimal("1")
+            )
 
         def rates(
             self, name: str, timeframe: Timeframe, start: datetime, end: datetime

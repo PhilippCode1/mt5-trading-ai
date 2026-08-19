@@ -1,0 +1,26 @@
+# Beleg 3 — Eichfaelle des Determinismus-Tors, ausgefuehrt 2026-08-19T17:09:22Z
+Jede Mutation wurde WIRKLICH gefahren und danach zurueckgenommen.
+
+## GRUEN (unveraenderter Stand)
+.........                                                                [100%]
+9 passed in 0.16s
+
+## ROT 1 -- Zeitschranke aus tools/ereignisstudie.py::_lade_kerzen entfernt
+=========================== short test summary info ===========================
+FAILED tests/test_zeitschranken.py::test_jeder_direkte_kerzenleser_kennt_die_schranke[tools/ereignisstudie.py]
+1 failed, 8 passed in 0.40s
+
+## ROT 2 -- is_closed-Filter aus tools/live_konsole.py entfernt
+=========================== short test summary info ===========================
+FAILED tests/test_zeitschranken.py::test_die_live_konsole_filtert_auf_abgeschlossene_kerzen
+1 failed, 8 passed in 0.34s
+
+## ROT 3 -- die gebuendelte Regel in venue/mt5.py::get_bars entwaffnet
+FAILED tests/test_bar_geschlossen.py::test_laufende_kerze_wird_nicht_still_entfernt
+FAILED tests/test_bar_geschlossen.py::test_dauer_folgt_der_zeitebene - Assert...
+FAILED tests/test_bar_geschlossen.py::test_fehlende_dauer_bleibt_im_vertrag
+8 failed, 15 passed in 0.68s
+
+## GRUEN nach Ruecknahme aller drei
+.......................                                                  [100%]
+23 passed in 0.28s

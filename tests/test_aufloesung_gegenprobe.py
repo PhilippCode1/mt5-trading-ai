@@ -30,7 +30,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from mt5_trading_ai.venue.mt5 import Mt5Rate
+from mt5_trading_ai.venue.mt5 import Mt5Rate, Mt5Tick
 from mt5_trading_ai.venue.protocol import Timeframe
 from tools import aufloesung
 from tools.aufloesung import _kosten_bps, gegenprobe
@@ -53,8 +53,13 @@ def _csv(tmp_path: Path, name: str, punkte: list[tuple[datetime, float]]) -> Pat
     return ziel
 
 
+#: Uhr der Attrappen: weit hinter jeder erzeugten Kerze, damit alle als
+#: abgeschlossen gelten. Begruendung bei ``tick`` unten.
+_PLATZZEIT = datetime(2999, 1, 1, tzinfo=UTC)
+
+
 class StubTerminal:
-    """Ein Terminal, das nur ``rates`` beantwortet -- und mitschreibt, wie es gebaut wurde.
+    """Ein Terminal, das ``rates`` und ``tick`` beantwortet -- und mitschreibt, wie es gebaut wurde.
 
     ``allow_write`` wird hier **geprueft und nicht nur entgegengenommen**: die
     Gegenprobe ist ein lesendes Werkzeug, und ein schreibfaehiges Terminal haette in
@@ -82,6 +87,17 @@ class StubTerminal:
 
     def shutdown(self) -> None:
         self.beendet += 1
+
+    def tick(self, name: str) -> Mt5Tick:
+        """Die Platzzeit -- seit Stufe 2 fragt der Aufrufer danach.
+
+        Bewusst weit voraus. Diese Faelle messen die Scheibenbildung, nicht die
+        Kante zwischen laufender und fertiger Kerze; mit einer Uhr, die hinter den
+        erzeugten Kerzen laege, fiele die juengste heraus und die Erwartungen unten
+        wuerden eine andere Frage beantworten als die, fuer die sie geschrieben sind.
+        Die Kante selbst misst ``tests/test_zeitschranken.py``.
+        """
+        return Mt5Tick(ts=_PLATZZEIT, bid=Decimal("1"), ask=Decimal("1"))
 
     def rates(
         self, name: str, timeframe: Timeframe, start: datetime, end: datetime

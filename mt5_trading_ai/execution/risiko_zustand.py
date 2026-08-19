@@ -928,7 +928,8 @@ class DateiZustand:
         self._freigabe_vorgemerkt = True
 
     def schliessung_vormerken(self, instrument: str, eroeffnet_am: datetime) -> None:
-        """Merke: **dieser** Eintrag ist geschlossen und darf aus der Datei verschwinden.
+        """Merke: **dieser** Eintrag ist geschlossen und darf aus der Datei
+        verschwinden.
 
         Das Gegenstueck zu ``freigabe_vormerken`` fuer die offenen Positionen -- und
         aus demselben Grund noetig: seit vereinigt statt ueberschrieben wird, wuerde

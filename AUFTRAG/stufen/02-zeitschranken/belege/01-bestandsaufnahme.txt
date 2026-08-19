@@ -1,0 +1,28 @@
+# Beleg 1 — Wo wird 'neuester Zustand' statt 'Zustand zum Bar' gelesen?
+erhoben 2026-08-19T17:10:00Z
+
+## Die eine bewachte Tuer
+venue/mt5.py::get_bars kennzeichnet jede Bar mit is_closed (Regel: ts + dauer <= jetzt,
+jetzt = Tick-Stempel des Platzes, NICHT die Rechneruhr).
+
+## Wer daran vorbeigeht: grep auf .rates( vor der Aenderung
+mt5_trading_ai/venue/mt5.py:779   (die Tuer selbst)
+tools/atr_messung.py:87           -> ATR-Reihe fuer config/atr_measurements.json
+tools/atr_messung.py:156          -> rates[-1].close als UMRECHNUNGSKURS
+tools/aufloesung.py:162           -> erzeugt die 15 Reihen-Manifeste
+tools/aufloesung.py:522           -> Gegenprobe gegen Fremddatei
+tools/ereignisstudie.py:211       -> die sieben Eintraege in TRIALS.jsonl
+
+Alle drei Werkzeuge setzen ende = datetime.now(UTC) und reichen das ungefiltert
+an terminal.rates weiter. Sie bekommen damit kein is_closed und nehmen die noch
+in Bildung befindliche Kerze mit.
+
+## Wer is_closed bekommt und es ignoriert
+grep auf is_closed: genau ZWEI Verbraucher.
+  tools/live_betrieb.py:251  fertig = [b for b in bars if b.is_closed]   -> filtert
+  tools/live_konsole.py:_signal                                          -> filterte NICHT
+
+Die Konsole kann nichts ausloesen (allow_write fest verdrahtet), verspricht im
+Modulkopf aber zu zeigen, 'was das System entscheiden wuerde' -- und rechnete
+ihren gleitenden Durchschnitt auf einem Momentankurs, waehrend der wirkliche
+Treiber auf Schlusskursen rechnet.

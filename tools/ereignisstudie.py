@@ -94,7 +94,10 @@ from mt5_trading_ai.gates.trials import (  # noqa: E402
     new_trial,
 )
 from mt5_trading_ai.venue.mt5 import RealMt5Terminal  # noqa: E402
-from mt5_trading_ai.venue.protocol import Timeframe  # noqa: E402
+from mt5_trading_ai.venue.protocol import (  # noqa: E402
+    Timeframe,
+    ist_abgeschlossen,
+)
 
 from tools.aufloesung import _kosten_bps  # noqa: E402
 
@@ -198,11 +201,29 @@ def _tausender(zahl: int) -> str:
 
 
 def _lade_kerzen(symbol: str) -> list[Kerze]:
-    """Stundenkerzen aus dem Terminal, Zeitstempel in ECHTES UTC gedreht."""
+    """Stundenkerzen aus dem Terminal, Zeitstempel in ECHTES UTC gedreht.
+
+    Die noch in Bildung befindliche Kerze bleibt draussen. Sie kam frueher mit: der
+    Abruf endet bei ``jetzt``, und ``terminal.rates`` liefert die laufende Kerze
+    mit -- ihr ``close`` ist der Momentankurs. Eine Studie, die ihr letztes Fenster
+    darauf rechnet, misst einen Zwischenstand, und ein zweiter Lauf ergaebe eine
+    andere Zahl.
+
+    ``jetzt`` kommt vom Platz (Tick-Stempel), durch **dieselbe** Umrechnung wie die
+    Kerzenstempel -- nicht von der Rechneruhr. Begruendung bei
+    ``protocol.ist_abgeschlossen``.
+    """
     terminal = RealMt5Terminal(allow_write=False)
     if not terminal.initialize():
         raise StudienError("Terminal nicht erreichbar")
     try:
+        tick = terminal.tick(symbol)
+        if tick is None:
+            raise StudienError(
+                f"kein Tick fuer {symbol} -- ohne Platzzeit ist nicht entscheidbar, "
+                "welche Kerze abgeschlossen ist (fail-closed)"
+            )
+        jetzt = server_zu_utc(tick.ts)
         ende = datetime.now(UTC)
         roh: dict[datetime, Kerze] = {}
         scheibe_ende = ende
@@ -211,6 +232,8 @@ def _lade_kerzen(symbol: str) -> list[Kerze]:
             reihe = terminal.rates(symbol, Timeframe.H1, scheibe_start, scheibe_ende)
             for r in reihe:
                 echt = server_zu_utc(r.ts)
+                if not ist_abgeschlossen(echt, Timeframe.H1, jetzt):
+                    continue
                 roh[echt] = Kerze(ts=echt, open=float(r.open), close=float(r.close))
             scheibe_ende = scheibe_start
     finally:

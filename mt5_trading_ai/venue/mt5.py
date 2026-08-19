@@ -67,6 +67,7 @@ from mt5_trading_ai.venue.protocol import (
     TradingVenue,
     UnknownInstrumentError,
     VenueUnavailableError,
+    ist_abgeschlossen,
 )
 
 MT5_ADAPTER_VERSION = "mt5-venue-v1"
@@ -775,7 +776,6 @@ class Mt5Venue(TradingVenue):
         # je ``get_bars`` und zwei Fassungen derselben Regel, die auseinanderlaufen
         # koennen. Die Fehlerreihenfolge bleibt unveraendert.
         jetzt = self.get_quote(symbol).ts
-        dauer = timeframe.duration
         rates = self._terminal.rates(symbol, timeframe, start, end)
         bars = [
             Bar(
@@ -787,10 +787,10 @@ class Mt5Venue(TradingVenue):
                 low=rate.low,
                 close=rate.close,
                 tick_volume=rate.tick_volume,
-                # Abgeschlossen ist das Intervall erst, wenn seine Grenze erreicht ist.
-                # ``<=`` und nicht ``<``: zum Zeitpunkt ``ts + dauer`` laeuft bereits
-                # die naechste Kerze, die vorige ist fertig.
-                is_closed=rate.ts + dauer <= jetzt,
+                # Die Regel steht in ``protocol.ist_abgeschlossen`` -- einmal, weil
+                # fuenf weitere Stellen an ``get_bars`` vorbei direkt aus dem Terminal
+                # lesen und dieselbe Frage beantworten muessen.
+                is_closed=ist_abgeschlossen(rate.ts, timeframe, jetzt),
                 volume=rate.real_volume,
                 spread_avg_points=rate.spread_points,
             )
