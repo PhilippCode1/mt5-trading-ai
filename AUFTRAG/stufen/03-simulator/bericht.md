@@ -218,6 +218,37 @@ Das war falsch — sie ergänzt die zweite Hälfte einer Rechnung, von der er nu
 gemacht hatte. Aus einer Abweichung sofort auf einen Widerspruch zu schließen, statt sie
 zu Ende zu rechnen, ist derselbe Fehler wie F-007 im Kleinen.
 
+### 4.7 Konfidenzintervalle — die präzise Fassung des Neins
+
+§1 hält **(A)** an einen Maßstab: „ausgewiesen mit Trefferzahl, Konfidenzintervall,
+Regime, Zeitrahmen und Stand des Versuchszählers". **(B)** soll „mit demselben Apparat"
+belegt sein — mein Nein trug Trefferzahl, Zeitrahmen und Versuchszähler, aber kein
+Konfidenzintervall. Nachgeholt über den nicht registrierenden Motorpfad, ohne neuen
+Versuch (Beleg: `belege/08-konfidenzintervalle.txt`).
+
+Perzentil-Bootstrap, 10.000 Ziehungen, feste Saat 20260819, mit t-Gegenprobe.
+Einheit: USD Netto je Trade.
+
+| Hypothese | n | Mittel/Trade | 95 %-KI (Bootstrap) | enthält 0? |
+|---|---:|---:|---|---|
+| MA-Kreuzung | 59 | −68,81 | [−236,98; +121,12] | **ja** |
+| Mittelwertrückkehr | 123 | +5,64 | [−59,87; +67,11] | **ja** |
+| Ausbruch | 58 | −114,47 | [−299,73; +88,34] | **ja** |
+
+**Alle drei Intervalle enthalten die Null.** Das ist die präzise Fassung von Befund (B):
+nicht „es verliert", sondern **„es ist nicht von null zu trennen"**.
+
+**Und ausdrücklich auch in die andere Richtung:** die −68,81 und die −114,47 sind bei
+diesen Stichprobengrößen genauso wenig gesichert wie die +5,64. Die Daten lösen die Frage
+in **keine** Richtung auf. Genau davor sollte die vorregistrierte Mindest-Trefferzahl von
+2.000 schützen — sie hat jetzt eine Zahl hinter sich: beim besten Fall ist das Intervall
+rund **22-mal so breit** wie der Punktschätzer.
+
+**Was fehlt und warum:** die Aufschlüsselung nach *Regime*. Der Stand hat keinen
+Regime-Klassifikator. Einen nachträglich zu bauen und die Ergebnisse danach zu teilen
+wäre eine Modellentscheidung nach Kenntnis des Ergebnisses — nach §7 ein neuer Versuch,
+und in der schmeichelnden Richtung angreifbar. Es unterbleibt bewusst.
+
 ### 4.4 Die Gegenprobe, die diesen Lauf wertvoll macht
 
 Zwei der drei Läufe reproduzieren den eingecheckten Teil-3-Befund **auf die Stelle

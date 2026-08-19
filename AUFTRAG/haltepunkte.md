@@ -152,6 +152,13 @@ Prüfsumme `8cdebf05…`), gegen eine vorher eingefrorene Vorregistrierung (Comm
 Verlangt sind Out-of-Sample-Sharpe ≥ 1,0 (beste gemessen: 0,185), DSR > 0,95 (beste:
 0,0150) und ≥ 2.000 Trades (höchste: 123). **Keine Bedingung wird knapp verfehlt.**
 
+**Präziser noch, mit Konfidenzintervall** (Perzentil-Bootstrap, 10.000 Ziehungen, feste
+Saat): der Netto-Erwartungswert je Trade ist bei **allen drei** nicht von null zu
+unterscheiden — MA-Kreuzung −68,81 USD [−236,98; +121,12], Mittelwertrückkehr +5,64
+[−59,87; +67,11], Ausbruch −114,47 [−299,73; +88,34]. Das gilt in beide Richtungen: auch
+die Verluste sind bei diesen Stichprobengrößen nicht gesichert. **Die Daten lösen die
+Frage nicht auf** — was die Wahl zwischen den drei Optionen unten unmittelbar berührt.
+
 Zwei der drei Läufe reproduzieren den eingecheckten Teil-3-Befund auf die Stelle genau —
 auf unabhängig neu beschafften Daten. Der Apparat ist damit auf der Datenseite bestätigt;
 was er sagt, ist ein Nein.
@@ -176,11 +183,22 @@ Zähler, der in die Signifikanzrechnung eingeht.
    Das ist nur zulässig, wenn sie eine eigene Begründungstiefe mitbringt — nicht als
    vierter Anlauf auf dieselbe Frage.
 
-**Empfehlung: (1) beenden.** Die Begründung ist nicht das Ergebnis allein, sondern sein
-Abstand: die Trade-Zahl liegt um den Faktor 16 unter der vorregistrierten Mindestzahl, und
-`BERICHT_TEIL3.md` beziffert die Mindest-Nachweisdauer für die beste der drei mit rund 79
-Jahren gegen 0,9 Jahre vorhandenes Out-of-Sample. Auf diesem Instrument und diesem
-Zeitrahmen ist die Frage beantwortet.
+**Empfehlung: (1) beenden — mit einer geschärften Begründung.**
+
+Nach den Konfidenzintervallen ist die Begründung nicht mehr „es verliert", sondern
+schärfer und unbequemer: **auf diesem Instrument und diesem Zeitrahmen kann die Frage
+nicht beantwortet werden.** Der vorregistrierte Test ist eindeutig nicht bestanden — das
+ist (B) im operativen Sinn des Vertrags, weil die Vorregistrierung definiert, was
+„existiert" heißt. Aber die zugrunde liegende Frage bleibt offen, und zwar aus einem
+Grund, der sich durch keine weitere Hypothese beheben lässt: **der Stichprobenumfang.**
+
+Das trifft Option (3) härter als das Ergebnis selbst. Eine neue Hypothese auf H1 über drei
+Jahre erzeugt wieder 50 bis 150 Trades, und damit wieder ein Intervall, das breiter ist
+als jeder Effekt, den sie zeigen könnte. Wer (3) ziehen will, muss **zuerst die
+Handelsfrequenz lösen** — kürzerer Zeitrahmen, mehr Instrumente oder deutlich längere
+Historie —, sonst verbraucht er Versuche für Messungen, die nichts auflösen können. Die
+Mindest-Nachweisdauer von rund 79 Jahren gegen 0,9 Jahre Out-of-Sample
+(`BERICHT_TEIL3.md` §5) sagt dasselbe aus einer anderen Richtung.
 
 **Alternative: (3).** Sie ist zulässig und befristet, aber sie kostet Versuche, und jeder
 verbrauchte Versuch macht die Deflation für alle späteren strenger. Wer sie zieht, sollte

@@ -1,0 +1,63 @@
+# Beleg 8 — Konfidenzintervalle des Netto-Erwartungswerts je Trade
+erhoben 2026-08-19
+
+ANLASS
+------
+§1 des Auftrags haelt (A) an einen Maßstab: "ausgewiesen mit Trefferzahl,
+Konfidenzintervall, Regime, Zeitrahmen und Stand des Versuchszaehlers". (B) soll "mit
+demselben Apparat" belegt sein. Mein Nein trug Trefferzahl, Zeitrahmen und
+Versuchszaehler -- aber kein Konfidenzintervall. Nachgeholt.
+
+Gefahren ueber den nicht registrierenden Motorpfad (run_backtest) auf demselben
+OoS-Block (5.615 Bars, 2024-02-07..2024-12-31). KEIN neuer Versuch, keine neue
+Hypothese, keine geaenderten Parameter -- dieselben drei Laeufe, nur zusaetzlich
+ausgewertet. Registerstand bleibt 31 von 60.
+
+METHODE (vor der Rechnung festgelegt)
+--------------------------------------
+Perzentil-Bootstrap ueber die Netto-Ergebnisse der einzelnen Trades, 10.000 Ziehungen
+mit Zuruecklegen, feste Saat 20260819 -- zwei Laeufe geben dieselbe Zahl.
+Zusaetzlich eine t-Gegenprobe (Mittel +- 1,96 * s / sqrt(n)), damit ein Fehler in der
+einen Rechnung an der anderen auffiele.
+
+ERGEBNIS
+--------
+Einheit: USD Netto je Trade, 1 Lot, Hebel 5, Margin-Basis 21.538,60 USD.
+
+  Hypothese                 n   Mittel/Trade   95%-KI Bootstrap        0 enthalten?
+  ---------------------------------------------------------------------------------
+  MA-Kreuzung              59        -68,81    [-236,98 , +121,12]     JA
+                                               t: [-250,07 , +112,45]
+  Mittelwertrueckkehr     123         +5,64    [ -59,87 ,  +67,11]     JA
+                                               t: [ -57,51 ,  +68,79]
+  Ausbruch                 58       -114,47    [-299,73 ,  +88,34]     JA
+                                               t: [-313,22 ,  +84,28]
+
+Bootstrap und t-Gegenprobe stimmen bei allen dreien eng ueberein. Das spricht dagegen,
+dass die Intervalle ein Artefakt der Methode sind.
+
+WAS DAS SAGT -- UND WAS NICHT
+------------------------------
+SAGT: Bei keiner der drei Hypothesen ist der Netto-Erwartungswert je Trade von null zu
+unterscheiden. Das ist die praezise Fassung von Befund (B): nicht "es verliert",
+sondern "es ist nicht von null zu trennen".
+
+SAGT AUSDRUECKLICH NICHT: dass die Verluste statistisch erwiesen sind. Die -68,81 und
+die -114,47 sind bei diesen Stichprobengroessen genauso wenig gesichert wie die +5,64.
+Die Daten koennen die Frage in KEINE Richtung aufloesen.
+
+Genau davor sollte die vorregistrierte Mindest-Trefferzahl von 2.000 schuetzen. Sie
+hat jetzt eine Zahl hinter sich: mit 59 bis 123 Trades ist das Intervall breiter als
+der gemessene Effekt, und zwar um ein Vielfaches. Beim besten Fall
+(Mittelwertrueckkehr) ist das Intervall rund 22-mal so breit wie der Punktschaetzer.
+
+WAS NICHT GELIEFERT WIRD, UND WARUM
+-----------------------------------
+"Regime" aus dem Maßstab des §1 fehlt. Der Stand hat keinen Regime-Klassifikator
+(geprueft: kein Treffer auf "regime" im Paket). Einen nachtraeglich zu bauen und die
+Ergebnisse danach aufzuteilen waere eine Modellentscheidung NACH Kenntnis des
+Ergebnisses -- nach §7 ein neuer Versuch und in der schmeichelnden Richtung
+angreifbar. Es unterbleibt bewusst.
+
+Der Out-of-Sample-Block umfasst ausserdem nur 0,9 Jahre. Eine Aufteilung darin ergaebe
+Stichproben, deren Intervalle noch breiter waeren als die oben.
