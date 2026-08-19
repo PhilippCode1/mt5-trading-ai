@@ -352,6 +352,59 @@ def _halt_grund_fortschreiben(bisher: str | None, neu: str) -> str:
     return f"{neu} (zuvor: {bisher})"
 
 
+#: Pflichtfelder des Kontoschnappschusses, die KEINEN Vorgabewert kennen. Jedes wird
+#: im Orderpfad wirklich gelesen: ``account_id`` bindet den Risikozustand an das Konto,
+#: ``is_demo`` entscheidet ueber die Live-Freigabe, ``ts`` traegt die Frischepruefung,
+#: ``currency`` die Bezugsgroesse jeder Geldzahl.
+_KONTO_PFLICHTFELDER: tuple[str, ...] = ("account_id", "currency", "is_demo", "ts")
+
+#: Dieselbe Frage fuer die Geldzahlen. Sie muessen zusaetzlich endlich sein: ein
+#: ``NaN`` in der Equity ueberlebt jeden Vergleich klaglos und faerbt danach jede
+#: Grenze in die milde Richtung -- ``NaN > limit`` ist ``False``, der Kill-Switch
+#: schweigt also gerade dann, wenn die Zahl unbrauchbar ist.
+_KONTO_PFLICHTZAHLEN: tuple[str, ...] = (
+    "balance",
+    "equity",
+    "margin_used",
+    "margin_free",
+)
+
+
+def konto_maengel(acc: Any) -> str | None:
+    """Was am Kontoschnappschuss fehlt -- oder ``None``, wenn er vollstaendig ist.
+
+    Sperre V3 des Auftrags: *„Ein fehlender Messwert sperrt. Er wird nie durch einen
+    Standardwert ersetzt."* Der Kontoschnappschuss ist der Messwert, auf dem die halbe
+    Risikoschicht steht, und er wurde bis hierher **ungeprueft** benutzt: ein fehlender
+    Schnappschuss endete in einem ``AttributeError`` mitten im Freigabe-Tor, ein
+    fehlender Zeitstempel in einem ``AttributeError`` mitten in der Frischepruefung.
+
+    Ein ``AttributeError`` ist keine Ablehnung mit Grund. Er nennt den Ort, nicht die
+    Ursache; er traegt keinen ``reason``, an dem der Betrieb ihn zaehlen oder
+    unterscheiden koennte; und er sieht im Protokoll aus wie ein Programmfehler, nicht
+    wie eine Sperre, die getan hat, was sie soll. Genau diese Unterscheidung verlangt
+    die Abnahme der Stufe 4: *„leere Kontodaten erzeugen eine Ablehnung mit Grund"*.
+
+    Die Funktion urteilt **nicht** ueber die Fehlerart -- sie liefert den Mangel als
+    Text. Welcher Ausnahmetyp daraus wird, entscheidet die Aufrufstelle: im Orderpfad
+    eine ``OrderRejectedError`` mit ``reason``, an der lesenden Kontoabfrage eine
+    ``VenueUnavailableError``. Eine Regel, zwei angemessene Ausgaenge -- nicht zwei
+    Regeln, die auseinanderlaufen koennen.
+    """
+    if acc is None:
+        return "kein Kontoschnappschuss (account() lieferte None)"
+    for feld in _KONTO_PFLICHTFELDER:
+        if getattr(acc, feld, None) is None:
+            return f"Pflichtfeld '{feld}' fehlt"
+    for feld in _KONTO_PFLICHTZAHLEN:
+        wert = getattr(acc, feld, None)
+        if wert is None:
+            return f"Pflichtzahl '{feld}' fehlt"
+        if isinstance(wert, Decimal) and not wert.is_finite():
+            return f"Pflichtzahl '{feld}' ist nicht endlich ({wert})"
+    return None
+
+
 class Mt5Venue(TradingVenue):
     """MT5-Handelsplatz. Erfuellt das ``TradingVenue``-Protokoll (statisch geprueft).
 
@@ -807,7 +860,6 @@ class Mt5Venue(TradingVenue):
             return replace(previous, idempotent_replay=True)
 
         instrument = self.get_instrument(request.symbol)
-        self._validate_volume(instrument, request.volume)
 
         # ``reduce_only`` ueberspringt die Eroeffnungs-Tore -- aber NUR, wenn die Order
         # eine tatsaechlich offene Gegenposition abbaut. Ein reduce_only-Flag ohne (oder
@@ -816,7 +868,30 @@ class Mt5Venue(TradingVenue):
         pre_net = self._book.net(request.symbol)
         is_reducing = request.reduce_only and self._reduces_position(request)
 
-        if not is_reducing:
+        if is_reducing:
+            # Sperre V5: *„Reduzierende Auftraege werden von keiner Sperre blockiert."*
+            # ``_validate_volume`` stand bis hierher VOR dieser Weiche und traf damit
+            # auch den Abbau. Gemessen an einer Gegenposition von 0,005 Lot bei einem
+            # Mindestvolumen von 0,01: der volle Abbau wurde mit ``volume_below_min``
+            # abgewiesen -- die Position liess sich nicht schliessen. Erreichbar ist
+            # das ueber ``adopt_book`` (der Broker meldet, was er hat, nicht was
+            # unsere Schrittweite erlaubt), ueber eine Teilschliessung von aussen und
+            # ueber jede spaetere Aenderung der Kontraktspezifikation.
+            #
+            # Fuer den Abbau bleibt genau eine Bedingung, und sie ist keine Sperre,
+            # sondern eine Definition: es muss etwas abgebaut werden. Die Obergrenze
+            # (nicht mehr als die Gegenposition) hat ``_reduces_position`` bereits
+            # erzwungen -- daher hier weder Mindestvolumen noch Schrittweite noch
+            # Hoechstvolumen. Ein Broker, der einen Teilabbau ablehnt, lehnt ihn
+            # selbst ab; dieses Haus stellt sich davor nicht als zweite Instanz.
+            if request.volume <= 0:
+                raise OrderRejectedError(
+                    f"Abbau ohne Volumen ({request.volume})",
+                    reason="volume_not_positive",
+                    retryable=False,
+                )
+        else:
+            self._validate_volume(instrument, request.volume)
             if self._halted:
                 raise OrderRejectedError(
                     "Global-Halt aktiv (Reconcile-Drift) — keine Eroeffnung",
@@ -1143,7 +1218,7 @@ class Mt5Venue(TradingVenue):
             )
 
     def _require_live_release_for_opening(self) -> None:
-        account = self._terminal.account()
+        account = self._konto_pflicht()
         if account.is_demo:
             return  # Demokonto: keine Live-Freigabe noetig.
         blocked = live_release_blocks_opening_order(self._settings, reduce_only=False)
@@ -1258,7 +1333,7 @@ class Mt5Venue(TradingVenue):
         konfiguriertes Tor wird fail-closed abgelehnt: eine Order, deren Kosten nie
         gegen die Backtest-Annahme geprueft wurden, darf nicht eroeffnen.
         """
-        if self._terminal.account().is_demo:
+        if self._konto_pflicht().is_demo:
             return  # Demokonto: keine Live-Kostenpruefung noetig.
         if self._cost_gate is None:
             raise OrderRejectedError(
@@ -1307,7 +1382,7 @@ class Mt5Venue(TradingVenue):
         Drawdown-Halt aus ``evaluate_limits`` setzt den ``_halted``-Latch (loest sich
         nicht von selbst).
         """
-        account = self._terminal.account()
+        account = self._konto_pflicht()
         if self._risk_manager is None:
             raise OrderRejectedError(
                 "Kein Risiko-Manager konfiguriert -- Live-Eroeffnung blockiert",
@@ -1419,9 +1494,38 @@ class Mt5Venue(TradingVenue):
             for pos in self._terminal.positions()
         )
 
+    def _konto_pflicht(self) -> Any:
+        """Der Kontoschnappschuss fuer den Orderpfad -- vollstaendig oder Ablehnung.
+
+        Die eine Lesestelle, durch die jede eroeffnende Order geht. Sie ersetzt nichts
+        und faellt auf nichts zurueck: fehlt eine Pflichtzahl, endet die Order hier mit
+        einem Grund (V3, Abnahme der Stufe 4).
+
+        **Nicht** auf dem reduzierenden Pfad: der braucht den Kontostand gar nicht, und
+        nach V5 blockiert ihn ohnehin keine Sperre. Eine Kontopruefung dort waere eine
+        Sperre auf dem Abbau -- genau das, was der Auftrag verbietet.
+        """
+        acc = self._terminal.account()
+        mangel = konto_maengel(acc)
+        if mangel is not None:
+            raise OrderRejectedError(
+                f"Kontostand nicht bewertbar: {mangel}",
+                reason="account_unevaluable",
+                # Wiederholbar: ein fehlender Schnappschuss ist in aller Regel eine
+                # abgerissene Terminalsitzung, kein dauerhaft ungueltiger Auftrag.
+                retryable=True,
+            )
+        return acc
+
     def get_account(self) -> AccountState:
         self._require_healthy()
         acc = self._terminal.account()
+        mangel = konto_maengel(acc)
+        if mangel is not None:
+            # Lesende Abfrage: hier gibt es keine Order, die abgelehnt werden koennte.
+            # Ein unvollstaendiger Schnappschuss heisst, dass der Handelsplatz gerade
+            # keine Auskunft gibt -- und genau das sagt ``VenueUnavailableError``.
+            raise VenueUnavailableError(f"Kontostand nicht lesbar: {mangel}")
         return AccountState(
             account_id=acc.account_id,
             currency=acc.currency,

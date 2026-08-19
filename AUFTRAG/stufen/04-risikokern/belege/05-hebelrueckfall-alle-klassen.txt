@@ -1,0 +1,15 @@
+A2-Sonderfall: der fehlende Hebelwunsch, ueber ALLE Anlageklassen gemessen.
+Frage: ist der Rueckfall je milder (= gefaehrlicher) als die Klammer?
+
+Klasse               ohne Wunsch  max. Wunsch   milder?
+fx_major                       5           10      nein
+fx_minor                       5           10      nein
+gold                           5           10      nein
+index_major                    5           10      nein
+index_minor                    5           10      nein
+commodity_non_gold             5           10      nein
+equity                         5            5      nein
+crypto                         2            2      nein
+
+Klassen mit milderem Rueckfall: 0 von 8
+-> keine. Der Rueckfall ist nie die gefaehrlichere Wahl.

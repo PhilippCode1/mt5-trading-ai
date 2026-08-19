@@ -106,6 +106,19 @@ gelöscht." Ein Helfer, der nur noch in Tests lebt, ist genau das.
 Vollständige Ursachenanalyse: `fehler.md`, F-007. Was an seiner Stelle geblieben ist —
 die Feldwahl per Syntaxbaum festgenagelt — steht in `stufen/03-simulator/bericht.md` §1.3.
 
+## In Stufe 4 gelöscht
+
+**Nichts.** Die Stufe hat zwei Lücken geschlossen und dabei nur eine Prüfung **verschoben**
+(`_validate_volume` aus dem gemeinsamen Pfad in den Eröffnungszweig) und eine
+**hinzugefügt** (`konto_maengel` samt der beiden Lesestellen, die sie benutzen).
+
+Zur Sperre V1: der neue Code hat einen Aufrufer im Ausführungspfad. `konto_maengel` wird
+von `Mt5Venue._konto_pflicht` und `Mt5Venue.get_account` gerufen, `_konto_pflicht` von
+den drei Toren des Orderpfads (Live-Freigabe, Kostentor, Risikoschicht). Ein Dauertor am
+Syntaxbaum hält fest, dass daneben keine ungeprüfte Lesestelle entsteht.
+
+---
+
 ## Was nach dem Ergebnistor **nicht** gelöscht wurde, obwohl es naheläge
 
 Befund (B) heißt nach §1: *„Es wird zurückgebaut oder aufgegeben."* Beides ist eine

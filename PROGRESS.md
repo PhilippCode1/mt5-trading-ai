@@ -2019,3 +2019,68 @@ rueckwirkend zu aendern eine Faelschung waere.
 liegt ausserhalb dieses Repositoriums, enthaelt Zugangsdaten im Klartext, und der Widerruf
 kann nur vom Kontoinhaber kommen (H-003). In diesem Repositorium traegt der Name nur noch
 Herkunftsangaben — kein Produktionscode, kein Test, kein Import.
+
+---
+
+## ERLEDIGT — Stufe 4 des Dauerauftrags: Risikokern fail-closed (auf Anweisung)
+
+**Zur Zulassung, vorweg und ehrlich:** §1 des Dauerauftrags schlieszt die Stufen 4 bis 10
+fuer den Ausgang (B) ausdruecklich aus ("bevor weiterer Aufwand in Absicherung ...
+flieszt"). Der Ausgang (B) liegt vor und ist am selben Tag zusaetzlich gegen den
+Erfuellbarkeits-Einwand geprueft worden. Ich habe den Widerspruch vor der Stufe benannt;
+der Auftraggeber hat sie angewiesen. Das ist seine Entscheidung ueber seinen eigenen
+Vertrag (AUFTRAG/entscheidungen.md, E-009) -- derselbe Vorgang wie bei Paket 5
+(BERICHT_TEIL3 §11).
+
+**Was geschehen ist:** Die neun Punkte der Stufe (fuenf Forderungen, drei Abnahmefaelle,
+Eichfallpflicht) sind einzeln gemessen worden, BEVOR eine Zeile geaendert wurde. Drei
+Forderungen und zwei Abnahmefaelle waren bereits erfuellt und sind trotzdem belegt worden.
+Zwei echte Luecken gefunden und geschlossen:
+
+- **V5-Verstosz: eine Position liesz sich nicht schlieszen.** `_validate_volume` stand in
+  `submit_order` VOR der Reduce-Weiche. Gemessen: Gegenposition 0,005 Lot bei einem
+  Mindestvolumen von 0,01 -- der volle Abbau wurde mit `volume_below_min` abgewiesen.
+  Erreichbar ueber `adopt_book`, ueber eine Teilschlieszung von auszen und ueber jede
+  spaetere Aenderung der Kontraktspezifikation. Geaendert: `_validate_volume` laeuft nur
+  noch im Eroeffnungszweig; fuer den Abbau bleibt `volume > 0` (`volume_not_positive`),
+  die Obergrenze erzwingt `_reduces_position` ohnehin.
+- **Abnahme B2 verfehlt: leere Kontodaten stuerzten ab.** `account()` gleich `None` endete
+  in `AttributeError: 'NoneType' object has no attribute 'is_demo'`, ein fehlender
+  Kontostempel in `AttributeError: ... 'date'`. Ein AttributeError nennt den Ort, nicht
+  die Ursache, traegt keinen `reason` und sieht im Protokoll aus wie ein Programmfehler
+  statt wie eine wirksame Sperre. Geaendert: `konto_maengel()` als eine Regel (vier
+  Pflichtfelder, vier Pflichtzahlen, letztere auch auf Endlichkeit -- `NaN > limit` ist
+  `False` und laeszt den Kill-Switch gerade dann schweigen, wenn die Zahl unbrauchbar
+  ist), dazu zwei der Lage angemessene Ausgaenge: `OrderRejectedError`
+  (`account_unevaluable`) im Orderpfad, `VenueUnavailableError` an der lesenden Abfrage.
+  Alle vier bisher ungeprueften Lesestellen umgehaengt.
+
+**Gemessen und in Ordnung befunden:** Zustandstabelle auszerhalb des Arbeitsbaums (A1);
+Portfoliozustand aus `get_positions()` statt aus dem Auftrag, die eine mitreisende Zahl
+zweifach geprueft (A3); genau eine Definition und genau eine Aufrufstelle je
+Groeszenrechnung und Stopbudget, am Syntaxbaum gezaehlt (A5); B1 und B3 bestanden schon
+vorher.
+
+**Zwei Befunde aus falschen Erwartungen, festgehalten statt stillschweigend angepasst:**
+(1) Ohne Halt gehen NICHT zwei Eroeffnungen hintereinander durch -- die Drossel weist die
+zweite mit `throttle_cooldown_active` ab. B1 haelt also aus zwei unabhaengigen Gruenden.
+(2) Der fehlende Hebelwunsch haelt die Order nicht an. Das ist zulaessig, aber nur weil
+der Rueckfall in KEINER Klasse der gefaehrlichere ist -- gemessen ueber alle acht
+Anlageklassen, 0 von 8, mit Dauertor dagegen.
+
+**Abnahme:** `tests/test_stufe4_risikokern.py`, 27 Eichfaelle, je Tor rot und gruen. Drei
+Mutationen gefahren (Rueckfall der Volumenpruefung, wirkungslose Kontopruefung,
+ungepruefte Lesestelle) -- 2, 9 und 1 Faelle gehen rot, keine Mutation bleibt unbemerkt.
+Zurueckgestellt aus einer VOR dem Eingriff angelegten Kopie, Pruefsumme danach identisch
+(Lehre aus F-010). Torlauf: ruff, mypy --strict, check_docs_claims, check_doc_numbers,
+gen_docs --check, kopien_abgleichen --pruefen je Exit 0; pytest 1.431 bestanden, 0
+fehlgeschlagen.
+
+**Ehrliche Grenze / offen:** Wirft `_terminal.account()` eine Ausnahme (statt `None` zu
+liefern), reicht der Orderpfad sie unveraendert weiter, ohne `reason`. Das ist keine
+verfehlte Abnahme -- "leere Kontodaten" heiszt fehlende Daten, nicht eine abgerissene
+Sitzung -- bliebe aber sauberer uebersetzt. Nicht in dieser Stufe geaendert: jede Ausnahme
+jedes Terminalaufrufs zu uebersetzen ist ein eigener Umbau mit eigener Messung, und der
+Auftrag verlangt genau eine Stufe. **Und der Befund (B) bleibt unberuehrt:** diese Stufe
+misst keinen Vorteil. Dass ein dichterer Risikokern an einem System ohne belegten Vorteil
+kein Geld verdient, bleibt wahr.

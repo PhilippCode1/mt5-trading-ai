@@ -252,3 +252,41 @@ die etwas entscheidet. Wer das anders sieht, findet den Sachverhalt hier.
 **Verworfene Alternative.** Ein zweites, getrenntes Register für Messungen ohne
 Hypothese. Verworfen aus demselben Grund wie E-002: zwei Register für benachbarte Fragen
 laufen auseinander, und danach weiß niemand mehr, welches die Deflation speist.
+
+---
+
+## E-009 — Stufe 4 wird gefahren, obwohl §1 sie für diesen Ausgang ausschließt
+
+**Datum:** 2026-08-19 · **Stufe:** 4 · **Entschieden von:** **Auftraggeber**
+(Anweisung: „weiter mit schritt 4")
+
+**Sachlage.** §1 des Auftrags sagt für den Ausgang (B): *„(B) beendet den Auftrag ebenso
+gültig wie (A) — und zwar, **bevor weiterer Aufwand in Absicherung, Ausführung,
+Oberfläche oder Betrieb fließt**."* Stufe 4 heißt wörtlich „Risikokern verdrahten und
+fail-closed stellen" und ist damit Absicherung. Der Ausgang (B) liegt vor (H-004) und ist
+am selben Tag zusätzlich gegen den Erfüllbarkeits-Einwand geprüft worden.
+
+**Ich habe den Widerspruch vor der Stufe benannt; der Auftraggeber hat sie angewiesen.**
+Das ist seine Entscheidung über seinen eigenen Vertrag. Ich führe sie aus und schreibe sie
+als seine, nicht als meine.
+
+**Präzedenz im selben Vorhaben.** `BERICHT_TEIL3.md` §11 hält denselben Vorgang fest:
+nach dem Abschluss unter §10 („beenden") wurde Paket 5 auf ausdrückliche Anweisung dennoch
+gebaut, und der Bericht kennzeichnet das als Übersteuern eines harten Tors. Ebenso H-002.
+
+**Was ich selbst entschieden habe** — und was deshalb mir zuzurechnen ist:
+
+1. **Die Stufe beginnt mit einer Messung, nicht mit einem Umbau.** Fünf Forderungen und
+   drei Abnahmefälle, jeder einzeln gemessen, bevor eine Zeile geändert wurde. Drei der
+   neun waren bereits erfüllt; sie sind trotzdem belegt worden, weil „erfüllt" ohne
+   Messung die Behauptung ist, gegen die dieser Auftrag gebaut ist.
+2. **Nur die gemessenen Lücken werden geschlossen**, nicht das, was sich beim Lesen als
+   verbesserungsfähig anbot. Ein werfendes Terminal steht als offener Punkt im Bericht,
+   statt in dieser Stufe mit umgebaut zu werden.
+3. **Der Befund (B) bleibt unberührt.** Diese Stufe misst keinen Vorteil und behauptet
+   keinen. Dass ein dichterer Risikokern an einem System ohne belegten Vorteil kein Geld
+   verdient, bleibt wahr und steht so im Bericht.
+
+**Was dagegen spricht und stehen bleiben soll:** §1 nennt für (B) keine Ausnahme. Wer
+diesen Ordner später prüft, soll sehen, dass die Stufe gegen den geschriebenen Vertrag
+gefahren wurde — auf Anweisung, benannt, nicht stillschweigend.

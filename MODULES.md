@@ -491,7 +491,7 @@ Paket 5: Registrierung und Fortschritts-Tor des Demo-Betriebs (§8.5).
 
 ## `mt5_trading_ai/venue/mt5.py`
 
-Zeilen: 2516
+Zeilen: 2620
 
 MT5-Anbindung an das ``TradingVenue``-Protokoll.
 
@@ -504,6 +504,7 @@ MT5-Anbindung an das ``TradingVenue``-Protokoll.
 - `class Mt5SendResult`
 - `class Mt5Terminal`
 - `def stop_level_in_tickschritten`
+- `def konto_maengel`
 - `class Mt5Venue`
 - `def kennmarke`
 - `class RealMt5Terminal`

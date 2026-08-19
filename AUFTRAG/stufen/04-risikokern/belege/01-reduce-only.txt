@@ -1,0 +1,44 @@
+STUFE 4 -- A4: WERDEN REDUZIERENDE AUFTRAEGE VON IRGENDEINER SPERRE BLOCKIERT?
+==========================================================================
+
+-- Der Zweig in submit_order (venue/mt5.py) --
+        instrument = self.get_instrument(request.symbol)
+        self._validate_volume(instrument, request.volume)
+
+        # ``reduce_only`` ueberspringt die Eroeffnungs-Tore -- aber NUR, wenn die Order
+        # eine tatsaechlich offene Gegenposition abbaut. Ein reduce_only-Flag ohne (oder
+        # gleichgerichtet zu einer) offenen Position ist eine Eroeffnung und muss durch
+        # alle Tore (sonst umginge es Compliance/Risiko + Global-Halt -- §9 Paket 5).
+        pre_net = self._book.net(request.symbol)
+        is_reducing = request.reduce_only and self._reduces_position(request)
+
+
+-- Was VOR dem Zweig laeuft und damit AUCH reduzierende Orders trifft --
+        self._require_healthy()
+        self._validate_volume(instrument, request.volume)
+        is_reducing = request.reduce_only and self._reduces_position(request)
+
+-- _reduces_position --
+1038:    def _reduces_position(self, request: OrderRequest) -> bool:
+1039-        """Baut die Order eine offene Gegenposition ab, OHNE sie zu ueberschreiten?
+1040-
+1041-        Massgeblich ist **ausschliesslich** die autoritative Boersen-Gegenposition:
+1042-        ``get_positions()`` ist ein frischer Broker-Query (unabhaengig vom Privatstrom)
+1043-        und spiegelt jeden Stand -- auch serverseitige SL/TP- und externe Schliessungen.
+1044-        Das lokale Netto-Buch wird BEWUSST NICHT herangezogen: es kann in beide
+1045-        Richtungen veralten (kein Close-Hook ohne Strom; stiller/nachhinkender Strom
+1046-        setzt ``desync`` nicht) und darf die Reduce-Autorisierung nie tragen -- sonst
+1047-        laesst ein stale-hohes Buch einen Over-Fill/Flip an den Toren + Halt vorbei
+1048-        (§9-Fix-Re-Check). ``reduce_only`` ueberspringt die Tore nur, wenn das Volumen
+1049-        die Gegenposition nicht reisst (hedging-faehig: Summe der Gegen-Tickets). Nur
+1050-        fuer ``reduce_only``-Orders gerufen.
+1051-        """
+1052-        opposite = sum(
+1053-            (
+1054-                pos.volume
+1055-                for pos in self.get_positions()
+1056-                if pos.symbol == request.symbol and pos.side is not request.side
+1057-            ),
+1058-            Decimal("0"),
+1059-        )
+1060-        # opposite > 0: Gegenposition da; volume <= opposite: kein Flip/Over-Fill.

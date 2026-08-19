@@ -1,0 +1,63 @@
+A3 -- PORTFOLIOZUSTAND: AUS DEN EIGENEN BESTAENDEN ODER AUS DER ANFRAGE?
+=======================================================================
+
+-- Woher kommt die Gegenposition fuer die Reduce-Autorisierung? --
+        opposite = sum(
+            (
+                pos.volume
+                for pos in self.get_positions()
+                if pos.symbol == request.symbol and pos.side is not request.side
+            ),
+            Decimal("0"),
+        )
+        # opposite > 0: Gegenposition da; volume <= opposite: kein Flip/Over-Fill.
+
+-- Felder des OrderRequest: traegt die Anfrage Zustand? --
+    client_order_id: str
+    symbol: str
+    side: OrderSide
+    order_type: OrderType
+    volume: Decimal
+    stop_loss: Decimal
+    take_profit: Decimal | None = None
+    limit_price: Decimal | None = None
+    reduce_only: bool = False
+    comment: str = ""
+    meta: dict[str, Any] = field(default_factory=dict)
+
+-- Die EINE Zahl, die am Auftrag mitreist: die Kostenmessung. Wie behandelt? --
+31:``request.meta[MEASURED_COST_BPS_META_KEY]`` (dieselbe Messung, mitgereist am Auftrag,
+32-damit die zweite Pruefung im Venue dieselbe Zahl sieht und nicht eine mildere) ->
+33-``RiskPolicy.measured_cost_bps`` je Klasse (eine Messkampagne) -> Annahmetabelle. Der
+34-letzte Schritt ist der einzige ungedeckte; die Herkunft steht deshalb als erstes Wort
+35-in ``detail["cost_basis"]`` jeder Autorisierung (``gemessen``/``auftrag``/``kampagne``/
+--
+180:MEASURED_COST_BPS_META_KEY = "measured_cost_bps"
+181-
+182-
+183-@dataclass(frozen=True)
+184-class RiskPolicy:
+--
+304:    roh = request.meta.get(MEASURED_COST_BPS_META_KEY)
+305-    if roh is None:
+306-        return None
+307-    if not isinstance(roh, Decimal):
+308-        raise ValueError(
+309:            f"{MEASURED_COST_BPS_META_KEY} in OrderRequest.meta muss ein Decimal sein, "
+310-            f"ist {type(roh).__name__} ({roh!r})"
+311-        )
+312-    if not roh.is_finite() or roh <= 0:
+313-        raise ValueError(
+314:            f"{MEASURED_COST_BPS_META_KEY} in OrderRequest.meta muss endlich und "
+315-            f"positiv sein, ist {roh}"
+316-        )
+317-    return roh
+318-
+
+A5 -- GENAU EINE GROESZENBERECHNUNG UND EIN STOPBUDGET?
+=======================================================================
+-- Definitionen (Soll: je genau eine) --
+mt5_trading_ai/risk/sizing.py:133:def size_position(
+mt5_trading_ai/risk/stop_budget.py:222:def stop_budget(
+-- Aufrufstellen im Paket --
+mt5_trading_ai/execution/risk_manager.py:1141:        sizing = size_position(

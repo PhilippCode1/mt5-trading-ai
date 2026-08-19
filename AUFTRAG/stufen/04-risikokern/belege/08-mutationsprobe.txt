@@ -1,0 +1,26 @@
+MUTATIONSPROBE ZU STUFE 4 -- fangen die neuen Eichfaelle einen Rueckfall?
+=======================================================================
+Vor jedem Eingriff eine Kopie ausserhalb des Repos; zurueckgestellt wird AUS
+DIESER KOPIE, nicht mit git checkout (Lehre aus F-010).
+
+M1: _validate_volume wieder VOR die Reduce-Weiche (der Stand vor dieser Stufe)
+=========================== short test summary info ===========================
+FAILED tests/test_stufe4_risikokern.py::test_abbau_einer_position_unter_dem_mindestvolumen_geht_durch
+FAILED tests/test_stufe4_risikokern.py::test_abbau_ohne_volumen_wird_abgelehnt
+2 failed, 25 passed in 0.93s
+
+M2: die Kontopruefung in _konto_pflicht wirkungslos machen
+FAILED tests/test_stufe4_risikokern.py::test_jede_nicht_endliche_geldzahl_des_kontos_sperrt[equity]
+FAILED tests/test_stufe4_risikokern.py::test_jede_nicht_endliche_geldzahl_des_kontos_sperrt[margin_used]
+FAILED tests/test_stufe4_risikokern.py::test_jede_nicht_endliche_geldzahl_des_kontos_sperrt[margin_free]
+9 failed, 18 passed in 1.24s
+
+M3: eine Lesestelle wieder ungeprueft
+tests\test_stufe4_risikokern.py:447: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_stufe4_risikokern.py::test_der_kontoschnappschuss_wird_im_orderpfad_nirgends_ungeprueft_gelesen
+1 failed, 26 passed in 0.91s
+
+WIEDERHERGESTELLT. Pruefsummen (muessen gleich sein):
+7f68a22483a76dcbc87bbe1050d556cc
+7f68a22483a76dcbc87bbe1050d556cc
