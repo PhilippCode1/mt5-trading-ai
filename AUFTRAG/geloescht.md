@@ -73,3 +73,46 @@ Vorregistrierungen für dieselbe Frage wären der Fehler, den Sperre V6 verbiete
 | `Cursor1/HelioswarmTrading-Ai` | 25 Dateien, kein `.git` — keine tragende Substanz |
 | `Cursor1/Ki Trading` | 0 Dateien |
 | `bitget-btc-ai.zip`, `bitget-btc-ai.7z` (~1,4 GB) | Archive des verworfenen Standes. **Nicht geöffnet.** Sie enthalten nach Lage der Dinge dieselben Zugangsdaten wie das Arbeitsverzeichnis; das Öffnen zum Zweck der Ausgabe wäre ein Verstoß gegen V7. Sie gehören zu H-003. |
+
+---
+
+## In Stufe 1 gelöscht
+
+**Nichts.** Stufe 1 hat beschafft, nicht entfernt. Die 15 vom Handelsplatz stammenden
+Reihen-Manifeste unter `config/reihen/` bleiben ausdrücklich liegen, obwohl sie für
+diesen Auftrag unbrauchbar sind: sie sind der Beleg dessen, was am 2026-08-17 gemessen
+wurde, und dieselbe `checksum` steht als `data_checksum` in sieben Einträgen von
+`TRIALS.jsonl`. Sie zu löschen hieße, die Herkunft von sieben gezählten Versuchen zu
+kappen.
+
+## In Stufe 2 gelöscht
+
+**Nichts.** Stufe 2 hat eine Regel gebündelt, die es an einer Stelle gab und an fünf
+fehlte — und dabei nur Code hinzugefügt und Aufrufe umgehängt.
+
+## In Stufe 3 gelöscht
+
+**`pruefe_sharpe_je_beobachtung` samt der Konstante `MAX_PLAUSIBLE_SHARPE_JE_BEOBACHTUNG`
+in `gates/criteria.py`** — von mir gebaut und im selben Lauf wieder entfernt.
+
+Grund: die Sperre brach 18 bestehende Testfälle, weil die synthetischen Prüfreihen des
+Standes fast keine Streuung haben und Sharpes von 23,98 bis 3,06 × 10¹³ erzeugen — ein
+Streuungsartefakt, kein Einheitenfehler. Nach der Rücknahme hatte der Helfer keinen
+Aufrufer im Ausführungspfad mehr, und V1 verlangt dann die Löschung: „Neuer oder
+geänderter Code, für den du beim Abschluss der Stufe keinen Importpfad von einem
+Diensteinstiegspunkt bis zur Funktion nachweisen kannst, wird vor dem Abschluss
+gelöscht." Ein Helfer, der nur noch in Tests lebt, ist genau das.
+
+Vollständige Ursachenanalyse: `fehler.md`, F-007. Was an seiner Stelle geblieben ist —
+die Feldwahl per Syntaxbaum festgenagelt — steht in `stufen/03-simulator/bericht.md` §1.3.
+
+## Was nach dem Ergebnistor **nicht** gelöscht wurde, obwohl es naheläge
+
+Befund (B) heißt nach §1: *„Es wird zurückgebaut oder aufgegeben."* Beides ist eine
+Entscheidung des Auftraggebers (H-004), und beide Wege sind noch offen. **Ich habe
+deshalb nichts entfernt** — 58 % des Pakets (8.889 von 15.440 Zeilen) sind
+Handelsstrecke und stünden bei Option 2 zur Disposition, aber ein Rückbau, der die Wahl
+vorwegnimmt, wäre keine Ausführung des Vertrags, sondern ihre Umgehung.
+
+Was an jeder der drei Optionen hängt, ist beziffert in
+[`rueckbau-bestandsaufnahme.md`](rueckbau-bestandsaufnahme.md).
