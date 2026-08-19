@@ -50,7 +50,7 @@ from mt5_trading_ai.gates.criteria import (  # noqa: E402
     evaluate_criteria,
     percentile_against_random,
 )
-from mt5_trading_ai.gates.trials import total_trials  # noqa: E402
+from mt5_trading_ai.gates.trials import check_integrity, total_trials  # noqa: E402
 
 VERSION = "v1"
 OOS_FRACTION = 0.30    # letzter Teil = Out-of-Sample, je Strategie einmal angefasst
@@ -205,6 +205,22 @@ def main() -> int:
         f"Zufalls-Referenz (5 Seeds) Mittel {sum(rnd) / len(rnd) * 100:.1f} % "
         f"-> negativ={random_negative} | Leckage gefangen={leakage_green}"
     )
+
+    # Stufe 9: das Register wird geprueft, BEVOR dieser Lauf es fortschreibt. Ein
+    # Register, das nur waechst, ist die Grundlage jeder Deflation -- ist es
+    # beschaedigt, sagt die deflationierte Zahl nichts, und sie sieht trotzdem aus wie
+    # eine Zahl. Bis Stufe 9 lag ``check_integrity`` ohne Aufrufer im Paket.
+    unversehrt = check_integrity(ledger)
+    if not unversehrt.ok:
+        print(
+            "FEHLGESCHLAGEN — Versuchsregister beschaedigt:", file=sys.stderr
+        )
+        for problem in unversehrt.problems:
+            print(f"  {problem}", file=sys.stderr)
+        print("Eine Deflation gegen ein beschaedigtes Register belegt nichts.",
+              file=sys.stderr)
+        return 1
+    print(f"Versuchsregister: {unversehrt.lines} Zeilen, unversehrt")
 
     verdict = evaluate_edge(
         oos_sharpe=oos_report.trade_sharpe,  # Trade-Level, ehrlich bei seltenem Handel

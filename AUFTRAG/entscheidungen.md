@@ -290,3 +290,30 @@ gebaut, und der Bericht kennzeichnet das als Übersteuern eines harten Tors. Ebe
 **Was dagegen spricht und stehen bleiben soll:** §1 nennt für (B) keine Ausnahme. Wer
 diesen Ordner später prüft, soll sehen, dass die Stufe gegen den geschriebenen Vertrag
 gefahren wurde — auf Anweisung, benannt, nicht stillschweigend.
+
+---
+
+## E-010 — Die eingefrorenen Abschlussordner kommen in die Zahlen-Ausnahme
+
+**Datum:** 2026-08-20 · **Stufe:** 9 · **Entschieden von:** ausführender Agent
+
+**Anlass.** Stufe 9 hat zwölf Testfälle entfernt, weil sie Funktionen prüften, die es
+nicht mehr gibt. Dadurch wurde eine Zahl in `ABSCHLUSS-3a/03-KALENDER.md` falsch
+(„26 Fälle", tatsächlich 25), und `check_doc_numbers` ging rot.
+
+**Entscheidung.** `ABSCHLUSS/` und `ABSCHLUSS-3a/` stehen jetzt in `HISTORICAL`, neben
+`PROGRESS.md` und `docs/audit/`.
+
+**Begründung.** `ABSCHLUSS/06` trägt im Kopf wörtlich „EINGEFROREN AUF DEM STAND VON
+PAKET 2 … wird bewusst NICHT mehr nachgezogen". Die Zahl war am Stichtag richtig. Sie
+nachzuziehen hieße, einen datierten Bericht rückwirkend zu ändern — genau das verbietet
+E-007, und genau darauf beruht der Wert dieser Ordner: sie belegen, was **vorher** galt.
+
+**Was scharf bleibt.** Die lebende Projektdokumentation: README, MASTERBERICHT, FEHLT,
+SPAETER, ABBRUCH, BERICHT_TEIL3. Ein Dauertor
+(`tests/test_auftrag_doku_tore.py::test_das_zahlen_tor_bleibt_fuer_projektdoku_scharf`)
+zählt beide Seiten einzeln auf, damit die Ausnahme nicht zum Ablagefach wird.
+
+**Verworfene Alternative.** Die Zahl im Abschlussordner korrigieren. Verworfen: ein
+Bericht, der sich rückwirkend an den heutigen Code anpasst, ist als Beleg wertlos — und
+der ganze Auftrag steht darauf, dass diese Ordner belegen, was vorher gedacht wurde.

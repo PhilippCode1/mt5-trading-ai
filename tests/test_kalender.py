@@ -22,7 +22,6 @@ from mt5_trading_ai.backtest.kalender import (
     kandidat,
     load_ereigniskalender,
     server_zu_utc,
-    utc_zu_server,
 )
 
 REPO = Path(__file__).resolve().parents[1]
@@ -51,12 +50,6 @@ def test_die_drehung_wechselt_am_eu_termin_nicht_am_amerikanischen() -> None:
     assert vor_us.hour == nach_us.hour == 10, "US-Umstellung darf nichts aendern"
     nach_eu = server_zu_utc(datetime(2024, 4, 2, 12, 0, tzinfo=UTC))
     assert nach_eu.hour == 9, "EU-Umstellung muss den Versatz aendern"
-
-
-def test_drehung_und_rueckdrehung_heben_sich_auf() -> None:
-    for monat in (1, 4, 7, 10):
-        ts = datetime(2024, monat, 15, 13, 0, tzinfo=UTC)
-        assert utc_zu_server(server_zu_utc(ts)) == ts
 
 
 def test_zeitstempel_ohne_zeitzone_ist_ein_fehler() -> None:

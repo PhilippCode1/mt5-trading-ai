@@ -210,18 +210,6 @@ def _klassen_schluessel(asset_class: str) -> str:
     return str(asset_class).strip().lower()
 
 
-def assumed_cost_bps(asset_class: str) -> Decimal | None:
-    """Die Annahme dieser Klasse -- ``None``, wenn die Klasse unbekannt ist.
-
-    Der Lesezugriff auf ``ASSUMED_ROUND_TURN_COST_BPS`` steht hier und nicht bei
-    jedem Aufrufer, damit die Schluesselregel (gestutzt, klein) nicht in zwei
-    Fassungen im Haus liegt. ``execution/risk_manager.py`` braucht die Zahl, um
-    zu pruefen, ob eine am Auftrag mitgereiste "Messung" die Kostenpraemisse
-    unterbietet.
-    """
-    return ASSUMED_ROUND_TURN_COST_BPS.get(_klassen_schluessel(asset_class))
-
-
 def cost_bps_from_fraction(cost_fraction: Decimal) -> Decimal:
     """Kostenquote des Kostentors (Anteil am Notional) in Basispunkte.
 

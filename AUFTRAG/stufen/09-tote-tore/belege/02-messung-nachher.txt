@@ -1,0 +1,20 @@
+MESSUNG NACH DER STUFE
+======================
+
+A1 -- TOTE TORE (Aufrufe in der eigenen Datei ZAEHLEN MIT)
+==========================================================================
+  Oeffentliche Modulfunktionen: 134
+  OHNE jeden Aufruf in Paket UND Werkzeugen: 0
+
+A4 -- ABLEHNUNGSGRUENDE: VENUE **UND** RUNNER
+==========================================================================
+  Ablehnungsgruende im Code : 38
+  Gruende im Betrieb gesehen: 12 (davon im Code bekannt: 2)
+  Im Betrieb, aber NICHT im Code (Brokertexte): ['AutoTrading disabled by client', 'Done', 'Done (retcode=0)', 'No money', 'Trade disabled (retcode=10017)', 'Unsupported filling mode']
+  NIE ausgeloest: 36 von 38 = 95 %
+
+A3 -- TYPPRUEFUNG: WO WIRD SIE AUF DEM GELDPFAD UMGANGEN?
+==========================================================================
+  Summe auf dem Geldpfad: 0
+  Zum Vergleich in tests/: 199
+  Laeuft mypy ueber tests/? -> siehe CI-Zeile in der ersten Messung: nein

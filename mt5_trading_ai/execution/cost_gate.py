@@ -121,9 +121,14 @@ def evaluate_cost_gate(
     # die Quote ist dimensionslos korrekt.
     friction = breakdown.spread + breakdown.commission + breakdown.slippage
     entry_price = ask if side is OrderSide.BUY else bid
+    # Kein Schutz gegen ein Nominal von 0 mehr (Stufe 9): ``order_roundturn_cost``
+    # oben weist Kontraktgroesse, Volumen und Kurs einzeln als "endlich und positiv"
+    # zurueck, und jede Eingabe, die hier ein Nominal von 0 ergaebe, endet dort im
+    # ``except`` mit ``cost_unverifiable``. Gemessen: contract_size=0, volume=0 und
+    # ask=0 liefern alle drei ``cost_unverifiable``, nie ``invalid_notional``. Ein
+    # Zweig hinter einem strengeren Zweig ist kein Tor, sondern eine Zusicherung ohne
+    # Fall -- und der Auftrag verlangt an dieser Stelle: verdrahten oder entfernen.
     notional = instrument.contract_size * volume * entry_price
-    if notional <= 0:
-        return CostGateDecision(False, "invalid_notional", None)
     fraction = friction / notional
     if fraction > gate.max_roundturn_cost_fraction:
         return CostGateDecision(False, "cost_gate", fraction)

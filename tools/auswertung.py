@@ -49,6 +49,7 @@ from mt5_trading_ai.gates.erkundung import (  # noqa: E402
     erkundungsanteil,
     gewichteter_mittelwert,
 )
+from mt5_trading_ai.gates.evaluation import GateDecision, trade_rate  # noqa: E402
 
 
 def _saetze(pfad: Path) -> Iterator[dict[str, Any]]:
@@ -177,6 +178,20 @@ def main() -> int:
         anteil = anzahl / len(zeilen) * 100
         print(f"  {name.value:<12} {anzahl:>6}  ({anteil:5.2f} %)")
     print()
+    # Stufe 9: ``trade_rate`` lag bis dahin ohne Aufrufer in ``gates/evaluation.py``.
+    # Es ist genau die Zahl, um die es in Stufe 7 ging -- der Anteil der Bewertungen,
+    # die zu einem Trade fuehrten. Hier gerechnet ueber dieselbe Funktion statt noch
+    # einmal von Hand.
+    quote = trade_rate(
+        GateDecision(
+            instrument=z.instrument,
+            selected=z.herkunft is not Herkunft.ABGELEHNT,
+            reasons=(z.ablehnungsgrund,) if z.ablehnungsgrund else (),
+            score=0.0,
+        )
+        for z in zeilen
+    )
+    print(f"Handelsquote (trade_rate)    : {quote * 100:.2f} % der Bewertungen")
     print(f"Zeilen MIT Ergebnis          : {len(mit_ergebnis)}")
     print(f"Anteil erkundender Beobachtungen: {erkundungsanteil(zeilen) * 100:.2f} %")
     mittel = gewichteter_mittelwert(zeilen)

@@ -71,13 +71,6 @@ def server_zu_utc(ts: datetime) -> datetime:
     return ts.replace(tzinfo=None).replace(tzinfo=SERVER_TZ).astimezone(UTC)
 
 
-def utc_zu_server(ts: datetime) -> datetime:
-    """Umkehrung von :func:`server_zu_utc` — UTC auf das Etikett des Terminals."""
-    if ts.tzinfo is None:
-        raise KalenderError("Zeitstempel ohne Zeitzone")
-    return ts.astimezone(SERVER_TZ).replace(tzinfo=None).replace(tzinfo=UTC)
-
-
 def verlange_echtes_utc(ts: datetime, wofuer: str) -> datetime:
     """Verlange einen Zeitstempel mit Zone und gib ihn in echtem UTC zurueck.
 

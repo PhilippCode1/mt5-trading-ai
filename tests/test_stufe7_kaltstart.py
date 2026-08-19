@@ -41,7 +41,6 @@ from mt5_trading_ai.gates.erkundung import (
 from mt5_trading_ai.risk.stop_budget import (
     ASSUMED_ROUND_TURN_COST_BPS,
     KOSTENPRAEMISSE_BPS,
-    assumed_cost_bps,
     kostenpraemisse_bps,
 )
 
@@ -216,9 +215,13 @@ def test_der_plausibilitaetsboden_liegt_echt_unter_der_annahme(klasse: str) -> N
 
     Setzt jemand beide Tabellen wieder gleich, ist dieser Fall sofort rot.
     """
+    # Der Zugriff auf die Annahme geht direkt an die Tabelle: der Leser
+    # ``assumed_cost_bps`` ist in Stufe 9 entfernt worden, weil ``stop_budget`` die
+    # Tabelle ohnehin direkt liest -- zwei Lesearten derselben Zahl, von denen eine
+    # keinen Aufrufer mehr hatte.
     boden = kostenpraemisse_bps(klasse)
-    annahme = assumed_cost_bps(klasse)
-    assert boden is not None and annahme is not None
+    annahme = ASSUMED_ROUND_TURN_COST_BPS[klasse]
+    assert boden is not None
     assert boden < annahme, (
         f"{klasse}: Boden {boden} >= Annahme {annahme} -- die Schwelle sitzt wieder "
         "auf der Ersatzheuristik."

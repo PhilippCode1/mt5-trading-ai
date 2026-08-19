@@ -38,7 +38,11 @@ from mt5_trading_ai.costs.model import (
 from mt5_trading_ai.data.loader import MIN_CHECKSUM_PREFIX, bars_checksum
 from mt5_trading_ai.data.quality import BarRow
 from mt5_trading_ai.gates import trials
-from mt5_trading_ai.gates.criteria import BacktestEvidence, deflated_sharpe_ratio
+from mt5_trading_ai.gates.criteria import (
+    BacktestEvidence,
+    annualise_sharpe,
+    deflated_sharpe_ratio,
+)
 from mt5_trading_ai.venue.protocol import FeeSchedule, OrderSide
 
 BACKTEST_ENGINE_VERSION = "backtest-engine-v1"
@@ -352,7 +356,21 @@ def run_backtest(
             trade_per_obs = statistics.fmean(trade_returns) / tstd
     span_days = (bars[-1].ts - bars[0].ts).days
     span_years = span_days / 365.25 if span_days > 0 else 1.0 / 365.25
-    trade_sharpe = trade_per_obs * math.sqrt(len(trade_log) / span_years)
+    # Die Annualisierung steht in ``gates/criteria.py`` und wird von dort geholt.
+    # Bis Stufe 9 stand die Formel hier ein zweites Mal ausgeschrieben, waehrend
+    # ``annualise_sharpe`` daneben ohne Aufrufer lag -- zwei Fassungen derselben
+    # Rechnung, von denen eine lief und eine nur getestet wurde.
+    # Null Trades: es gibt keine Trade-Sharpe, und ``annualise_sharpe`` weist eine
+    # Beobachtungszahl von 0 zu Recht ab. Die frueher hier ausgeschriebene Formel
+    # schluckte den Fall stillschweigend (sqrt(0) = 0) -- die beiden Fassungen waren
+    # also NICHT gleich, was erst beim Zusammenlegen auffiel. Das Verhalten bleibt
+    # wie gehabt (0,0), aber die Ausnahme steht jetzt sichtbar hier statt verdeckt
+    # in einer zweiten Formel.
+    trade_sharpe = (
+        annualise_sharpe(trade_per_obs, len(trade_log) / span_years)
+        if trade_log
+        else 0.0
+    )
 
     # Huerde = Gesamtperioden-Reibung als Anteil des Eigenkapitals (NICHT p. a.):
     # trades_pro_bar * bars kuerzt sich zu Trades, also hurdle = Reibung / equity_base.

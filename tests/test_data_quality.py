@@ -9,7 +9,6 @@ from mt5_trading_ai.data.quality import (
     SessionPredicate,
     assess_bars,
     expected_bar_count,
-    render_markdown,
 )
 
 START = datetime(2026, 8, 3, 0, 0, tzinfo=UTC)
@@ -145,12 +144,3 @@ def test_expected_bar_count_respects_the_session() -> None:
         )
         == 0
     )
-
-
-def test_markdown_marks_failures_visibly() -> None:
-    rows = _series()
-    del rows[10:20]
-    table = render_markdown([_assess(_series()), _assess(rows)])
-    assert "**nein**" in table
-    assert "| ja |" in table
-    assert table.startswith("| Instrument |")

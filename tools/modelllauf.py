@@ -37,11 +37,15 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from mt5_trading_ai.backtest.llm_compare import (  # noqa: E402
+    LlmGateInputs,
+    evaluate_llm_gate,
+)
 from mt5_trading_ai.gates.erkundung import erkundungsanteil  # noqa: E402
 from mt5_trading_ai.gates.herausforderer import (  # noqa: E402
     HerausfordererAblage,
@@ -51,8 +55,12 @@ from mt5_trading_ai.gates.herausforderer import (  # noqa: E402
     mindestbeobachtungen,
 )
 from mt5_trading_ai.gates.learning_phase import (  # noqa: E402
+    LearningPhaseError,
+    Proposal,
     TradeRow,
+    find_weaknesses,
     rank_strategies,
+    validate_proposal,
 )
 
 #: Der Nachweis, auf den ein Herausforderer wartet. Kein freier Text: er benennt das
@@ -154,6 +162,33 @@ def main() -> int:
     print("=" * 74)
     print("TRAININGSLAUF — er erzeugt einen Herausforderer, nie einen Champion")
     print("=" * 74)
+    # Stufe 9: das LLM-Tor sitzt jetzt DA, wo ein Modell ueberhaupt in den Pfad
+    # koennte -- am Trainingslauf. Bis dahin lag ``evaluate_llm_gate`` ohne Aufrufer
+    # im Paket: die einzige Zulassungsstelle fuer ein Modell, die nie befragt wurde.
+    #
+    # Die Eingaben sind hier bewusst die des LLM-FREIEN Standes: kein Modell, keine
+    # Modellversion, kein Stichtag. Das Tor lehnt deshalb ab, und genau das ist die
+    # richtige Auskunft -- ``kein LLM zugelassen`` ist eine Aussage, ``das Tor wurde
+    # nie gefragt`` ist keine.
+    llm = evaluate_llm_gate(
+        LlmGateInputs(
+            baseline_passed=False,
+            baseline_score=0.0,
+            llm_passed=False,
+            llm_score=0.0,
+            model_version="",
+            model_training_cutoff=date(1970, 1, 1),
+            backtest_start=date(1970, 1, 1),
+        )
+    )
+    print(f"LLM im Entscheidungspfad: {'ZUGELASSEN' if llm.allowed else 'nein'}"
+          f" ({'; '.join(llm.reasons) if llm.reasons else 'kein Grund'})")
+    if llm.allowed:
+        # Kann mit diesen Eingaben nicht vorkommen; wenn doch, ist das Tor kaputt.
+        print("FEHLGESCHLAGEN — das LLM-Tor laesst ohne jeden Beleg zu.",
+              file=sys.stderr)
+        return 1
+
     # Stufe 7, Abnahme: „ein Trainingslauf weist den Anteil erkundender Beobachtungen
     # aus." Ohne diese Zahl weiss niemand, ob ein Vorschlag aus dem Regelbetrieb kommt
     # oder ueberwiegend aus Faellen, die das System selbst abgelehnt haette.
@@ -192,6 +227,31 @@ def main() -> int:
     rangliste = rank_strategies(trades)
     print(f"Rangliste (Lernphase): {len(rangliste)} Eintrag/Eintraege, "
           f"{sum(r.trades for r in rangliste)} geschlossene Zeilen gezaehlt")
+    # Wo die Schwaechen liegen, gehoert in denselben Lauf: ein Trainingslauf, der
+    # ranglistet und die Schwaechen verschweigt, laesst den unbequemen Teil weg.
+    schwaechen = find_weaknesses(trades)
+    if schwaechen:
+        print(f"Schwaechen (Lernphase): {len(schwaechen)}")
+        for s in schwaechen[:3]:
+            print(f"  {s.dimension}={s.key}: {s.trades} Trades, "
+                  f"mittleres Ergebnis {s.mean_r:+.3f} R")
+    else:
+        print("Schwaechen (Lernphase): keine benennbare")
+    # Grenze 2 der Lernphase: ein Vorschlag ist ein PARAMETERSATZ, niemals Quelltext.
+    # ``validate_proposal`` lehnt alles ab, was nach Code aussieht -- und lag bis
+    # Stufe 9 nur hinter dem toten ``propose_parameter_sets``.
+    try:
+        validate_proposal(
+            Proposal(
+                strategy_id=args.strategy_id,
+                base_version=args.base_version,
+                parameters=parameter,
+                rationale="Trainingslauf",
+            )
+        )
+    except LearningPhaseError as exc:
+        print(f"FEHLGESCHLAGEN — Parametersatz abgelehnt: {exc}", file=sys.stderr)
+        return 1
     print(f"Parametersatz     : {parameter}")
     noetig = mindestbeobachtungen(len(parameter))
     print(f"Noetig dafuer     : {noetig} effektive Beobachtungen")

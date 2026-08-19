@@ -4,7 +4,8 @@ Die Lernphase erzeugt keinen Vorteil. Sie findet ihn — falls einer da ist —
 schneller. Eine Bibliothek aus hundert unvalidierten Strategien ist keine
 hundertfache Chance, sondern ein hundertfaches Mehrfachtestproblem.
 
-**Vier Grenzen, im Code verankert und nicht nur beschrieben:**
+**Drei Grenzen, im Code verankert und nicht nur beschrieben** (die vierte ist in
+Stufe 9 entfallen, siehe unten):
 
 1. *Kein automatisches Freischalten.* Dieses Modul liefert ``Ranking`` und
    ``Proposal``. Es hat keine Funktion, die einen Zustand aendert, und keinen
@@ -12,9 +13,18 @@ hundertfache Chance, sondern ein hundertfaches Mehrfachtestproblem.
 2. *Kein selbstmodifizierender Code.* Ein Vorschlag ist ein **Parametersatz**,
    niemals Quelltext. ``Proposal.parameters`` ist ein Dict aus Zahlen und
    Zeichenketten; :func:`validate_proposal` lehnt alles ab, was nach Code aussieht.
-3. *Keine Optimierung ohne Ledger-Eintrag.* :func:`propose_parameter_sets`
-   verlangt einen Ledger-Pfad und traegt jeden Vorschlag als Versuch ein, bevor
-   er zurueckgegeben wird.
+3. *Keine Optimierung ohne Ledger-Eintrag.* **Entfallen in Stufe 9.** Diese Grenze
+   sass in ``propose_parameter_sets``, und die Funktion hatte keinen Aufrufer im
+   Ausfuehrungspfad -- sie wurde nur von Tests gerufen. Der Auftrag verlangt an
+   dieser Stelle „ohne Zwischenzustand: fuer jede gelesene Groesse entweder einen
+   Schreiber schaffen oder den Leser entfernen"; sie ist entfernt worden.
+
+   **Was das kostet, ausdruecklich:** Wer kuenftig einen Suchlauf ueber einen
+   Parameterraum baut, muss den Registereintrag selbst herstellen -- er entsteht
+   nicht mehr nebenbei. Das ist keine Aufweichung des Versuchszaehlers (jeder
+   ``edge_test``-Lauf schreibt weiter, und ``check_integrity`` prueft das Register
+   seit Stufe 9 vor jedem Lauf), aber es ist eine Sperre weniger fuer einen Weg,
+   den es heute nicht gibt.
 4. *Kein Training auf Trades, die nie stattfanden.* :func:`rank_strategies`
    rechnet ausschliesslich mit ``mt.trades``-Zeilen. Unterdrueckte Bewertungen
    gehen in die Diagnose ein, nie in die Ergebnisrechnung.
@@ -27,11 +37,8 @@ from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
-from pathlib import Path
 from statistics import fmean, pstdev
 from typing import Any
-
-from mt5_trading_ai.gates import trials as trials_ledger
 
 LEARNING_PHASE_VERSION = "learning-phase-v1"
 
@@ -189,14 +196,6 @@ def find_weaknesses(
     return tuple(out)
 
 
-def observed_trade_rate(evaluations: Sequence[EvaluationRow]) -> float:
-    """Anteil der Bewertungen, die zu einem Trade fuehrten. Soll klein sein."""
-    if not evaluations:
-        return 0.0
-    traded = sum(1 for row in evaluations if row.decision == "traded")
-    return traded / len(evaluations)
-
-
 # ---------------------------------------------------------------------------
 # Grenze 2: ein Vorschlag ist ein Parametersatz, niemals Quelltext
 # ---------------------------------------------------------------------------
@@ -229,74 +228,3 @@ def validate_proposal(proposal: Proposal) -> None:
 # ---------------------------------------------------------------------------
 # Grenze 3: keine Optimierung ohne Ledger-Eintrag
 # ---------------------------------------------------------------------------
-
-
-def propose_parameter_sets(
-    proposals: Sequence[Proposal],
-    *,
-    ledger_path: Path | str,
-    instruments: Sequence[str],
-    period_start: datetime,
-    period_end: datetime,
-    leverage: int,
-    data_checksum: str,
-    code_commit: str,
-    now: datetime,
-) -> tuple[Proposal, ...]:
-    """Jeder Vorschlag wird geprueft **und** als Versuch im Ledger vermerkt.
-
-    Der Ledger-Eintrag entsteht **vor** der Rueckgabe. Wer den Vorschlag nutzt,
-    kann den Versuchszaehler nicht mehr umgehen; genau darauf beruht die
-    Deflated Sharpe Ratio.
-
-    Herkunft (Paket 6): Auch ein blosser Vorschlag benennt Datenpruefsumme und
-    Codestand -- man kann eine Optimierung nicht einmal *vorschlagen*, ohne zu
-    sagen, gegen welche verifizierten Daten und welchen Code sie laufen soll.
-    Der Aufrufer liefert beide (fail-closed am Gate-Rand); dieses Modul koppelt
-    sich nicht an git.
-    """
-    if not proposals:
-        return ()
-    accepted: list[Proposal] = []
-    for proposal in proposals:
-        validate_proposal(proposal)
-        trial = trials_ledger.new_trial(
-            strategy_id=proposal.strategy_id,
-            version=proposal.version or f"{proposal.base_version}+proposal",
-            instruments=instruments,
-            period_start=period_start,
-            period_end=period_end,
-            leverage=leverage,
-            parameters=proposal.parameters,
-            outcome="aborted",
-            data_checksum=data_checksum,
-            code_commit=code_commit,
-            notes=f"Lernphase-Vorschlag: {proposal.rationale}",
-            ts=now,
-        )
-        trials_ledger.append(trial, ledger_path)
-        accepted.append(proposal)
-    return tuple(accepted)
-
-
-def build_report(
-    *,
-    trades: Sequence[TradeRow],
-    evaluations: Sequence[EvaluationRow],
-    proposals: Sequence[Proposal] = (),
-    backtest_expectation_r: dict[tuple[str, str], float] | None = None,
-) -> LearningReport:
-    """Der Bericht. Er aendert nichts — er beschreibt."""
-    notes: list[str] = []
-    paper_only = {trade.execution_mode for trade in trades}
-    if paper_only and paper_only <= {"paper"}:
-        notes.append(
-            "Nur Papier-Trades ausgewertet; keine Aussage ueber reale Ausfuehrung."
-        )
-    return LearningReport(
-        ranking=rank_strategies(trades, backtest_expectation_r=backtest_expectation_r),
-        weaknesses=find_weaknesses(trades),
-        proposals=tuple(proposals),
-        trade_rate=observed_trade_rate(evaluations),
-        notes=tuple(notes),
-    )

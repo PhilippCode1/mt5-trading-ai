@@ -1,0 +1,33 @@
+MESSUNG VOR DER STUFE
+=====================
+Gegen einen eigenen Arbeitsbaum auf Commit 00420a9.
+
+A1 -- TOTE TORE (Aufrufe in der eigenen Datei ZAEHLEN MIT)
+==========================================================================
+  Oeffentliche Modulfunktionen: 142
+  OHNE jeden Aufruf in Paket UND Werkzeugen: 12
+    backtest/kalender.py             utc_zu_server                    2 Testaufrufe
+    backtest/llm_compare.py          evaluate_llm_gate                5 Testaufrufe
+    backtest/splits.py               purged_kfold_embargo_indices     5 Testaufrufe
+    backtest/splits.py               walk_forward_indices             1 Testaufrufe
+    data/quality.py                  render_markdown                  1 Testaufrufe
+    gates/criteria.py                annualise_sharpe                 3 Testaufrufe
+    gates/erkundung.py               entscheide_erkundung             5 Testaufrufe
+    gates/evaluation.py              trade_rate                       2 Testaufrufe
+    gates/learning_phase.py          build_report                     2 Testaufrufe
+    gates/learning_phase.py          propose_parameter_sets           2 Testaufrufe
+    gates/trials.py                  check_integrity                  3 Testaufrufe
+    risk/stop_budget.py              assumed_cost_bps                 4 Testaufrufe
+
+A4 -- ABLEHNUNGSGRUENDE: VENUE **UND** RUNNER
+==========================================================================
+  Ablehnungsgruende im Code : 38
+  Gruende im Betrieb gesehen: 0 (davon im Code bekannt: 0)
+  Im Betrieb, aber NICHT im Code (Brokertexte): []
+  NIE ausgeloest: 38 von 38 = 100 %
+
+A3 -- TYPPRUEFUNG: WO WIRD SIE AUF DEM GELDPFAD UMGANGEN?
+==========================================================================
+  Summe auf dem Geldpfad: 0
+  Zum Vergleich in tests/: 193
+  Laeuft mypy ueber tests/? -> siehe CI-Zeile in der ersten Messung: nein

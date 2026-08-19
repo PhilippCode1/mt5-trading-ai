@@ -81,7 +81,19 @@ README = REPO / "README.md"
 #: §10 des Vertrags genau das Format ``Zuletzt: <Datum, Commit>`` vorschreibt.
 #: Hier stehen Vertrag und Tor im Widerspruch; die Entscheidung dafuer steht in
 #: ``AUFTRAG/entscheidungen.md`` (E-004).
-HISTORICAL = ("PROGRESS.md", "docs/audit/", "AUFTRAG/")
+#: Die beiden Abschlussordner sind in Stufe 9 dazugekommen. ``ABSCHLUSS/06`` traegt im
+#: Kopf woertlich „EINGEFROREN AUF DEM STAND VON PAKET 2 ... wird bewusst NICHT mehr
+#: nachgezogen"; ``ABSCHLUSS-3a`` ist derselbe Fall. Sie nennen Fallzahlen, die am
+#: jeweiligen Stichtag stimmten -- als Stufe 9 zwoelf Testfaelle entfernte, wurde eine
+#: davon falsch. Sie **nachzuziehen** hiesse, einen datierten Bericht rueckwirkend zu
+#: aendern; das verbietet E-007. Sie stehen deshalb hier, wie ``PROGRESS.md`` auch.
+HISTORICAL = (
+    "PROGRESS.md",
+    "docs/audit/",
+    "AUFTRAG/",
+    "ABSCHLUSS/",
+    "ABSCHLUSS-3a/",
+)
 
 
 # --- Kanonische Kennzahlen aus dem Code ----------------------------------------

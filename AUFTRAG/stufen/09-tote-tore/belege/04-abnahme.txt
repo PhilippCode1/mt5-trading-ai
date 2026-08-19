@@ -1,0 +1,27 @@
+============================= test session starts =============================
+platform win32 -- Python 3.11.7, pytest-8.3.4, pluggy-1.6.0 -- C:\Users\Acer\AppData\Local\Programs\Python\Python311\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\Acer\mt5_trading_ai
+configfile: pyproject.toml
+plugins: anyio-4.8.0, base-url-2.1.0, cov-6.0.0, playwright-0.7.2
+collecting ... collected 17 items
+
+tests/test_stufe9_tote_tore.py::test_keine_oeffentliche_funktion_ohne_aufrufer_im_ausfuehrungspfad PASSED [  5%]
+tests/test_stufe9_tote_tore.py::test_die_pruefung_findet_ihren_gegenstand PASSED [ 11%]
+tests/test_stufe9_tote_tore.py::test_auf_dem_auftragspfad_steht_any_nur_an_der_untypisierten_grenze PASSED [ 17%]
+tests/test_stufe9_tote_tore.py::test_der_kontoschnappschuss_wird_als_object_geprueft_nicht_als_any PASSED [ 23%]
+tests/test_stufe9_tote_tore.py::test_die_torzaehlung_laeuft_und_verlangt_je_tor_einen_test PASSED [ 29%]
+tests/test_stufe9_tote_tore.py::test_die_torzaehlung_findet_die_positionalen_gruende PASSED [ 35%]
+tests/test_stufe9_tote_tore.py::test_die_torzaehlung_meldet_die_zusammengesetzten_gruende_getrennt PASSED [ 41%]
+tests/test_stufe9_tote_tore.py::test_die_freistellungsliste_bleibt_kurz_und_begruendet PASSED [ 47%]
+tests/test_stufe9_tote_tore.py::test_kein_kurs_loest_no_tick_aus PASSED  [ 52%]
+tests/test_stufe9_tote_tore.py::test_ein_volumen_ueber_dem_maximum_loest_volume_above_max_aus PASSED [ 58%]
+tests/test_stufe9_tote_tore.py::test_ein_preis_von_null_loest_risk_price_missing_aus PASSED [ 64%]
+tests/test_stufe9_tote_tore.py::test_ein_konto_ohne_auskunft_latcht_account_unavailable PASSED [ 70%]
+tests/test_stufe9_tote_tore.py::test_ein_preis_von_null_loest_invalid_price_aus PASSED [ 76%]
+tests/test_stufe9_tote_tore.py::test_ein_referenzpreis_von_null_loest_price_missing_aus PASSED [ 82%]
+tests/test_stufe9_tote_tore.py::test_ein_unerreichbarer_handelsplatz_loest_venue_unavailable_aus PASSED [ 88%]
+tests/test_stufe9_tote_tore.py::test_die_beiden_entfernten_waechter_waren_unerreichbar PASSED [ 94%]
+tests/test_stufe9_tote_tore.py::test_die_vorgelagerte_klammer_des_margendeckels_haelt PASSED [100%]
+
+============================= 17 passed in 24.32s =============================

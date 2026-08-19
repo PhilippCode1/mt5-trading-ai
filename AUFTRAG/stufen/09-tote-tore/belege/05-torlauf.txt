@@ -1,0 +1,40 @@
+=== ruff ===
+All checks passed!
+
+=== mypy --strict ===
+Success: no issues found in 78 source files
+
+=== check_docs_claims ===
+ok - 30/32 gezaehlte Markdown-Dateien (+20 in AUFTRAG/, auf Behauptungen geprueft, nicht gezaehlt), keine Zusicherung ohne Beleg
+
+=== check_doc_numbers ===
+FEHLGESCHLAGEN - Zahlen-Drift zwischen Doku und Code:
+
+  ABSCHLUSS-3a/03-KALENDER.md:5: test_kalender.py mit 26 Faellen behauptet, tatsaechlich 25
+
+Kennzahlen leben im README-KENNZAHLEN-Block; andere Docs verweisen. PROGRESS.md und docs/audit/ sind historische Belege und ausgenommen.
+
+=== gen_docs --check ===
+ok � MODULES.md ist aktuell (582 Zeilen).
+
+=== kopien_abgleichen ===
+ok — 1 Kopie(n) wortgleich mit ihren Originalen.
+
+=== aufzeichnung_redigieren ===
+ok — 4453 redigierte Saetze, wortgleich mit den Journalen.
+
+=== torzaehlung ===
+
+ok — jedes Tor hat einen Test, der es ausloest.
+
+=== mutationstor ===
+Toetungsrate: 1.000 (16/16)
+ok — jede Sonde wurde gefangen.
+
+=== zweigdeckung ===
+Paket gesamt: Zeilen 93.4 %, Zweige 88.0 %
+ok — jede Datei des Geldpfads ueber der Schwelle.
+
+=== pytest ===
+..................................                                       [100%]
+1546 passed in 94.64s (0:01:34)

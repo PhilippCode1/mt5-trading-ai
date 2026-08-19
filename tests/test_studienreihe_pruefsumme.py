@@ -38,7 +38,6 @@ from mt5_trading_ai.backtest.ereignisstudie import (
 from mt5_trading_ai.backtest.kalender import (
     KalenderError,
     server_zu_utc,
-    utc_zu_server,
 )
 
 REPO = Path(__file__).resolve().parents[1]
@@ -149,30 +148,6 @@ def test_naiver_zeitstempel_wird_abgewiesen() -> None:
     kerzen = [Kerze(ts=datetime(2020, 1, 6, 1), open=100.0, close=100.1)]
     with pytest.raises(KalenderError, match="ohne Zeitzone"):
         reihen_pruefsumme(kerzen)
-
-
-def test_der_kopf_behauptet_keine_zeitbasis() -> None:
-    """Eichfall gegen das Etikett ohne Deckung.
-
-    Die vorige Fassung schrieb ``zeitbasis=echt-utc`` bedingungslos in den Kopf der
-    Reihe, geprueft wurde aber nur, dass ueberhaupt eine Zone am Stempel haengt.
-    Serverzeit mit UTC-Etikett -- genau das, was ``RealMt5Terminal._utc`` liefert --
-    ging anstandslos durch und wurde als ``echt-utc`` gehasht. Das Etikett ist
-    entfallen: der Kopf nennt Format und Spalten und behauptet nichts, was der
-    Schreiber nicht pruefen kann.
-    """
-    serverzeit = [
-        Kerze(ts=utc_zu_server(k.ts), open=k.open, close=k.close)
-        for k in _kerzen(24)
-    ]
-    # Die Reihe laesst sich hashen -- pruefbar ist nur, dass eine Zone daranhaengt.
-    assert len(reihen_pruefsumme(serverzeit)) == 64
-    # Aber sie traegt keine Zusicherung, die niemand einloesen kann.
-    from mt5_trading_ai.backtest import ereignisstudie as modul
-
-    kopf = modul._kanonische_reihe(serverzeit).splitlines()[0]
-    assert "zeitbasis" not in kopf
-    assert kopf == modul.REIHEN_FORMAT_VERSION
 
 
 def test_leere_reihe_ist_ein_fehler() -> None:

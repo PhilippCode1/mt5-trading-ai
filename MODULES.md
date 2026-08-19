@@ -21,7 +21,7 @@ Das Sechs-Bedingungen-Tor des Edge-Tests (Paket 4, §7.2).
 
 ## `mt5_trading_ai/backtest/engine.py`
 
-Zeilen: 685
+Zeilen: 703
 
 Backtest-Maschine: fuehrt Splits, Daten und Kostenmodell zusammen.
 
@@ -61,13 +61,12 @@ Ereignisstudie — traegt eine bekannte Zwangslage mehr als ihre Kosten?
 
 ## `mt5_trading_ai/backtest/kalender.py`
 
-Zeilen: 372
+Zeilen: 365
 
 Ereigniskalender — wann genau ist das Ereignis, in echtem UTC?
 
 - `class KalenderError`
 - `def server_zu_utc`
-- `def utc_zu_server`
 - `def verlange_echtes_utc`
 - `class Kandidat`
 - `def ereignisse`
@@ -113,14 +112,12 @@ Aufloesung einer Ereignisstudie — kann sie den Effekt ueberhaupt sehen?
 
 ## `mt5_trading_ai/backtest/splits.py`
 
-Zeilen: 190
+Zeilen: 102
 
 Zeitreihen-Splits mit Purge und Embargo — herausgeloest aus learning_engine.
 
 - `class Range`
 - `def purged_walk_forward_indices`
-- `def purged_kfold_embargo_indices`
-- `def walk_forward_indices`
 
 ## `mt5_trading_ai/backtest/strategies.py`
 
@@ -217,7 +214,7 @@ Lader fuer historische Bars -- an das Datenqualitaetstor gekettet.
 
 ## `mt5_trading_ai/data/quality.py`
 
-Zeilen: 246
+Zeilen: 225
 
 Datenqualitaet als Gate (Phase 7.2).
 
@@ -226,11 +223,10 @@ Datenqualitaet als Gate (Phase 7.2).
 - `def expected_bar_count`
 - `class SessionPredicate`
 - `def assess_bars`
-- `def render_markdown`
 
 ## `mt5_trading_ai/execution/cost_gate.py`
 
-Zeilen: 130
+Zeilen: 135
 
 Pre-Trade-Kostentor am Order-Pfad.
 
@@ -320,7 +316,7 @@ Risikoschicht am Order-Pfad: die vier Grenzen als letzte Verteidigungslinie.
 
 ## `mt5_trading_ai/execution/runner.py`
 
-Zeilen: 428
+Zeilen: 473
 
 Integrierender Paper/Dry-Run-Runner (Paket 7): die eine beweisbare Kette.
 
@@ -412,7 +408,7 @@ Der Modellpfad, schliessbar gemacht: ein Herausforderer wartet, er regiert nicht
 
 ## `mt5_trading_ai/gates/learning_phase.py`
 
-Zeilen: 302
+Zeilen: 230
 
 Lernphase: bewerten und ordnen (Phase 9.5).
 
@@ -425,10 +421,7 @@ Lernphase: bewerten und ordnen (Phase 9.5).
 - `class LearningReport`
 - `def rank_strategies`
 - `def find_weaknesses`
-- `def observed_trade_rate`
 - `def validate_proposal`
-- `def propose_parameter_sets`
-- `def build_report`
 
 ## `mt5_trading_ai/gates/trials.py`
 
@@ -478,7 +471,7 @@ Verlustgrenzen und das **Kriterium** des Kill-Switch (Phase 6.4).
 
 ## `mt5_trading_ai/risk/sizing.py`
 
-Zeilen: 224
+Zeilen: 223
 
 Risiko je Trade, ausfuehrbarer Stop-Floor und Positionsgroesse (Phase 6.2/6.3).
 
@@ -492,13 +485,12 @@ Risiko je Trade, ausfuehrbarer Stop-Floor und Positionsgroesse (Phase 6.2/6.3).
 
 ## `mt5_trading_ai/risk/stop_budget.py`
 
-Zeilen: 369
+Zeilen: 357
 
 Stop-Budget je Anlageklasse — hergeleitet, nicht uebertragen (Phase 6.5).
 
 - `def kostenpraemisse_bps`
 - `class StopBudget`
-- `def assumed_cost_bps`
 - `def cost_bps_from_fraction`
 - `def cost_floor_bps`
 - `def margin_ceiling_bps`
@@ -533,7 +525,7 @@ Paket 5: Registrierung und Fortschritts-Tor des Demo-Betriebs (§8.5).
 
 ## `mt5_trading_ai/venue/mt5.py`
 
-Zeilen: 2717
+Zeilen: 2723
 
 MT5-Anbindung an das ``TradingVenue``-Protokoll.
 

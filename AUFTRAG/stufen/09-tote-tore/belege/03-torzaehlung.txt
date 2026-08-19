@@ -1,0 +1,70 @@
+==============================================================================
+TORZAEHLUNG — welches Tor hat je ausgeloest?
+==============================================================================
+Journal: C:\Users\Acer\mt5_trading_ai\aufzeichnungen\demo-2026-08-17.jsonl
+Ablehnungsgruende im Code: 41
+Zur Laufzeit zusammengesetzt (nicht aufzaehlbar): 9 Stellen
+  Sie entstehen aus fremdem Text. Kein Test
+  kann sie gezielt ausloesen, und keine Auswertung sie vorher kennen.
+
+Grund                                   Test   Betrieb  Fundstelle
+account_unavailable                       ja         0  execution/scheduler.py
+account_unevaluable                       ja         0  venue/mt5.py
+cost_floor_above_margin_ceiling           ja         0  risk/stop_budget.py
+cost_gate                                 ja         0  execution/cost_gate.py
+cost_gate_unconfigured                    ja         0  venue/mt5.py
+cost_not_measured                         ja         0  risk/stop_budget.py
+cost_unverifiable                         ja      2258  execution/cost_gate.py
+demo_not_ready                            ja         0  venue/mt5.py
+doppelte_eroeffnung                       ja         0  venue/mt5.py
+global_halt                               ja         0  venue/mt5.py
+insufficient_margin                       ja         3  execution/leverage_preflight.py
+invalid_price                             ja         0  execution/leverage_preflight.py
+invalid_threshold                         ja         0  execution/cost_gate.py
+live_release_incomplete                   ja         0  execution/release.py
+margin_below_min_volume                 frei         0  execution/runner.py
+missing_stop_loss                         ja         0  venue/mt5.py
+no_market_stamp                           ja         0  venue/mt5.py
+no_tick                                   ja         0  venue/mt5.py
+price_missing                             ja         0  execution/runner.py
+reconcile_unavailable                     ja         0  execution/scheduler.py
+risk_price_missing                        ja         0  execution/risk_manager.py
+risk_sizing_no_volume                   frei         0  execution/runner.py
+risk_unconfigured                         ja         0  venue/mt5.py
+runner_requires_demo                      ja         0  execution/runner.py
+schwebender_auftrag                       ja         0  venue/mt5.py
+session_not_connected                     ja         0  execution/freshness.py
+snapshot_from_future                      ja         0  execution/freshness.py
+snapshot_naive                            ja         0  execution/freshness.py
+snapshot_stale                            ja         0  execution/freshness.py
+stop_budget_below_cost_floor              ja         0  execution/risk_manager.py
+stop_price_nonpositive                  frei         0  execution/runner.py
+strategy_not_admitted                     ja        21  execution/runner.py
+stream_never_started                      ja         0  execution/scheduler.py
+throttle_tageszaehler_unlesbar            ja         0  execution/risk_manager.py
+unknown_asset_class                       ja         0  risk/leverage.py
+venue_unavailable                         ja         0  execution/runner.py
+volume_above_max                          ja         0  venue/mt5.py
+volume_below_min                          ja         0  venue/mt5.py
+volume_exceeds_risk_budget                ja         0  execution/risk_manager.py
+volume_not_positive                       ja         0  venue/mt5.py
+volume_off_step                           ja         0  venue/mt5.py
+
+Im Betrieb je ausgeloest : 3 von 41
+Im Betrieb NIE ausgeloest: 38
+  Das ist kein Mangel. Ein Not-Aus, der nie ausgeloest hat, ist ein gutes
+  Zeichen -- die Zahl sagt nur, welche Tore im Betrieb unerprobt sind.
+
+Im Betrieb aufgetaucht, aber KEIN Grund dieses Hauses: 9
+  Das sind durchgereichte Brokertexte. Sie tragen keinen Code, an dem
+  eine Auswertung sie zaehlen koennte:
+        5x  AutoTrading disabled by client
+        1x  Done
+        1x  Done (retcode=0)
+        3x  No money
+      753x  Trade disabled (retcode=10017)
+        4x  Unsupported filling mode
+      376x  risk_concurrent_position_cap
+       58x  throttle_cooldown_active
+
+ok — jedes Tor hat einen Test, der es ausloest.

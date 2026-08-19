@@ -3,19 +3,13 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
-from pathlib import Path
 
 import pytest
-from mt5_trading_ai.gates import trials as trials_ledger
 from mt5_trading_ai.gates.learning_phase import (
-    EvaluationRow,
     LearningPhaseError,
     Proposal,
     TradeRow,
-    build_report,
     find_weaknesses,
-    observed_trade_rate,
-    propose_parameter_sets,
     rank_strategies,
     validate_proposal,
 )
@@ -90,44 +84,6 @@ def test_scalar_parameters_pass() -> None:
 # --- Grenze 3: keine Optimierung ohne Ledger-Eintrag -----------------------
 
 
-def test_every_proposal_lands_in_the_ledger(tmp_path: Path) -> None:
-    path = tmp_path / "TRIALS.jsonl"
-    proposals = [
-        Proposal("smc-v1", "1.0.0", {"threshold": 78.0}, "Schwelle anheben"),
-        Proposal("smc-v1", "1.0.0", {"threshold": 82.0}, "Schwelle weiter anheben"),
-    ]
-    out = propose_parameter_sets(
-        proposals,
-        ledger_path=path,
-        instruments=["EURUSD"],
-        period_start=NOW - timedelta(days=365),
-        period_end=NOW,
-        leverage=5,
-        data_checksum="abcdef0123456789",
-        code_commit="deadbeefcafef00d",
-        now=NOW,
-    )
-    assert len(out) == 2
-    assert trials_ledger.total_trials(path) == 2
-
-
-def test_a_rejected_proposal_does_not_reach_the_ledger(tmp_path: Path) -> None:
-    path = tmp_path / "TRIALS.jsonl"
-    with pytest.raises(LearningPhaseError):
-        propose_parameter_sets(
-            [Proposal("s", "1", {"x": "import os"}, "r")],
-            ledger_path=path,
-            instruments=["EURUSD"],
-            period_start=NOW - timedelta(days=1),
-            period_end=NOW,
-            leverage=5,
-            data_checksum="abcdef0123456789",
-            code_commit="deadbeefcafef00d",
-            now=NOW,
-        )
-    assert trials_ledger.total_trials(path) == 0
-
-
 # --- Grenze 4: kein Training auf Trades, die nie stattfanden ---------------
 
 
@@ -135,15 +91,6 @@ def test_open_trades_are_not_counted() -> None:
     ranking = rank_strategies([_trade(1.0), _trade(5.0, closed=False)])
     assert ranking[0].trades == 1
     assert ranking[0].total_r == 1.0
-
-
-def test_suppressed_evaluations_never_enter_the_result() -> None:
-    evaluations = [
-        EvaluationRow("smc-v1", "EURUSD", NOW, 90.0, "suppressed") for _ in range(99)
-    ] + [EvaluationRow("smc-v1", "EURUSD", NOW, 91.0, "traded")]
-    report = build_report(trades=[_trade(1.0)], evaluations=evaluations)
-    assert report.ranking[0].total_r == 1.0
-    assert report.trade_rate == 0.01
 
 
 # --- Diagnose ---------------------------------------------------------------
@@ -183,12 +130,3 @@ def test_weaknesses_need_enough_trades() -> None:
     many = [_trade(-1.0, instrument="GBPUSD") for _ in range(12)]
     keys = {(w.dimension, w.key) for w in find_weaknesses(many, min_trades=10)}
     assert ("instrument", "GBPUSD") in keys
-
-
-def test_trade_rate_on_empty_input() -> None:
-    assert observed_trade_rate([]) == 0.0
-
-
-def test_paper_only_is_noted() -> None:
-    report = build_report(trades=[_trade(1.0)], evaluations=[])
-    assert any("Papier" in note for note in report.notes)

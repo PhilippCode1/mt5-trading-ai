@@ -422,6 +422,10 @@ def _eroeffne(
     journal.schreib(
         "eroeffnungsversuch", symbol=symbol, signal=sig.name,
         eroeffnet=bericht.opened, grund=bericht.reject_reason, schritte=schritte,
+        # Stufe 7/9: die Herkunftsspalte. Ohne diese beiden Felder sieht eine
+        # erkundete Zeile in jeder spaeteren Auswertung aus wie eine regulaere, und
+        # der gewichtete Mittelwert rechnet sie falsch.
+        erkundet=bericht.erkundet, erkundung_p=bericht.erkundung_p,
         client_order_id=None if erg is None else erg.client_order_id,
         order_id=None if erg is None else erg.venue_order_id,
         einstiegspreis=None if erg is None else erg.average_price,

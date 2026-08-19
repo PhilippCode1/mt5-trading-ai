@@ -223,24 +223,3 @@ def assess_bars(
         passed=not reasons,
         reasons=tuple(reasons),
     )
-
-
-def render_markdown(reports: list[QualityReport]) -> str:
-    """Tabelle fuer ``DATA_QUALITY.md``.
-
-    Ausreisser und Nullvolumen sind Hinweise, keine Ausschlussgruende.
-    """
-    lines = [
-        "| Instrument | TF | erwartet | vorhanden | Luecken | Ausreisser |"
-        " Nullvolumen | bestanden | Gruende |",
-        "|---|---|---:|---:|---:|---:|---:|---|---|",
-    ]
-    for report in sorted(reports, key=lambda r: (r.instrument, r.timeframe)):
-        lines.append(
-            f"| {report.instrument} | {report.timeframe} | {report.expected_bars} | "
-            f"{report.present_bars} | {report.gap_ratio * 100:.3f} % | "
-            f"{len(report.outlier_bars)} | {len(report.zero_volume_bars)} | "
-            f"{'ja' if report.passed else '**nein**'} | "
-            f"{', '.join(report.reasons) or 'keine'} |"
-        )
-    return "\n".join(lines)

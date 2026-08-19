@@ -404,7 +404,7 @@ _KONTO_PFLICHTZAHLEN: tuple[str, ...] = (
 )
 
 
-def konto_maengel(acc: Any) -> str | None:
+def konto_maengel(acc: object) -> str | None:
     """Was am Kontoschnappschuss fehlt -- oder ``None``, wenn er vollstaendig ist.
 
     Sperre V3 des Auftrags: *„Ein fehlender Messwert sperrt. Er wird nie durch einen
@@ -418,6 +418,12 @@ def konto_maengel(acc: Any) -> str | None:
     unterscheiden koennte; und er sieht im Protokoll aus wie ein Programmfehler, nicht
     wie eine Sperre, die getan hat, was sie soll. Genau diese Unterscheidung verlangt
     die Abnahme der Stufe 4: *„leere Kontodaten erzeugen eine Ablehnung mit Grund"*.
+
+    **Der Parameter ist ``object``, nicht ``Any``** (Stufe 9). Der Unterschied ist keine
+    Formsache: ``Any`` schaltet die Typpruefung fuer jeden Zugriff ab, ``object`` zwingt
+    sie durch ``getattr``/``isinstance``. Und genau das soll sie hier -- die Funktion
+    bekommt bewusst auch ``None`` und halbfertige Schnappschuesse. Ein Tor, das
+    unvollstaendige Daten pruefen soll, darf nicht selbst ungeprueft auf sie zugreifen.
 
     Die Funktion urteilt **nicht** ueber die Fehlerart -- sie liefert den Mangel als
     Text. Welcher Ausnahmetyp daraus wird, entscheidet die Aufrufstelle: im Orderpfad
@@ -1551,7 +1557,7 @@ class Mt5Venue(TradingVenue):
             for pos in self._terminal.positions()
         )
 
-    def _konto_pflicht(self) -> Any:
+    def _konto_pflicht(self) -> Mt5Account:
         """Der Kontoschnappschuss fuer den Orderpfad -- vollstaendig oder Ablehnung.
 
         Die eine Lesestelle, durch die jede eroeffnende Order geht. Sie ersetzt nichts

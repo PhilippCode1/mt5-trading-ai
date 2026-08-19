@@ -7,7 +7,6 @@ from decimal import Decimal
 import pytest
 from mt5_trading_ai.risk.stop_budget import (
     ASSUMED_ROUND_TURN_COST_BPS,
-    assumed_cost_bps,
     breakeven_hit_rate,
     cost_floor_bps,
     margin_ceiling_bps,
@@ -98,22 +97,6 @@ def test_breakeven_is_independent_of_leverage() -> None:
     assert breakeven_hit_rate(
         cost_bps=Decimal("0.65"), stop_bps=Decimal("10")
     ) == pytest.approx(Decimal("0.5325"))
-
-
-def test_assumed_cost_bps_is_the_one_lookup() -> None:
-    """Die Schluesselregel (gestutzt, klein) steht an einer Stelle, nicht an zweien.
-
-    ``execution/risk_manager.py`` braucht die Annahme als Praemisse gegen eine am
-    Auftrag mitgereiste Zahl. Griffe es selbst in die Tabelle, laege die
-    Normalisierung zweimal im Haus -- und eine Klasse waere je nach Aufrufer bekannt
-    oder unbekannt.
-    """
-    assert assumed_cost_bps("fx_major") == ASSUMED_ROUND_TURN_COST_BPS["fx_major"]
-    assert assumed_cost_bps("  FX_Major ") == ASSUMED_ROUND_TURN_COST_BPS["fx_major"]
-    assert assumed_cost_bps("unbekannt") is None
-    # Dieselbe Regel wie im Budget selbst: gleicher Schluessel, gleiches Urteil.
-    assert stop_budget(asset_class="  FX_Major ", leverage=5).asset_class == "fx_major"
-    assert stop_budget(asset_class="unbekannt", leverage=5).tradeable is False
 
 
 def test_every_assumed_cost_is_documented_as_an_assumption() -> None:

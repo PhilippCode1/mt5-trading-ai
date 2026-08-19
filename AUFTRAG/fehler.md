@@ -403,3 +403,43 @@ ausgewiesen wie die Satzwegfälle auch, und ein Dauertor hält beides fest.
 habe: *wofür könnte jemand diese Zeilen brauchen, der später kommt?* Umfang ist ein
 Argument für eine andere Ablageform, nie eines für das Weglassen. Und wenn eine
 Auslassung doch sein muss, entscheidet die seltenste Verwendung mit, nicht die häufigste.
+
+---
+
+## F-013 — Den Erkundungswürfel auf die Wanduhr gesetzt
+
+**Wann:** 2026-08-20, Stufe 9, beim Verdrahten des in Stufe 7 gebauten Erkundungspfads.
+Aufgefallen an einem einzelnen Testfehlschlag, der sich zunächst nicht reproduzieren ließ.
+
+**Was falsch war.** `execution/runner.py` rief die Erkundungsentscheidung mit dem
+Schlüssel `f"{symbol}|{side}|{now.isoformat()}"`. `now` ist im Betrieb
+`datetime.now(UTC)` — eine Wanduhrzeit mit Mikrosekunden. Damit ist der Schlüssel **je
+Aufruf verschieden**, auch für dieselbe Gelegenheit.
+
+**Warum das schlimmer ist, als es aussieht.** Es widerspricht genau der Eigenschaft, für
+die ich den Hash in Stufe 7 gewählt hatte. Der Docstring dort sagt wörtlich: *„derselbe
+Schlüssel ergibt in jedem Lauf dieselbe Entscheidung … Beides macht eine Auswertung
+unreproduzierbar, und eine unreproduzierbare Auswertung belegt nichts."* Ich habe eine
+Stufe später den Schlüssel so gewählt, dass sich dieselbe Lage nie wiederholt — und damit
+die Begründung des eigenen Entwurfs ausgehebelt.
+
+Im Prüfstand war die Folge sichtbar: die Suite wurde zu rund 5 % wackelig, weil ein nicht
+zugelassenes Signal mit der Erkundungsrate gelegentlich gefahren wurde statt abgelehnt.
+Im Betrieb wäre die Folge unsichtbar und schlimmer gewesen — eine Auswertung, deren
+Auswahl sich nicht nachrechnen lässt.
+
+**Wie es aufgefallen ist.** Ein einzelner Fehlschlag in einem Lauf unter `coverage`, der
+sich in zwölf Wiederholungen nicht reproduzieren ließ. Die Versuchung war, ihn als
+Ausrutscher abzulegen. Stattdessen habe ich gefragt, was ich in dieser Stufe eingebaut
+habe, das überhaupt nicht deterministisch sein kann — und die Antwort stand in meinem
+eigenen Code.
+
+**Behoben.** Der Schlüssel ist jetzt `f"{symbol}|{side}|{client_order_id}"`. Die
+Auftragskennung identifiziert die Gelegenheit und ist für dieselbe Gelegenheit fest.
+Sechs Läufe hintereinander: 43 Fälle grün, keine Schwankung.
+
+**Was daraus folgt.** Ein Zufallsschlüssel muss die **Sache** benennen, über die
+entschieden wird, nie den Zeitpunkt der Entscheidung. Und: ein einzelner, nicht
+reproduzierbarer Fehlschlag ist kein Rauschen, solange man in derselben Sitzung etwas
+eingebaut hat, das würfelt. Die erste Frage lautet dann nicht „war das ein Ausrutscher",
+sondern „was von dem, was ich gerade gebaut habe, ist nicht deterministisch".

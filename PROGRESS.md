@@ -2330,3 +2330,67 @@ Schwellen (1,0 und 80 %) sind gesetzt, nicht hergeleitet. Die Zweigdeckung sagt 
 ueber die Guete einer Zusicherung; genau deshalb steht das Mutationstor daneben.
 `evaluate_llm_gate` bleibt ohne Aufrufer -- es liegt in `backtest/` und damit auszerhalb
 der drei geprueften Teilpakete; das gehoert nach Stufe 9.
+
+---
+
+## ERLEDIGT — Stufe 9 des Dauerauftrags: tote Tore verdrahtet oder geloescht
+
+**Zur Zulassung:** unveraendert wie bei Stufe 4 bis 8 -- §1 schlieszt die Stufen 4 bis 10
+fuer den Ausgang (B) aus, der Auftraggeber hat sie angewiesen (E-009). Diese Stufe misst
+keinen Vorteil.
+
+**Gemessen (gegen einen eigenen Arbeitsbaum auf 00420a9):**
+
+- **12 oeffentliche Modulfunktionen ohne jeden Aufrufer** in Paket und Werkzeugen.
+  Darunter `entscheide_erkundung` -- der Erkundungspfad, den ich EINE STUFE ZUVOR selbst
+  gebaut und nie verdrahtet hatte. Genau die Krankheit, die §0 des Auftrags benennt,
+  begangen im Auftrag selbst.
+- **16 x `Any` auf dem Auftragspfad**, darunter der Kontoschnappschuss aus Stufe 4. mypy
+  laeuft `--strict` und es gibt dort kein einziges `type: ignore` -- aber `Any` schaltet
+  die Pruefung fuer jeden Zugriff ab. Das Tor stand formal ueber allem und wirkte an den
+  zentralen Groessen des Orderpfads nicht.
+- **11 Ablehnungsgruende, die kein Test ausloest.**
+- Kein Werkzeug, das Tore ohne Ausloesung meldet.
+
+**Geaendert:** Sieben Funktionen geloescht, sieben verdrahtet -- darunter
+`evaluate_llm_gate` (der seit Stufe 6 offene Punkt) in `tools/modelllauf.py`, dort wo ein
+Modell ueberhaupt in den Pfad kaeme. Das Tor lehnt mit den Eingaben des LLM-freien
+Standes ab: "kein LLM zugelassen" ist eine Aussage, "das Tor wurde nie gefragt" ist
+keine. `Any` in der Entscheidungslogik von 4 auf 0 (`object` statt `Any`; die
+verbleibenden 12 sitzen an der Grenze zum untypisierten MT5-Modul und sind einzeln
+aufgezaehlt). Neu: `tools/torzaehlung.py` -- je Tor ein ausloesender Test (blockierend)
+und eine Betriebszaehlung je Ablehnungsgrund (Auskunft, kein Mangel).
+
+**Ein Fund beim Zusammenlegen:** `annualise_sharpe` und die im Backtest ausgeschriebene
+Formel waren NICHT identisch -- die Inline-Fassung schluckte null Trades still. Verhalten
+unveraendert, aber die Ausnahme steht jetzt sichtbar an einer Stelle.
+
+**Ein Muster, dreimal gefunden:** ein Waechter sitzt hinter einem strengeren Waechter und
+kann nicht ausloesen (`invalid_notional` hinter `order_roundturn_cost`,
+`stop_price_nonpositive` hinter der Budgetklammer, `margin_below_min_volume` hinter dem
+Hebel-Preflight). Zwei geloescht, drei freigestellt -- aber mit je einem Test auf die
+VORGELAGERTE Klammer, damit die Freistellung auffaellt, sobald ihre Praemisse faellt.
+
+**Was die Loeschungen kosten, benannt:** `propose_parameter_sets` trug "Grenze 3" der
+Lernphase (keine Optimierung ohne Ledger-Eintrag); der Modul-Docstring nennt jetzt drei
+statt vier Grenzen. Der Versuchszaehler selbst ist nicht aufgeweicht -- `check_integrity`
+prueft das Register seit dieser Stufe VOR jedem `edge_test`-Lauf.
+
+**Eigener Fehler (F-013):** Beim Verdrahten des Erkundungspfads lautete der Schluessel
+`f"{symbol}|{side}|{now.isoformat()}"` -- eine Wanduhrzeit. Damit wiederholt sich dieselbe
+Lage nie, und genau die Reproduzierbarkeit war der Punkt von Stufe 7. Aufgefallen an EINEM
+Fehlschlag unter `coverage`, der sich in zwoelf Wiederholungen nicht reproduzieren liess.
+Die richtige Frage war nicht "war das ein Ausrutscher", sondern "was von dem, was ich
+gerade gebaut habe, wuerfelt". Behoben: der Schluessel ist die Auftragskennung.
+
+**Abnahme:** 17 Eichfaelle, darunter ein roter am Werkzeug selbst -- die erste Fassung von
+`torzaehlung` suchte nur `reason=`-Schluesselwoerter und lief an `cost_unverifiable`
+vorbei, dem mit 2.258 Faellen haeufigsten Grund. **Zehn** Tore je Exit 0; pytest 1.546
+bestanden, 0 fehlgeschlagen; Toetungsrate 1,000; Zweigdeckung 88,0 %.
+
+**Ehrliche Grenze / offen:** "Kein toter Code" heisst hier: keine oeffentliche
+Modulfunktion ohne Aufrufer. Private Helfer, Klassenmethoden und Zweige innerhalb einer
+Funktion sind nicht erfasst. Die Betriebszaehlung steht auf einem einzigen Demolauf --
+2 von 41 Gruenden ausgeloest sagt mehr ueber die Zahl der Betriebstage als ueber die Tore.
+Drei Gruende haben keinen ausloesenden Test, und das ist eine Freistellung mit Nachweis,
+keine erfuellte Forderung.

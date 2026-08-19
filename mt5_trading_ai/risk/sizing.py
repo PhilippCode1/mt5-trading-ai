@@ -26,7 +26,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from decimal import ROUND_DOWN, Decimal
-from typing import Any
 
 RISK_SIZING_VERSION = "risk-sizing-v1"
 
@@ -79,7 +78,7 @@ class SizingResult:
         return self.volume is None
 
 
-def normalise_risk_fraction(value: Any) -> Decimal:
+def normalise_risk_fraction(value: object) -> Decimal:
     """Klammert auf ``[0,25 %, 0,5 %]``. Fehlender Wert -> unterer Rand."""
     if value in (None, ""):
         return DEFAULT_RISK_FRACTION
@@ -133,7 +132,7 @@ def _quantise_down(value: Decimal, step: Decimal) -> Decimal:
 def size_position(
     *,
     account_equity: Decimal,
-    risk_fraction: Any,
+    risk_fraction: object,
     stop_floor_bps: Decimal,
     stop_budget_bps: Decimal,
     requested_stop_bps: Decimal | None,

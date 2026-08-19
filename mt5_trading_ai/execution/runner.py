@@ -48,6 +48,7 @@ from mt5_trading_ai.execution.risk_manager import (
     RiskManager,
 )
 from mt5_trading_ai.gates.criteria import CriteriaVerdict
+from mt5_trading_ai.gates.erkundung import entscheide_erkundung
 from mt5_trading_ai.risk.leverage import clamp_leverage
 from mt5_trading_ai.risk.sizing import StopFloorInputs, executable_stop_floor
 from mt5_trading_ai.risk.stop_budget import cost_bps_from_fraction
@@ -107,6 +108,13 @@ class RunnerReport:
     steps: list[SeamStep] = field(default_factory=list)
     submitted: OrderResult | None = None
     reject_reason: str | None = None
+    #: Wurde dieser Lauf als **Erkundung** gefahren -- also trotz nicht bestandener
+    #: Zulassung, auf dem Papierkonto? Die Auswertung braucht die Auskunft, sonst
+    #: sieht eine erkundete Zeile aus wie eine regulaere (Stufe 7, Herkunftsspalte).
+    erkundet: bool = False
+    #: Die Auswahlwahrscheinlichkeit, mit der erkundet wurde. 1,0 im Regelfall --
+    #: eine regulaer gefahrene Zeile ist mit Sicherheit ausgewaehlt worden.
+    erkundung_p: float = 1.0
     version: str = RUNNER_VERSION
 
     @property
@@ -185,11 +193,45 @@ def run_signal(
     # Stufe A: Zulassung (§9.3). Provenienz + Deflation stecken in der Evidenz
     # (deflated_sharpe/trial_count aus dem herkunftsgebundenen Register).
     if not admission.passed:
-        return report._reject(
-            "zulassung", "strategy_not_admitted",
-            detail=f"nicht erfuellt: {', '.join(admission.unmet) or 'unbekannt'}",
+        # Stufe 7 hat den Erkundungspfad gebaut, Stufe 9 verdrahtet ihn: eine
+        # **nicht zugelassene** Strategie wird auf dem Papierkonto mit kleiner
+        # Wahrscheinlichkeit trotzdem gefahren, damit ihr Ausgang beobachtbar wird.
+        # Sonst sammelt dieses Haus nur Daten ueber die eigenen Zusagen und kann
+        # seine Absagen nie ueberpruefen (gemessen: 32 von 4.343).
+        #
+        # Die Ausnahme greift NUR hier, an der Zulassung. Jede Sperre danach --
+        # Global-Halt, Stop-Pflicht, Frische, Kostentor, Risikoschicht -- laeuft
+        # unveraendert; ``venue.submit_order`` prueft sie ohnehin ein zweites Mal.
+        # Erkundung kauft Wissen, sie bezahlt nie mit einer Sperre.
+        entscheidung = entscheide_erkundung(
+            ist_papierkonto=venue.get_account().is_demo,
+            ablehnungsgrund="strategy_not_admitted",
+            # Der Schluessel identifiziert die GELEGENHEIT, nicht den Augenblick.
+            # Die erste Fassung nahm ``now.isoformat()`` -- eine Wanduhrzeit mit
+            # Mikrosekunden. Damit wiederholt sich dieselbe Lage nie, und genau die
+            # Reproduzierbarkeit war der Punkt von Stufe 7 ("derselbe Schluessel ergibt
+            # in jedem Lauf dieselbe Entscheidung"). Im Pruefstand machte es die Suite
+            # zu 5 % wackelig, im Betrieb waere eine Auswertung nicht nachrechenbar
+            # gewesen. Die Auftragskennung ist je Gelegenheit fest.
+            schluessel=f"{symbol}|{side.name}|{client_order_id}",
         )
-    report.add("zulassung", True, "§9.3-Kriterien bestanden")
+        if not entscheidung.erkunden:
+            return report._reject(
+                "zulassung", "strategy_not_admitted",
+                detail=(
+                    f"nicht erfuellt: {', '.join(admission.unmet) or 'unbekannt'}"
+                    f" (Erkundung: {entscheidung.verweigert_weil or 'nicht gezogen'})"
+                ),
+            )
+        report.erkundet = True
+        report.erkundung_p = entscheidung.wahrscheinlichkeit
+        report.add(
+            "zulassung", True,
+            f"ERKUNDUNG (p={entscheidung.wahrscheinlichkeit}) trotz: "
+            f"{', '.join(admission.unmet) or 'unbekannt'}",
+        )
+    else:
+        report.add("zulassung", True, "§9.3-Kriterien bestanden")
 
     # 1) Signal.
     if side is Signal.FLAT:
@@ -295,8 +337,11 @@ def run_signal(
         ref - dist if side_enum is OrderSide.BUY else ref + dist,
         instrument.tick_size, side_enum,
     )
-    if stop_loss <= 0:
-        return report._reject("stop-preis", "stop_price_nonpositive")
+    # Kein Schutz gegen einen Stop <= 0 mehr (Stufe 9): ``stop_bps`` kommt aus dem
+    # Budget und ist durch ``margin_ceiling_bps`` geklammert -- hoechstens 1.666,7 bp
+    # bei Hebel 1, 166,7 bp bei Hebel 10. Ein Stop unterhalb von null braeuchte
+    # 10.000 bp, also eine Distanz von 100 % des Kurses. Der Zweig konnte nicht
+    # ausloesen; ein Tor ohne moeglichen Fall ist keines.
 
     # Der GESETZTE Stop muss die Untergrenze halten, nicht der gerechnete. Zwischen
     # beiden liegen zwei Verluste: das Tick-Raster und die 28-stellige

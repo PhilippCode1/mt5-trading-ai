@@ -188,6 +188,33 @@ Abgrenzung zu `evaluate_llm_gate` stehen in
 
 ---
 
+## In Stufe 9 gelöscht
+
+**Zum ersten Mal in diesem Auftrag umfangreich.** Zwölf öffentliche Modulfunktionen
+hatten keinen Aufrufer im Ausführungspfad; sieben davon sind entfernt, fünf verdrahtet
+worden (dazu `find_weaknesses`; `observed_trade_rate` als Doppel von `trade_rate`).
+
+**Entfernte Funktionen:** `backtest/kalender.py::utc_zu_server`,
+`backtest/splits.py::purged_kfold_embargo_indices` und `::walk_forward_indices`,
+`data/quality.py::render_markdown`, `risk/stop_budget.py::assumed_cost_bps`,
+`gates/learning_phase.py::propose_parameter_sets`, `::build_report` und
+`::observed_trade_rate`. Dazu 12 Testfälle, die nur sie prüften.
+
+**Zwei entfernte Wächter, mit Nachweis der Unerreichbarkeit:**
+`execution/cost_gate.py::invalid_notional` (jede Eingabe, die ein Nominal von 0 ergäbe,
+endet vorher mit `cost_unverifiable` — gemessen an drei Fällen) und die erste
+`stop_price_nonpositive`-Stelle in `execution/runner.py` (ein negativer Stop bräuchte
+10.000 bp, die Budgetklammer lässt höchstens 1.666,7 bp zu). Ein Zweig hinter einem
+strengeren Zweig ist kein Tor.
+
+**Was die Löschungen kosten, benannt:** `propose_parameter_sets` trug „Grenze 3" der
+Lernphase (keine Optimierung ohne Ledger-Eintrag); der Modul-Docstring nennt jetzt drei
+Grenzen statt vier. Die beiden Wächter hingen an vorgelagerten Klammern; je ein Test hält
+diese fest und wird rot, wenn sie sich lockern. Vollständig in
+[`stufen/09-tote-tore/bericht.md`](stufen/09-tote-tore/bericht.md) §4.
+
+---
+
 ## Was nach dem Ergebnistor **nicht** gelöscht wurde, obwohl es naheläge
 
 Befund (B) heißt nach §1: *„Es wird zurückgebaut oder aufgegeben."* Beides ist eine

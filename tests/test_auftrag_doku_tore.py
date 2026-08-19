@@ -119,7 +119,18 @@ def test_auftrag_gilt_dem_zahlen_tor_als_historisch() -> None:
 
 
 def test_das_zahlen_tor_bleibt_fuer_projektdoku_scharf() -> None:
-    """Gegenprobe: die Ausnahme greift NUR fuer die drei benannten Praefixe."""
-    assert not check_doc_numbers.is_historical("README.md")
-    assert not check_doc_numbers.is_historical("MASTERBERICHT.md")
-    assert not check_doc_numbers.is_historical("ABSCHLUSS-3a/05-URTEIL.md")
+    """Gegenprobe: die Ausnahme greift NUR fuer die benannten Praefixe.
+
+    ``ABSCHLUSS-3a/`` stand hier bis Stufe 9 auf der scharfen Seite. Es ist dorthin
+    gewandert, wo ``PROGRESS.md`` und ``docs/audit/`` schon standen -- der Ordner traegt
+    im Kopf woertlich, dass er eingefroren ist und nicht mehr nachgezogen wird, und ihn
+    rueckwirkend zu aendern verbietet E-007. Was scharf bleibt, ist die **lebende**
+    Projektdoku: README, MASTERBERICHT, FEHLT, SPAETER, ABBRUCH.
+    """
+    for lebend in ("README.md", "MASTERBERICHT.md", "FEHLT.md", "SPAETER.md",
+                   "ABBRUCH.md", "BERICHT_TEIL3.md"):
+        assert not check_doc_numbers.is_historical(lebend), lebend
+    for eingefroren in ("PROGRESS.md", "docs/audit/x.md", "AUFTRAG/zustand.md",
+                        "ABSCHLUSS/06-ABBRUCHKRITERIUM.md",
+                        "ABSCHLUSS-3a/05-URTEIL.md"):
+        assert check_doc_numbers.is_historical(eingefroren), eingefroren
