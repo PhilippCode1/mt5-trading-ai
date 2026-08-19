@@ -33,6 +33,18 @@ der Messung festgezurrt und ausgegeben; der Eintrag folgt unmittelbar danach und
 jedem Ausgang. Was die Regel verhindern soll, ist damit verhindert: es gibt keinen
 Weg, erst zu messen und dann zu entscheiden, ob der Versuch zaehlt.
 
+DER EINGEFRORENE ABZUG IST AELTER ALS DIESES WERKZEUG
+------------------------------------------------------
+``ABSCHLUSS-3a/07-AUSGABEN/ereignisstudie.txt`` ist mit dem Werkzeugstand
+``a9ed7ad57dac`` erzeugt worden und laesst sich mit dem heutigen nicht mehr Zeile fuer
+Zeile nachbauen: die Deflation zaehlt seit Welle 1b in ganzen Kampagnen statt
+Registerzeilen, und die Berichtszeile nennt die Versuchszahl seitdem mit. Das ist eine
+gewollte Verschaerfung, keine Drift. Der Abzug traegt darum einen Kopf, der den
+Werkzeugstand nennt; was sich geaendert hat und warum nicht neu gemessen wird, steht in
+``ABSCHLUSS-3a/04-EREIGNISSTUDIE.md``, Abschnitt 6. Wer hier etwas an der Ausgabe
+aendert, zieht diesen Abschnitt mit nach -- ein Beleg, den sein eigenes Werkzeug
+stillschweigend nicht mehr erzeugt, ist keiner.
+
 Aufruf:
   python tools/ereignisstudie.py --selbsttest
   python tools/ereignisstudie.py --kandidat K1 --instrument EURUSD
@@ -141,6 +153,48 @@ def verlange_register(pfad: Path | str | None = None) -> Path:
             "zurueckspielen. Ein leeres Register ist zulaessig, ein fehlendes nicht."
         )
     return ledger
+
+
+def _registerkennung(register: Path) -> str:
+    """Wie das Register im Beleg heisst -- ohne den Pfad des Rechners, der es fuhr.
+
+    Die Zeile stand hier zuerst als nacktes ``{register}`` und druckte damit einen
+    ABSOLUTEN Pfad; im Lauf, aus dem der eingefrorene Abzug stammt, waere das
+    ``C:\\Users\\<kontoname>\\...\\TRIALS.jsonl`` gewesen. Zweierlei ist daran falsch.
+    Erstens haengt ein Beleg, dessen Inhalt am Benutzerkonto des Ausfuehrenden haengt,
+    an einem Rechner -- dieselbe Klasse Mangel, gegen die dieses Repo sonst mit
+    ``data_checksum`` und ``code_commit`` arbeitet. Zweitens laesst dieses Repo weder
+    Konto- noch Servernamen in eine Datei, die weitergegeben wird, und ein
+    Windows-Benutzerpfad ist ein Kontoname.
+
+    Gedruckt wird darum der Pfad RELATIV zum Repo, mit ``/`` als Trenner, damit
+    derselbe Lauf unter Windows und unter Linux dieselbe Zeile erzeugt. Liegt das
+    Register ausserhalb des Repos, bleibt nur sein Dateiname -- mit dem ausdruecklichen
+    Vermerk. Das ist keine Verschleierung, sondern die verwertbare Auskunft: ob gegen
+    das versionierte Register deflationiert wurde oder gegen ein Seitenstueck.
+
+    Was hier BEWUSST NICHT steht, ist die Zahl der Registerzeilen. Die Versuchszahl,
+    gegen die wirklich deflationiert wird, ist die der ganzen Kampagne; sie steht im
+    Ergebnisblock (``gegen N Versuche``). Eine zweite, kleinere Zahl daneben liesse
+    sich mit ihr verwechseln, und im Beleg ist eine verwechselbare Zahl schlimmer als
+    keine.
+    """
+    try:
+        innen = register.resolve().relative_to(REPO)
+    except ValueError:
+        return f"{register.name} (ausserhalb des Repos)"
+    return innen.as_posix()
+
+
+def _tausender(zahl: int) -> str:
+    """Deutsche Tausendertrennung: ``1000`` wird ``1.000``.
+
+    Die Zahl der Ziehungen stand frueher als Text ``1.000`` im Bericht und wurde
+    richtigerweise durch ``kern.M62_ZIEHUNGEN`` ersetzt -- dabei ging der Trennpunkt
+    verloren, und der eingefrorene Abzug las sich ploetzlich anders als der Lauf. Der
+    Bericht ist durchweg deutsch gesetzt; die Trennung gehoert dazu.
+    """
+    return f"{zahl:,}".replace(",", ".")
 
 
 def _lade_kerzen(symbol: str) -> list[Kerze]:
@@ -266,6 +320,15 @@ def _lauf(
     print("-" * 90)
     print(f"{k.schluessel} — {k.name} — {symbol}")
     print("-" * 90)
+    # DIESER BLOCK IST DAS BLATT, DAS SPAETER BELEGEN SOLL, WAS VORHER FESTSTAND.
+    # Er wird deshalb als Ganzes gehalten: ``test_der_block_vor_der_messung_nennt_
+    # alle_acht_stuecke`` faellt, sobald eine Zeile verschwindet. Die angekuendigte
+    # Vorzeichenregel haengt an keiner gemeinsamen Konstante mit dem Kernmodul -- das
+    # Kernmodul rechnet sie, benennt sie aber nicht. Gebunden wird sie stattdessen
+    # ueber die Messung: ``test_die_angekuendigte_vorzeichenregel_ist_die_gerechnete``
+    # laesst DENSELBEN Lauf auf einer Reihe mit bekanntem Vorzeichen laufen. Wer die
+    # Ankuendigung dreht, faellt ueber die eine Haelfte des Falls; wer die Rechnung
+    # dreht, ueber die andere.
     print("VOR DER MESSUNG festgezurrt:")
     print(f"  Hypothese      : {HYPOTHESE} (Vorzeichen = -sign(Rendite der Vorstunde))")
     print(f"  Fenster        : {k.fenster_stunden:.0f} h ab dem ersten handelbaren "
@@ -277,7 +340,7 @@ def _lauf(
           f"M6.1-Schwelle {kern.M61_FAKTOR * k_bps:.2f} bp")
     print(f"  data_checksum  : {pruefsumme[:16]}...")
     print(f"  code_commit    : {commit[:12]}")
-    print(f"  Register       : {register}")
+    print(f"  Register       : {_registerkennung(register)}")
 
     ausgang, erg, best = "error", None, None
     try:
@@ -349,9 +412,10 @@ def _bericht(e: Ergebnis, b: Bestaetigung) -> None:
           f"{b.haelfte_spaet_bps:+.2f} bp -> "
           f"{'ok' if b.stabil_bestanden else 'gescheitert'}")
     # Die Zahl der Ziehungen wird gelesen, nicht wiederholt: sie stand hier als
-    # „1.000" im Text, waehrend ``M62_ZIEHUNGEN`` sie im Kern fuehrt.
+    # „1.000" im Text, waehrend ``M62_ZIEHUNGEN`` sie im Kern fuehrt. Der Trennpunkt
+    # kommt seitdem aus :func:`_tausender` und nicht mehr aus dem Text.
     print(f"  M6.2 Zufall      : {b.zufall_anteil * 100:.1f} % der "
-          f"{kern.M62_ZIEHUNGEN} verschobenen Mengen "
+          f"{_tausender(kern.M62_ZIEHUNGEN)} verschobenen Mengen "
           f"-> {'ok' if b.zufall_bestanden else 'gescheitert'}")
     urteil = "BESTANDEN" if (e.m61_bestanden and b.bestanden) else "GESCHEITERT"
     print(f"\n  URTEIL M6: {urteil}")

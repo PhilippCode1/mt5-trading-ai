@@ -551,7 +551,7 @@ def lage_vereinen(
     eigen: RisikoLage,
     *,
     freigabe: bool = False,
-    geschlossen: frozenset[str] = frozenset(),
+    geschlossen: frozenset[tuple[str, datetime]] = frozenset(),
 ) -> RisikoLage:
     """Der Stand der Platte und der eigene zu einem -- je Abschnitt strenger Richtung.
 
@@ -564,14 +564,30 @@ def lage_vereinen(
       (``RiskManager.release_drawdown``), nicht fuer „mein Speicher haelt gerade
       nicht". Ohne sie gilt ODER, und zwar in beide Richtungen: auch der eigene Halt
       ueberlebt einen Stand der Platte, der frei aussieht.
-    * ``geschlossen`` ist dasselbe fuer offene Positionen. Ohne diese ausdrueckliche
+    * ``geschlossen`` ist dasselbe fuer offene Positionen -- und es sind **Paare**
+      ``(Symbol, Eroeffnungszeit)``, nicht blosse Symbole. Ohne die ausdrueckliche
       Geste waere die Vereinigung von Positionen eine **Ratsche**: einmal auf der
       Platte, nie wieder weg, der Positionsdeckel binnen weniger Tage dauerhaft voll
       -- eine Sperre ohne Ausgang, und die wird im Betrieb ausgebaut statt bedient.
-      Ein Symbol verschwindet darum genau dann, wenn dieser Lauf es selbst
-      geschlossen hat (``RiskManager.record_close``) und es auch nicht wieder
-      offen fuehrt. Eine Position, die ein **zweiter** Lauf inzwischen eroeffnet hat,
-      bleibt in jedem Fall stehen.
+      Ein Eintrag der Platte verschwindet darum genau dann, wenn dieser Lauf **genau
+      diesen** Eintrag geschlossen hat (Symbol UND Eroeffnungszeit stimmen ueberein,
+      ``RiskManager.record_close``) und er das Symbol auch nicht wieder offen fuehrt.
+
+      Das Paar ist der ganze Punkt, und hier stand einmal nur das Symbol. Gemessen
+      an jenem Stand: Lauf A eroeffnet EURUSD, die Platte klemmt, A ruft
+      ``record_close`` -- der Schreibvorgang scheitert, die Vormerkung bleibt also
+      absichtlich stehen. Lauf B eroeffnet EURUSD neu und schreibt es. A's naechster
+      **gelungener** Takt loeschte B's Eintrag: Datei danach ohne EURUSD, ein
+      Neustart sah eine Position weniger, als offen waren -- der Positionsdeckel
+      zaehlte zu niedrig, also die milde Richtung. Mit dem Paar bleibt B's spaeterer
+      Eintrag stehen, weil A eine **andere** Eroeffnungszeit geschlossen hat.
+
+      **Die Grenze dieser Zusicherung, ausdruecklich:** dieser Abschnitt fuehrt je
+      Symbol genau einen Eintrag (netto, ``RiskManager.record_open_fill``). Eroeffnet
+      ein zweiter Lauf dasselbe Symbol **nicht spaeter** als der schliessende, ist es
+      fuer diese Datei derselbe Eintrag, und er faellt mit der Schliessung. Wer je
+      Bein zaehlen will, braucht einen Positionsschluessel des Brokers, nicht
+      ``(Symbol, Zeit)``; das ist bewusst nicht Gegenstand dieser Schicht.
     * Bei **verschiedenen** Handelstagen gewinnt der spaetere Tag mitsamt seinen
       Zaehlern -- nicht der Hoechstwert ueber beide. Sonst truege eine Tageskappe die
       Zaehlung von gestern in heute und waere keine Tageskappe mehr. Innerhalb
@@ -644,7 +660,7 @@ def lage_vereinen(
     eigene_symbole = {symbol for symbol, _ts in eigen.offene_positionen}
     positionen: dict[str, datetime] = {}
     for symbol, ts in platte.offene_positionen:
-        if symbol in geschlossen and symbol not in eigene_symbole:
+        if (symbol, ts) in geschlossen and symbol not in eigene_symbole:
             continue
         positionen[symbol] = ts
     for symbol, ts in eigen.offene_positionen:
@@ -848,10 +864,12 @@ class DateiZustand:
         #: auf der Platte steht (Modul-Docstring, „Zwei Schreiber"). Sie wird erst von
         #: einem GELUNGENEN gebundenen Schreibvorgang verbraucht.
         self._freigabe_vorgemerkt = False
-        #: Symbole, die dieser Lauf ausdruecklich geschlossen hat und die darum aus
-        #: der Datei verschwinden duerfen. Ohne diese Liste waere die Vereinigung von
-        #: Positionen eine Ratsche (siehe ``lage_vereinen``).
-        self._geschlossen: set[str] = set()
+        #: Eintraege ``(Symbol, Eroeffnungszeit)``, die dieser Lauf ausdruecklich
+        #: geschlossen hat und die darum aus der Datei verschwinden duerfen. Ohne diese
+        #: Liste waere die Vereinigung von Positionen eine Ratsche; die Zeit gehoert
+        #: dazu, damit die Geste nicht die Position eines zweiten Laufs mitnimmt
+        #: (beides: ``lage_vereinen``).
+        self._geschlossen: set[tuple[str, datetime]] = set()
         #: Die zuletzt vereinigte Lage -- was beim letzten ``sichern`` wirklich galt.
         #: Der Aufrufer zieht daraus einen fremden Halt und fremde Zaehler nach; ohne
         #: das schriebe dieser Lauf den Halt eines zweiten zwar nicht mehr weg,
@@ -909,16 +927,23 @@ class DateiZustand:
         """
         self._freigabe_vorgemerkt = True
 
-    def schliessung_vormerken(self, instrument: str) -> None:
-        """Merke: dieses Symbol ist geschlossen und darf aus der Datei verschwinden.
+    def schliessung_vormerken(self, instrument: str, eroeffnet_am: datetime) -> None:
+        """Merke: **dieser** Eintrag ist geschlossen und darf aus der Datei verschwinden.
 
         Das Gegenstueck zu ``freigabe_vormerken`` fuer die offenen Positionen -- und
         aus demselben Grund noetig: seit vereinigt statt ueberschrieben wird, wuerde
         ein Symbol, das einmal in der Datei steht, dort ewig bleiben und den
         Positionsdeckel dauerhaft fuellen. Auch das ist einmalig und wird von einem
         gelungenen gebundenen Schreibvorgang verbraucht.
+
+        ``eroeffnet_am`` ist nicht schmueckendes Beiwerk: die Vormerkung ueberlebt
+        einen gescheiterten Schreibvorgang (mit Absicht -- sonst waere sie nach einem
+        Plattenfehler still verloren), und in genau diesem Fenster kann ein zweiter
+        Lauf dasselbe Symbol neu eroeffnen. Ohne die Zeit naehme der naechste
+        gelungene Takt dieses Laufs den fremden Eintrag mit. Die Begruendung samt
+        gemessenem Ablauf und der verbleibenden Grenze steht bei ``lage_vereinen``.
         """
-        self._geschlossen.add(instrument)
+        self._geschlossen.add((instrument, eroeffnet_am))
 
     # --- Lesen ------------------------------------------------------------
     def _roh_lesen(self) -> dict[str, Any] | str | None:

@@ -616,6 +616,92 @@ def test_die_position_eines_zweiten_laufs_bleibt_beim_schliessen_stehen(  # noqa
     assert _lauf(pfad).open_position_count == 1
 
 
+def test_die_neue_position_eines_zweiten_laufs_ueberlebt_eine_haengende_schliessung(  # noqa: E501
+    tmp_path,  # type: ignore[no-untyped-def]
+) -> None:
+    """Der Fall, den der Test darueber NICHT sehen kann: dasselbe Symbol.
+
+    ``test_die_position_eines_zweiten_laufs_bleibt_beim_schliessen_stehen`` prueft ein
+    **anderes** Symbol -- und ein Symbolvergleich haelt das mit Leichtigkeit aus. Der
+    Docstring von ``lage_vereinen`` verspricht aber mehr: „eine Position, die ein
+    zweiter Lauf inzwischen eroeffnet hat, bleibt in jedem Fall stehen". Genau daran
+    ist die Vormerkung aus Symbolen ohne Zeit gescheitert.
+
+    Der Ablauf, ohne Trickserei und mit dem Muster, das diese Datei ohnehin modelliert
+    (``_blockiere``):
+
+    1. Lauf A eroeffnet EURUSD -- der Eintrag steht in der Datei.
+    2. Die Platte klemmt. A ruft ``record_close``; der Schreibvorgang scheitert. Die
+       Vormerkung bleibt mit Absicht stehen (sonst waere sie nach einem Plattenfehler
+       still verloren) -- und mit ihr das Symbol EURUSD.
+    3. Lauf B raeumt den Altstand ab und eroeffnet EURUSD **neu**.
+    4. A's naechster **gelungener** Takt (hier: eine ganz andere Eroeffnung).
+
+    Gemessen an dem Stand, der nur Symbole vormerkte: nach Schritt 4 stand in der Datei
+    allein ``GBPUSD``, ein Neustart zaehlte **eine** offene Position statt zweier --
+    der Positionsdeckel rechnete zu niedrig, also die milde Richtung.
+    """
+    pfad = tmp_path / "z.json"
+    lauf_a = _lauf(pfad, konto_id=KONTO, waehrung=WAEHRUNG)
+    lauf_a.record_open_fill("EURUSD", NOW - timedelta(hours=3))
+
+    _blockiere(pfad)
+    lauf_a.record_close("EURUSD")
+    _entsperre(pfad)
+    # Der gescheiterte Schreibvorgang hat nichts geaendert: der Altstand steht noch.
+    assert [p["instrument"] for p in _lies(pfad)["offene_positionen"]] == ["EURUSD"]
+
+    lauf_b = _lauf(pfad, konto_id=KONTO, waehrung=WAEHRUNG)
+    lauf_b.record_close("EURUSD")
+    lauf_b.record_open_fill("EURUSD", NOW - timedelta(hours=1))
+    assert [
+        p["eroeffnet_am"] for p in _lies(pfad)["offene_positionen"]
+    ] == [(NOW - timedelta(hours=1)).isoformat()]
+
+    lauf_a.record_open_fill("GBPUSD", NOW)
+
+    assert [p["instrument"] for p in _lies(pfad)["offene_positionen"]] == [
+        "EURUSD",
+        "GBPUSD",
+    ]
+    assert _lauf(pfad).open_position_count == 2
+    # Und A selbst zaehlt sie mit: das Nachziehen holt den fremden Eintrag herein.
+    assert lauf_a.open_position_count == 2
+
+
+def test_die_schliessung_raeumt_nur_den_eintrag_ab_den_sie_meint() -> None:
+    """Beide Richtungen der Paar-Regel an einer Stelle -- ohne Datei, ohne Manager.
+
+    Ohne die untere Haelfte waere die obere die bequeme Tuer zurueck in die Ratsche:
+    „nie loeschen" haelt jede Zusicherung dieses Docstrings, fuellt aber den
+    Positionsdeckel dauerhaft.
+    """
+    frueher = NOW - timedelta(hours=3)
+    spaeter = NOW - timedelta(hours=1)
+    platte = RisikoLage(offene_positionen=[("EURUSD", spaeter)])
+
+    bleibt = lage_vereinen(
+        platte, RisikoLage(), geschlossen=frozenset({("EURUSD", frueher)})
+    )
+    assert bleibt.offene_positionen == [("EURUSD", spaeter)]
+
+    weg = lage_vereinen(
+        platte, RisikoLage(), geschlossen=frozenset({("EURUSD", spaeter)})
+    )
+    assert weg.offene_positionen == []
+
+    # Die dritte Zeile der Regel, und sie ist keine Formsache: fuehrt dieser Lauf das
+    # Symbol wieder offen, bleibt der Eintrag stehen -- und zwar mit der SPAETEREN
+    # Eroeffnung. Die Mindesthaltedauer misst ``now - opened_at``; der spaetere
+    # Zeitpunkt sperrt laenger. Ohne die Wache setzte die haengende Schliessung hier
+    # die fruehere Zeit durch und verkuerzte die Sperre.
+    wieder_offen = RisikoLage(offene_positionen=[("EURUSD", frueher)])
+    behalten = lage_vereinen(
+        platte, wieder_offen, geschlossen=frozenset({("EURUSD", spaeter)})
+    )
+    assert behalten.offene_positionen == [("EURUSD", spaeter)]
+
+
 # --- Wem die Datei beim Schreiben gehoert --------------------------------------
 
 
@@ -751,3 +837,60 @@ def test_ein_defekt_unter_dem_laufenden_prozess_haelt_ihn_an(tmp_path) -> None: 
     assert nach_freigabe.reason == "throttle_tageszaehler_unlesbar"  # ... die Tages-
     # sperre nicht, und sie laeuft von selbst ab.
     assert _autorisiere(rm, now=NOW + timedelta(days=1)).approved is True
+
+
+def test_ein_defekt_auf_der_platte_senkt_den_eigenen_drawdown_bezug_nicht(  # noqa: E501
+    tmp_path,  # type: ignore[no-untyped-def]
+) -> None:
+    """Der Test darueber laesst genau eine Luecke offen -- und hier sass sie.
+
+    ``_nachziehen`` hatte fuer jeden Abschnitt einen Einzelfilter, nur nicht fuer das
+    Equity-Fenster: dort stand eine blanke Zuweisung. Sie fiel nicht auf, solange
+    ``zuletzt_gesehen`` aus dem vereinigten Stand kam. Der Zweig „Platte inzwischen
+    defekt, dieser Lauf traegt den Halt nicht" setzt aber die Lage aus
+    ``risiko_zustand._defekt``, und deren Fenster ist **leer**. Der Peak dieses Laufs
+    verschwand damit -- und mit ihm der Bezug, gegen den der Drawdown gemessen wird.
+
+    Der Ablauf ist der des Tests darueber, mit dem einzigen Unterschied, dass hier ein
+    Peak im Speicher steht, bevor die Platte kaputt geht. Der Betreiber nimmt danach
+    den einzigen dokumentierten Ausgang (``release_drawdown``) -- die Freigabe deckt
+    die Episode, die er gesehen hat, und ist mit der Erholung verbraucht. Was danach
+    noch sperrt, ist allein der Peak.
+
+    Gemessen an dem Stand mit der blanken Zuweisung: Fenster nach dem defekten Takt
+    ``[]``, und mit der Freigabe wanderte das leere Fenster auf die Platte -- ein
+    Neustart fand dort keinen Peak mehr und nahm die Order bei 10,8 % Drawdown an.
+    Ein Not-Aus, den ein Plattendefekt zusammen mit der vorgesehenen Freigabegeste
+    unsichtbar machte.
+
+    Zwei Zusicherungen, weil zwei verschiedene Dinge schiefgehen koennen: der Peak
+    steht wieder auf der Platte, und er **wirkt** auch -- der zweite Teil ist der
+    eigentliche Punkt, denn eine Zahl in einer Datei, die keine Ablehnung traegt, ist
+    Buchhaltung und kein Not-Aus.
+    """
+    pfad = tmp_path / "z.json"
+    rm = _lauf(pfad, konto_id=KONTO, waehrung=WAEHRUNG)
+    # Ein Takt am Tag des Defekts -- sonst kennt der Neustart keinen „vorherigen Tag",
+    # und die Zaehlersperre des Defekts liefe nie ab (``_roll_trade_day``).
+    assert _autorisiere(rm).approved is True
+    rm.observe_equity(NOW - timedelta(hours=2), Decimal("12000"))
+
+    pfad.write_bytes(b"{ inzwischen kaputt")
+    rm.observe_equity(NOW + timedelta(minutes=1), Decimal("11500"))
+
+    # Der einzige dokumentierte Ausgang -- er ersetzt die defekte Datei zugleich, und
+    # zwar mit dem Stand, den dieser Lauf im Speicher haelt.
+    rm.release_drawdown("ops-2026-08-13")
+    assert Decimal("12000") in {
+        Decimal(eq) for _korb, eq in _lies(pfad)["equity"]["fenster"]
+    }
+
+    # Der Neustart bringt keine Freigabe mit: was ihn jetzt noch anhalten kann, ist
+    # allein der Peak. Bei Equity 10700 gegen 12000 sind das 10,8 % gegen die Vorgabe
+    # von 10 %; der Tagesverlust ist null (neuer Tag, Tagesstart = 10700).
+    auth = _autorisiere(
+        _lauf(pfad), account=_konto("10700"), now=NOW + timedelta(days=1)
+    )
+    assert auth.approved is False
+    assert auth.latch_halt is True
+    assert auth.reason == "risk_drawdown_limit_reached"

@@ -27,6 +27,7 @@ from mt5_trading_ai.backtest.ereignisstudie import OOS_ANTEIL
 from mt5_trading_ai.backtest.resolution import deflation_observations
 from mt5_trading_ai.venue.mt5 import Mt5Rate
 from mt5_trading_ai.venue.protocol import Timeframe
+from tools import aufloesung
 from tools.aufloesung import (
     SCHEIBE_JAHRE,
     _bester_zeitrahmen,
@@ -501,3 +502,50 @@ def test_pruefen_faellt_auf_eine_unbrauchbare_datei_rot(
 def test_pruefen_erfindet_keine_datei(tmp_path: Path) -> None:
     """Fail-closed: keine Datei ist ein Befund, kein leeres Ergebnis."""
     assert pruefen(tmp_path / "gibtsnicht.json") == 1
+
+
+# --- Das Beweiswerkzeug darf nur lesen ------------------------------------
+def test_messen_oeffnet_das_terminal_ausschliesslich_lesend(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """DIE NAHT, AN DER DIE GLAUBWUERDIGKEIT DES BELEGS HAENGT.
+
+    ``messen()`` ist der Pfad, der die Messdatei und die Manifeste von Paket 3a erzeugt
+    hat. Dass diese Zahlen aus einem Terminal stammen, das gar nicht handeln KANN, ist
+    die Zusicherung des Modulkopfs -- und sie stand allein in einem Aufrufargument.
+    Umgestellt auf ``allow_write=True`` blieb die ganze Suite gruen; in der
+    ``gegenprobe`` daneben ist dieselbe Zusicherung seit jeher festgenagelt, hier
+    fehlte sie.
+
+    Zerlegt wird ``messen()`` dafuer nicht. Die Attrappe meldet beim Verbinden
+    Fehlschlag, der Lauf endet also unmittelbar nach dem Bau des Terminals mit
+    Rueckgabe 2 -- geprueft wird genau die eine Zeile, die die Nur-Lese-Eigenschaft
+    herstellt. Alles danach braucht ein echtes MT5-Terminal und gehoert nicht in einen
+    Pruefstand, der auf ubuntu-latest laeuft.
+
+    Festgehalten wird das Schluesselwort SAMT Wert: eine positionale Uebergabe, ein
+    weggelassenes Argument und ``True`` fallen alle drei durch.
+    """
+    bauten: list[dict[str, Any]] = []
+
+    class _Attrappe:
+        def __init__(self, **kwargs: Any) -> None:
+            bauten.append(kwargs)
+
+        def initialize(self) -> bool:
+            return False
+
+        def shutdown(self) -> None:
+            return None
+
+    monkeypatch.setattr(aufloesung, "RealMt5Terminal", _Attrappe)
+
+    assert aufloesung.messen() == 2
+    assert "nicht initialisierbar" in capsys.readouterr().err
+
+    assert len(bauten) == 1, "genau ein Terminal, und zwar dieses"
+    assert bauten[0].get("allow_write") is False, (
+        "Das Werkzeug, das den Beleg erzeugt hat, darf kein schreibfaehiges Terminal "
+        "oeffnen -- sonst ist die Nur-Lesen-Zusage des Modulkopfs unbelegt"
+    )
+    assert bauten[0] == {"allow_write": False}

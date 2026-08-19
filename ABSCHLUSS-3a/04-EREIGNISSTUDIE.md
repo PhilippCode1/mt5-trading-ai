@@ -1,7 +1,9 @@
 # Ereignisstudie (A3)
 
 Sieben Studien, sieben verbrauchte Versuche von zwölf. Rohausgabe in
-[`07-AUSGABEN/ereignisstudie.txt`](07-AUSGABEN/ereignisstudie.txt), Register in
+[`07-AUSGABEN/ereignisstudie.txt`](07-AUSGABEN/ereignisstudie.txt) — ein **eingefrorener
+Abzug, erzeugt mit dem Werkzeugstand `a9ed7ad57dac`**; das heutige Werkzeug erzeugt ihn
+nicht mehr Zeile für Zeile, siehe [Abschnitt 6](#6-der-eingefrorene-abzug-und-der-heutige-werkzeugstand) —, Register in
 [`07-AUSGABEN/trials.jsonl`](07-AUSGABEN/trials.jsonl) — dem eingefrorenen Abzug des
 nicht versionierten `TRIALS.jsonl` —, Code in `mt5_trading_ai/backtest/ereignisstudie.py`
 und `tools/ereignisstudie.py`.
@@ -143,3 +145,61 @@ Sieben Einträge stehen im Register, alle mit `outcome = completed`, jeder mit d
 SHA-256-Prüfsumme der Stundenreihe aus A1.2 und dem Commit-Stand des Codes.
 
 **Versuchsstand: 7 von 12 verbraucht, 5 verbleibend.**
+
+---
+
+## 6. Der eingefrorene Abzug und der heutige Werkzeugstand
+
+`07-AUSGABEN/ereignisstudie.txt` ist mit dem Werkzeugstand **`a9ed7ad57dac`** erzeugt
+worden. Das heutige `tools/ereignisstudie.py` erzeugt diese Datei **nicht mehr Zeile für
+Zeile**. Ein eingefrorener Beleg, den sein eigenes Werkzeug stillschweigend nicht mehr
+reproduziert, ist kein Beleg — deshalb steht der Werkzeugstand seit dieser Welle im Kopf
+der Datei, und deshalb steht hier, was sich geändert hat.
+
+### Was sich geändert hat
+
+| Stelle | Abzug (`a9ed7ad57dac`) | heute | Grund |
+|---|---|---|---|
+| Versuchszahl der Deflation | Registerstand zur Aufrufzeit | ganze Kampagne | Welle 1b |
+| Zeile M6.2 Deflation | `DSR 0.154 auf 1388 OoS-Ereignissen` | `… gegen N Versuche` | die DSR ist ohne ihre Versuchszahl nicht nachrechenbar |
+| Zeile Vorregistrierung | — | `Register : TRIALS.jsonl` | das geprüfte Register gehört zu dem, was vor der Messung feststeht |
+
+Die erste Zeile ist die einzige, die an die **Zahlen** rührt, und sie rührt in genau
+einer Richtung. Bis Welle 1b zählte die Deflation die Registerzeilen zur Aufrufzeit; die
+erste Studie einer Reihe sah damit 8 Versuche, die siebte 14 — gleiche Daten, gleiches
+Verfahren, anderes Urteil, und wer zuerst lief, wurde am mildesten geprüft. Seit Welle 1b
+zählt `gates/trials.py::deflation_trials` in ganzen Kampagnen: **jede** der sieben Studien
+wird gegen 14 Versuche deflationiert. Mehr Versuche heißen eine kleinere DSR. Der heutige
+Stand urteilt über diese Reihe also **strenger** als der eingefrorene, nie milder — und
+alle sieben Urteile lauten schon im Abzug `GESCHEITERT`. Das ist eine gewollte
+Verschärfung, keine Drift.
+
+Die dritte Zeile hat in dieser Welle noch einmal ihre Form geändert: sie druckte einen
+absoluten Pfad des ausführenden Rechners und nennt jetzt den Registernamen relativ zum
+Repo. Ein Beleg, dessen Inhalt am Benutzerkonto des Ausführenden hängt, ist auf einem
+anderen Rechner nicht wiederherstellbar, und dieses Repo lässt weder Konto- noch
+Servernamen in eine Datei, die weitergegeben wird.
+
+### Warum nicht neu gemessen wird
+
+**Weil jede Messung einen Versuch kostet.** Das ist die Regel, um die diese ganze Studie
+gebaut ist: ein Versuch ist verbraucht, sobald gemessen wurde. Die sieben Studien neu zu
+fahren verbrauchte sieben weitere Versuche — bei 5 verbleibenden von 12 wäre das
+Budget gerissen, und zwar für nichts weiter als eine schönere Textform. Ein Beleg, dessen
+Auffrischung das Budget sprengt, das er belegen soll, wäre die teuerste Art, eine
+Kosmetikfrage zu lösen.
+
+Dazu kommt: reproduzierbar wäre der Abzug auch dann nicht. Die Stundenreihen enden im
+Abzug am 17.08.2026; jeder neue Lauf zöge frische Kerzen und damit einen anderen
+Zeitraum, eine andere `data_checksum` und andere Ereigniszahlen. Was hier „einfrieren"
+heißt, ist genau das: die Messung gilt für den Datenstand, dessen Prüfsumme daneben steht.
+
+Die Kennzeichnung ist damit die Antwort, nicht der Ausweg: der Abzug bleibt, wie er
+gemessen wurde, er sagt selbst, mit welchem Werkzeugstand er entstand, und die Abweichung
+zum heutigen Stand steht benannt und in ihrer Richtung begründet hier.
+
+**Gehalten wird das durch einen Test**, nicht durch guten Willen:
+`tests/test_ereignisstudie_werkzeug.py::test_der_eingefrorene_abzug_nennt_seinen_werkzeugstand`
+verlangt den Kopf in der Datei, denselben Commit in Kopf und Messblöcken und denselben
+Commit in diesem Dokument. Wer den Abzug neu erzeugt und den Kopf dabei verliert, wird
+rot.

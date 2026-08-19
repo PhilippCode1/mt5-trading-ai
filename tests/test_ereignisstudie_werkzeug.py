@@ -719,6 +719,150 @@ def test_die_vorregistrierte_schwelle_stammt_aus_dem_kernmodul(
 
 
 # ---------------------------------------------------------------------------
+# 4b) Der Block „VOR DER MESSUNG festgezurrt" — das Blatt, das spaeter belegen soll,
+#     was vorher feststand. Er war bis auf die M6.1-Schwelle ungeprueft: sechs seiner
+#     Zeilen liessen sich loeschen, ohne dass ein Fall fiel, und die angekuendigte
+#     Vorzeichenregel liess sich UMDREHEN, ohne dass ein Fall fiel.
+# ---------------------------------------------------------------------------
+
+
+def test_der_block_vor_der_messung_nennt_alle_acht_stuecke(
+    tmp_path: Path, herkunft: None, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Die Vorregistrierung ist eine Aufzaehlung, und eine Aufzaehlung mit Luecke
+    belegt nichts.
+
+    Was den Versuch ausmacht, steht in ``STUDY_POLICY_VERSION`` und im Modulkopf:
+    Hypothese, Fenster, Zeitpunkt, Zeitraum, Ereigniszahl, Kosten samt Schwelle,
+    ``data_checksum``, ``code_commit`` und das Register, gegen das deflationiert wird.
+    Fehlt eine dieser Zeilen, laesst sich hinterher nicht mehr sagen, was vor der
+    Messung feststand — und genau das ist der einzige Zweck des Blocks.
+
+    Alle Werte sind von Hand gesetzt: K = 1,00 bp aus der ``herkunft``-Fixtur, also
+    M6.1-Schwelle 3 x 1,00 = 3,00 bp; Pruefsumme und Codestand kommen ebenfalls von
+    dort und werden auf 16 bzw. 12 Zeichen gekuerzt gedruckt. Die Reihe laeuft ueber
+    70 Werktage ab Montag, dem 06.01.2020, also bis zum 10.04.2020, mit einem Ereignis
+    je Werktag.
+
+    Mutationsprobe: je eine der neun Zeilen aus ``_lauf`` entfernt — dieser Fall faellt
+    neunmal, jedes Mal mit der fehlenden Zeile in der Meldung.
+    """
+    ledger = _leeres_register(tmp_path)
+    werkzeug._lauf(PRUEFKANDIDAT, "SYNTH", _reihe(70), None, register_pfad=ledger)
+    ausgabe = capsys.readouterr().out
+
+    erwartet = [
+        "VOR DER MESSUNG festgezurrt:",
+        "Hypothese      : umkehr (Vorzeichen = -sign(Rendite der Vorstunde))",
+        "Fenster        : 1 h ab dem ersten handelbaren Kerzenanfang",
+        "Zeitpunkt      : 16:00 UTC",
+        "Zeitraum       : 2020-01-06 .. 2020-04-10",
+        "Ereignisse     : 70",
+        "K (guenstigster Broker): 1.00 bp | M6.1-Schwelle 3.00 bp",
+        "data_checksum  : summe-SYNTH...",
+        "code_commit    : c0ffee123456",
+        "Register       : TRIALS.jsonl (ausserhalb des Repos)",
+    ]
+    for zeile in erwartet:
+        assert zeile in ausgabe, f"Die Vorregistrierung nennt {zeile!r} nicht mehr"
+
+
+def test_die_angekuendigte_vorzeichenregel_ist_die_gerechnete(
+    tmp_path: Path, herkunft: None, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """DIE SCHAERFSTE ZEILE DES BLOCKS — und die einzige, die sich lautlos umdrehen
+    liess.
+
+    Die Vorregistrierung kuendigt ``-sign(Rendite der Vorstunde)`` an. Das Kernmodul
+    RECHNET diese Regel, aber es BENENNT sie nicht: es gibt keine gemeinsame Konstante,
+    an der beide haengen (und das Kernmodul gehoert nicht zu dieser Arbeit). Ein ``+``
+    statt des ``-`` in der gedruckten Zeile kuendigte darum die UMGEKEHRTE Hypothese
+    an — die Umkehrung dessen, worauf die ganze Studie ruht —, ohne dass etwas rot
+    wurde.
+
+    Gebunden wird die Ankuendigung hier ueber die Messung im selben Lauf. ``_reihe``
+    baut die Fensterstunde ausdruecklich GEGEN die Vorstunde: Vorstunde +/-20 bp,
+    Fenster 12 bp dagegen. Unter der angekuendigten Regel ``-sign(Vorstunde)`` ist der
+    bereinigte Effekt darum **+12,00 bp**; unter der umgekehrten Regel waere er
+    **-12,00 bp**. Beide Haelften stehen in einem Fall, weil nur zusammen sie etwas
+    festhalten:
+
+    * dreht jemand die gedruckte Ankuendigung, faellt die erste Zusicherung;
+    * dreht jemand die Rechnung im Kernmodul, faellt die zweite.
+    """
+    ledger = _leeres_register(tmp_path)
+    werkzeug._lauf(PRUEFKANDIDAT, "SYNTH", _reihe(70), None, register_pfad=ledger)
+    ausgabe = capsys.readouterr().out
+
+    assert "Vorzeichen = -sign(Rendite der Vorstunde)" in ausgabe
+    assert "+sign(Rendite der Vorstunde)" not in ausgabe
+    assert "Bruttoeffekt (Median): +12.00 bp" in ausgabe, (
+        "Die Reihe laeuft GEGEN die Vorstunde; unter der angekuendigten Regel ist das "
+        "ein PLUS. Steht hier -12.00, rechnet das Kernmodul die Gegenhypothese."
+    )
+
+
+# --- Die Registerzeile: ein Beleg darf nicht am Rechner haengen ------------
+def test_die_registerzeile_nennt_keinen_rechnerpfad(
+    tmp_path: Path, herkunft: None, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """EICHFALL. Vorher stand hier der absolute Pfad des ausfuehrenden Rechners.
+
+    Im Lauf, aus dem der eingefrorene Abzug stammt, waere das
+    ``C:\\Users\\<kontoname>\\...\\TRIALS.jsonl`` gewesen — in einer Datei, die als
+    Beleg eingecheckt und weitergegeben wird. Zwei Regeln dieses Repos zugleich
+    verletzt: ein Beleg haengt nicht am Rechner (dafuer gibt es ``data_checksum`` und
+    ``code_commit``), und Konto- oder Servernamen gehen nie in eine weitergegebene
+    Datei — ein Windows-Benutzerpfad ist ein Kontoname.
+
+    Geprueft wird beides: die Zeile steht da (loeschen macht diesen Fall rot), und sie
+    enthaelt das Verzeichnis nicht.
+    """
+    ledger = _leeres_register(tmp_path)
+    werkzeug._lauf(PRUEFKANDIDAT, "SYNTH", _reihe(70), None, register_pfad=ledger)
+    ausgabe = capsys.readouterr().out
+
+    assert "Register       : TRIALS.jsonl (ausserhalb des Repos)" in ausgabe
+    assert str(tmp_path) not in ausgabe, (
+        "Der Pfad des ausfuehrenden Rechners darf in keiner Zeile des Belegs stehen"
+    )
+    assert str(tmp_path.parent) not in ausgabe
+
+
+def test_ein_register_im_repo_heisst_relativ_zum_repo() -> None:
+    """Damit derselbe Lauf unter Windows und unter Linux dieselbe Zeile erzeugt.
+
+    Der uebliche Fall: ``TRIALS.jsonl`` liegt in der Wurzel des Repos. Gedruckt wird
+    genau der Name, nicht der Pfad dorthin. Der zweite Fall haelt den ``/``-Trenner
+    fest — mit dem Windows-Trenner haetten zwei Rechner zwei verschiedene Belege
+    erzeugt, und der Unterschied saehe aus wie eine andere Messung.
+
+    Die Dateien muessen dafuer nicht existieren: die Kennung ist eine reine
+    Namensrechnung und liest die Platte nicht an.
+    """
+    assert werkzeug._registerkennung(werkzeug.REPO / "TRIALS.jsonl") == "TRIALS.jsonl"
+    tief = werkzeug.REPO / "ABSCHLUSS-3a" / "07-AUSGABEN" / "trials.jsonl"
+    assert (
+        werkzeug._registerkennung(tief) == "ABSCHLUSS-3a/07-AUSGABEN/trials.jsonl"
+    )
+
+
+def test_ein_register_ausserhalb_des_repos_wird_als_solches_benannt(
+    tmp_path: Path,
+) -> None:
+    """Kein Weglassen, sondern eine Auskunft: gegen welches Register lief die Deflation?
+
+    Ein Seitenstueck ausserhalb des Repos ist nicht das versionierte Register. Das
+    gehoert in den Beleg — nur eben ohne den Pfad, der den Kontonamen traegt. Der
+    Dateiname allein ist keine Auskunft ueber den Rechner: er heisst auf jedem
+    ``TRIALS.jsonl``.
+    """
+    kennung = werkzeug._registerkennung(tmp_path / "TRIALS.jsonl")
+    assert kennung == "TRIALS.jsonl (ausserhalb des Repos)"
+    assert str(tmp_path) not in kennung
+
+
+# ---------------------------------------------------------------------------
 # 5) Die Berichtsausgabe — das Urteil selbst
 # ---------------------------------------------------------------------------
 
@@ -831,6 +975,29 @@ def test_der_bericht_nennt_die_wirklich_gefahrenen_ziehungen(
     monkeypatch.setattr(kern, "M62_ZIEHUNGEN", 25)
     werkzeug._bericht(_ergebnis(brutto=9.0, k_bps=3.0), _bestaetigung())
     assert "25 verschobenen Mengen" in capsys.readouterr().out
+
+
+def test_der_bericht_setzt_den_deutschen_tausenderpunkt(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Die Behebung oben hatte den Trennpunkt verloren — ein Rueckschritt im Beleg.
+
+    Der eingefrorene Abzug liest sich „27.6 % der 1.000 verschobenen Mengen"; nachdem
+    die Zahl aus ``M62_ZIEHUNGEN`` kam, druckte das Werkzeug „1000". Der Bericht ist
+    durchweg deutsch gesetzt, und ein Beleg, dessen Zahlensatz sich zwischen zwei
+    Staenden aendert, sieht bei jedem Vergleich nach einer Abweichung aus, die keine
+    ist.
+
+    Der laufende Wert des Kernmoduls wird hier NICHT gesetzt: geprueft wird der Satz
+    der Zahl, die wirklich gilt. Steht dort eines Tages eine andere Zahl, prueft dieser
+    Fall sie mit — dafuer wird die Erwartung aus derselben Quelle gebildet und nur die
+    Trennung von Hand nachgestellt.
+    """
+    werkzeug._bericht(_ergebnis(brutto=9.0, k_bps=3.0), _bestaetigung())
+    ausgabe = capsys.readouterr().out
+    assert kern.M62_ZIEHUNGEN == 1000, "Von Hand: der Kern faehrt 1.000 Ziehungen"
+    assert "der 1.000 verschobenen Mengen" in ausgabe
+    assert "der 1000 verschobenen Mengen" not in ausgabe
 
 
 def test_der_bericht_des_staerksten_kandidaten_sagt_gescheitert(
@@ -968,3 +1135,97 @@ def test_main_meldet_rot_sobald_eine_studie_nicht_bewertbar_ist(
     monkeypatch.setattr(werkzeug, "_lauf", lambda *a, **kw: next(folge))
 
     assert werkzeug.main(["--alle"]) == erwartet
+
+
+# ---------------------------------------------------------------------------
+# 7) Der eingefrorene Abzug — er muss sagen, mit welchem Werkzeugstand er entstand
+# ---------------------------------------------------------------------------
+
+#: Der Werkzeugstand, mit dem ``07-AUSGABEN/ereignisstudie.txt`` erzeugt wurde. Er steht
+#: an drei Stellen und muss an allen dreien derselbe sein: im Kopf des Abzugs, in jedem
+#: seiner sieben Messbloecke (``code_commit``) und in ``04-EREIGNISSTUDIE.md``.
+ABZUG_WERKZEUGSTAND = "a9ed7ad57dac"
+ABZUG = werkzeug.REPO / "ABSCHLUSS-3a" / "07-AUSGABEN" / "ereignisstudie.txt"
+ABZUG_DOKUMENT = werkzeug.REPO / "ABSCHLUSS-3a" / "04-EREIGNISSTUDIE.md"
+ABZUG_REGISTER = werkzeug.REPO / "ABSCHLUSS-3a" / "07-AUSGABEN" / "trials.jsonl"
+
+
+def test_der_eingefrorene_abzug_nennt_seinen_werkzeugstand() -> None:
+    """Ein Beleg, den sein eigenes Werkzeug nicht mehr erzeugt, ist keiner.
+
+    Die Datei ist mit ``a9ed7ad57dac`` gemessen worden; das heutige Werkzeug druckt
+    zwei Zeilen anders (die Versuchszahl neben der DSR, die Registerzeile) und
+    deflationiert gegen eine andere Versuchszahl. Neu gemessen wird deshalb NICHT --
+    jede Messung verbraucht einen Versuch, und sieben weitere sprengten das Budget von
+    zwoelf. Stehen bleiben darf der Abzug aber nur, wenn er selbst sagt, woher er
+    kommt.
+
+    Dieser Fall haelt genau das fest, und zwar an drei Stellen zugleich, damit keine
+    von ihnen allein wandern kann: der Kopf der Datei, der ``code_commit`` jedes
+    Messblocks und das Dokument, das die Datei als Beleg fuehrt. Wer den Abzug neu
+    erzeugt, verliert den Kopf -- und wird hier rot, statt stillschweigend einen Beleg
+    ohne Herkunft einzuchecken.
+
+    Der Fall liest ausschliesslich versionierte Dateien: kein Terminal, kein Netz,
+    keine Rechneruhr, kein nicht versioniertes ``TRIALS.jsonl``.
+    """
+    # Getrennt wird an der ersten Zeile der Werkzeugausgabe selbst, nicht an einer
+    # gezaehlten Zeilenzahl: der Kopf darf wachsen, ohne diesen Fall zu bewegen.
+    kopf, trenner, koerper = ABZUG.read_text(encoding="utf-8").partition(
+        "\nEreignisstudie ereignisstudie-v1"
+    )
+    assert trenner, "Die Kopfzeile des Werkzeuglaufs fehlt im Abzug"
+
+    assert (
+        f"EINGEFRORENER ABZUG -- ERZEUGT MIT WERKZEUGSTAND {ABZUG_WERKZEUGSTAND}"
+        in kopf
+    ), "Der Abzug nennt seinen Werkzeugstand nicht mehr"
+    assert "04-EREIGNISSTUDIE.md" in kopf, (
+        "Der Kopf muss auf die Stelle zeigen, an der die Abweichung begruendet ist"
+    )
+
+    stempel = [
+        z.split(":", 1)[1].strip()
+        for z in koerper.splitlines() if "code_commit" in z
+    ]
+    assert len(stempel) == 7, f"sieben Messbloecke erwartet, {len(stempel)} gefunden"
+    assert set(stempel) == {ABZUG_WERKZEUGSTAND}, (
+        f"Der Kopf sagt {ABZUG_WERKZEUGSTAND}, die Messbloecke sagen {set(stempel)}"
+    )
+
+    dokument = ABZUG_DOKUMENT.read_text(encoding="utf-8")
+    assert ABZUG_WERKZEUGSTAND in dokument, (
+        "04-EREIGNISSTUDIE.md fuehrt die Datei als Beleg und muss denselben "
+        "Werkzeugstand nennen"
+    )
+    assert "Abschnitt 6" in kopf
+    assert "## 6." in dokument
+
+
+def test_die_versuchszahl_der_begruendung_stimmt_mit_dem_register() -> None:
+    """Abschnitt 6 behauptet eine Zahl -- hier wird sie nachgerechnet.
+
+    Die Begruendung, warum der Abzug nicht neu gemessen wird, ruht darauf, dass die
+    Aenderung an der Versuchszahl in die STRENGE Richtung geht: der eingefrorene Stand
+    zaehlte Registerzeilen zur Aufrufzeit (die erste Studie sah acht), der heutige
+    zaehlt ganze Kampagnen. Gegen den versionierten Abzug des Registers sind das
+    vierzehn -- fuer jede der sieben Studien dieselbe Zahl, und mehr Versuche heissen
+    eine kleinere DSR.
+
+    Von Hand: sieben eigene Zeilen, keine fremden, Kampagnengroesse sieben, also
+    ``0 + (7 // 7 + 1) * 7 = 14``.
+
+    Gelesen wird der versionierte Abzug ``07-AUSGABEN/trials.jsonl``, nicht das nicht
+    versionierte ``TRIALS.jsonl`` -- sonst haenge dieser Fall an einer Datei, die auf
+    einem frischen Klon fehlt.
+    """
+    assert kern.kampagne().groesse == 7
+    eigene = [
+        t for t in register.iter_trials(ABZUG_REGISTER)
+        if t.strategy_id.startswith(kern.KAMPAGNE_PRAEFIX)
+    ]
+    assert len(eigene) == 7, "sieben verbrauchte Versuche, so steht es im Dokument"
+    assert register.deflation_trials(kern.kampagne(), ABZUG_REGISTER) == 14
+
+    dokument = ABZUG_DOKUMENT.read_text(encoding="utf-8")
+    assert "gegen 14 Versuche deflationiert" in dokument

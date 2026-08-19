@@ -15,6 +15,41 @@ eine Bedingung, die nicht ausloesen kann; eine fehlende Waehrungsumrechnung; ein
 Einheitenverwechslung zwischen Punkten, Basispunkten und Prozent. Nach genau diesen
 drei ist hier gesucht -- und zwei davon sind gefunden worden; sie stehen unten unter
 "GEFUNDENE MAENGEL".
+
+ZWEITE REGEL, NACHGETRAGEN AM 2026-08-18: JEDE SCHWELLE WIRD AN IHRER KANTE GEPRUEFT
+------------------------------------------------------------------------------------
+Bandmitten sagen ueber eine Schwelle nichts aus. Ein Fall mit 55 %, 57,5 % und 65 %
+laesst offen, ob 56,0 % noch gruen ist -- und das ist die einzige Stelle, an der es
+eng ist: ``ABBRUCH.md`` haelt ausdruecklich fest, dass das gruene Kostentor KEINE
+Reserve hat und EURUSD bei ic_markets_eu mit 55,7 % nur 0,3 Punkte unter der Linie
+steht. Kippt die Linie um eine Stelle, kippt das Urteil des Vorhabens.
+
+Darum steht zu jeder Schwelle hier ein Paar: der Wert EXAKT auf der Schwelle und der
+kleinstmoegliche Schritt darueber (``SCHRITT`` bzw. ``K_SCHRITT``). Geprueft sind
+damit alle Vergleiche gegen ``M1_GRUEN_MAX``/``M1_GELB_MAX`` (in ``_ampel``,
+``einteilung``, ``gruene_je_broker``, ``_robustheit`` und ``_gegenrechnung``), alle
+drei Stellen der ``M2_MAX_JAHRESLAST``-Grenze (``m2_urteil`` und die beiden Marken in
+``_jahreslast``) sowie die Nullschranken in ``_zeile``, ``jahreslast``,
+``kreuzanteil`` und ``stop_fuer_schwelle``. Die Zaehlschwellen des Urteils selbst
+(``M1_MIN_BEWERTBAR``, ``M1_MIN_INSTRUMENTE_GRUEN``) stehen in
+``test_kostentor_ampel.py``.
+
+Der Grund fuer diese Breite ist immer derselbe: eine Schwelle steht in diesem Werkzeug
+mehrfach -- einmal rechnend und ein- bis zweimal druckend. Genau daraus ist die
+falsche ROT-Schwelle entstanden (``ABBRUCH.md``, Bedingung 1): eine Schwelle an zwei
+Stellen, geprueft an einer.
+
+WAS OFFEN BLEIBT, ausdruecklich benannt statt stillschweigend: die Gleichstandsregeln
+der Auswahlfunktionen. In ``bestes_p_je_instrument`` und ``_robustheit`` ist der
+Gleichstand folgenlos -- weitergereicht wird nur der Wert, und der ist bei Gleichstand
+derselbe. In ``main`` dagegen waehlt ``max(je_broker.items(), key=len)`` den Broker,
+der im Urteilssatz genannt wird ("ic_markets_eu allein traegt 3 davon"), und bei
+Gleichstand entscheidet allein die Schluesselreihenfolge in
+``config/broker_costs.json``. Das ist derselbe Mangel wie bei
+``erste_zeile_je_instrument`` (siehe "GEFUNDENER MANGEL 3"); er ist hier benannt und
+nicht festgeschrieben, weil der eingefrorene Beleg keinen Gleichstand enthaelt und ein
+Fall dafuer eine Lage erfinden muesste, die es nicht gibt. Die Ampel haengt nicht
+daran -- nur der Name im Satz.
 """
 
 from __future__ import annotations
@@ -34,6 +69,7 @@ from mt5_trading_ai.costs.volatility import (
     STATUS_NOT_MEASURED,
     AtrMeasurement,
 )
+from mt5_trading_ai.risk.stop_budget import margin_ceiling_bps
 from tools.kostentor import (
     HANDELSTAGE,
     M1_GELB_MAX,
@@ -43,8 +79,11 @@ from tools.kostentor import (
     Zeile,
     _ampel,
     _fx,
+    _gegenrechnung,
+    _jahreslast,
     _p_stern,
     _q,
+    _robustheit,
     _zeile,
     bestes_p_je_instrument,
     einteilung,
@@ -68,6 +107,18 @@ REPO = Path(__file__).resolve().parents[1]
 
 #: Umrechnungskurse mit glatten Zahlen -- NICHT die gemessenen.
 KURSE = {"EURUSD": 1.25, "GBPUSD": 1.5, "USDJPY": 150.0}
+
+#: Der kleinstmoegliche Schritt UEBER eine Schwelle, gemessen an p* selbst.
+#: ``Decimal`` rechnet mit 28 signifikanten Stellen; ``0,56 + 1E-28`` ist darin
+#: gerade noch exakt darstellbar. Kleiner geht nicht -- der naechste Schritt faellt
+#: in der Addition weg und ergaebe wieder genau die Schwelle. Der Wert ist also
+#: nicht "klein gewaehlt", sondern die Aufloesungsgrenze der Rechnung selbst.
+SCHRITT = Decimal("1E-28")
+
+#: Derselbe Schritt, aber auf K statt auf p*. Bei ATR50 = 20 bp laeuft K durch die
+#: Division ``K / 40``, und alles unter 1E-26 verschwindet darin: nachgerechnet
+#: ergibt ``K = 2,4 + 1E-27`` wieder exakt 0,56, ``K = 2,4 + 1E-26`` nicht mehr.
+K_SCHRITT = Decimal("1E-26")
 
 
 def kosten(
@@ -264,6 +315,32 @@ def test_jede_fehlende_eingabe_wird_ein_begruendetes_nein(
     assert z.grund is not None and erwartet in z.grund
 
 
+@pytest.mark.parametrize(
+    ("bau", "erwartet"),
+    [
+        ({"messung_eintrag": messung(price_median=0.0)}, "Referenzpreis"),
+        ({"messung_eintrag": messung(price_median=-1.0)}, "Referenzpreis"),
+        ({"kosten_eintrag": kosten(contract_size=Decimal("0"))}, "Nominal"),
+        ({"kosten_eintrag": kosten(contract_size=Decimal("-1"))}, "Nominal"),
+    ],
+)
+def test_eine_null_ist_keine_brauchbare_eingabe(
+    bau: dict[str, object], erwartet: str
+) -> None:
+    """Die Nullschranken an ihrer Kante: NULL selbst faellt schon durch.
+
+    ``preis <= 0`` und ``nominal <= 0`` sind einschliessend geschrieben, und das
+    muss so bleiben: ein Preis von genau 0 fuehrt zwei Zeilen weiter in eine
+    Division durch null, ein Nominal von genau 0 ebenso. Ein Fall, der nur
+    ``None`` einreicht, laesst offen, ob die Schranke bei 0 oder erst darunter
+    greift.
+    """
+    z = rechne(**bau)  # type: ignore[arg-type]
+    assert not z.rechenbar
+    assert z.k_bps is None
+    assert z.grund is not None and erwartet in z.grund
+
+
 # ===========================================================================
 # 2. Die Waehrungsumrechnung selbst
 # ===========================================================================
@@ -336,15 +413,20 @@ def test_p_stern_haengt_nur_am_verhaeltnis_von_k_und_s() -> None:
 @pytest.mark.parametrize(
     ("p", "ampel"),
     [
-        ("0.5599", "GRUEN"),
-        ("0.56", "GRUEN"),      # die Schwelle selbst zaehlt noch als gruen
-        ("0.5601", "GELB"),
-        ("0.62", "GELB"),       # und hier ebenso
-        ("0.6201", "ROT"),
+        (Decimal("0.5599"), "GRUEN"),
+        (M1_GRUEN_MAX, "GRUEN"),               # die Schwelle selbst zaehlt als gruen
+        (M1_GRUEN_MAX + SCHRITT, "GELB"),      # ein Hauch darueber: nicht mehr
+        (Decimal("0.5601"), "GELB"),
+        (M1_GELB_MAX, "GELB"),                 # und hier ebenso
+        (M1_GELB_MAX + SCHRITT, "ROT"),        # ein Hauch darueber: rot
+        (Decimal("0.6201"), "ROT"),
     ],
 )
-def test_ampelschwellen_sind_einschliessend(p: str, ampel: str) -> None:
-    assert _ampel(Decimal(p)) == ampel
+def test_ampelschwellen_sind_einschliessend(p: Decimal, ampel: str) -> None:
+    """Beide Kanten in beide Richtungen: exakt auf der Linie und der kleinste
+    Schritt darueber. ``0,5601`` allein liesse offen, ob die Linie bei 56,00 oder
+    bei 56,01 % liegt."""
+    assert _ampel(p) == ampel
 
 
 def test_ampelschwellen_stehen_wo_der_massstab_sie_setzt() -> None:
@@ -716,11 +798,18 @@ def test_stop_fuer_schwelle_weist_unerreichbare_schwellen_ab() -> None:
 # ===========================================================================
 
 
-def _lage(*paare: tuple[str, str, str]) -> list[Zeile]:
+def _lage(*paare: tuple[str, str, str | Decimal]) -> list[Zeile]:
     """(Instrument, Broker, K) -> Zeilen mit ATR50 = 20 bp.
 
-    Bei ATR50 = 20 bp gilt p* = 0,5 + K/40. Die 56-%-Schwelle liegt damit genau
-    bei K = 2,4 bp: K = 2,0 -> 55 % gruen, K = 3,0 -> 57,5 % gelb.
+    Bei ATR50 = 20 bp gilt p* = 0,5 + K/40. Daraus folgen die beiden Kanten, die
+    unten gebraucht werden -- und sie stehen hier, weil sie sonst als Zahl im Test
+    haengen und niemand mehr weiss, woher sie kommt:
+
+      K = 2,4 bp -> p* = 56,0 % exakt   (die gruene Schwelle)
+      K = 4,8 bp -> p* = 62,0 % exakt   (die gelbe Schwelle)
+
+    Zur Einordnung der Bandmitten: K = 2,0 -> 55 % gruen, K = 3,0 -> 57,5 % gelb,
+    K = 6,0 -> 65 % rot.
     """
     return [
         zeile(instrument=inst, broker=broker, k_bps=Decimal(k))
@@ -762,6 +851,28 @@ def test_gruene_je_broker_zaehlt_nicht_ueber_broker_hinweg() -> None:
     )
 
 
+def test_gruene_je_broker_zaehlt_die_schwelle_selbst_noch_mit() -> None:
+    """Die STRENGE M1-Lesart an ihrer Kante -- dieselbe Linie, zweite Stelle.
+
+    ``einteilung`` und ``gruene_je_broker`` schreiben die 56-%-Grenze getrennt
+    hin. Genau daraus ist in diesem Haus schon einmal ein Schaden entstanden:
+    eine Schwelle an zwei Stellen, geprueft an einer (die falsche ROT-Schwelle,
+    ``ABBRUCH.md`` Bedingung 1). Auf dieser Zahl steht der Urteilssatz
+    "ic_markets_eu allein traegt 3 davon" -- und damit M1 = GRUEN.
+
+    Von Hand bei ATR50 = 20 bp: p* = 0,5 + K/40, also K = 2,4 bp -> p* = 56,0 %
+    exakt. Der kleinstmoegliche Schritt darueber ist ``K_SCHRITT`` (siehe dort:
+    kleiner faellt in der Division weg).
+    """
+    assert _p_stern(Decimal("2.4"), Decimal("20")) == M1_GRUEN_MAX
+    # exakt auf der Linie: zaehlt fuer den Broker
+    assert gruene_je_broker(_lage(("EURUSD", "a", "2.4"))) == {"a": ["EURUSD"]}
+    # ein Hauch darueber: zaehlt nicht mehr, der Broker taucht gar nicht auf
+    darueber = _lage(("EURUSD", "a", Decimal("2.4") + K_SCHRITT))
+    assert _p_stern(Decimal("2.4") + K_SCHRITT, Decimal("20")) > M1_GRUEN_MAX
+    assert gruene_je_broker(darueber) == {}
+
+
 def test_einteilung_haelt_die_reihenfolge_des_universums() -> None:
     """Die Listen folgen §4, nicht der Reihenfolge der Kostendatei -- sonst
     haengt die Ausgabe an der Schluesselordnung einer JSON-Datei."""
@@ -773,9 +884,18 @@ def test_einteilung_haelt_die_reihenfolge_des_universums() -> None:
     assert lage.gruen == ["EURUSD", "DE40", "NVDA"]
 
 
-def test_einteilung_trennt_gruen_gelb_rot_an_den_schwellen() -> None:
-    """Von Hand bei ATR50 = 20 bp: K = 2,0 -> 55 % gruen; K = 3,0 -> 57,5 % gelb;
-    K = 6,0 -> 65 % rot."""
+def test_einteilung_trennt_gruen_gelb_rot_in_den_baendern() -> None:
+    """Drei Instrumente MITTEN in den drei Baendern -- nicht an den Schwellen.
+
+    Der Fall hiess bis zum 2026-08-18 ``..._an_den_schwellen`` und pruefte 55 %,
+    57,5 % und 65 %. Das ist keine Schwellenpruefung, und der Name behauptete
+    etwas, das der Fall nicht tut. Die Kanten selbst stehen jetzt in den beiden
+    Faellen darunter; dieser hier belegt weiterhin, dass die drei Toepfe
+    ueberhaupt getrennt werden.
+
+    Von Hand bei ATR50 = 20 bp: K = 2,0 -> 55 % gruen; K = 3,0 -> 57,5 % gelb;
+    K = 6,0 -> 65 % rot.
+    """
     lage = einteilung(
         bestes_p_je_instrument(
             _lage(("EURUSD", "a", "2.0"), ("GBPJPY", "a", "3.0"), ("DE40", "a", "6.0"))
@@ -784,6 +904,69 @@ def test_einteilung_trennt_gruen_gelb_rot_an_den_schwellen() -> None:
     assert lage.gruen == ["EURUSD"]
     assert lage.gelb == ["GBPJPY"]
     assert lage.rot == ["DE40"]
+
+
+def test_die_gruene_schwelle_ist_einschliessend() -> None:
+    """56,0 % zaehlt NOCH als gruen -- 56,0 % plus ein Hauch nicht mehr.
+
+    Hier haengt das Urteil des Vorhabens. ``ABBRUCH.md`` haelt fest, dass das
+    gruene Kostentor keine Reserve hat: EURUSD bei ic_markets_eu steht auf
+    55,7 %, also 0,3 Punkte unter der Linie. Wuerde die Linie ausschliessend
+    gelesen (``<`` statt ``<=``), verschoebe sich nichts an diesem Stand -- aber
+    drei Instrumente, die genau auf 56,0 % laegen, fielen von GRUEN nach GELB und
+    damit M1 von GRUEN nach GELB. Ohne diesen Fall bleibt das ungeprueft.
+
+    Geprueft werden beide Vergleiche, die sich diese Linie teilen: ``<=`` fuer
+    gruen und ``<`` fuer die Untergrenze von gelb. Sie sind getrennt
+    hingeschrieben und koennen auseinanderlaufen.
+    """
+    lage = einteilung({"EURUSD": M1_GRUEN_MAX, "GBPJPY": M1_GRUEN_MAX + SCHRITT})
+    # exakt auf der Linie: gruen -- und ausdruecklich NICHT gelb
+    assert lage.gruen == ["EURUSD"]
+    # der kleinstmoegliche Schritt darueber: gelb -- und ausdruecklich NICHT gruen
+    assert lage.gelb == ["GBPJPY"]
+    assert lage.rot == []
+
+
+def test_die_gelbe_schwelle_ist_einschliessend() -> None:
+    """62,0 % zaehlt NOCH als gelb -- 62,0 % plus ein Hauch ist rot.
+
+    Dieselbe Linie steht zweimal im Code: ``<= M1_GELB_MAX`` fuer gelb und
+    ``> M1_GELB_MAX`` fuer rot. Laufen die beiden auseinander, faellt ein
+    Instrument entweder in beide Toepfe oder in keinen -- und ``m1_ampel``
+    vergleicht ``len(rot)`` mit ``len(bewertbar)``, zaehlt also falsch.
+    """
+    lage = einteilung({"EURUSD": M1_GELB_MAX, "GBPJPY": M1_GELB_MAX + SCHRITT})
+    # exakt auf der Linie: gelb -- und ausdruecklich NICHT rot
+    assert lage.gelb == ["EURUSD"]
+    # der kleinstmoegliche Schritt darueber: rot -- und ausdruecklich NICHT gelb
+    assert lage.rot == ["GBPJPY"]
+    assert lage.gruen == []
+
+
+def test_die_drei_toepfe_teilen_die_bewertbaren_lueckenlos() -> None:
+    """Sechs Werte quer ueber beide Kanten: jedes Instrument in genau einem Topf.
+
+    Das ist die Zusicherung, auf der ``m1_ampel`` rechnet -- sie zaehlt ``gruen``
+    und ``rot`` gegeneinander und gegen ``bewertbar``. Ein Instrument in zwei
+    Toepfen oder in keinem verfaelscht beide Zaehlungen, ohne dass eine einzelne
+    Liste falsch aussieht.
+    """
+    bestes = {
+        "EURUSD": M1_GRUEN_MAX - SCHRITT,
+        "GBPJPY": M1_GRUEN_MAX,
+        "XAUUSD": M1_GRUEN_MAX + SCHRITT,
+        "DE40": M1_GELB_MAX,
+        "BTCUSD": M1_GELB_MAX + SCHRITT,
+        "NVDA": Decimal("0.99"),
+    }
+    lage = einteilung(bestes)
+    assert lage.gruen == ["EURUSD", "GBPJPY"]
+    assert lage.gelb == ["XAUUSD", "DE40"]
+    assert lage.rot == ["BTCUSD", "NVDA"]
+    # Lueckenlos und ueberschneidungsfrei, unabhaengig von den Listen oben.
+    assert len(lage.gruen) + len(lage.gelb) + len(lage.rot) == len(lage.bewertbar)
+    assert set(lage.gruen) | set(lage.gelb) | set(lage.rot) == set(lage.bewertbar)
 
 
 def test_ein_nicht_bewertbares_instrument_faellt_in_keinen_topf() -> None:
@@ -900,3 +1083,126 @@ def test_gbpjpy_kommission_ohne_umrechnung_waere_um_faktor_159_zu_klein() -> Non
     assert _q(z.kommission_bps, "0.0001") != Decimal("0.0033")
     # K = 0,3075 Spread + 0,5276 Kommission + 1,0 Slippage = 1,8351 bp
     assert z.k_bps is not None and _q(z.k_bps, "0.0001") == Decimal("1.8351")
+
+
+# ===========================================================================
+# 10. Die Schwellen, die nur im Druck stehen
+# ===========================================================================
+# Diese vier Vergleiche stecken in ``_robustheit`` und ``_gegenrechnung``, also in
+# Funktionen, die drucken statt zurueckzugeben. Der eingefrorene Beleg
+# (``tests/test_kostentor_ausgabe.py``) haelt sie fest -- aber nur fuer die
+# gemessenen Zahlen, und keine davon liegt auf einer Schwelle. Wer die Linien dort
+# verschiebt, faellt am Beleg nicht auf. Darum stehen sie hier mit gebauten Zeilen,
+# die exakt auf der Kante liegen.
+
+
+def _druck(capsys: pytest.CaptureFixture[str]) -> str:
+    return capsys.readouterr().out
+
+
+def test_die_robustheitstabelle_zaehlt_die_schwelle_selbst_als_gruen(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Sternchen und Zaehlzeile der Tabelle 2b an der 56-%-Kante.
+
+    Drei Instrumente liegen mit K = 2,4 bp exakt auf 56,0 %, eines einen Hauch
+    darueber. Beide drucken gerundet dieselben "56.0" -- der Unterschied steht
+    allein im Sternchen und in der Zaehlzeile. Genau deshalb ist die Stelle
+    pruefenswert: ein Blick auf die gedruckte Zahl entscheidet hier nichts.
+
+    Die Zaehlzeile traegt zusaetzlich das Wort GRUEN, und sie kippt an derselben
+    Linie: mit ``<`` statt ``<=`` faende Lesart A null gruene Instrumente statt
+    drei, und die Robustheitsaussage des Belegs waere eine andere.
+    """
+    auf_der_linie = _lage(
+        ("EURUSD", "a", "2.4"), ("XAUUSD", "a", "2.4"), ("DE40", "a", "2.4")
+    )
+    darueber = _lage(("GBPJPY", "a", Decimal("2.4") + K_SCHRITT))
+    _robustheit([*auf_der_linie, *darueber], ["EURUSD", "XAUUSD", "DE40"])
+    ausgabe = _druck(capsys)
+
+    # exakt auf der Linie: gedruckt "56.0" MIT Stern.
+    # Je Zeile trifft das drei Lesarten -- A, B (= A ohne gemessenen Spread) und
+    # D (= A ohne Swap). C, E und F tragen Aufschlaege und liegen darueber.
+    assert ausgabe.count("56.0*") == 3 * 3
+    # ein Hauch darueber: dieselbe gedruckte Zahl, aber OHNE Stern
+    assert "56.0 " in ausgabe
+    # und die Zaehlzeile, an der die Robustheitsaussage haengt
+    assert "A: 3 von 6 -> GRUEN" in ausgabe
+
+
+def test_die_kostenuntergrenze_darf_den_atr_genau_treffen(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """``Kostenuntergrenze <= ATR50`` -- gleich ist noch zulaessig.
+
+    Die Untergrenze der Risikoschicht ist ``10 x K`` (max_cost_drag = 0,05). Bei
+    K = 2,0 bp sind das genau 20 bp, also genau der gebaute ATR50. Diese Zeile
+    muss "ja" ergeben: die hauseigene Politik verlangt ``R >= C / (2 x drag)``,
+    und Gleichheit erfuellt ein ``>=``. Ein Hauch mehr K kippt sie auf "NEIN".
+
+    An dieser Spalte haengt der BEFUND-Absatz, mit dem der Beleg feststellt, dass
+    ein Stop von 1,0 x ATR fuer bestimmte Instrumente nach eigener Politik nicht
+    handelbar ist.
+    """
+    _gegenrechnung(
+        _lage(("EURUSD", "a", "2.0"), ("GBPJPY", "a", Decimal("2.0") + K_SCHRITT))
+    )
+    ausgabe = _druck(capsys)
+    spalte = {
+        teile[0]: teile[-1]
+        for teile in (z.split() for z in ausgabe.splitlines())
+        if teile and teile[-1] in ("ja", "NEIN")
+    }
+    assert spalte == {"EURUSD": "ja", "GBPJPY": "NEIN"}
+    assert "bei 1 von 2 gerechneten" in ausgabe
+
+
+def test_die_randbedingung_markiert_erst_ueber_der_margin_obergrenze(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """``Kostenuntergrenze > Margin-Obergrenze`` -- gleich ist noch handelbar.
+
+    Die Marke "nicht handelbar" ist eine Sperraussage, und sie steht in der
+    unschmeichelnden Richtung richtig: gefordert ist ``unten <= oben``, gemeldet
+    wird erst ``unten > oben``. Gleichheit ist der Grenzfall, und er darf nicht
+    markiert werden -- sonst meldete das Werkzeug eine Sperre, die die
+    Risikoschicht nicht zieht.
+
+    Die erste Zeile liegt bei Hebel 5 exakt auf der Obergrenze (K so gewaehlt,
+    dass ``10 x K == margin_ceiling_bps(5)``), die zweite mit K = 400 bp deutlich
+    darueber -- dort muessen alle drei Hebelzeilen die Marke tragen.
+    """
+    auf_der_linie = margin_ceiling_bps(5) / Decimal(10)
+    _gegenrechnung(_lage(("EURUSD", "a", auf_der_linie), ("GBPJPY", "a", "400")))
+    ausgabe = _druck(capsys)
+    # Hebel 1, 2 und 5 der zweiten Zeile -- und keine einzige der ersten.
+    assert ausgabe.count("<-- nicht handelbar") == 3
+
+
+def test_die_jahreslasttabelle_markiert_erst_ueber_der_fuenfzig_prozent_grenze(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """M2 reisst bei UEBER 50 %. Genau 50 % haelt -- auch im Druck.
+
+    Die Grenze steht dreimal im Werkzeug: einmal rechnend in ``m2_urteil`` und
+    zweimal druckend in ``_jahreslast`` -- als Marke "<-- M2 gerissen" in der
+    grossen Tabelle und als Wort REISST/haelt in der Urteilszeile. Nur die
+    rechnende Stelle war an der Kante gepinnt; die beiden druckenden hingen allein
+    am eingefrorenen Beleg, und der trifft die 50 % nirgends exakt. Eine Schwelle
+    an drei Stellen, geprueft an einer -- genau die Konstellation, aus der in
+    diesem Haus die falsche ROT-Schwelle entstanden ist.
+
+    Von Hand bei K = 1,0 bp: L = rt x 250 x h / 10 000. Von den neun gedruckten
+    Kombinationen liegt genau eine exakt auf 50 % (4 RT/Tag, Hebel 5) und genau
+    eine darueber (8 RT/Tag, Hebel 5). Die Urteilszeile darunter rechnet die
+    geplante Auslegung -- 4 RT/Tag, Hebel 5 --, liegt also selbst auf der Linie.
+    """
+    _jahreslast([zeile(instrument="EURUSD", k_bps=Decimal("1.0"))])
+    ausgabe = _druck(capsys)
+    # exakt auf der Linie: keine Marke. Markiert wird allein die Zeile darueber.
+    assert ausgabe.count("<-- M2 gerissen") == 1
+    assert "1 von 9 reissen die Grenze" in ausgabe
+    # und die Urteilszeile der geplanten Auslegung haelt
+    assert "haelt   EURUSD" in ausgabe
+    assert "REISST" not in ausgabe

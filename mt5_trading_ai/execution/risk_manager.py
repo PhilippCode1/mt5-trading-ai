@@ -137,6 +137,7 @@ from mt5_trading_ai.execution.risiko_zustand import (
     RisikoLage,
     Zustandsbefund,
     fenster_fortschreiben,
+    fenster_vereinen,
     standard_zustandsdatei,
 )
 from mt5_trading_ai.gates.evaluation import (
@@ -575,6 +576,24 @@ class RiskManager:
         aus einer abweichenden Uhr stammen, und ein Tagessprung nach vorn wuerde beim
         naechsten Rollen als „echter Tageswechsel" gelesen -- und loeste damit die
         Zaehlersperre auf, statt sie zu tragen.
+
+        **Das Equity-Fenster war die Luecke in genau diesem Filter.** Hier stand
+        einmal ``self._equity_obs = list(lage.equity_fenster)`` -- eine blanke
+        Zuweisung als einziges Feld ohne Einzelpruefung. Sie war unauffaellig, solange
+        ``lage`` aus dem vereinigten Stand kam (der ist je Korb der Hoechststand und
+        damit ohnehin nicht kleiner). Aber ``zuletzt_gesehen`` traegt auch den
+        **Defekt-Zweig**: findet ``_gebunden_sichern`` die Datei unlesbar vor und
+        traegt diesen Lauf den Halt nicht, dann steht dort die Lage aus
+        ``risiko_zustand._defekt`` -- Halt gesetzt, Fenster **leer**. Die Zuweisung
+        loeschte damit den Peak dieses Laufs. Gemessen: Peak 12000, Platte geht unter
+        dem laufenden Prozess kaputt, naechster Takt -> Fenster ``[]``, Peak 10000;
+        nach der vorgesehenen Freigabe (``release_drawdown``) war der Drawdown von
+        16,7 % rechnerisch 0 und der Folgetag wieder frei. Ein Not-Aus, den ein
+        Plattendefekt plus die vorgesehene Freigabegeste unsichtbar machte.
+        ``fenster_vereinen`` nimmt je Korb den Hoechststand: der Peak kann nur steigen,
+        der Drawdown nur groesser, der Halt nur wahrscheinlicher werden. Zu lange
+        gehaltene Koerbe schneidet der naechste ``fenster_fortschreiben`` weg -- und
+        auch dieser Schnitt irrt nach „eher Halt".
         """
         if lage.halt and not self._halt:
             self._halt = True
@@ -591,7 +610,7 @@ class RiskManager:
             vorher = self._last_trade_at.get(symbol)
             if vorher is None or ts > vorher:
                 self._last_trade_at[symbol] = ts
-        self._equity_obs = list(lage.equity_fenster)
+        self._equity_obs = fenster_vereinen(self._equity_obs, lage.equity_fenster)
         if (
             lage.equity_tag == self._equity_day
             and lage.tagesstart_equity is not None
@@ -682,17 +701,30 @@ class RiskManager:
     def record_close(self, instrument: str) -> None:
         """Eine Schliessung: offene Positionen dieses Instruments entfernen.
 
-        Die Schliessung wird der Zustandsdatei **ausdruecklich angesagt**. Seit sie
-        vereinigt statt ueberschrieben wird, verschwindet nichts mehr dadurch, dass es
-        in einem Speicherstand fehlt -- sonst holte der naechste Schreibvorgang die
-        geschlossene Position von der Platte zurueck, und der Positionsdeckel fuellte
-        sich unumkehrbar.
+        Die Schliessung wird der Zustandsdatei **ausdruecklich angesagt**, und zwar
+        mit der Eroeffnungszeit des Eintrags, den dieser Lauf wirklich gefuehrt hat.
+        Seit die Datei vereinigt statt ueberschrieben wird, verschwindet nichts mehr
+        dadurch, dass es in einem Speicherstand fehlt -- sonst holte der naechste
+        Schreibvorgang die geschlossene Position von der Platte zurueck, und der
+        Positionsdeckel fuellte sich unumkehrbar.
+
+        **Warum die Zeit mitgeht:** hier ging einmal nur das Symbol hinueber, und
+        damit nahm die Geste die Position eines zweiten Laufs mit -- der gemessene
+        Ablauf steht bei ``risiko_zustand.lage_vereinen``. Fuehrt dieser Lauf das
+        Symbol gar nicht, wird nichts vorgemerkt: dann gehoert ein Eintrag auf der
+        Platte jemand anderem, und ihn ungefragt zu loeschen waere die milde Richtung.
         """
+        geschlossen = [
+            pos.opened_at
+            for pos in self._open_positions
+            if pos.instrument == instrument
+        ]
         self._open_positions = [
             pos for pos in self._open_positions if pos.instrument != instrument
         ]
         if self._zustand is not None:
-            self._zustand.schliessung_vormerken(instrument)
+            for eroeffnet_am in geschlossen:
+                self._zustand.schliessung_vormerken(instrument, eroeffnet_am)
         self._sichern()
 
     @property

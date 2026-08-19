@@ -1,3 +1,17 @@
+==========================================================================================
+EINGEFRORENER ABZUG -- ERZEUGT MIT WERKZEUGSTAND a9ed7ad57dac
+==========================================================================================
+Dieser Kopf ist nachtraeglich angebracht worden; alles unterhalb der naechsten Linie ist
+unveraendert die Ausgabe des Laufs vom 17.08.2026. Der genannte Werkzeugstand steht als
+code_commit in jedem der sieben Bloecke und in jeder Zeile von 07-AUSGABEN/trials.jsonl.
+
+DAS HEUTIGE WERKZEUG ERZEUGT DIESE AUSGABE NICHT MEHR ZEILE FUER ZEILE. Geaendert haben
+sich die Zaehlweise der Versuche, gegen die deflationiert wird, und die Form zweier
+Zeilen -- nicht die Messwerte und nicht das Urteil. Was sich geaendert hat, warum es eine
+Verschaerfung und keine Drift ist und warum nicht neu gemessen wird, steht in
+ABSCHLUSS-3a/04-EREIGNISSTUDIE.md, Abschnitt 6.
+==========================================================================================
+
 Ereignisstudie ereignisstudie-v1 — 7 Studien, jede verbraucht einen Versuch
 ------------------------------------------------------------------------------------------
 K1 — London-Fixing 16:00 — EURUSD

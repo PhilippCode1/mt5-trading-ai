@@ -266,6 +266,34 @@ def test_unter_der_schwelle_ist_der_feed_brauchbar(
     assert "unter der Schwelle" in aus
 
 
+def test_genau_auf_der_schwelle_bleibt_der_feed_brauchbar(
+    tmp_path: Path, stub: type[StubTerminal], capsys: pytest.CaptureFixture[str]
+) -> None:
+    """DIE KANTE SELBST -- die beiden Faelle oben stehen deutlich daneben.
+
+    ``median > schwelle`` heisst: die Schwelle gehoert noch zum brauchbaren Bereich.
+    Gegen die Faelle mit 5,00 bp und 1,00 bp bei einer Schwelle von 2 bp laesst sich
+    das ``>`` folgenlos zu ``>=`` drehen; beide bleiben gruen, weil sie die Kante
+    ueberspringen.
+
+    Getroffen wird sie hier ohne Fliesskomma-Glueck: BEIDE Reihen stehen flach auf
+    demselben Kurs. Jede Rendite ist damit exakt ``(100 - 100) / 100 * 10 000 = 0,0``,
+    jede Abweichung exakt 0,0 und der Median exakt 0,0 -- ein Wert, der in jedem
+    Rechner bitgenau derselbe ist. Die Schwelle wird auf denselben Wert gesetzt: der
+    Feed liegt GENAU auf ihr und ist brauchbar.
+
+    Mutationsprobe: ``median > schwelle`` zu ``>=`` gedreht -- dann meldet dieser Fall
+    einen Feed als unbrauchbar, dessen Abweichung null ist.
+    """
+    punkte = [(BASIS + timedelta(days=i), 100.0) for i in range(40)]
+    _setze_reihe(tuple(_rate(BASIS + timedelta(days=i), 100.0) for i in range(40)))
+    assert gegenprobe(_csv(tmp_path, "EURUSD_D1.csv", punkte), schwelle=0.0) == 0
+    aus = capsys.readouterr().out
+    assert "Median 0.00 bp" in aus
+    assert "unter der Schwelle von 0.0 bp" in aus
+    assert "NICHT brauchbar" not in aus
+
+
 def test_ohne_gemeinsame_perioden_faellt_die_gegenprobe_rot(
     tmp_path: Path, stub: type[StubTerminal], capsys: pytest.CaptureFixture[str]
 ) -> None:

@@ -190,27 +190,73 @@ def test_ohne_halt_bleibt_die_kachel_gruen(tmp_path: Path) -> None:
     assert 'class="wert gut">0 %' in aus
 
 
+def _mit_preis(nummer: int, symbol: str) -> tuple[dict[str, Any], ...]:
+    """Ein Trade mit ZWEI gemessenen Preisen -- er gehoert in den Preis-Topf.
+
+    Gleiche Bauart wie ``GEWINNER``, nur mit eigener Kennung und eigenem Symbol, damit
+    mehrere davon nebeneinander stehen koennen.
+    """
+    return (
+        {"art": "eroeffnet", "symbol": symbol, "signal": "LONG",
+         "position_id": f"Q{nummer}", "volumen": "0.10",
+         "einstiegspreis": "1.10000", "seit": T0.isoformat(timespec="seconds")},
+        {"art": "geschlossen", "symbol": symbol, "grund": "signalwechsel",
+         "position_id": f"Q{nummer}", "volumen": "0.10", "war_kauf": True,
+         "einstiegspreis": "1.10000", "ausstiegspreis": "1.10110",
+         "ergebnis_geld": "11.00", "ergebnis_geld_waehrung": "EUR",
+         "ergebnis_geld_quelle": "zuletzt_beobachtet"},
+    )
+
+
+def _stummer(nummer: int, symbol: str) -> tuple[dict[str, Any], ...]:
+    """Ein Schluss OHNE jede Zahl -- weder Fuellpreis noch Buchwert.
+
+    Er bleibt UNBEKANNT und geht in keine einzige Kennzahl ein. Genau er sah in der
+    alten Fassung aus wie ein Stop-Out.
+    """
+    return (
+        {"art": "eroeffnet", "symbol": symbol, "signal": "SHORT",
+         "position_id": f"S{nummer}", "volumen": "0.1",
+         "seit": T0.isoformat(timespec="seconds")},
+        {"art": "geschlossen", "symbol": symbol, "grund": "lauf_beendet",
+         "position_id": f"S{nummer}", "volumen": "0.1", "war_kauf": False},
+    )
+
+
 def test_der_betriebsabschnitt_trennt_die_toepfe(tmp_path: Path) -> None:
     """Dieselbe Einteilung wie in ``betrieb_auswerten.py`` -- und sie steht daneben.
 
-    Von Hand: ein Trade mit Preis, ein Stop-Out nur mit Geld, ein Schluss ohne jede
-    Zahl. ``1 mit Preis · 1 nur Geld · 1 stumm``. Die alte Fassung zaehlte nur
-    ``t.vollstaendig`` und schrieb ``1 rechenbar`` -- der stumme Trade und der
-    Stop-Out sahen darin gleich aus, obwohl der eine beurteilbar ist und der andere
-    nicht.
+    Die alte Fassung zaehlte nur ``t.vollstaendig`` und schrieb ``1 rechenbar`` -- der
+    stumme Trade und der Stop-Out sahen darin gleich aus, obwohl der eine beurteilbar
+    ist und der andere nicht.
+
+    DIE DREI TOEPFE HABEN ABSICHTLICH VERSCHIEDENE MAECHTIGKEITEN. Der Fall stand
+    vorher auf je genau einem Trade je Topf und schrieb ``1 · 1 · 1``: eine
+    Vertauschung zweier Toepfe -- etwa ``{len(b.stumm)} stumm`` zu
+    ``{len(b.nur_geld)} stumm`` -- erzeugte damit eine ZEICHENGLEICHE Ausgabe und blieb
+    unbemerkt. Ausgerechnet der Fall, der die Trennung beweisen soll, konnte seine
+    eigenen Toepfe nicht auseinanderhalten.
+
+    Von Hand: zwei Trades mit beiden Preisen, ein Stop-Out mit Buchwert ohne Fuellpreis,
+    drei Schluesse ohne jede Zahl. Also ``2 mit Preis · 1 nur Geld · 3 stumm``, Summe
+    sechs geschlossene Trades. Die drei Zahlen sind paarweise verschieden; jede
+    Vertauschung faellt auf.
     """
-    stumm = (
-        {"art": "eroeffnet", "symbol": "DE40", "signal": "SHORT",
-         "position_id": "P3", "volumen": "0.1",
-         "seit": T0.isoformat(timespec="seconds")},
-        {"art": "geschlossen", "symbol": "DE40", "grund": "lauf_beendet",
-         "position_id": "P3", "volumen": "0.1", "war_kauf": False},
+    pfad = _schreib(
+        tmp_path,
+        *GEWINNER, *_mit_preis(1, "GBPUSD"),
+        *STOP_OUT,
+        *_stummer(1, "DE40"), *_stummer(2, "USDJPY"), *_stummer(3, "NAS100"),
+        _takt(1, "50000"),
     )
-    pfad = _schreib(tmp_path, *GEWINNER, *STOP_OUT, *stumm, _takt(1, "50000"))
     aus = OB._abschnitt_lauf(_stand(pfad))
-    assert "1 mit Preis" in aus
+    assert "2 mit Preis" in aus
     assert "1 nur Geld" in aus
-    assert "1 stumm" in aus
+    assert "3 stumm" in aus
+    # Die Kopfzahl der Kachel: die drei Toepfe teilen die geschlossenen Trades
+    # vollstaendig auf, 2 + 1 + 3 = 6. Ohne sie liesse sich ein Topf verdoppeln, ohne
+    # dass es auffiele.
+    assert '<span class="wert">6</span>' in aus
 
 
 # --- Woran Eroeffnungen scheiterten ---------------------------------------

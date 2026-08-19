@@ -553,6 +553,43 @@ def test_die_hoechsthaltedauer_schliesst_eine_alte_position(tmp_path: Path) -> N
     )["signal"] == "FLAT", "Der Schluss darf nicht aus einem Signalwechsel kommen"
 
 
+def test_die_hoechsthaltedauer_greift_genau_auf_der_grenze(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """DIE KANTE SELBST -- die beiden Faelle daneben stehen mit Absicht weit weg.
+
+    5 h gegen 4 h und 3 h gegen 4 h halten die Richtung fest, aber nicht die Grenze:
+    ``alter >= max_haltedauer`` laesst sich gegen sie folgenlos zu ``>`` drehen. Das
+    ist die schmeichelnde Richtung -- eine Position, die die Hoechsthaltedauer genau
+    erreicht hat, liefe dann weiter. An der Notbremse ist dieselbe Kante exakt
+    festgenagelt; hier fehlte sie.
+
+    Getroffen wird sie ueber eine ANGEHALTENE UHR: ``takt`` liest ``datetime.now(UTC)``
+    selbst, und zwischen diesem Aufruf und dem Bau der Attrappe laegen sonst
+    Mikrosekunden -- ``alter`` waere dann nie exakt vier Stunden. Mit der festen Uhr
+    ist ``alter`` eine ``timedelta``-Differenz aus ganzen Mikrosekunden und damit
+    bitgenau gleich der Grenze. Die Uhr haengt danach nicht mehr an der Rechneruhr;
+    ``monkeypatch`` nimmt sie am Ende des Falls zurueck.
+
+    Ohne Kerzen fuer XAUUSD ist das Signal FLAT -- was schliesst, ist allein das Alter.
+    """
+    fix = datetime(2026, 8, 17, 12, 0, tzinfo=UTC)
+
+    class _StehendeUhr(datetime):
+        @classmethod
+        def now(cls, tz: Any = None) -> datetime:  # noqa: ARG003 - Signatur der Basis
+            return fix
+
+    monkeypatch.setattr("tools.live_betrieb.datetime", _StehendeUhr)
+
+    venue = HaltVenue(positionen=(_position(seit=fix - timedelta(hours=4)),))
+    j, _, _ = _takt(tmp_path, venue, max_haltedauer=timedelta(hours=4))
+    zu = next(s for s in _saetze(j) if s["art"] == "geschlossen")
+    assert zu["grund"] == "haltedauer_4.0h", (
+        "Genau auf der Grenze wird geschlossen -- die Grenze gehoert INS Schliessen"
+    )
+
+
 def test_eine_junge_position_bleibt_offen(tmp_path: Path) -> None:
     """Die Gegenprobe zur Haltedauer -- sonst waere nur bewiesen, dass immer
     geschlossen wird.
