@@ -82,6 +82,31 @@ an der aus Journalzeilen Aussagen werden.
 
 ---
 
+## Stand des Vorhabens (2026-08-19) — die Frage ist beantwortet
+
+**Auf EURUSD H1 existiert kein Vorteil nach Kosten.** Drei Hypothesen, gegen eine vor dem
+Lauf eingefrorene Vorregistrierung, auf unabhaengig beschafften Daten (18.715 H1-Bars,
+2022-01-02 bis 2024-12-31, Dukascopy):
+
+| Hypothese | Trades | Netto | Trade-Sharpe | Deflated Sharpe |
+|---|---:|---:|---:|---:|
+| MA-Kreuzung 24/120 | 59 | −18,85 % | −0,792 | 0,0010 |
+| Mittelwertrueckkehr z48 | 123 | +3,22 % | 0,185 | 0,0150 |
+| Ausbruch Donchian 48 | 58 | −30,82 % | −1,202 | 0,0003 |
+
+Verlangt waren Out-of-Sample-Sharpe ≥ 1,0, Deflated Sharpe > 0,95 und ≥ 2.000 Trades.
+**Keine der drei nimmt das Tor, und keine scheitert knapp.** Zwei der drei reproduzieren
+den frueheren Befund aus [BERICHT_TEIL3.md](BERICHT_TEIL3.md) auf die Stelle genau — auf
+neu und unabhaengig beschafften Daten.
+
+Belege: [AUFTRAG/stufen/03-simulator/bericht.md](AUFTRAG/stufen/03-simulator/bericht.md),
+Vorregistrierung in [AUFTRAG/vorregistrierung/](AUFTRAG/vorregistrierung/), was jetzt zu
+entscheiden ist in [AUFTRAG/haltepunkte.md](AUFTRAG/haltepunkte.md) (H-004).
+
+Der Absatz darunter bleibt stehen und wird nicht ueberschrieben.
+
+---
+
 ## Stand des Vorhabens (2026-08-17)
 
 **Es gibt keine zugelassene Strategie, und es wird kein Echtgeld gehandelt.**
