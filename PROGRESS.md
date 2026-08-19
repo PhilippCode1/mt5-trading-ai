@@ -2156,3 +2156,65 @@ Signatur, abweichende Uhr -- und alle drei brauchen ein verbundenes Demokonto.
 MetaTrader5 ist installiert, eine Terminal-Konfiguration liegt nicht vor. Die Abnahme der
 Stufe ist erfuellt (sie verlangt "mindestens eine echte, aufgezeichnete Antwort" und drei
 Testfaelle); die Aufzaehlung der fuenf Situationen ist es nicht.
+
+---
+
+## ERLEDIGT — Stufe 6 des Dauerauftrags: Modellpfad schliessbar (auf Anweisung)
+
+**Zur Zulassung:** unveraendert wie bei Stufe 4/5 -- §1 schlieszt die Stufen 4 bis 10 fuer
+den Ausgang (B) aus, der Auftraggeber hat sie angewiesen (E-009). Diese Stufe misst keinen
+Vorteil.
+
+**Zuerst die Frage vor allem anderen: gibt es hier ueberhaupt einen Modellpfad?** Der
+Entscheidungspfad ist LLM-frei, und es waere bequem gewesen, daraus "nichts zu tun" zu
+machen. Gemessen ist es anders: der Modellpfad dieses Standes ist
+`gates/learning_phase.py` -- aus beobachteten Trades entstehen Parametersaetze. Das ist
+ein Modell im Sinne dieser Stufe, und alle sechs Forderungen greifen daran.
+
+**Gemessen (Beleg gegen einen eigenen Arbeitsbaum auf d3943f9):** Eine Forderung war
+erfuellt (Befoerderung standardmaessig aus), fuenf nicht:
+
+- Eine Rangliste entstand aus **einem einzigen Trade**; **acht Parameter** liessen sich
+  vorschlagen, ohne dass die Beobachtungszahl irgendwo einging.
+- Fuenf **vollstaendig deckungsgleiche** Trades -- dieselbe Marktbewegung fuenfmal --
+  zaehlten als fuenf unabhaengige Beobachtungen.
+- `data_checksum="egal"` ging durch. Eine Herkunft, die jeder Text sein darf,
+  authentifiziert nichts.
+- Kein Schemahash, kein Artefakt, keine Lesefunktion. Der Vorschlag landete als
+  Versuchszeile im Ledger, **ohne seinen Zustand**.
+
+**Geaendert:** `gates/herausforderer.py` -- ein Artefakt im Zustand `wartend`, das selbst
+sagt, worauf es wartet. Die Befoerderung ist **kein Programmschritt** (keine Funktion, die
+einen Zustand aendert -- am Syntaxbaum festgenagelt) und **kein Feld in einer Datei** (ein
+Artefakt, das sich zum Champion erklaert, wird verworfen). Zwei Rechenregeln: Mindestmenge
+`max(50, 30 x Parameterzahl)` effektive Beobachtungen, und Ueberlappungsgewichtung ueber
+die belegte Zeit je Instrument (5 deckungsgleiche Trades -> 1,00; 5 disjunkte -> 5,00).
+Schemahash ueber Feldnamen UND -typen -- eine Umdeutung von int nach float aendert die
+Bedeutung, ohne den Namen anzufassen. Je Datei ein Artefakt, damit ein Defekt nicht alle
+mitnimmt. `data_checksum` muss eine SHA-256-Hexpruefsumme sein.
+`tools/modelllauf.py` ist der Trainingslauf: er befoerdert nichts, optimiert nicht und
+schreibt nicht ins Versuchsregister (ein wartender Kandidat hat nichts gemessen).
+
+**Das wichtigste Einzelergebnis:** Auf den einzigen echten Betriebsdaten dieses Standes --
+der in Stufe 5 eingecheckten Aufzeichnung -- legt der Trainingslauf **nichts** an: 16
+geschlossene Trades gegen 50 noetige effektive Beobachtungen, und das fuer einen einzigen
+Parameter. Eine Schranke, die auf den eigenen Daten sofort greift, ist keine Zierde.
+
+**Abnahme:** 30 Eichfaelle, die drei namentlich verlangten Faelle je rot und gruen. Fuenf
+Mutationen gefahren (Ueberlappung aus, Mindestmenge auf 1, Schemahash zur Konstante,
+Herkunftspruefung wirkungslos, Zustandswechsel eingebaut) -- 3, 2, 1, 3 und 1 Faelle gehen
+rot. Torlauf: sieben Tore je Exit 0; pytest 1.478 bestanden, 0 fehlgeschlagen.
+
+**Eigener Fehler:** Der Abnahmefall zu B1 prueft zunaechst, dass das Wort "champion" nicht
+in der Ausgabe vorkommt -- es kommt vor, im Banner des Werkzeugs selbst. Jetzt wird der
+ausgegebene ZUSTAND geprueft. Derselbe Fehlertyp wie F-005: eine Zeichenkette gesucht, wo
+eine Sache gemeint war.
+
+**Ehrliche Grenze / offen:** Die Schranken sind **gesetzt, nicht hergeleitet** -- 30 je
+Parameter und 50 absolut sind eine Konvention gegen einen gemessenen Missstand, keine aus
+der Statistik abgeleitete Groesse; sie stehen als benannte Konstanten im Code, damit
+sichtbar bleibt, dass sie eine Wahl sind. Die Ueberlappungsrechnung ist **zeitlich, nicht
+oekonomisch**: korrelierte Instrumente sieht sie nicht. Und ein Nebenbefund bleibt offen:
+`evaluate_llm_gate` hat keinen Aufrufer im Ausfuehrungspfad -- V1 verlangte die Loeschung,
+aber das Tor haelt gerade den LLM-freien Zustand. Das ist eine Entscheidung des
+Auftraggebers, keine Aufraeumarbeit, und der Widerspruch steht ausdruecklich offen.

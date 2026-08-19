@@ -380,6 +380,22 @@ Bewerten ist nicht handeln (Phase 8.3).
 - `def select_one`
 - `def trade_rate`
 
+## `mt5_trading_ai/gates/herausforderer.py`
+
+Zeilen: 375
+
+Der Modellpfad, schliessbar gemacht: ein Herausforderer wartet, er regiert nicht.
+
+- `class HerausfordererFehler`
+- `class Herkunft`
+- `class Herausforderer`
+- `def schema_hash`
+- `def mindestbeobachtungen`
+- `def effektive_beobachtungen`
+- `def baue_herausforderer`
+- `class Ablagebefund`
+- `class HerausfordererAblage`
+
 ## `mt5_trading_ai/gates/learning_phase.py`
 
 Zeilen: 302

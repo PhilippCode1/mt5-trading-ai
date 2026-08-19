@@ -1,0 +1,40 @@
+MESSUNG NACH DER STUFE
+======================
+Schemahash (ueber Feldnamen UND -typen): 2c43cb0574b31181
+
+A6 -- Ueberlappung gewichtet:
+  5 deckungsgleiche Trades   -> 1.00 Beobachtungen
+  5 disjunkte Trades         -> 5.00 Beobachtungen
+  5+5 auf zwei Instrumenten  -> 2.00 Beobachtungen
+
+A4 -- Mindestmenge je Merkmalszahl:
+  1 Parameter -> 50 effektive Beobachtungen
+  2 Parameter -> 60 effektive Beobachtungen
+  4 Parameter -> 120 effektive Beobachtungen
+  8 Parameter -> 240 effektive Beobachtungen
+
+A5 -- Herkunft authentifiziert:
+  data_checksum=egal           -> ABGELEHNT (data_checksum ist keine SHA-256-Hexpru...)
+  data_checksum=aaaaaaaaaaaa   -> ABGELEHNT (data_checksum ist keine SHA-256-Hexpru...)
+  data_checksum=zzzzzzzzzzzz   -> ABGELEHNT (data_checksum ist keine SHA-256-Hexpru...)
+  data_checksum=aaaaaaaaaaaa   -> ANGENOMMEN
+
+A1/B1 -- der Zustand:
+  Zustand nach dem Bau       -> 'wartend'
+  Funktionen, die ihn aendern-> keine (am Syntaxbaum festgenagelt)
+
+B1/B3 -- Trainingslauf gegen die ECHTE eingecheckte Aufzeichnung:
+==========================================================================
+TRAININGSLAUF — er erzeugt einen Herausforderer, nie einen Champion
+==========================================================================
+Journal           : aufzeichnungen\demo-2026-08-17.jsonl
+Geschlossene Trades: 16
+Parametersatz     : {'max_haltedauer_stunden': 2.41}
+Noetig dafuer     : 50 effektive Beobachtungen
+
+KEIN HERAUSFORDERER — 1 Parameter verlangen 50 effektive Beobachtungen, vorhanden sind 16.0 (aus 16 Trades, der Rest ist Ueberlappung).
+
+Das ist der auftragsgemaesse Ausgang, wenn die Beobachtungsmenge den
+Parametersatz nicht traegt. Es entsteht nichts, was spaeter aussaehe,
+als haette es einmal gegolten.
+Exit=2

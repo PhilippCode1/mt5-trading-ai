@@ -1,0 +1,45 @@
+MESSUNG VOR DER STUFE
+=====================
+Gegen einen eigenen Arbeitsbaum auf Commit d3943f9 -- den Stand VOR dieser Stufe.
+
+==========================================================================
+A1 -- BEFOERDERUNG STANDARDMAESSIG AUS
+==========================================================================
+  Proposal.state ohne Angabe            -> 'candidate'
+  state='champion'                      -> ABGELEHNT: Ein Vorschlag ist immer ein Kandidat, nicht 'champio...
+
+==========================================================================
+A4 -- TRAININGSMINDESTMENGE IM VERHAELTNIS ZUR MERKMALSZAHL
+==========================================================================
+  Rangliste aus EINEM einzigen Trade     -> 1 Eintrag/Eintraege
+     mean_r=1.0 hit_rate=1.0 trades=1
+  min_trades-Vorgabe                     -> Standard ist 1
+  8 Parameter vorgeschlagen              -> 1 angenommen
+     ^^ ohne jeden Bezug zur Zahl der Beobachtungen
+
+==========================================================================
+A5 -- TRAININGSENDPUNKTE AUTHENTIFIZIEREN
+==========================================================================
+  leere Pruefsumme       -> TrialsLedgerError: data_checksum ist Pflicht (leere Herkunf
+  leerer Codestand       -> TrialsLedgerError: code_commit ist Pflicht (leere Herkunft)
+  Pruefsumme 'egal'      -> ANGENOMMEN <-- nicht authentifiziert
+
+==========================================================================
+A6 -- UEBERLAPPENDE ZIELWERTE GEWICHTEN
+==========================================================================
+  5 vollstaendig ueberlappende Trades    -> trades=5, hit_rate=1.0
+     ^^ gezaehlt wie 5 unabhaengige Beobachtungen; sie sind eine.
+
+==========================================================================
+B2 -- FALSCHER SCHEMAHASH FUEHRT ZUM VERWERFEN
+==========================================================================
+  Schema-/Hash-Begriffe im Modul         -> KEINE
+  Proposal-Felder                        -> ['strategy_id', 'base_version', 'parameters', 'rationale', 'state', 'version']
+
+==========================================================================
+B3 -- ARTEFAKT NACH NEUSTART NOCH DA
+==========================================================================
+  In TRIALS.jsonl geschrieben            -> 1 Zeile(n)
+  Felder des Eintrags                    -> ['code_commit', 'data_checksum', 'instruments', 'ledger_version', 'leverage', 'net_expectancy', 'notes', 'outcome', 'parameters', 'period_end', 'period_start', 'sharpe', 'strategy_id', 'trades', 'ts', 'version']
+  Traegt er den Zustand des Vorschlags?  -> False
+  Gibt es eine Lesefunktion fuer Vorschlaege? -> KEINE

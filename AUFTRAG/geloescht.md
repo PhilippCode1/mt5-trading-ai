@@ -126,7 +126,8 @@ Syntaxbaum hält fest, dass daneben keine ungeprüfte Lesestelle entsteht.
 Redigierwerkzeug gebaut und eine Aufzeichnung eingecheckt.
 
 **Entfernt wurde eine Datei außerhalb des Repositoriums:**
-`%LOCALAPPDATA%\mt5_trading_aiisiko\schwebende_auftraege.json`. Sie war ein Rückstand
+`%LOCALAPPDATA%\mt5_trading_ai
+isiko\schwebende_auftraege.json`. Sie war ein Rückstand
 meines eigenen Testlaufs — die erste Fassung der Akte griff ohne Umgebungsvariable auf den
 Standardpfad zu, und der Testlauf legte dort synthetische Kennungen ab, die anschließend
 87 fremde Testfälle sperrten. Inhalt vor dem Entfernen angesehen: ausschließlich
@@ -136,6 +137,22 @@ Kennungen aus `tests/` (`o-timeout`, `fl-…`), kein Betriebsdatum. Die Ursache 
 Zur Sperre V1: der neue Code hat Aufrufer im Ausführungspfad — `SchwebeAkte` wird von
 `Mt5Venue` gerufen (Vermerk beim Sendeversuch, Prüfung vor jeder Eröffnung, Auflösung),
 `tools/aufzeichnung_redigieren.py` ist ein Werkzeug mit eigenem Dauertor.
+
+---
+
+## In Stufe 6 gelöscht
+
+**Nichts.** Die Stufe hat ein Modul hinzugefügt (`gates/herausforderer.py`), ein Werkzeug
+(`tools/modelllauf.py`) und 30 Eichfälle.
+
+Zur Sperre V1: `gates/herausforderer.py` wird von `tools/modelllauf.py` gerufen, und das
+Werkzeug hat ein Dauertor, das es als Unterprozess fährt. Kein Modul ohne Aufrufer.
+
+**Ausdrücklich nicht gelöscht, obwohl V1 es verlangen würde:**
+`backtest/llm_compare.py::evaluate_llm_gate` hat keinen Aufrufer im Ausführungspfad, nur
+Tests. Begründung, warum das eine Entscheidung des Auftraggebers ist und keine
+Aufräumarbeit: [`stufen/06-modellpfad/bericht.md`](stufen/06-modellpfad/bericht.md) §8.
+Der Widerspruch zu V1 steht damit offen und ist nicht stillschweigend ausgesessen.
 
 ---
 

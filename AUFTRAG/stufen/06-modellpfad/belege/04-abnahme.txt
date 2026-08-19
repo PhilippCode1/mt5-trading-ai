@@ -1,0 +1,40 @@
+============================= test session starts =============================
+platform win32 -- Python 3.11.7, pytest-8.3.4, pluggy-1.6.0 -- C:\Users\Acer\AppData\Local\Programs\Python\Python311\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\Acer\mt5_trading_ai
+configfile: pyproject.toml
+plugins: anyio-4.8.0, base-url-2.1.0, cov-6.0.0, playwright-0.7.2
+collecting ... collected 30 items
+
+tests/test_stufe6_modellpfad.py::test_ein_herausforderer_entsteht_im_wartezustand PASSED [  3%]
+tests/test_stufe6_modellpfad.py::test_das_modul_kennt_keine_funktion_die_einen_zustand_aendert PASSED [  6%]
+tests/test_stufe6_modellpfad.py::test_ein_artefakt_das_sich_selbst_zum_champion_erklaert_wird_nicht_gelesen PASSED [ 10%]
+tests/test_stufe6_modellpfad.py::test_die_mindestmenge_waechst_mit_der_merkmalszahl PASSED [ 13%]
+tests/test_stufe6_modellpfad.py::test_acht_parameter_aus_drei_trades_werden_abgelehnt PASSED [ 16%]
+tests/test_stufe6_modellpfad.py::test_genug_beobachtungen_lassen_denselben_satz_durch PASSED [ 20%]
+tests/test_stufe6_modellpfad.py::test_ein_parametersatz_ohne_parameter_ist_keiner PASSED [ 23%]
+tests/test_stufe6_modellpfad.py::test_deckungsgleiche_trades_zaehlen_als_eine_beobachtung PASSED [ 26%]
+tests/test_stufe6_modellpfad.py::test_disjunkte_trades_zaehlen_einzeln PASSED [ 30%]
+tests/test_stufe6_modellpfad.py::test_zwei_instrumente_laufen_getrennt PASSED [ 33%]
+tests/test_stufe6_modellpfad.py::test_die_ueberlappung_haelt_die_schranke_scharf PASSED [ 36%]
+tests/test_stufe6_modellpfad.py::test_eine_spanne_die_vor_ihrem_beginn_endet_ist_ein_fehler PASSED [ 40%]
+tests/test_stufe6_modellpfad.py::test_eine_pruefsumme_die_jeder_text_sein_darf_authentifiziert_nichts[] PASSED [ 43%]
+tests/test_stufe6_modellpfad.py::test_eine_pruefsumme_die_jeder_text_sein_darf_authentifiziert_nichts[egal] PASSED [ 46%]
+tests/test_stufe6_modellpfad.py::test_eine_pruefsumme_die_jeder_text_sein_darf_authentifiziert_nichts[aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa] PASSED [ 50%]
+tests/test_stufe6_modellpfad.py::test_eine_pruefsumme_die_jeder_text_sein_darf_authentifiziert_nichts[aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa] PASSED [ 53%]
+tests/test_stufe6_modellpfad.py::test_eine_pruefsumme_die_jeder_text_sein_darf_authentifiziert_nichts[zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz] PASSED [ 56%]
+tests/test_stufe6_modellpfad.py::test_eine_echte_pruefsumme_geht_durch PASSED [ 60%]
+tests/test_stufe6_modellpfad.py::test_ohne_codestand_kein_herausforderer PASSED [ 63%]
+tests/test_stufe6_modellpfad.py::test_ohne_benannte_freigabeteilung_kein_herausforderer PASSED [ 66%]
+tests/test_stufe6_modellpfad.py::test_der_trainingslauf_benennt_den_gesaeuberten_vorwaertstest PASSED [ 70%]
+tests/test_stufe6_modellpfad.py::test_falscher_schemahash_fuehrt_zum_verwerfen PASSED [ 73%]
+tests/test_stufe6_modellpfad.py::test_der_richtige_schemahash_wird_gelesen PASSED [ 76%]
+tests/test_stufe6_modellpfad.py::test_der_schemahash_haengt_an_den_feldern_nicht_an_einer_konstante PASSED [ 80%]
+tests/test_stufe6_modellpfad.py::test_eine_unlesbare_datei_wird_verworfen_und_genannt PASSED [ 83%]
+tests/test_stufe6_modellpfad.py::test_ein_defektes_artefakt_nimmt_die_anderen_nicht_mit PASSED [ 86%]
+tests/test_stufe6_modellpfad.py::test_das_artefakt_ueberlebt_den_neustart PASSED [ 90%]
+tests/test_stufe6_modellpfad.py::test_eine_leere_ablage_meldet_leer_statt_zu_werfen PASSED [ 93%]
+tests/test_stufe6_modellpfad.py::test_der_trainingslauf_legt_einen_wartenden_kandidaten_an PASSED [ 96%]
+tests/test_stufe6_modellpfad.py::test_der_trainingslauf_legt_bei_zu_wenig_beobachtungen_nichts_an PASSED [100%]
+
+============================= 30 passed in 0.58s ==============================

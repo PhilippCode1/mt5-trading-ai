@@ -1,0 +1,38 @@
+MUTATIONSPROBE ZU STUFE 6
+=========================
+Kopie vor dem Eingriff; zurueckgestellt AUS DER KOPIE (Lehre aus F-010).
+
+M1: die Ueberlappungsgewichtung ausschalten (jede Spanne zaehlt einzeln)
+=========================== short test summary info ===========================
+FAILED tests/test_stufe6_modellpfad.py::test_deckungsgleiche_trades_zaehlen_als_eine_beobachtung
+FAILED tests/test_stufe6_modellpfad.py::test_zwei_instrumente_laufen_getrennt
+FAILED tests/test_stufe6_modellpfad.py::test_die_ueberlappung_haelt_die_schranke_scharf
+3 failed, 27 passed in 0.85s
+
+M2: die Mindestmenge auf 1 setzen
+tests\test_stufe6_modellpfad.py:389: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_stufe6_modellpfad.py::test_die_ueberlappung_haelt_die_schranke_scharf
+FAILED tests/test_stufe6_modellpfad.py::test_der_trainingslauf_legt_bei_zu_wenig_beobachtungen_nichts_an
+2 failed, 28 passed in 0.79s
+
+M3: den Schemahash zu einer Konstante machen
+tests\test_stufe6_modellpfad.py:277: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_stufe6_modellpfad.py::test_der_schemahash_haengt_an_den_feldern_nicht_an_einer_konstante
+1 failed, 29 passed in 0.80s
+
+M4: die Herkunftspruefung wirkungslos machen
+FAILED tests/test_stufe6_modellpfad.py::test_eine_pruefsumme_die_jeder_text_sein_darf_authentifiziert_nichts[]
+FAILED tests/test_stufe6_modellpfad.py::test_eine_pruefsumme_die_jeder_text_sein_darf_authentifiziert_nichts[aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]
+FAILED tests/test_stufe6_modellpfad.py::test_eine_pruefsumme_die_jeder_text_sein_darf_authentifiziert_nichts[aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]
+3 failed, 27 passed in 0.79s
+
+M5: einen Zustandswechsel einbauen (Befoerderung als Programmschritt)
+tests\test_stufe6_modellpfad.py:116: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_stufe6_modellpfad.py::test_das_modul_kennt_keine_funktion_die_einen_zustand_aendert
+1 failed, 29 passed in 0.87s
+
+WIEDERHERGESTELLT. Pruefsummen (muessen gleich sein):
+fe931c98e66e53a067731287b114e500 fe931c98e66e53a067731287b114e500 
