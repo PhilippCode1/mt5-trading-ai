@@ -1,0 +1,24 @@
+==============================================================================
+MUTATIONSTOR -- faerbt eine Aenderung am Geldpfad den Lauf rot?
+==============================================================================
+Sonden: 16   Mindest-Toetungsrate: 1.0
+
+   1/16  reduce-only-sperre         getoetet
+   2/16  kontopruefung              getoetet
+   3/16  schwebender-auftrag        getoetet
+   4/16  schwebeakte-fluechtig      getoetet
+   5/16  aufloesung-ohne-befund     getoetet
+   6/16  ueberlappung               getoetet
+   7/16  mindestmenge               getoetet
+   8/16  schemahash                 getoetet
+   9/16  erkundung-positivliste     getoetet
+  10/16  erkundung-echtgeld         getoetet
+  11/16  gewichtung                 getoetet
+  12/16  kostenpraemisse            getoetet
+  13/16  stop-kostenboden           getoetet
+  14/16  margen-obergrenze          getoetet
+  15/16  geschlossene-kerze         getoetet
+  16/16  journal-zeitstempel        getoetet
+
+Toetungsrate: 1.000 (16/16)
+ok — jede Sonde wurde gefangen.

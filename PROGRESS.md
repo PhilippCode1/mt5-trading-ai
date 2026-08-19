@@ -2276,3 +2276,57 @@ vorhandene Betriebslauf vor dieser Stufe lief. Die Verdrahtung in `tools/live_be
 -- also das tatsaechliche Fahren eines erkundeten Signals -- verlangt einen Lauf gegen ein
 Demokonto und ist nicht Teil dieser Stufe. Die Erkundungsrate (5 %) ist gesetzt, nicht
 hergeleitet.
+
+---
+
+## ERLEDIGT — Stufe 8 des Dauerauftrags: Testwirkung statt Testdeckung (auf Anweisung)
+
+**Zur Zulassung:** unveraendert wie bei Stufe 4 bis 7 -- §1 schlieszt die Stufen 4 bis 10
+fuer den Ausgang (B) aus, der Auftraggeber hat sie angewiesen (E-009). Diese Stufe misst
+keinen Vorteil.
+
+**Gemessen (gegen einen eigenen Arbeitsbaum auf 610e4eb):** eine Forderung war offen
+geprueft, drei waren Luecken.
+
+- **Kein Mutationstor.** Keine Abhaengigkeit installiert, kein Werkzeug im Repo. Die
+  Proben der Stufen 4 bis 7 liefen VON HAND, je einmal. Eine Probe, die nur laeuft, wenn
+  ich daran denke, ist keine Sperre.
+- **`gates/learning_phase.py` war von KEINEM der 24 Diensteinstiegspunkte aus
+  erreichbar** -- ein Modul mit vier ausformulierten Grenzen, gruenen Eigentests und null
+  Aufrufern im Ausfuehrungspfad.
+- **Keine Zweigdeckung konfiguriert.** Gemessen: Paket 92,8 % Zeilen gegen 86,9 % Zweige;
+  schwaechste Datei `execution/schwebende_auftraege.py` mit 79,9 % Zeilen und **67,9 %
+  Zweigen** -- meine eigene aus Stufe 5, und was fehlte, waren genau die fail-closed-
+  Zweige, wegen derer das Modul existiert.
+
+**Geaendert:** `tools/mutationstor.py` mit **16 handverlesenen Sonden** -- jede ein echter
+Rueckfall aus den Befunden der Stufen 2 bis 7, keine erzeugt (ein Zufallsmutator misst
+Belangloses). Schwelle **1,0**, blockierend. `tools/zweigdeckung.py`: Zweige statt Zeilen,
+**je Datei**, Schwelle 80 %, gesetzt VOR dem Aufraeumen der schwaechsten Datei.
+`gates/learning_phase.py` in den Trainingslauf verdrahtet -- er ranglistet, was er gesehen
+hat, bevor er vorschlaegt. Elf neue Faelle fuer die fail-closed-Zweige der Schwebeakte.
+
+**Ergebnis:** Toetungsrate **1,000 (16/16)**; **21 von 21** Dateien des
+Sicherheitsverzeichnisses vom Einstiegspunkt erreichbar; jede Geldpfad-Datei ueber 80 %
+Zweigdeckung, die schwaechste von 67,9 % auf **92,9 %**; Paket 93,1 % Zeilen / 87,3 %
+Zweige.
+
+**Eigener Fehler, beinahe still geblieben:** beim ersten Lauf fanden **vier von sechzehn**
+Sonden ihren Anker nicht -- das Repo laeuft mit `core.autocrlf=true`, die Dateien liegen
+als CRLF, der Katalog ist in LF geschrieben. Haette ich das Werkzeug so gebaut, dass eine
+nicht anwendbare Mutation als "getoetet" zaehlt (die naheliegende Abkuerzung, denn der
+Testlauf ist ja gruen), haette es 1,000 gemeldet und vier Sonden haetten nichts geprueft.
+Es meldet stattdessen ANKER FEHLT; die Rate fiel auf 0,750. Ein Dauertor haelt das jetzt
+fest.
+
+**Abnahme:** 34 Eichfaelle, darunter drei, die die Pruefungen selbst pruefen (Sonde ohne
+Anker, Sonde auf dem Pruefling selbst, Katalog ohne die kritischen Dateien). Negativtests
+fuer alle sieben Pruefer -- ein Pruefer, der nur gruen gefahren wird, belegt nicht, dass
+er je ablehnt. **Neun** Tore je Exit 0; pytest 1.550 bestanden, 0 fehlgeschlagen.
+
+**Ehrliche Grenze / offen:** 16 Sonden sind **keine** Mutationsabdeckung -- sie messen,
+ob die Suite gegen die bekannten Rueckfaelle wirkt, nicht gegen alle denkbaren. Die
+Schwellen (1,0 und 80 %) sind gesetzt, nicht hergeleitet. Die Zweigdeckung sagt nichts
+ueber die Guete einer Zusicherung; genau deshalb steht das Mutationstor daneben.
+`evaluate_llm_gate` bleibt ohne Aufrufer -- es liegt in `backtest/` und damit auszerhalb
+der drei geprueften Teilpakete; das gehoert nach Stufe 9.

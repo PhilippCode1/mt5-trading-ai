@@ -1,0 +1,21 @@
+==========================================================================
+ZWEIGDECKUNG JE DATEI DES GELDPFADS
+==========================================================================
+Schwelle je Datei: 80%
+
+Datei                                      Zeilen   Zweige
+venue/mt5.py                                87.6%    80.0%
+venue/protocol.py                          100.0%   100.0%
+execution/risk_manager.py                   99.0%    97.3%
+execution/schwebende_auftraege.py           93.3%    92.9%
+execution/cost_gate.py                      95.0%    87.5%
+risk/sizing.py                              95.3%    90.6%
+risk/stop_budget.py                         97.5%    94.4%
+risk/limits.py                             100.0%   100.0%
+risk/leverage.py                            90.5%    83.3%
+costs/model.py                              92.6%    83.3%
+gates/erkundung.py                          97.4%    93.8%
+gates/herausforderer.py                     91.9%    85.7%
+
+Paket gesamt: Zeilen 93.1 %, Zweige 87.3 %
+ok — jede Datei des Geldpfads ueber der Schwelle.

@@ -173,6 +173,21 @@ Zur Sperre V1: `gates/erkundung.py` wird von `tools/auswertung.py` und
 
 ---
 
+## In Stufe 8 gelöscht
+
+**Nichts.** Hinzugekommen: `tools/mutationstor.py` (16 Sonden, Tötungsrate 1,0 als
+blockierende Schwelle), `tools/zweigdeckung.py` (80 % je Datei), 34 Eichfälle und die
+Zweigdeckungs-Konfiguration in `pyproject.toml`.
+
+**Ein verwaistes Modul wurde verdrahtet statt gelöscht:** `gates/learning_phase.py` war
+von keinem Diensteinstiegspunkt aus erreichbar. V1 hätte die Löschung erlaubt; der
+Trainingslauf ranglistet jetzt über `rank_strategies`, was er gesehen hat, bevor er
+vorschlägt. Das ist ein substantieller Aufruf, kein Feigenblatt — die Begründung und die
+Abgrenzung zu `evaluate_llm_gate` stehen in
+[`stufen/08-testwirkung/bericht.md`](stufen/08-testwirkung/bericht.md) §2.3.
+
+---
+
 ## Was nach dem Ergebnistor **nicht** gelöscht wurde, obwohl es naheläge
 
 Befund (B) heißt nach §1: *„Es wird zurückgebaut oder aufgegeben."* Beides ist eine

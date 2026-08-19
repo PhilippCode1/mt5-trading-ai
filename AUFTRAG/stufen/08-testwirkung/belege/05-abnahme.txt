@@ -1,0 +1,44 @@
+============================= test session starts =============================
+platform win32 -- Python 3.11.7, pytest-8.3.4, pluggy-1.6.0 -- C:\Users\Acer\AppData\Local\Programs\Python\Python311\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\Acer\mt5_trading_ai
+configfile: pyproject.toml
+plugins: anyio-4.8.0, base-url-2.1.0, cov-6.0.0, playwright-0.7.2
+collecting ... collected 34 items
+
+tests/test_stufe8_testwirkung.py::test_das_mutationstor_gibt_es_und_es_blockiert PASSED [  2%]
+tests/test_stufe8_testwirkung.py::test_jede_sonde_findet_ihren_anker_im_heutigen_code PASSED [  5%]
+tests/test_stufe8_testwirkung.py::test_keine_sonde_faellt_mit_ihrer_eigenen_datei_zusammen PASSED [  8%]
+tests/test_stufe8_testwirkung.py::test_der_katalog_deckt_die_kritischen_dateien_des_geldpfads PASSED [ 11%]
+tests/test_stufe8_testwirkung.py::test_das_mutationstor_laeuft_und_toetet_jede_sonde PASSED [ 14%]
+tests/test_stufe8_testwirkung.py::test_es_gibt_ueberhaupt_diensteinstiegspunkte PASSED [ 17%]
+tests/test_stufe8_testwirkung.py::test_jede_datei_des_sicherheitsverzeichnisses_ist_vom_einstiegspunkt_erreichbar PASSED [ 20%]
+tests/test_stufe8_testwirkung.py::test_die_erreichbarkeitspruefung_faengt_ein_verwaistes_modul PASSED [ 23%]
+tests/test_stufe8_testwirkung.py::test_jeder_pruefer_existiert[check_docs_claims.py] PASSED [ 26%]
+tests/test_stufe8_testwirkung.py::test_jeder_pruefer_existiert[check_doc_numbers.py] PASSED [ 29%]
+tests/test_stufe8_testwirkung.py::test_jeder_pruefer_existiert[gen_docs.py] PASSED [ 32%]
+tests/test_stufe8_testwirkung.py::test_jeder_pruefer_existiert[kopien_abgleichen.py] PASSED [ 35%]
+tests/test_stufe8_testwirkung.py::test_jeder_pruefer_existiert[aufzeichnung_redigieren.py] PASSED [ 38%]
+tests/test_stufe8_testwirkung.py::test_jeder_pruefer_existiert[mutationstor.py] PASSED [ 41%]
+tests/test_stufe8_testwirkung.py::test_jeder_pruefer_existiert[zweigdeckung.py] PASSED [ 44%]
+tests/test_stufe8_testwirkung.py::test_jeder_pruefer_hat_einen_negativtest[check_docs_claims.py] PASSED [ 47%]
+tests/test_stufe8_testwirkung.py::test_jeder_pruefer_hat_einen_negativtest[check_doc_numbers.py] PASSED [ 50%]
+tests/test_stufe8_testwirkung.py::test_jeder_pruefer_hat_einen_negativtest[gen_docs.py] PASSED [ 52%]
+tests/test_stufe8_testwirkung.py::test_jeder_pruefer_hat_einen_negativtest[kopien_abgleichen.py] PASSED [ 55%]
+tests/test_stufe8_testwirkung.py::test_jeder_pruefer_hat_einen_negativtest[aufzeichnung_redigieren.py] PASSED [ 58%]
+tests/test_stufe8_testwirkung.py::test_jeder_pruefer_hat_einen_negativtest[mutationstor.py] PASSED [ 61%]
+tests/test_stufe8_testwirkung.py::test_jeder_pruefer_hat_einen_negativtest[zweigdeckung.py] PASSED [ 64%]
+tests/test_stufe8_testwirkung.py::test_das_zweigdeckungstor_gibt_es_und_es_hat_eine_schwelle PASSED [ 67%]
+tests/test_stufe8_testwirkung.py::test_die_zweigdeckung_ist_konfiguriert PASSED [ 70%]
+tests/test_stufe8_testwirkung.py::test_eine_leere_akte_meldet_nichts_schwebt PASSED [ 73%]
+tests/test_stufe8_testwirkung.py::test_eine_akte_die_kein_objekt_ist_sperrt PASSED [ 76%]
+tests/test_stufe8_testwirkung.py::test_eine_akte_ohne_eintragsliste_sperrt PASSED [ 79%]
+tests/test_stufe8_testwirkung.py::test_ein_eintrag_der_kein_objekt_ist_sperrt PASSED [ 82%]
+tests/test_stufe8_testwirkung.py::test_ein_eintrag_ohne_kennung_sperrt PASSED [ 85%]
+tests/test_stufe8_testwirkung.py::test_ein_unvollstaendiger_eintrag_zaehlt_trotzdem PASSED [ 88%]
+tests/test_stufe8_testwirkung.py::test_ein_eintrag_mit_unlesbarer_zeit_zaehlt_trotzdem PASSED [ 91%]
+tests/test_stufe8_testwirkung.py::test_das_aufloesen_einer_unbekannten_kennung_meldet_false PASSED [ 94%]
+tests/test_stufe8_testwirkung.py::test_ein_zweiter_vermerk_derselben_kennung_aendert_nichts PASSED [ 97%]
+tests/test_stufe8_testwirkung.py::test_eine_akte_in_einem_unlesbaren_pfad_sperrt PASSED [100%]
+
+============================= 34 passed in 25.87s =============================

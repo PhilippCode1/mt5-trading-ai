@@ -50,6 +50,10 @@ from mt5_trading_ai.gates.herausforderer import (  # noqa: E402
     baue_herausforderer,
     mindestbeobachtungen,
 )
+from mt5_trading_ai.gates.learning_phase import (  # noqa: E402
+    TradeRow,
+    rank_strategies,
+)
 
 #: Der Nachweis, auf den ein Herausforderer wartet. Kein freier Text: er benennt das
 #: Verfahren, unter dem allein er Champion werden kann.
@@ -162,6 +166,32 @@ def main() -> int:
     print(f"Geschlossene Trades: {len(spannen)}")
     print(f"Erkundende Beobachtungen: {anteil * 100:.2f} % "
           f"(von {sum(1 for z in zeilen if z.ergebnis_bp is not None)} mit Ergebnis)")
+    # Vor dem Vorschlag die Rangliste dessen, was tatsaechlich gefahren wurde.
+    # ``gates/learning_phase.py`` traegt die vier Grenzen der Lernphase (kein
+    # automatisches Freischalten, kein selbstmodifizierender Code, kein Vorschlag ohne
+    # Registereintrag, kein Training auf Trades, die nie stattfanden) -- und es hatte
+    # bis Stufe 8 **keinen Aufrufer im Ausfuehrungspfad**. Ein Modul mit gruenen
+    # Eigentests belegt nicht, dass es je laeuft; genau das misst diese Stufe.
+    trades = [
+        TradeRow(
+            strategy_id=args.strategy_id,
+            version=args.base_version,
+            instrument=symbol,
+            asset_class="fx_major",
+            opened_at=von,
+            closed_at=bis,
+            # Ohne Ergebnisspalte im Journal traegt die Zeile keinen Ertrag. Die
+            # Rangliste zaehlt sie dann als 0,0 R -- und weil ``rank_strategies``
+            # ausschliesslich geschlossene Zeilen rechnet, steht die Zahl fuer die
+            # Handelsfrequenz, nicht fuer einen Ertrag. Das steht so in der Ausgabe.
+            net_pnl_r=0.0,
+            execution_mode="paper",
+        )
+        for symbol, von, bis in spannen
+    ]
+    rangliste = rank_strategies(trades)
+    print(f"Rangliste (Lernphase): {len(rangliste)} Eintrag/Eintraege, "
+          f"{sum(r.trades for r in rangliste)} geschlossene Zeilen gezaehlt")
     print(f"Parametersatz     : {parameter}")
     noetig = mindestbeobachtungen(len(parameter))
     print(f"Noetig dafuer     : {noetig} effektive Beobachtungen")

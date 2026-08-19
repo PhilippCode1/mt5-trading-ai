@@ -1,0 +1,32 @@
+=== ruff ===
+All checks passed!
+
+=== mypy --strict ===
+Success: no issues found in 77 source files
+
+=== check_docs_claims ===
+ok - 30/32 gezaehlte Markdown-Dateien (+19 in AUFTRAG/, auf Behauptungen geprueft, nicht gezaehlt), keine Zusicherung ohne Beleg
+
+=== check_doc_numbers ===
+ok - Code: 41 Module, 1336 Testfunktionen, 16413 Quellzeilen; Doku widerspruchsfrei.
+
+=== gen_docs --check ===
+ok � MODULES.md ist aktuell (590 Zeilen).
+
+=== kopien_abgleichen ===
+ok — 1 Kopie(n) wortgleich mit ihren Originalen.
+
+=== aufzeichnung_redigieren ===
+ok — 4453 redigierte Saetze, wortgleich mit den Journalen.
+
+=== mutationstor ===
+Toetungsrate: 1.000 (16/16)
+ok — jede Sonde wurde gefangen.
+
+=== zweigdeckung ===
+Paket gesamt: Zeilen 93.1 %, Zweige 87.3 %
+ok — jede Datei des Geldpfads ueber der Schwelle.
+
+=== pytest ===
+......................................                                   [100%]
+1550 passed in 82.63s (0:01:22)

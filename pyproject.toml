@@ -9,6 +9,10 @@ readme = "README.md"
 pythonpath = ["."]
 testpaths = ["tests"]
 filterwarnings = ["ignore::DeprecationWarning"]
+# ``slow`` markiert die Faelle, die einen Unterprozess ueber die ganze Suite fahren
+# (das Mutationstor). Sie laufen mit -- die Marke ist dafuer da, sie bei Bedarf
+# gezielt abzuwaehlen, nicht dafuer, sie stillschweigend auszulassen.
+markers = ["slow: faehrt einen Unterprozess ueber die Suite (Mutationstor)"]
 
 # Ruff-Konfiguration bewusst identisch zum Altbestand (line-length 88, gleiche
 # Regelauswahl, gleiche Test-Ausnahmen), damit "gruen im Alt" und "gruen im Neu"
@@ -34,3 +38,17 @@ strict = true
 [tool.black]
 line-length = 88
 target-version = ["py311"]
+
+
+# Zweigdeckung, nicht Zeilendeckung (Stufe 8 des Dauerauftrags). Eine Zeilendeckung von
+# 95 % kann heissen, dass jede if-Bedingung genau einmal gelaufen ist -- immer in
+# dieselbe Richtung. Der Sinn einer Sperre liegt aber im ablehnenden Zweig.
+[tool.coverage.run]
+branch = true
+source = ["mt5_trading_ai"]
+
+[tool.coverage.report]
+# Kein globales fail_under: das Tor urteilt JE DATEI (tools/zweigdeckung.py). Eine
+# Gesamtzahl von 87 % kann eine Datei mit 99 % und eine mit 40 % bedeuten, und die mit
+# 40 % ist die interessante.
+show_missing = true

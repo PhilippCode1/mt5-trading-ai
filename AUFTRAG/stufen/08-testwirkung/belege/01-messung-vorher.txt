@@ -1,0 +1,43 @@
+MESSUNG VOR DER STUFE
+=====================
+Gegen einen eigenen Arbeitsbaum auf Commit 610e4eb -- den Stand VOR dieser Stufe.
+
+==========================================================================
+A1 -- MUTATIONSTOR MIT TOETUNGSRATE ALS BLOCKIERENDER SCHWELLE
+==========================================================================
+  Werkzeuge in tools/: 25
+  davon Mutationstor : KEINES
+  mutmut       installiert: False
+  cosmic_ray   installiert: False
+  mutpy        installiert: False
+  -> Die Mutationsproben dieser Sitzung liefen VON HAND, je Stufe einmal.
+     Es gibt kein Tor, das sie bei jedem Lauf erzwingt.
+
+==========================================================================
+A2 -- IMPORTPFAD VOM DIENSTEINSTIEGSPUNKT FUER JEDE DATEI DES
+      SICHERHEITSVERZEICHNISSES
+==========================================================================
+  Dateien in ('risk', 'gates', 'execution'): 21
+  Diensteinstiegspunkte (tools/*.py mit main()): 24
+  davon vom Einstiegspunkt erreichbar: 20
+  NICHT erreichbar                   : 1
+    mt5_trading_ai.gates.learning_phase
+  -> Gibt es ein TOR, das das erzwingt?
+     KEINES
+
+==========================================================================
+A3 -- NEGATIVTESTS FUER JEDEN PRUEFER
+==========================================================================
+  aufzeichnung_redigieren    in Tests erwaehnt:   3
+  check_doc_numbers          in Tests erwaehnt:  12
+  check_docs_claims          in Tests erwaehnt:  11
+  geheimnis_scan             in Tests erwaehnt:   5
+  gen_docs                   in Tests erwaehnt:   1
+  kopien_abgleichen          in Tests erwaehnt:   3
+
+==========================================================================
+A4 -- DECKUNG VON ZEILEN AUF ZWEIGE JE DATEI
+==========================================================================
+  coverage installiert: True
+  branch-Deckung in pyproject konfiguriert: False
+  Deckungsschwelle konfiguriert          : False
