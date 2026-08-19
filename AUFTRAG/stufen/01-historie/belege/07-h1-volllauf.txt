@@ -1,0 +1,58 @@
+# Beleg 7 — Volllauf H1 und Ende-zu-Ende, ausgefuehrt 2026-08-19T15:58:22Z
+Kommando: python tools/fetch_data.py --instrument EURUSD --timeframe H1 --from-year 2022 --to-year 2024 --out daten/reihen --cache daten/cache
+
+Dukascopy EURUSD H1 2022-2024 ...
+  2022: 8760 Rohkerzen
+  2023: 8760 Rohkerzen
+  2024: 8784 Rohkerzen
+  handelsfreie Fuellkerzen verworfen: 7589
+
+Qualitaetstor: BESTANDEN | Bars 18715 (erwartet 18692) | Luecke 0.016 % | Ausreisser 3
+Zeitraum: 2022-01-02 .. 2024-12-31
+Bars-Pruefsumme: 8cdebf057bce1ffc7489904d61f2fbb7d7d62b8658927e5c69574c9fb4247daa
+Manifest-Pruefsumme (inkl. Herkunft/Divisor/Urteil): 9e64a3ff2088264ba9b1ac33b274f4953029d5820b3474922138453916d7a480
+Ablage: daten\reihen\EURUSD_H1.csv
+
+Gegenprobe R2.2 (Dukascopy vs Yahoo, Close-zu-Close):
+  Yahoo 782 Bars (16 OHLC-ungueltige verworfen) | verglichene Tage: 766
+  Abweichung: Median 28.20 bps | Mittel 37.00 bps | max 209.45 bps
+EXIT=0
+
+## Ende-zu-Ende am Backtest-Rand (load_verified_csv + assess_bars)
+load_verified_csv am Backtest-Rand (H1): BESTANDEN
+  Bars gelesen        : 18715
+  Pruefsumme Lader    : 8cdebf057bce1ffc7489904d61f2fbb7d7d62b8658927e5c69574c9fb4247daa
+  Pruefsumme Manifest : 8cdebf057bce1ffc7489904d61f2fbb7d7d62b8658927e5c69574c9fb4247daa
+  identisch           : True
+  Zeitraum            : 2022-01-02T22:00:00+00:00 .. 2024-12-31T21:00:00+00:00
+
+Qualitaetsbericht H1 (Zahlen, nicht 'unbekannt'):
+  expected_bars         = 18767      <- OHNE Feiertagsliste gerechnet
+  present_bars          = 18715
+  gap_ratio             = 0.00277    <- 0,277 %, OHNE Feiertagsliste
+  duplicate_timestamps  = 0
+  unaligned_timestamps  = 0
+  non_monotonic         = 0
+  naive_timestamps      = 0
+  passed                = True
+  outlier_bars          = 3  -> 2022-09-13T12:00, 2022-09-26T00:00, 2022-11-10T13:00
+  zero_volume_bars      = 0
+  outside_session_bars  = 0
+  invalid_ohlc_bars     = 0
+  reasons               = ()
+
+## Warum zwei verschiedene Lueckenzahlen -- und welche gilt
+Das Werkzeug meldet 0,016 % (erwartet 18.692), der Direktaufruf oben 0,277 %
+(erwartet 18.767). Der Unterschied ist die Feiertagsliste, nicht die Reihe:
+assess_or_raise setzt holidays=DEFAULT_FX_HOLIDAYS als Vorgabe, assess_bars
+dagegen frozenset(). Massgeblich ist die Zahl des Werkzeugs (0,016 %), weil
+der Backtest-Rand denselben Vorgabewert benutzt. Die 75 Bars Unterschied in der
+Erwartung sind die FX-Feiertage der drei Jahre.
+
+## Zu den drei Ausreissern
+2022-09-13 12:00 UTC, 2022-09-26 00:00 UTC, 2022-11-10 13:00 UTC. Alle drei
+liegen auf bekannten Grossbewegungen des Jahres 2022 (US-Inflationszahlen im
+September und November, Pfund-Turbulenzen Ende September). Der Ausreisser-Melder
+zeigt damit echte Volatilitaet an, nicht Datenfehler -- geprueft wurde das nicht
+durch einen Abgleich mit einer Ereignisliste, sondern nur durch die Datumslage.
+Das ist eine Einordnung, keine Messung.

@@ -1,0 +1,16 @@
+# Beleg 8 — Schlusspruefung Stufe 1, ausgefuehrt 2026-08-19T16:01:50Z
+Gefahren mit MEINEN Aenderungen und beiseitegelegter Fremdarbeit (13 Dateien 'Welle 4'),
+also gegen genau den Stand, der eingecheckt wird.
+
+python tools/check_docs_claims.py   EXIT=0
+python tools/check_doc_numbers.py   EXIT=0
+python tools/gen_docs.py --check    EXIT=0
+python -m ruff check tests tools    EXIT=0
+python -m pytest -q                 1362 passed in 33.74s  (0 fehlgeschlagen)
+
+## Eine Kennzahl nachgezogen -- und warum genau diese
+tests/test_auftrag_doku_tore.py bringt acht neue Testfunktionen mit. Der
+README-KENNZAHLEN-Block stand auf 1190 und wurde dadurch stale; das Zahlen-Tor und
+test_readme_numbers.py haben das gemeldet. Nachgezogen: test_function_count
+1190 -> 1198. module_count (40) und source_lines (15319) unveraendert, weil kein
+Produktionscode dazukam. Das ist genau der Ablauf, fuer den das Tor gebaut ist.

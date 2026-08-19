@@ -1,0 +1,22 @@
+# Beleg 6 — Vorprobe der H1-Kette auf dem vollstaendig zwischengespeicherten Jahr 2022
+ausgefuehrt 2026-08-19T15:51:38Z, ohne Netzabruf (alle 12 Monate aus daten/cache)
+Kommando: python tools/fetch_data.py --instrument EURUSD --timeframe H1 --from-year 2022 --to-year 2022 --out /tmp/h1probe --cache daten/cache
+
+Dukascopy EURUSD H1 2022-2022 ...
+  2022: 8760 Rohkerzen
+  handelsfreie Fuellkerzen verworfen: 2520
+
+Qualitaetstor: BESTANDEN | Bars 6240 (erwartet 6238) | Luecke 0.000 % | Ausreisser 1
+Zeitraum: 2022-01-02 .. 2022-12-30
+Bars-Pruefsumme: 8a93953830bd35d3cfc145c1d37384dfb98d3e83b85d3e9c6d6e0f9945fa4ed1
+Manifest-Pruefsumme: 39320563c092fe3ead3a391308b1fed4f9b0bce6c29c5aed049d0b84d15c3741
+
+Gegenprobe R2.2 (Dukascopy vs Yahoo, Close-zu-Close):
+  Yahoo 260 Bars (4 OHLC-ungueltige verworfen) | verglichene Tage: 256
+  Abweichung: Median 36.72 bps | Mittel 47.58 bps | max 209.45 bps
+EXIT=0
+
+Zweck: belegen, dass die H1-Kette (Monatsdateien -> drop_filler_bars ->
+FxSession am NY-17:00-Anker -> Qualitaetstor -> Manifest) traegt, BEVOR der
+Volllauf ueber drei Jahre gefahren wird. Die 2.520 verworfenen Fuellkerzen sind
+die handelsfreien Wochenendstunden; 8760 = 365 x 24 ist die Kalenderstundenzahl.

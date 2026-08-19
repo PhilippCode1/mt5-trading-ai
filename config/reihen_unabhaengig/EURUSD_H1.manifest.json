@@ -1,0 +1,13 @@
+{
+  "loader_version": "data-loader-v1",
+  "instrument": "EURUSD",
+  "timeframe": "H1",
+  "source": "dukascopy-bid-hour",
+  "price_divisor": 100000.0,
+  "session": "fx-ny17",
+  "bar_count": 18715,
+  "first_ts": "2022-01-02T22:00:00+00:00",
+  "last_ts": "2024-12-31T21:00:00+00:00",
+  "bars_checksum": "8cdebf057bce1ffc7489904d61f2fbb7d7d62b8658927e5c69574c9fb4247daa",
+  "quality_reasons": []
+}
