@@ -1,0 +1,93 @@
+==============================================================================
+ERFUELLBARKEIT DES VORREGISTRIERTEN TORS -- kein Backtest, kein Versuch
+==============================================================================
+Reihe        : EURUSD H1, 18715 Bars 2022-01-02..2024-12-31
+Pruefsumme   : 8cdebf057bce1ffc7489904d61f2fbb7d7d62b8658927e5c69574c9fb4247daa
+In-Sample    : 13100 Bars -- hier wird gemessen
+Out-of-Sample: 5615 Bars (30%) -- nur Gegenprobe
+
+------------------------------------------------------------------------------
+1) WAS BEDINGUNG 3 VERLANGT (gelesen aus EdgeThresholds)
+------------------------------------------------------------------------------
+Mindest-Trades im OoS-Block  : 2000
+OoS-Bars                     : 5615
+-> mittlere Haltedauer       : 2.81 Bars = 2.81 Handelsstunden
+OoS-Kalenderspanne           : 0.899 Jahre
+-> Trades je Jahr            : 2224
+
+------------------------------------------------------------------------------
+2) WAS BEDINGUNG 1 DARAUS MACHT
+------------------------------------------------------------------------------
+Geforderte Trade-Sharpe (annualisiert)  : 1.0
+Annualisierungsfaktor sqrt(Trades/Jahr) : 47.16
+-> noetige Sharpe JE TRADE              : 0.02121
+
+------------------------------------------------------------------------------
+2b) WAS BEDINGUNG 2 VERLANGT -- AN DERSELBEN GROESZE
+------------------------------------------------------------------------------
+Geforderte Deflated Sharpe              : > 0.95
+Beobachtungen (= min_trades)            : 2000
+Versuche der Kampagne                   : 60
+-> noetige Sharpe JE TRADE              : 0.08942
+-> dasselbe annualisiert                : 4.217  (Bedingung 1 nennt 1.0)
+
+==> BINDEND IST: Bedingung 2 (Deflation), Sharpe je Trade 0.08942
+    Bedingung 2 ist um den Faktor 4.22 strenger als Bedingung 1. Die in der
+    Doku genannte Schwelle 1.0 ist damit nicht der wirksame Anspruch.
+
+------------------------------------------------------------------------------
+3) WAS EIN TRADE KOSTET (order_roundturn_cost -- wie im Backtest)
+------------------------------------------------------------------------------
+Median-Kurs der Reihe : 1.07426
+Gehaltene Naechte     : 0 (Haltedauer unter 24 h)
+  spread        :   0.0931 bp
+  kommission    :   0.6516 bp
+  slippage      :   0.9309 bp
+  finanzierung  :   0.0000 bp
+  SUMME K       :   1.6756 bp des Nominals je Round-Turn
+
+------------------------------------------------------------------------------
+4) WAS DER MARKT UEBER 2 BAR(S) HERGIBT (gemessen, In-Sample)
+------------------------------------------------------------------------------
+Fenster (ueberlappend)  : 13098
+Mittel |Bewegung|       m : 10.7446 bp   (Substanz je Trade)
+Streuung vorzeichenbeh. s : 16.2836 bp   (Nenner der Sharpe)
+Verhaeltnis s/m           : 1.516   (Normalverteilung waere 1,253 -- daruber = schwerere Raender)
+
+------------------------------------------------------------------------------
+5) DIE ANTWORT
+------------------------------------------------------------------------------
+Noetiger Netto-Ertrag je Trade  E = S_t * s : 1.4561 bp
+Kosten je Trade                 K          : 1.6756 bp
+Brutto noetig                   E + K      : 3.1317 bp
+Mittlere Bewegung               m          : 10.7446 bp
+
+==> EINZUFANGENDER ANTEIL DER BEWEGUNG  f = (E+K)/m = 0.2915 = 29.1 %
+
+BEFUND: f < 1. Das Tor ist rechnerisch erfuellbar, verlangt aber, dass
+        eine Strategie im Mittel 29.1 % jeder 2-Bar-Bewegung netto einfaengt.
+
+------------------------------------------------------------------------------
+6) DASSELBE ALS TREFFERQUOTE (breakeven_hit_rate, 1:1 auf +-m)
+------------------------------------------------------------------------------
+Nur die Kosten decken        : 57.80 %
+Das Tor nehmen               : 64.57 %
+-> Das Tor kostet gegenueber dem Nulldurchgang 6.78 Prozentpunkte.
+
+------------------------------------------------------------------------------
+7) WOHER DIE KOSTEN KOMMEN -- und was davon gemessen ist
+------------------------------------------------------------------------------
+Slippage-Anteil an K : 0.9309 von 1.6756 bp = 55.6 %
+Herkunft der Slippage: config/broker_costs.json fuehrt sie als
+                       'ANNAHME, keine Messung'. Der groesste Einzelposten
+                       der Kostenrechnung ist damit nicht gemessen.
+
+..............................................................................
+GEGENPROBE STATIONARITAET (OoS-Block; geht in keine Entscheidung ein)
+  Mittel |Bewegung| : 6.9919 bp gegen 10.7446 bp In-Sample (-34.9 %)
+  Streuung          : 10.9178 bp gegen 16.2836 bp In-Sample (-33.0 %)
+  Fenster           : 5613
+  Dieselbe Rechnung auf dem OoS-Block ergaebe f = 0.3793 = 37.9 % statt 29.1 %.
+  Als Trefferquote waeren das 68.96 % statt 64.57 %.
+  Der Block, an dem das Tor tatsaechlich urteilt, ist also der schwerere.
+..............................................................................

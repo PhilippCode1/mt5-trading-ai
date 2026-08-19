@@ -212,6 +212,36 @@ die neue Zwangslage vorher benennen können — nicht die Parameter.
 **Was dieser Befund ausdrücklich nicht sagt:** er gilt für ein Instrument, einen
 Zeitrahmen und drei Hypothesen. Er sagt nicht, dass nirgends ein Vorteil existiert.
 
+### Nachtrag 2026-08-19 — der Befund ist geprüft worden, er hält
+
+Der Auftraggeber hat nach dem Halt „weiter mit Stufe 3" angewiesen. Ein vierter
+Hypothesenlauf wäre nach §6 unzulässig gewesen (kein Nachjustieren, kein erweiterter
+Suchraum). Stattdessen ist die eine Frage gemessen worden, die den Befund selbst
+angreifen konnte: **war das Tor überhaupt erfüllbar?** Denn die drei Läufe verfehlten
+Bedingung 3 (≥ 2.000 Trades) um den Faktor 16 bis 34 — hätte das Tor bei dieser Frequenz
+nach Kosten nichts mehr durchgelassen, wäre (B) ein Artefakt des Maßstabs gewesen.
+
+**Ergebnis: es hält.** Das Tor ist erfüllbar (f = 29,1 % der mittleren Bewegung, also
+deutlich unter 100 %). Befund (B) steht unverändert.
+
+**Drei Größen, die vorher niemand ausgerechnet hatte** und die für H-004 relevant sind —
+vollständig in [`stufen/03-simulator/nachtrag-torerfuellbarkeit.md`](stufen/03-simulator/nachtrag-torerfuellbarkeit.md):
+
+1. **Bedingung 2 bindet, nicht Bedingung 1 — Faktor 4,22.** Die überall genannte Schwelle
+   „Trade-Sharpe ≥ 1,0" ist nicht der wirksame Anspruch; wirksam sind **4,22**
+   annualisiert. Beide Zahlen stehen unverändert seit Paket 4 im Code — gemessen wurde
+   erstmals, was sie **zusammen** bedeuten.
+2. **Was Option 3 praktisch verlangt: eine Trefferquote von 64,6 %** über 2.000 Trades bei
+   2,8 Stunden Haltedauer (auf dem OoS-Block **69,0 %**). Allein der Nulldurchgang kostet
+   57,8 %.
+3. **55,6 % der Round-Turn-Kosten sind Slippage — und die ist eine Annahme**, wörtlich
+   „ANNAHME, keine Messung", bewusst am unteren Rand gewählt. Der Posten, der die
+   Kostenrechnung dominiert, ist der einzige nicht erhobene. Das verschärft
+   Abbruchbedingung 3, die ohnehin „mangels Messung ausgelöst" steht.
+
+**Kein Versuch verbraucht** (E-008), keine Schwelle geändert, Registerstand unverändert
+31 von 60. Die Entscheidung bleibt vollständig beim Auftraggeber.
+
 ---
 
 *Stand dieser Datei am 2026-08-19: 4 Einträge. **H-001 erledigt** (aufgehoben, E-006),

@@ -40,7 +40,7 @@ Aendert sich der Code, ohne dass diese Zahlen nachgezogen werden, wird der Test 
 
 <!-- KENNZAHLEN-ANFANG (geprueft von tests/test_readme_numbers.py) -->
 - module_count: 38
-- test_function_count: 1219
+- test_function_count: 1226
 - source_lines: 15248
 <!-- KENNZAHLEN-ENDE -->
 

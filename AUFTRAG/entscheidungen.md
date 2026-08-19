@@ -222,3 +222,33 @@ den es nicht mehr gibt. Jeder von ihnen ist über den Nachtrag am Kopf des jewei
 Ordners bzw. den Schlusseintrag als überholt gekennzeichnet. Wer die vier Bestände
 ebenfalls bereinigt haben will, muss das anweisen — es ist eine Entscheidung über die
 Beweislage, nicht über den Code.
+
+---
+
+## E-008 — Die Erfüllbarkeitsmessung verbraucht keinen Versuch
+
+**Datum:** 2026-08-19 · **Stufe:** Nachtrag zu 3 · **Entschieden von:** ausführender Agent
+
+**Entscheidung.** Der Lauf von `tools/torerfuellbarkeit.py` schreibt **keinen** Eintrag in
+`TRIALS.jsonl`. Der Registerstand bleibt bei 31 von 60.
+
+**Begründung.** Der Auftrag verlangt in Stufe 3: „Jeder Lauf — auch ein abgebrochener —
+schreibt vor der Ergebnisausgabe einen Eintrag." Ein „Lauf" ist dort der Lauf des
+Simulators gegen eine Hypothese; der Registerstand geht in die Deflation ein und misst,
+**wie viel gesucht wurde**. Diese Messung sucht nichts: sie fährt keinen Backtest, prüft
+keine Hypothese, erzeugt kein Edge-Urteil und berührt keine Strategieparameter. Sie
+rechnet aus, was die vorregistrierten Schwellen miteinander verlangen.
+
+Einen Eintrag zu schreiben wäre nicht die vorsichtigere, sondern die falsche Wahl: er
+würde die Deflation künftiger echter Versuche verschärfen und dabei eine Suche zählen,
+die nicht stattgefunden hat. Ein Register, das etwas anderes zählt als das, wofür es
+gebaut ist, ist danach für nichts mehr brauchbar.
+
+**Was die Entscheidung angreifbar macht.** Die Messung liest die Reihe, deren OoS-Block
+„genau einmal angefasst" werden darf. Deshalb wird auf dem **In-Sample**-Block gerechnet;
+der OoS-Block erscheint nur in einer Stationaritäts-Gegenprobe, die in keine Zahl eingeht,
+die etwas entscheidet. Wer das anders sieht, findet den Sachverhalt hier.
+
+**Verworfene Alternative.** Ein zweites, getrenntes Register für Messungen ohne
+Hypothese. Verworfen aus demselben Grund wie E-002: zwei Register für benachbarte Fragen
+laufen auseinander, und danach weiß niemand mehr, welches die Deflation speist.

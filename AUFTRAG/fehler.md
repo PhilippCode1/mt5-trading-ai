@@ -249,3 +249,41 @@ Bevor ein roter Fall „Produktionsdefekt" heißt, muss der Pfad **einmal außer
 Testaufbaus** gefahren worden sein. Und: ein Name, der zugleich Uhr und Typ ist, ist eine
 Fehlerquelle unabhängig von diesem Fall — Tests tauschen Uhren aus, das ist ihr gutes
 Recht.
+
+---
+
+## F-009 — Streuung der Beträge statt der vorzeichenbehafteten Bewegung
+
+**Wann:** 2026-08-19, im Nachtrag zur Torerfüllbarkeit. **Gefunden und behoben im selben
+Lauf, vor jedem veröffentlichten Ergebnis.**
+
+**Was falsch war.** Die erste Fassung von `bewegung_bp` hat zwei Größen zurückgegeben:
+das Mittel von `|Bewegung|` und die Streuung **derselben Beträge**. Die zweite ging in
+die Sharpe-Rechnung. Falsch: die Auszahlung eines Trades ist `Richtung × Bewegung − K`
+und streut mit der **vorzeichenbehafteten** Größe, nicht mit ihrem Betrag.
+
+**Warum es nicht auffiel.** Beide Zahlen sind plausibel und liegen in derselben
+Größenordnung (12,24 gegen 16,28 bp). Keine Prüfung schlug an, kein Wert sah falsch aus.
+
+**In welche Richtung.** Die falsche Zahl ist die kleinere und macht das Tor **leichter**
+aussehen — die schmeichelnde Richtung. Genau die, bei der §6 des Auftrags verlangt,
+zuerst den Fehler zu suchen.
+
+**Wie ich es gefunden habe.** Durch Nachrechnen der Größenordnung von Hand, nicht durch
+einen Test: für eine mittelwertnahe Reihe muss die Streuung der vorzeichenbehafteten
+Bewegung ungefähr `sqrt(m² + var(|x|))` sein, also **über** dem Mittel der Beträge
+liegen — 12,24 lag darunter. Das war das Signal.
+
+**Behoben und festgenagelt.** `bewegung_bp` gibt jetzt ausdrücklich das Mittel der
+Beträge und die Streuung der vorzeichenbehafteten Bewegung zurück, mit einem Docstring,
+der beide gegeneinander abgrenzt. Der Eichfall
+`test_streuung_ist_die_der_vorzeichenbehafteten_bewegung_nicht_der_betraege` ist gegen
+eine Reihe gebaut, bei der die beiden Zahlen um mehr als Faktor 10 auseinanderfallen —
+eine Verwechslung ist dort nicht mehr unauffällig.
+
+**Was daraus folgt.** Zwei Streuungen desselben Datensatzes sind nie austauschbar, auch
+wenn beide „Streuung der Bewegung" heißen. Wo eine Kennzahl eine bestimmte Streuung
+verlangt, gehört in den Docstring, **welche** — und ein Fall, der die andere ausschließt.
+Das ist derselbe Fehlertyp wie F-005 (Wort statt Aufruf gesucht) und die
+Sharpe-Feldwahl aus Stufe 3: drei gleich skalierte Zahlen nebeneinander, von denen genau
+eine richtig ist.
