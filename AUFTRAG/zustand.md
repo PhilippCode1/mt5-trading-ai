@@ -1,6 +1,6 @@
 Stufe:            3 — Simulator und Ergebnistor
 Zustand:          abgenommen — Ergebnis: Befund (B), kein Vorteil
-Zuletzt:          2026-08-19, Commit siehe git log (Stufe 3)
+Zuletzt:          2026-08-19, Commit 0797835 (Stufe 3)
 Abnahme belegt:   ja — AUFTRAG/stufen/03-simulator/bericht.md §5, Belege in stufen/03-simulator/belege/ (5 Dateien), Vorregistrierung eingefroren in Commit 9239098 VOR dem Lauf
 Naechster Schritt: KEINER ohne Entscheidung des Auftraggebers. Das Ergebnistor ist erreicht (H-004): drei Hypothesen gegen die vorregistrierten sechs Bedingungen -- keine nimmt das Tor, keine scheitert knapp (beste OoS-Sharpe 0,185 gegen >= 1,0; bester DSR 0,0150 gegen > 0,95; hoechste Trade-Zahl 123 gegen >= 2.000). Nach §1 ist das ein gueltiges ENDE des Auftrags. Zur Wahl stehen: beenden, zurueckbauen, oder eine neu begruendete Hypothese unter den verbleibenden 35 Versuchen. Nachjustieren ist ausdruecklich verboten.
 Offene Haltepunkte: 4 — siehe haltepunkte.md (H-004 Ergebnistor BEENDET den Auftrag; H-001 Halal-Vorfrage; H-002 rueckblickend durch die erneute Auftragserteilung erledigt, Auslegung dokumentiert; H-003 Widerruf der Zugangsdaten im verworfenen Stand)
