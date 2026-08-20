@@ -1,0 +1,54 @@
+================================================================================
+LAUFABSCHLUSS — DIE ZWEI ABBRUECHE UND DIE INVERSION
+================================================================================
+
+Journal                           ende   gepl.h  gelauf.  auf  zu    Buch am Ende
+journal-20260817T142137.jsonl     ja        0.0    0.02h    0   0   unbeurteilbar
+journal-20260817T142311.jsonl     ja        0.0    0.04h    0   0   unbeurteilbar
+journal-20260817T144115.jsonl     ja        0.0    0.02h    0   0   unbeurteilbar
+journal-20260817T144355.jsonl     ja        0.0    0.02h    0   0   unbeurteilbar
+journal-20260817T144718.jsonl     ja        0.0    0.03h    0   0   unbeurteilbar
+journal-20260817T145021.jsonl     ja        0.0    0.02h    0   0   unbeurteilbar
+journal-20260817T145330.jsonl     ja        0.0    0.02h    0   0   unbeurteilbar
+journal-20260817T145606.jsonl     ja        0.0    0.02h    0   0   unbeurteilbar
+journal-20260817T145822.jsonl     ja        0.0    0.01h    0   0   unbeurteilbar
+journal-20260817T150024.jsonl     ja        0.0    0.04h    1   1      0 (Bilanz)
+journal-20260817T150428.jsonl     ja        0.0    0.00h    0   0   unbeurteilbar
+journal-20260817T150513.jsonl     NEIN     24.0    0.08h    3   0      3 (Bilanz)
+journal-20260817T151045.jsonl     ja        0.0    0.00h    0   3     0 (Aussage)
+journal-20260817T151127.jsonl     ja       24.0    0.02h    3   3     0 (Aussage)
+journal-20260817T151324.jsonl     ja       24.0    0.82h    3   3     0 (Aussage)
+journal-20260817T160253.jsonl     ja       24.0    1.45h    3   3     0 (Aussage)
+journal-20260817T173032.jsonl     ja       24.0    0.20h    3   3     0 (Aussage)
+journal-20260817T173413.jsonl     ja        0.0    0.00h    0   0     3 (Aussage)
+journal-20260817T174305.jsonl     ja       24.0    0.77h    3   3     0 (Aussage)
+journal-20260817T182800.jsonl     ja        0.0    0.00h    0   0     2 (Aussage)
+journal-20260817T182951.jsonl     NEIN     24.0   18.71h   13  13  0 (letzt.Takt)
+
+================================================================================
+BEFUND
+================================================================================
+
+DIE ZWEI LAEUFE OHNE ende-SATZ
+  150513  starb nach 5 Minuten von 24 geplanten Stunden -- MIT DREI OFFENEN
+          POSITIONEN (3 eroeffnet, 0 geschlossen). 31 Sekunden spaeter hat ein
+          Mensch neu gestartet; journal-151045 schliesst genau diese drei.
+  182951  starb nach 18,71 h von 24 geplanten -- mit LEEREM Buch (13 auf, 13 zu,
+          letzter Takt positionen=[]).
+
+DIE INVERSION
+  laufabschluss zaehlt 150513 und 182951 als GESCHEITERT.
+  Die zwei Laeufe, die wirklich Geld am Markt liessen -- 173413 (drei Positionen)
+  und 182800 (zwei) -- haben einen ende-Satz und zaehlen als GELUNGEN.
+  Die zwei Mengen sind disjunkt.
+
+KEIN ABBRUCH HATTE EINE STOPPDATEI
+  Alle fuenf Stoppdatei-Laeufe (151127, 151324, 160253, 173032, 174305) haben
+  einen ende-Satz. Die im RUNBOOK eingestandene "bekannte Ungenauigkeit der
+  Metrik" existierte nicht.
+
+DER BESCHOENIGUNGSWEG
+  20 von 21 Laeufen sind kuerzer als 90 Minuten; jeder zaehlt gleich viel.
+  Aus (19+x)/(21+x) >= 0,95 folgt x = 19: neunzehn Trockenlaeufe von je zwanzig
+  Sekunden -- rund sieben Minuten Arbeit -- loeschen den Alarm.
+

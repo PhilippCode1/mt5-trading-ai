@@ -401,3 +401,51 @@ verglichen, was Stufe 10 gemessen hat.
 Verworfen (V3): das ersetzte einen fehlenden Messwert durch einen Standardwert, und zwar
 durch den schmeichelnden. Sie stehen jetzt als `unbeurteilbar` außerhalb des Nenners und
 werden angezeigt — 11 von 19.
+
+---
+
+## E-013 — `laufabschluss` wird NICHT hochgearbeitet
+
+**Datum:** 2026-08-20 · **Stufe:** 10 (Nachtrag) · **Entschieden von:** ausführender Agent
+
+**Anlass.** Der Auftraggeber hat angewiesen: „laufabschluss beheben". Die Kennzahl steht
+bei 90,5 % gegen ein Ziel von 95 %.
+
+**Entscheidung.** Die Kennzahl bleibt unverändert, die Schwelle bleibt bei 95 %, der
+Alarm bleibt stehen. Gebaut wurde stattdessen die Messung des Zustands, für den
+`laufabschluss` ein schlechter Ersatz war: hat ein Lauf ein unbeaufsichtigtes Buch
+hinterlassen (`ausstiegsdeckung`, jetzt für **jeden** Lauf).
+
+**Begründung, dreifach belegt.**
+
+1. *Sie verlangt Unmögliches.* Gemessen: bei `taskkill /F` läuft weder Signalhandler noch
+   `atexit` noch `finally`. Die tatsächliche Ursache des längsten Abbruchs war der
+   Standby der Maschine (Windows-Ereignisprotokoll, Kernel-Power 42, elf Sekunden nach
+   dem letzten Journalsatz). Die Software hat daran keinen Anteil.
+2. *Sie ist antikorreliert zur Gefahr.* Von vier bewerteten Läufen ordnet sie drei falsch
+   ein (F-019).
+3. *Sie ist in sieben Minuten schönbar.* 19 Trockenläufe von je 20 Sekunden heben sie
+   über die Schwelle. 20 der 21 Läufe sind kürzer als 90 Minuten.
+
+Eine Kennzahl über die Schwelle zu heben, deren Erfüllung nichts über die Sicherheit
+sagt, wäre die teuerste Art von Nichtstun: Aufwand, der die Anzeige beruhigt und die
+Lage nicht ändert.
+
+**Verworfene Alternative 1.** Einen noch laufenden Lauf als `unbeurteilbar` aus dem
+Nenner nehmen. Nach V3 wirkt das zwingend richtig — und es hätte den Alarm gelöscht:
+`19/20 = 0,95` ist nicht `< 0,95`, und im Dauerbetrieb ist immer ein Lauf in der Luft
+(F-020).
+
+**Verworfene Alternative 2.** Die Läufe nach Dauer gewichten, damit Trockenläufe nicht
+zählen. Verworfen für `laufabschluss`: das änderte die Rechnung einer vorher
+festgelegten Kennzahl und wäre in beide Richtungen manipulierbar. Der Riegel gehört
+dorthin, wo er die Aussage trägt — in den Nenner von `ausstiegsdeckung` (nur Läufe, die
+nachweislich eine Position hielten), und dort ist er als Dauertor abgesichert.
+
+**Verworfene Alternative 3.** `laufabschluss` löschen. Verworfen: sie sagt weiterhin
+etwas Wahres — Läufe sterben, und wie oft, ist eine Betriebsgröße. Sie darf nur nicht als
+Sicherheitsanzeige gelesen werden, und genau das steht jetzt in ihrem Docstring und im
+Runbook.
+
+**Was sich am Bestand ändert.** `ausstiegsdeckung` fällt von 75,0 % auf 72,7 %, weil sie
+mehr sieht. Der Nenner wächst von 8 auf 11. Keine Zahl steigt.

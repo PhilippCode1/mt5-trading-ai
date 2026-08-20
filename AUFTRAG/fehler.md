@@ -615,3 +615,76 @@ Namen (`ohne Stempel`, `+aenderungen`).
 aktuellen Codestand umzustellen — dann stünde die Buchtreue bei 100 %. Das wäre die
 Auswahl der guten Läufe. Die Ziele urteilen weiter über **alle** Journale; die
 Aufschlüsselung ist Diagnose und sagt das in ihrer Überschrift.
+
+---
+
+## F-019 — Die Kennzahl zeigte auf das Gegenteil der Gefahr
+
+**Stufe 10, Nachtrag Laufabschluss.** `laufabschluss` misst, ob ein Lauf einen
+`ende`-Satz schrieb. Von den vier Läufen, über die sie auf diesem Stand ein Urteil
+fällt, ordnet sie **drei falsch** ein:
+
+| Lauf | `ende`? | Buch am Ende | Kennzahl sagt | Wahrheit |
+|---|---|---|---|---|
+| `173413` | ja | 3 offen | gelungen | gefährlich |
+| `182800` | ja | 2 offen | gelungen | gefährlich |
+| `182951` | nein | leer | gescheitert | harmlos |
+| `150513` | nein | **3 offen** | gescheitert | gefährlich |
+
+Die Menge „ohne `ende`-Satz" und die Menge „hat Geld am Markt gelassen" sind **disjunkt
+bis auf einen Fall**. Wer die Kennzahl als Sicherheitsanzeige liest, wird von ihr in die
+falsche Richtung geschickt.
+
+**Der Fall, den keine Kennzahl sah.** `journal-20260817T150513`: drei Positionen
+eröffnet, keine geschlossen, Prozess nach fünf Minuten tot. `ausstiegsdeckung` — die
+Metrik, deren Alarmregel **„Position offen geblieben"** heißt — konnte ihn nicht sehen,
+weil sie nur `ende`-Sätze zählte und er keinen hat. Er tauchte nicht einmal als
+`unbeurteilbar` auf. Gerettet hat ihn ein Mensch, der 31 Sekunden später neu startete.
+
+**Wie es aufgefallen ist.** Durch die Anweisung, die Kennzahl zu *beheben*. Wer eine
+Quote hocharbeiten soll, muss zuerst wissen, was in ihrem Zähler steht — und beim
+Nachsehen stellte sich heraus, dass der Zähler das Falsche zählt.
+
+**Behoben.** `ausstiegsdeckung` sieht jetzt jeden Lauf, gleich wie er endete, mit einer
+Rangfolge der Auskunft (Aussage des Laufs → letzter beobachteter Takt → Bilanz aus
+Öffnungen und Schließungen, letztere ausdrücklich als schwächer benannt). Der Wert fiel
+dadurch von 75,0 % auf 72,7 % — die Metrik sieht mehr, also ist sie strenger.
+`laufabschluss` bleibt bei 90,5 % und behält seine Schwelle; sein Docstring trägt jetzt
+die drei Gründe, warum er keine Sicherheitsanzeige ist.
+
+**Was daraus folgt.** Eine Kennzahl kann nicht nur *neben* der Sache liegen (F-016 bis
+F-018) — sie kann **antikorreliert** sein. Die Prüffrage muss deshalb schärfer gestellt
+werden: nicht „zeigt sie den schlimmsten Zustand an", sondern „wie ordnet sie **jeden
+einzelnen** der bekannten Vorgänge ein, und stimmt das mit dem überein, was damals
+wirklich gefährlich war". Auf 21 Läufen ist das eine Tabelle, die man hinschreiben kann.
+
+---
+
+## F-020 — Beinahe hätte ich den Alarm mit einer V3-treuen Änderung abgeschaltet
+
+**Stufe 10, Nachtrag Laufabschluss.** Der naheliegende erste Entwurf lautete: ein Lauf,
+der noch *läuft*, hat naturgemäß keinen `ende`-Satz und darf nicht als Abbruch zählen —
+er ist `unbeurteilbar` und gehört nach V3 nicht in den Nenner. Das klingt nicht nur
+richtig, es folgt genau dem Muster, das ich in F-016 bis F-018 selbst etabliert habe.
+
+**Es hätte den Alarm gelöscht.** `pruefe_alarme` vergleicht `anteil < schwelle`.
+Bei 19 von 21 Läufen ergibt das Entfernen **eines** Laufs aus dem Nenner `19/20 = 0,95`
+— und `0,95 < 0,95` ist falsch. Kein Alarm. Und da im Dauerbetrieb immer ein Lauf in der
+Luft ist, wäre der geschönte Fall der **Regelfall** gewesen.
+
+**Wie es aufgefallen ist.** Nicht durch eigenes Nachdenken, sondern durch einen
+Vollständigkeitskritiker in der Fächer-Analyse, der ausdrücklich nach dem Weg suchte,
+auf dem sich die Zahl verbessert, ohne dass sich der Betrieb bessert. Nachgerechnet und
+bestätigt.
+
+**Was daraus folgt.** Zwei Dinge:
+
+1. **Ein richtiges Prinzip kann an einer Schwelle das Falsche bewirken.** V3 („fehlender
+   Messwert sperrt, kein Ersatzwert") ist richtig — aber jede Nennerverkleinerung ist an
+   einer knapp verfehlten Schwelle eine Schwellenverschiebung durch die Hintertür. Wer
+   den Nenner anfasst, muss die Zahl **vorher und nachher** hinschreiben und prüfen, ob
+   der Alarm überlebt.
+2. **Die eigene Änderung auf Beschönigung prüfen ist ein eigener Arbeitsschritt.** Er
+   fällt nicht nebenbei ab. Die Frage lautet: *gibt es einen Weg, wie meine Änderung die
+   Zahl verbessert, ohne dass sich am Betrieb etwas bessert?* Bei drei von drei Entwürfen
+   dieser Runde lautete die Antwort ja.

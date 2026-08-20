@@ -1,0 +1,35 @@
+=== 2026-08-20 — Tor-Set nach dem Laufabschluss-Nachtrag ===
+
+--- python -m ruff check .
+All checks passed!
+rc=0
+--- python -m mypy mt5_trading_ai tools
+Success: no issues found in 81 source files
+rc=0
+--- python tools/check_docs_claims.py
+ok - 31/32 gezaehlte Markdown-Dateien (+24 in AUFTRAG/, auf Behauptungen geprueft, nicht gezaehlt), keine Zusicherung ohne Beleg
+rc=0
+--- python tools/check_doc_numbers.py
+ok - Code: 42 Module, 1409 Testfunktionen, 16835 Quellzeilen; Doku widerspruchsfrei.
+rc=0
+--- python tools/gen_docs.py --check
+ok � MODULES.md ist aktuell (601 Zeilen).
+rc=0
+--- python tools/kopien_abgleichen.py --pruefen
+ok — 3 Kopie(n) wortgleich mit ihren Originalen.
+rc=0
+--- python tools/aufzeichnung_redigieren.py --pruefen
+ok — 4453 redigierte Saetze, wortgleich mit den Journalen.
+rc=0
+--- python tools/torzaehlung.py
+ok — jedes Tor hat einen Test, der es ausloest.
+rc=0
+--- python tools/mutationstor.py
+Toetungsrate: 1.000 (16/16)
+ok — jede Sonde wurde gefangen.
+--- python tools/zweigdeckung.py --messen
+Paket gesamt: Zeilen 93.6 %, Zweige 88.3 %
+ok — jede Datei des Geldpfads ueber der Schwelle.
+--- python -m pytest -q
+........................................                                 [100%]
+1624 passed in 121.69s (0:02:01)

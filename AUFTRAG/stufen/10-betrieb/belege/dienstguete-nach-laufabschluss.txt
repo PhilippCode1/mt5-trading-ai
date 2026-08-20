@@ -1,0 +1,44 @@
+FEHLGESCHLAGEN — Alarm steht. Handlungsanweisung in RUNBOOK.md.
+==============================================================================
+DIENSTGUETE — Ziele, Fehlerbudget, Alarme
+==============================================================================
+Quelle: C:\Users\Acer\mt5_trading_ai\betrieb
+
+Ziel                              Ist    Soll   Budget  verbraucht
+Buchtreue                       98.8%   99.0%     1.0%        118%  <== gerissen
+Ausstiegsverlaesslichkeit       78.8%   95.0%     5.0%        424%  <== gerissen
+Laufabschluss                   90.5%   95.0%     5.0%        190%  <== gerissen
+Ausstiegsdeckung                72.7%  100.0%     0.0%          --
+
+  Buchtreue: 1340 von 1356 Takte
+    NICHT BEURTEILBAR: 4 weitere Vorgaenge -- die Aufzeichnung gibt es nicht her, nicht im Nenner
+    Warum diese Schwelle: Ein Halt sperrt jede Eroeffnung. Mehr als ein Prozent gesperrte Takte heisst, dass der Betrieb ueberwiegend mit dem Aufraeumen beschaeftigt ist.
+  Ausstiegsverlaesslichkeit: 26 von 33 Schliessversuche
+    Warum diese Schwelle: Ein misslungener Ausstieg laesst Geld am Markt, waehrend das System glaubt, es sei drauszen. Fuenf Prozent sind schon viel; strenger waere vertretbar.
+  Laufabschluss: 19 von 21 Laeufe
+    Warum diese Schwelle: Ein Lauf ohne Endsatz zwingt den Wiederanlauf, das Buch vom Broker zu uebernehmen statt es fortzuschreiben.
+  Ausstiegsdeckung: 8 von 11 Laeufe mit Position
+    NICHT BEURTEILBAR: 10 weitere Vorgaenge -- die Aufzeichnung gibt es nicht her, nicht im Nenner
+    Warum diese Schwelle: Das einzige Ziel ohne Fehlerbudget, und das mit Absicht: ein Lauf, der eine Position offen zuruecklaesst, laesst Geld am Markt OHNE beaufsichtigenden Prozess. Dafuer gibt es keinen vertretbaren Anteil -- jeder einzelne Fall ist einer zu viel. Die Schwelle wurde NACH der Messung gesetzt (3 von 11 beurteilbaren Laeufen gerissen) und ist strenger als der Befund; eine nachtraeglich VERSCHAERFTE Schwelle ist nicht die Anpassung, die V6 verbietet.
+
+------------------------------------------------------------------------------
+AUFSCHLUESSELUNG NACH CODESTAND (Diagnose, NICHT das Urteil)
+------------------------------------------------------------------------------
+Codestand                    Buchtreue Ausstiegsverl Laufabschluss Ausstiegsdeck
+4ad1683+aenderungen         91.5% (47)     40.0% (5)    100.0% (2)     50.0% (2)  !! nicht reproduzierbar (Arbeitsverzeichnis war unsauber)
+767ff87+aenderungen         100.0% (1)      0.0% (2)    100.0% (1)      0.0% (1)  !! nicht reproduzierbar (Arbeitsverzeichnis war unsauber)
+d5c7133                  100.0% (1118)    100.0% (9)      0.0% (1)    100.0% (1)
+ohne Stempel               93.7% (190)    88.2% (17)    94.1% (17)     85.7% (7)  !! vor der Versionsstempelung
+
+Die Gesamtzahl oben bleibt das Urteil. Diese Tabelle sagt nur, WO die
+Fehlschlaege sitzen -- an lebendem Code oder an einem ueberholten Stand.
+
+------------------------------------------------------------------------------
+4 von 4 Alarmregeln schlagen an:
+
+ALARM buchtreue_unter_ziel: 98.8% (1340/1356 Takte), Schwelle 99.0%. Das Buch und die Meldung des Handelsplatzes gehen zu oft auseinander. -> RUNBOOK.md: Buchtreue unter Ziel
+ALARM ausstieg_misslingt: 78.8% (26/33 Schliessversuche), Schwelle 95.0%. Schliessversuche scheitern -- moeglicherweise steht Geld am Markt. -> RUNBOOK.md: Ausstieg misslingt
+ALARM position_offen_geblieben: 72.7% (8/11 Laeufe mit Position), Schwelle 100.0%. Ein Lauf ist beendet worden, waehrend eine Position noch offen stand. -> RUNBOOK.md: Position offen geblieben
+ALARM laeufe_brechen_ab: 90.5% (19/21 Laeufe), Schwelle 95.0%. Laeufe enden ohne Endsatz; der Wiederanlauf muss das Buch uebernehmen. -> RUNBOOK.md: Läufe brechen ab
+
+Zugestellt nach: C:\Users\Acer\mt5_trading_ai\betrieb\ALARME.txt

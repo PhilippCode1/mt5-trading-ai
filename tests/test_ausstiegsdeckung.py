@@ -145,35 +145,127 @@ def _ende(offen: list[str] | None, *, feld: bool = True) -> str:
     return json.dumps(satz)
 
 
+def _lauf(*saetze: str, hielt: bool = True) -> list[str]:
+    """Ein vollstaendiger Lauf: start, optional ein Beleg fuer eine gehaltene Position.
+
+    ``hielt`` traegt seit dem Nachtrag vom 2026-08-20 den Nenner: nur Laeufe, die
+    nachweislich eine Position hielten, werden gezaehlt. Ohne diesen Riegel hoben
+    zwanzig Trockenlaeufe von je zwanzig Sekunden jede Quote ueber jede Schwelle.
+    """
+    kopf = [json.dumps({"art": "start"})]
+    if hielt:
+        kopf.append(json.dumps({"art": "eroeffnungsversuch", "eroeffnet": True,
+                                "symbol": "EURUSD"}))
+    return kopf + list(saetze)
+
+
 def test_rot_ein_lauf_mit_offener_position_zaehlt_nicht_als_sauber() -> None:
-    wert = ausstiegsdeckung(
-        [json.loads(_ende([])), json.loads(_ende(["EURUSD", "GBPUSD"]))]
-    )
+    zeilen = _lauf(_ende([])) + _lauf(_ende(["EURUSD", "GBPUSD"]))
+    wert = ausstiegsdeckung([json.loads(z) for z in zeilen])
     assert (wert.gelungen, wert.gesamt) == (1, 2)
     assert wert.anteil == pytest.approx(0.5)
 
 
 def test_gruen_lauter_saubere_laeufe_ergeben_volle_deckung() -> None:
-    wert = ausstiegsdeckung([json.loads(_ende([])) for _ in range(5)])
+    zeilen = [z for _ in range(5) for z in _lauf(_ende([]))]
+    wert = ausstiegsdeckung([json.loads(z) for z in zeilen])
     assert wert.anteil == pytest.approx(1.0)
     assert wert.unbeurteilbar == 0
 
 
-def test_ein_fehlendes_feld_zaehlt_NICHT_als_sauber(tmp_path: Path) -> None:
+def test_ein_fehlendes_feld_zaehlt_NICHT_als_sauber() -> None:
     """V3 an der Stelle, an der es am leichtesten zu uebersehen waere.
 
     Aufzeichnungen von vor der Einfuehrung des Feldes sagen ueber den Ausstieg
     **nichts**. Sie als sauber zu zaehlen ersetzte einen fehlenden Messwert durch einen
     Standardwert -- und zwar durch den schmeichelnden.
     """
-    wert = ausstiegsdeckung([
-        json.loads(_ende([])),
-        json.loads(_ende(None, feld=False)),
-        json.loads(_ende(None, feld=False)),
-    ])
+    zeilen = (
+        _lauf(_ende([]))
+        + _lauf(json.dumps({"art": "takt"}), hielt=False)
+        + _lauf(json.dumps({"art": "takt"}), hielt=False)
+    )
+    wert = ausstiegsdeckung([json.loads(z) for z in zeilen])
     assert (wert.gelungen, wert.gesamt) == (1, 1), "Fehlende Felder im Nenner!"
     assert wert.unbeurteilbar == 2
     assert wert.anteil == pytest.approx(1.0)
+
+
+def test_ROT_zwanzig_trockenlaeufe_heben_die_quote_NICHT() -> None:
+    """Der Riegel gegen die naheliegendste Beschoenigung.
+
+    Ein Lauf, der nachweislich nie eine Position hielt (jeder Takt traegt ein leeres
+    Positionsfeld), kann nichts zuruecklassen. Er ist weder Erfolg noch Fehlschlag und
+    gehoert nicht in den Nenner. Ohne diesen Riegel hoeben zwanzig Trockenlaeufe von je
+    zwanzig Sekunden -- zusammen sieben Minuten Arbeit -- jede Quote ueber jede
+    Schwelle, ohne dass sich am Betrieb das Geringste bessert.
+    """
+    echt = _lauf(_ende(["EURUSD"]))                       # ein echter Fehlschlag
+    trocken = [
+        z for _ in range(20)
+        for z in _lauf(json.dumps({"art": "takt", "positionen": []}),
+                       _ende([]), hielt=False)
+    ]
+    vorher = ausstiegsdeckung([json.loads(z) for z in echt])
+    nachher = ausstiegsdeckung([json.loads(z) for z in echt + trocken])
+    assert (vorher.gelungen, vorher.gesamt) == (0, 1)
+    assert (nachher.gelungen, nachher.gesamt) == (0, 1), (
+        "Trockenlaeufe sind in den Nenner gerutscht -- die Quote ist schoenbar."
+    )
+    assert nachher.unbeurteilbar == 0        # sie sind NICHT unbeurteilbar, sondern
+                                             # schlicht nicht anwendbar
+
+
+def test_ein_hart_gestorbener_lauf_mit_offener_position_wird_GESEHEN() -> None:
+    """Der Fall, der die erste Fassung dieser Metrik nicht sah.
+
+    ``journal-20260817T150513``: drei Eroeffnungen, keine Schliessung, dann der Tod --
+    ohne ``ende``-Satz. Die erste Fassung zaehlte nur ``ende``-Saetze und war fuer
+    diesen Vorgang blind, obwohl ihre Alarmregel „Position offen geblieben" heisst.
+    """
+    zeilen = [
+        json.dumps({"art": "start"}),
+        json.dumps({"art": "eroeffnungsversuch", "eroeffnet": True, "symbol": "EURUSD"}),
+        json.dumps({"art": "eroeffnungsversuch", "eroeffnet": True, "symbol": "GBPUSD"}),
+        json.dumps({"art": "eroeffnungsversuch", "eroeffnet": True, "symbol": "XAUUSD"}),
+        json.dumps({"art": "takt", "nr": 6}),
+    ]                                        # kein ende -- der Prozess ist tot
+    wert = ausstiegsdeckung([json.loads(z) for z in zeilen])
+    assert (wert.gelungen, wert.gesamt) == (0, 1)
+    assert wert.unbeurteilbar == 0
+
+
+def test_gruen_ein_hart_gestorbener_lauf_mit_leerem_buch_ist_sauber() -> None:
+    """Die Gegenprobe: ohne sie hiesse „hart gestorben" pauschal „gefaehrlich".
+
+    ``journal-20260817T182951`` starb nach 18,7 Stunden -- mit 13 Eroeffnungen, 13
+    Schliessungen und einem letzten Takt, der ein leeres Buch ausweist.
+    """
+    zeilen = [
+        json.dumps({"art": "start"}),
+        json.dumps({"art": "eroeffnungsversuch", "eroeffnet": True, "symbol": "EURUSD"}),
+        json.dumps({"art": "geschlossen", "symbol": "EURUSD"}),
+        json.dumps({"art": "takt", "nr": 1122, "positionen": []}),
+    ]
+    wert = ausstiegsdeckung([json.loads(z) for z in zeilen])
+    assert (wert.gelungen, wert.gesamt) == (1, 1)
+
+
+def test_die_aussage_des_laufs_schlaegt_die_bilanz() -> None:
+    """Rangfolge: ``offen_geblieben`` steht ueber dem letzten Takt und ueber der Bilanz.
+
+    Der Lauf hat drei eroeffnet und keine geschlossen -- die Bilanz sagte 3. Sein
+    ``ende``-Satz sagt aber, dass nichts liegen blieb (die Schliessungen kamen im
+    finally-Block, nach dem letzten Takt). Die Aussage des Laufs gewinnt.
+    """
+    zeilen = [
+        json.dumps({"art": "start"}),
+        json.dumps({"art": "eroeffnungsversuch", "eroeffnet": True, "symbol": "EURUSD"}),
+        json.dumps({"art": "takt", "nr": 1, "positionen": [{"symbol": "EURUSD"}]}),
+        _ende([]),
+    ]
+    wert = ausstiegsdeckung([json.loads(z) for z in zeilen])
+    assert (wert.gelungen, wert.gesamt) == (1, 1)
 
 
 def test_rot_die_neue_regel_schlaegt_auf_den_echten_journalen_an() -> None:

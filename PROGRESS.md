@@ -2593,3 +2593,72 @@ je Exit 0; pytest **1.610 grün**; Tötungsrate 1,000; Zweigdeckung 88,1 % Zweig
 weiter — 16 Takte waren wirklich gesperrt. Die Zahl bewegt sich erst, wenn genug Betrieb
 unter einem sauber gestempelten Stand dazukommt. Der Reconcile-Halt bei normaler
 Broker-Schließung entsteht weiter und wird weiter aufgelöst; das ist Absicht.
+
+---
+
+## Nachtrag zu Stufe 10 — Laufabschluss (2026-08-20)
+
+*Auf Anweisung des Auftraggebers („laufabschluss beheben"). Bericht in
+`AUFTRAG/stufen/10-betrieb/nachtrag-laufabschluss.md`, Entscheidung E-013.*
+
+**Ergebnis vorweg: `laufabschluss` bleibt bei 90,5 %, der Alarm bleibt stehen.** Die
+Untersuchung hat ergeben, dass die Behebung der Schaden gewesen wäre. Drei Gründe, alle
+gemessen:
+
+1. **Sie verlangt vom Prozess, seinen eigenen Tod zu überleben.** Opferskript auf dieser
+   Maschine: bei `taskkill /F` läuft weder Signalhandler noch `atexit` noch `finally`.
+   Die tatsächliche Ursache des längsten Abbruchs steht im Windows-Ereignisprotokoll,
+   elf Sekunden nach dem letzten Journalsatz: Abmeldung und Standby (Kernel-Power 42).
+   `betrieb/lauf-24h.err` ist 0 Byte — kein Traceback.
+2. **Sie ist antikorreliert zur Gefahr (F-019).** Von vier bewerteten Läufen ordnet sie
+   drei falsch ein:
+
+   | Lauf | `ende`? | Buch am Ende | Kennzahl sagt | Wahrheit |
+   |---|---|---|---|---|
+   | `173413` | ja | 3 offen | gelungen | gefährlich |
+   | `182800` | ja | 2 offen | gelungen | gefährlich |
+   | `182951` | nein | leer | gescheitert | harmlos |
+   | `150513` | nein | **3 offen** | gescheitert | gefährlich |
+
+3. **Sie ist in sieben Minuten schönbar.** 20 der 21 Läufe sind kürzer als 90 Minuten,
+   jeder zählt gleich. Aus `(19+x)/(21+x) ≥ 0,95` folgt `x = 19`.
+
+**Der schwerste Fund.** `journal-20260817T150513` starb nach fünf Minuten mit **drei
+offenen Positionen** (3 eröffnet, 0 geschlossen). Ausgerechnet `ausstiegsdeckung` — die
+Metrik, deren Alarmregel „Position offen geblieben" heißt — konnte ihn nicht sehen, weil
+sie nur `ende`-Sätze zählte. Ein Mensch bemerkte es **31 Sekunden später** und schloss
+die drei von Hand (`journal-...151045`). Nachts wären daraus Stunden geworden.
+
+**Eigener Fehler (F-020), beinahe folgenschwer.** Mein erster Entwurf war, einen noch
+*laufenden* Lauf als `unbeurteilbar` aus dem Nenner zu nehmen — nach V3 zwingend richtig.
+Er hätte den Alarm **gelöscht**: `pruefe_alarme` vergleicht `anteil < schwelle`, und
+`19/20 = 0,95` ist nicht `< 0,95`. Da im Dauerbetrieb immer ein Lauf in der Luft ist,
+wäre der geschönte Fall der Regelfall gewesen. Gefunden vom Vollständigkeitskritiker der
+Fächer-Analyse, nachgerechnet und bestätigt.
+
+**Neu:**
+
+- `ausstiegsdeckung` sieht **jeden** Lauf, gleich wie er endete. Rangfolge der Auskunft:
+  Aussage des Laufs (`offen_geblieben`) → letzter beobachteter `takt` → Bilanz aus
+  Öffnungen und Schließungen (ausdrücklich als schwächer benannt, weil abgeleitet).
+- Ihr Nenner zählt nur Läufe, die **nachweislich eine Position hielten** — der Riegel
+  gegen Trockenläufe, mit Dauertor in beide Richtungen.
+- `laufabschluss` behält Schwelle und Zählung, bekommt aber die drei Befunde in den
+  Docstring.
+- `RUNBOOK.md` §„Läufe brechen ab": der Satz über eine „bekannte Ungenauigkeit der
+  Metrik" ist **widerlegt und entfernt** — alle fünf Stoppdatei-Läufe haben ein `ende`,
+  keiner der beiden Abbrüche hatte eine Stoppdatei. Der Abschnitt sagt jetzt zuerst, was
+  der Alarm *nicht* bedeutet.
+
+**Zahlen:** keine ist gestiegen; `ausstiegsdeckung` **fällt** von 75,0 % (6/8) auf
+72,7 % (8/11), weil sie mehr sieht.
+
+**Abnahme:** 25 Eichfälle (`tests/test_laufabschluss.py` 10, `tests/test_ausstiegsdeckung.py`
+15). Elf Tore je Exit 0; pytest **1.624 grün**; Tötungsrate 1,000; Zweigdeckung über 80 %.
+
+**Ehrliche Grenze / offen:** Der Abbruch selbst ist nicht verhindert — gegen `taskkill /F`
+und den Standby der Maschine gibt es keine In-Prozess-Maßnahme. Ein Wiederanlauf, der
+einen verwaisten Vorlauf selbst erkennt und meldet, existiert nicht. Und kein Alarm
+erreicht heute automatisch einen Menschen: `tools/dienstguete.py` steht in keinem
+CI-Schritt, `betrieb/ALARME.txt` trägt keinen Erhebungszeitpunkt. Beides als eigene
+Aufgabe festgehalten.

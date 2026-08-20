@@ -223,40 +223,174 @@ def laufabschluss(saetze: Sequence[dict[str, Any]]) -> Messwert:
     Ein Lauf ohne Endsatz ist abgestuerzt oder abgewuergt worden. Das ist nicht nur
     unschoen: der Wiederanlauf muss dann das Buch vom Broker uebernehmen, statt es
     fortzuschreiben.
+
+    WAS DIESE ZAHL NICHT SAGT -- GEMESSEN, NICHT VERMUTET
+    ------------------------------------------------------
+    Sie steht bei 90,5 % gegen ein Ziel von 95 %, und sie bleibt es. Drei Gruende, warum
+    sie **nicht** als Sicherheitsanzeige gelesen werden darf; alle drei sind an den 21
+    Journalen dieses Standes gemessen (``AUFTRAG/stufen/10-betrieb/nachtrag-
+    laufabschluss.md``):
+
+    1. **Sie verlangt vom Prozess, seinen eigenen Tod zu ueberleben.** Gemessen mit
+       einem Opferskript auf dieser Maschine: bei ``taskkill /F`` laeuft weder ein
+       Signalhandler noch ``atexit`` noch ein ``finally``-Block. Die tatsaechliche
+       Ursache des laengsten Abbruchs steht im Windows-Ereignisprotokoll -- elf
+       Sekunden nach dem letzten Journalsatz: Abmeldung und Standby (Kernel-Power 42,
+       „Ursache: Application API"). Die Software hat daran keinen Anteil.
+    2. **Sie ist auf diesen Daten invertiert zur Gefahr.** Die zwei Laeufe ohne
+       ``ende`` und die zwei Laeufe, die wirklich Geld am Markt liessen, sind
+       **disjunkte Mengen**: ``journal-20260817T173413`` und ``...182800`` liessen drei
+       bzw. zwei Positionen offen und zaehlen hier als GELUNGEN, weil sie einen
+       ``ende``-Satz schrieben. ``...182951`` hinterliess ein leeres Buch und zaehlt als
+       GESCHEITERT.
+    3. **Sie ist trivial schoenbar.** Jeder Lauf zaehlt gleich, ob er null Sekunden oder
+       18,7 Stunden dauerte; 20 der 21 Laeufe sind kuerzer als 90 Minuten. Neunzehn
+       Trockenlaeufe von je zwanzig Sekunden -- zusammen rund sieben Minuten Arbeit --
+       heben die Quote ueber 95 % und loeschen den Alarm, ohne dass sich am Betrieb
+       irgendetwas bessert. ``tests/test_laufabschluss.py`` haelt diesen Weg als
+       Dauertor fest, damit ihn niemand fuer eine Behebung haelt.
+
+    Die Frage, um die es wirklich geht -- hat ein Lauf ein unbeaufsichtigtes Buch
+    hinterlassen -- beantwortet ``ausstiegsdeckung``, und zwar fuer jeden Lauf, gleich
+    wie er endete.
     """
     start = sum(1 for s in saetze if s.get("art") == "start")
     ende = sum(1 for s in saetze if s.get("art") == "ende")
     return Messwert("laufabschluss", ende, start, "Laeufe")
 
 
-def ausstiegsdeckung(saetze: Sequence[dict[str, Any]]) -> Messwert:
-    """Anteil der beendeten Laeufe, die **keine** Position offen zurueckgelassen haben.
+def _laeufe(saetze: Sequence[dict[str, Any]]) -> list[list[dict[str, Any]]]:
+    """Zerlege den Satzstrom in Laeufe. Ein ``start``-Satz beginnt einen neuen.
 
-    WARUM ES DIESE METRIK BRAUCHT
-    -----------------------------
-    ``laufabschluss`` fragt nur, ob ein ``ende``-Satz da ist.
-    ``ausstiegsverlaesslichkeit`` fragt nur, ob ein einzelner Schliessversuch gelungen
-    ist. **Beide sahen den schlimmsten Fall dieses Standes nicht:**
-
-        Am 2026-08-17 endeten zwei Laeufe mit offenen Positionen am Broker
-        (``['EURUSD','GBPUSD','XAUUSD']`` und ``['EURUSD','GBPUSD']``), weil der
-        Schreibpfad gesperrt war. Beide haben einen ``start``- und einen ``ende``-Satz.
-        **``laufabschluss`` zaehlt sie als saubere Laeufe.** Geld blieb am Markt, die
-        Kennzahl stand auf gruen.
-
-    Diese Metrik misst genau das Ergebnis, auf das es ankommt: ist am Ende wirklich
-    niemand mehr draussen geblieben. Nicht „wurde es versucht", sondern „ist es aus".
-
-    ``offen_geblieben`` fehlt in Aufzeichnungen von vor seiner Einfuehrung. Solche
-    Laeufe sind **unbeurteilbar** und stehen nicht im Nenner (V3) -- siehe
-    ``Messwert.unbeurteilbar``.
+    Saetze vor dem ersten ``start`` gehoeren zu keinem Lauf und fallen weg -- das
+    passiert nur bei von Hand zusammengeschnittenen Journalen.
     """
-    enden = [s for s in saetze if s.get("art") == "ende"]
-    beurteilbar = [s for s in enden if "offen_geblieben" in s]
-    sauber = sum(1 for s in beurteilbar if not s.get("offen_geblieben"))
+    aus: list[list[dict[str, Any]]] = []
+    for satz in saetze:
+        if satz.get("art") == "start":
+            aus.append([satz])
+        elif aus:
+            aus[-1].append(satz)
+    return aus
+
+
+def _hat_gehalten(lauf: Sequence[dict[str, Any]]) -> bool | None:
+    """Hatte dieser Lauf je eine Position im Buch? ``None`` heisst: nicht feststellbar.
+
+    Drei Antworten, und die dritte ist die wichtige. Ein Lauf, der nie etwas hielt, kann
+    nichts unbeaufsichtigt zuruecklassen -- er gehoert weder als Erfolg noch als
+    Fehlschlag in die Rechnung. Ihn als Erfolg zu zaehlen waere der Weg, die Kennzahl
+    mit Trockenlaeufen zu schoenen (siehe Modul-Docstring von ``ausstiegsdeckung``).
+    """
+    for satz in lauf:
+        art = satz.get("art")
+        if art == "eroeffnungsversuch" and satz.get("eroeffnet"):
+            return True
+        if art in ("geschlossen", "vom_broker_geschlossen"):
+            return True
+        if art == "ende" and satz.get("offen_geblieben"):
+            return True
+        if art == "takt" and satz.get("positionen"):
+            return True
+    # Nichts gefunden. War das Buch nachweislich immer leer, oder wissen wir es nur
+    # nicht? Nur wenn JEDER Takt das Positionsfeld traegt, ist „nie gehalten" belegt.
+    takte = [s for s in lauf if s.get("art") == "takt"]
+    if takte and all("positionen" in s for s in takte):
+        return False
+    return None
+
+
+def _buch_am_ende(lauf: Sequence[dict[str, Any]]) -> int | None:
+    """Wie viele Positionen standen am Ende dieses Laufs offen? ``None`` = unbekannt.
+
+    Rangfolge, von der staerksten Auskunft zur schwaechsten:
+
+    1. ``ende.offen_geblieben`` -- die **Aussage des Laufs selbst** ueber das, was er
+       zurueckliess. Sie steht oben, weil sie nach dem letzten Schliessversuch entsteht.
+    2. Der letzte ``takt`` mit Positionsfeld -- das zuletzt beobachtete Buch. Fuer einen
+       Lauf, der hart gestorben ist, ist das die einzige Auskunft, die es gibt.
+    3. Die Bilanz aus Eroeffnungen und Schliessungen. **Schwaecher und hier benannt:**
+       sie ist abgeleitet, nicht aufgezeichnet, und eine broker-seitige Schliessung, die
+       der Lauf nicht mehr mitbekam, fehlt darin. Sie steht trotzdem drin, weil sonst
+       genau der schlimmste Fall dieses Standes (``journal-20260817T150513``: drei
+       Eroeffnungen, keine Schliessung, dann der Tod) unsichtbar bliebe.
+    """
+    ende = next((s for s in lauf if s.get("art") == "ende"), None)
+    if ende is not None and "offen_geblieben" in ende:
+        return len(ende["offen_geblieben"] or ())
+    letzter = next(
+        (s for s in reversed(lauf) if s.get("art") == "takt" and "positionen" in s),
+        None,
+    )
+    if letzter is not None:
+        return len(letzter["positionen"] or ())
+    auf = sum(
+        1 for s in lauf
+        if s.get("art") == "eroeffnungsversuch" and s.get("eroeffnet")
+    )
+    zu = sum(
+        1 for s in lauf if s.get("art") in ("geschlossen", "vom_broker_geschlossen")
+    )
+    if auf or zu:
+        return max(0, auf - zu)
+    return None
+
+
+def ausstiegsdeckung(saetze: Sequence[dict[str, Any]]) -> Messwert:
+    """Anteil der Laeufe, die **kein unbeaufsichtigtes Buch** hinterlassen haben.
+
+    WAS DIESE METRIK ZUERST GESEHEN HAT -- UND WAS NICHT
+    ----------------------------------------------------
+    Die erste Fassung sah nur Laeufe **mit** ``ende``-Satz. Damit war der schlimmste
+    Vorgang des ganzen Standes fuer sie unsichtbar:
+
+        ``journal-20260817T150513``: drei Positionen eroeffnet (EURUSD, GBPUSD,
+        XAUUSD), **keine** geschlossen, dann stirbt der Prozess nach fuenf Minuten --
+        ohne ``ende``-Satz. Drei Positionen standen unbeaufsichtigt am Broker. Ein
+        Mensch hat es 31 Sekunden spaeter bemerkt und von Hand neu gestartet
+        (``journal-20260817T151045`` schliesst genau diese drei). Um drei Uhr nachts
+        waeren daraus Stunden geworden.
+
+    Ausgerechnet die Metrik, deren Alarmregel „Position offen geblieben" heisst, konnte
+    den Fall nicht sehen: er hatte keinen ``ende``-Satz, und sie zaehlte nur ``ende``-
+    Saetze. ``laufabschluss`` sah ihn zwar als Fehlschlag, konnte ihn aber nicht von
+    dem harmlosen zweiten Abbruch unterscheiden -- und zaehlte gleichzeitig die zwei
+    wirklich gefaehrlichen Laeufe als gelungen, weil sie einen ``ende``-Satz hatten.
+
+    Sie fragt jetzt fuer **jeden** Lauf, gleich wie er endete: stand am Ende noch etwas
+    offen? Rangfolge der Auskunft in ``_buch_am_ende``.
+
+    DER NENNER -- UND WARUM ER NICHT JEDER LAUF IST
+    -----------------------------------------------
+    Gezaehlt werden nur Laeufe, die **nachweislich eine Position hielten**. Das ist
+    keine Bequemlichkeit, sondern der Riegel gegen die naheliegendste Beschoenigung:
+    zwanzig Trockenlaeufe von je zwanzig Sekunden -- zusammen sieben Minuten Arbeit --
+    wuerden sonst jede Quote ueber jede Schwelle heben, ohne dass sich am Betrieb das
+    Geringste bessert. Ein Lauf ohne Position kann nichts zuruecklassen; er ist weder
+    Erfolg noch Fehlschlag.
+
+    Laeufe, bei denen sich weder das eine noch das andere feststellen laesst, sind
+    **unbeurteilbar** und stehen nicht im Nenner (V3). Auf diesem Stand sind das 10 von
+    21 -- alte Journale, die weder das Positionsfeld noch ``offen_geblieben`` kennen.
+    Sie als sauber zu zaehlen waere der schmeichelnde Standardwert; sie koennten beim
+    Start ein fremdes Buch uebernommen haben, wie ``journal-20260817T173413`` beweist.
+    """
+    gelungen = gescheitert = unbeurteilbar = 0
+    for lauf in _laeufe(saetze):
+        hielt = _hat_gehalten(lauf)
+        if hielt is False:
+            # Nie eine Position -- nichts zu verlieren, also nicht im Nenner.
+            continue
+        stand = _buch_am_ende(lauf)
+        if hielt is None or stand is None:
+            unbeurteilbar += 1
+        elif stand:
+            gescheitert += 1
+        else:
+            gelungen += 1
     return Messwert(
-        "ausstiegsdeckung", sauber, len(beurteilbar), "beendete Laeufe",
-        unbeurteilbar=len(enden) - len(beurteilbar),
+        "ausstiegsdeckung", gelungen, gelungen + gescheitert,
+        "Laeufe mit Position", unbeurteilbar=unbeurteilbar,
     )
 
 
@@ -294,10 +428,10 @@ ZIELE: tuple[Dienstgueteziel, ...] = (
         "Das einzige Ziel ohne Fehlerbudget, und das mit Absicht: ein Lauf, der eine "
         "Position offen zuruecklaesst, laesst Geld am Markt OHNE beaufsichtigenden "
         "Prozess. Dafuer gibt es keinen vertretbaren Anteil -- jeder einzelne Fall ist "
-        "einer zu viel. Die Schwelle wurde NACH der Messung gesetzt (2 von 8 "
-        "beurteilbaren "
-        "Laeufen gerissen) und ist strenger als der Befund; eine nachtraeglich "
-        "VERSCHAERFTE Schwelle ist nicht die Anpassung, die V6 verbietet.",
+        "einer zu viel. Die Schwelle wurde NACH der Messung gesetzt (3 von 11 "
+        "beurteilbaren Laeufen gerissen) und ist strenger als der Befund; eine "
+        "nachtraeglich VERSCHAERFTE Schwelle ist nicht die Anpassung, die V6 "
+        "verbietet.",
     ),
 )
 

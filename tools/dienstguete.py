@@ -103,8 +103,8 @@ def main() -> int:
             # Muss sichtbar sein (V3): ein Anteil aus 8 Vorgaengen, waehrend 11 weitere
             # gar nicht beurteilbar waren, sagt etwas anderes als ein Anteil aus 19.
             # Sie stillschweigend wegzulassen ist dieselbe Luege wie sie mitzuzaehlen.
-            print(f"    NICHT BEURTEILBAR: {wert.unbeurteilbar} weitere "
-                  f"{wert.bezug} -- Feld fehlt in der Aufzeichnung, nicht im Nenner")
+            print(f"    NICHT BEURTEILBAR: {wert.unbeurteilbar} weitere Vorgaenge -- "
+                  f"die Aufzeichnung gibt es nicht her, nicht im Nenner")
         print(f"    Warum diese Schwelle: {ziel.begruendung}")
 
     # --- Diagnose: passiert es noch? -----------------------------------------

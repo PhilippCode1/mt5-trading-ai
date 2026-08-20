@@ -134,12 +134,33 @@ der in Ordnung wäre. Jeder einzelne Fall ist einer zu viel.
 **Was der Alarm sagt.** Weniger als 95 % der Läufe enden mit einem `ende`-Satz. Ein Lauf
 ohne Endsatz ist abgestürzt oder abgewürgt worden.
 
+**Was er ausdrücklich NICHT sagt — bitte zuerst lesen.** Dieser Alarm ist **keine
+Sicherheitsanzeige**. Gemessen an den 21 Journalen dieses Standes:
+
+- Er zeigt in die **falsche** Richtung. Die beiden Läufe, die wirklich Geld am Markt
+  ließen (`173413`: drei Positionen, `182800`: zwei), haben einen `ende`-Satz und zählen
+  hier als **gelungen**. Der Lauf mit dem leeren Buch (`182951`) zählt als
+  **gescheitert**.
+- Er misst etwas, das die Software nicht steuert. Der längste Abbruch geschah, weil die
+  Maschine elf Sekunden nach dem letzten Journalsatz in den Standby ging
+  (Windows-Ereignisprotokoll, Kernel-Power 42). Bei `taskkill /F` läuft weder ein
+  Signalhandler noch `atexit` noch ein `finally`-Block — gemessen.
+
+**Wer wissen will, ob Geld unbeaufsichtigt stand, liest den Alarm „Position offen
+geblieben".** Der sieht jeden Lauf, gleich wie er endete.
+
 **Zuerst nachsehen.**
 
 1. Welcher Lauf hat keinen `ende`-Satz? Der letzte Satz vor dem Abbruch sagt, wo er
    stand.
-2. Steht eine Stoppdatei (`stoppdatei`-Satz)? Dann war es ein gewollter Abbruch und
-   zählt hier fälschlich mit — das ist eine bekannte Ungenauigkeit der Metrik.
+2. **Hat dieser Lauf eine Position hinterlassen?** Das ist die einzige Frage, die
+   eilt. Öffnungen ohne zugehörige Schließung (`eroeffnungsversuch` mit
+   `eroeffnet: true` gegen `geschlossen`/`vom_broker_geschlossen`) oder ein letzter
+   `takt`-Satz mit nicht-leerem `positionen`. Steht dort etwas: weiter unter „Position
+   offen geblieben", nicht hier.
+   *Gemessen: genau so ist es am 17.08. passiert — `journal-20260817T150513` starb nach
+   fünf Minuten mit drei offenen Positionen; ein Mensch bemerkte es 31 Sekunden später.
+   Nachts wären daraus Stunden geworden.*
 
 **Was zu tun ist.**
 
