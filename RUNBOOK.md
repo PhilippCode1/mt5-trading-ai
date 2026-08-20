@@ -21,6 +21,18 @@ Kontakt. Diese Datei liegt im Repository; sie beschreibt Handgriffe, nicht Gehei
 lokale Buch und die Meldung des Handelsplatzes gehen zu oft auseinander, oder ein
 Sendeversuch blieb unbeantwortet. Solange ein Halt steht, eröffnet der Lauf nichts mehr.
 
+**Zuerst: hat der Halt überhaupt gesperrt?** Diese Frage steht vor allen anderen, weil
+sie bei jedem zweiten Alarm die Antwort schon ist. Ein Reconcile-Halt, der im selben Takt
+`halt_erklaert` mit `weiter_gesperrt: false` trägt, hat **nichts** blockiert: der Broker
+hat zwischen zwei Takten eine Position geschlossen, der Reconcile sah sie noch im Buch
+und sperrte fail-closed, der Abgleich löste im selben Takt auf. Das ist normaler
+Marktbetrieb, kein Vorfall. Nur Takte **ohne** solche Auflösung zählen.
+
+**Und danach: sitzt es im lebenden Code?** `python tools/dienstguete.py` zeigt unten die
+Aufschlüsselung nach Codestand. Stammen die gesperrten Takte aus einem überholten Stand
+oder aus einem mit `+aenderungen` (unsauberes Arbeitsverzeichnis), ist die Gesamtzahl
+Geschichte und kein Auftrag. Ein Stand ohne `+aenderungen`, der Sperren zeigt, ist einer.
+
 **Zuerst nachsehen.**
 
 1. `python tools/betrieb_auswerten.py` — welche Takte tragen `halt=true`, und welcher

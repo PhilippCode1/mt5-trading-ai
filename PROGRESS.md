@@ -2528,3 +2528,68 @@ außerhalb dieser Arbeit festgehalten:
 `test_live_betrieb_sperren.py::test_ein_reconcile_halt_aus_einer_erkannten_schliessung_wird_aufgeloest`
 hängt an der Wanduhr (`_takt` ruft `takt` ohne `jetzt=`, anders als seine vier
 Geschwister) und ist dadurch sporadisch rot — dieselbe Krankheit wie F-013.
+
+---
+
+## Nachtrag zu Stufe 10 — die Buchtreue (2026-08-20)
+
+*Auf Anweisung des Auftraggebers („buchtreue beheben"). Bericht in
+`AUFTRAG/stufen/10-betrieb/nachtrag-buchtreue.md`.*
+
+**Alle 20 gesperrten Takte tragen denselben Grund** —
+`reconcile_drift:notional_drift_exceeds_limit` — aber **zwei völlig verschiedene Lagen**:
+
+| Journal | Codestand | Takte | Halt | erklärt | wirklich gesperrt | Eröffn.versuche |
+|---|---|---:|---:|---:|---:|---:|
+| `145606` | ohne Stempel | 3 | 2 | 0 | 2 | 0 |
+| `160253` | ohne Stempel | 87 | 10 | 0 | 10 | 0 |
+| `174305` | `4ad1683+aenderungen` | 46 | 4 | 0 | 4 | 0 |
+| `182951` | **`d5c7133`** | 1.122 | 4 | 4 | **0** | **16** |
+
+In den 16 wirklich gesperrten Takten gab es **null** Eröffnungsversuche — der Lauf hörte
+auf, es zu versuchen. In den vier erklärten liefen **je vier** normal durch; in Takt 409
+führte einer zu einer Eröffnung.
+
+**F-017: die Metrik widersprach ihrem eigenen Docstring.** `buchtreue` begründete das
+Zählen mit „Beides sperrt jede Eröffnung" — für 4 von 20 Takten stimmte das nicht. Der
+`takt`-Satz wird geschrieben, **bevor** der Buchabgleich läuft, und kann die Auflösung
+nicht kennen; die Metrik las einen Zwischenzustand und nannte ihn Ergebnis.
+
+**F-018: die Kennzahlen mischten vier Codestände zu einer Zahl.** Alle 16 echten Sperren
+stammen aus Ständen, die es nicht mehr gibt. Der einzige sauber gestempelte (`d5c7133`,
+1.122 der 1.360 Takte) hat **keinen einzigen**. Das `version`-Feld lag im Journal und
+wurde ignoriert.
+
+**Was ausdrücklich NICHT geändert wurde:** die Reihenfolge im Takt. Den Buchabgleich vor
+den Reconcile zu ziehen hieße, die Desync-Erkennung per Konstruktion stillzulegen — die
+Hausfehlerklasse dieses Repos. Auch der frühe `takt`-Satz bleibt: die Notbremse kann
+vorher zurückkehren, ein später geschriebener Satz wäre dann ganz verloren.
+
+**Neu:**
+
+- `halt_erklaert` trägt `weiter_gesperrt` — den Zustand **nach** der erneuten Befragung
+  des Schedulers, also den, der die Eintritte wirklich regiert.
+- `buchtreue` zählt die Leiter ohne Ersatzwerte: kein Halt → sauber; Halt ohne Auflösung
+  → gesperrt; aufgelöst und frei → sauber; aufgelöst und weiter gesperrt → gesperrt;
+  Auflösung ohne das Feld → **unbeurteilbar**, nicht im Nenner (V3).
+- `nach_codestand()` + Anzeige im Werkzeug — dieselben Metriken je Versionsstempel,
+  `ohne Stempel` und `+aenderungen` am Namen erkennbar.
+- `RUNBOOK.md` §„Buchtreue unter Ziel": zwei Fragen an den Anfang — *hat der Halt
+  überhaupt gesperrt?* und *sitzt es im lebenden Code?*
+
+**Zahlen:** 98,53 % (1.340/1.360) → **98,82 % (1.340/1.356)**, Schwelle 99 %
+**unverändert**. Ein Dauertor (`test_die_korrektur_rettet_das_ziel_NICHT`) hält fest,
+dass der Wert unter der Schwelle bleibt — hätte die Korrektur ihn darüber gehoben, wäre
+sie eine Schwellenverschiebung durch die Hintertür gewesen.
+
+Die Aufschlüsselung ist ausdrücklich nicht schmeichelhaft: `d5c7133` hat 100 % Buchtreue
+und 100 % Ausstiegsverlässlichkeit, aber **0 % Laufabschluss** — sein einziger langer Lauf
+ist nie sauber zu Ende gekommen.
+
+**Abnahme:** 12 Eichfälle in `tests/test_buchtreue.py`, rot und grün je Sprosse. Elf Tore
+je Exit 0; pytest **1.610 grün**; Tötungsrate 1,000; Zweigdeckung 88,1 % Zweige.
+
+**Ehrliche Grenze / offen:** Die Buchtreue ist **nicht** auf 99 % gehoben, der Alarm steht
+weiter — 16 Takte waren wirklich gesperrt. Die Zahl bewegt sich erst, wenn genug Betrieb
+unter einem sauber gestempelten Stand dazukommt. Der Reconcile-Halt bei normaler
+Broker-Schließung entsteht weiter und wird weiter aufgelöst; das ist Absicht.

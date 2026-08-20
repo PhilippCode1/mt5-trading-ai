@@ -35,8 +35,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from mt5_trading_ai.betrieb.dienstguete import (  # noqa: E402
     ALARMREGELN,
+    NICHT_REPRODUZIERBAR,
+    OHNE_STEMPEL,
     ZIELE,
     erhebe,
+    nach_codestand,
     pruefe_alarme,
     stelle_zu,
 )
@@ -103,6 +106,35 @@ def main() -> int:
             print(f"    NICHT BEURTEILBAR: {wert.unbeurteilbar} weitere "
                   f"{wert.bezug} -- Feld fehlt in der Aufzeichnung, nicht im Nenner")
         print(f"    Warum diese Schwelle: {ziel.begruendung}")
+
+    # --- Diagnose: passiert es noch? -----------------------------------------
+    # Die Ziele oben urteilen ueber alle Journale zusammen, und das bleibt so. Diese
+    # Aufschluesselung ersetzt sie nicht -- sie beantwortet die andere Frage, die der
+    # Betrieb braucht: haengt eine Zahl an Code, den es noch gibt?
+    print()
+    print("-" * 78)
+    print("AUFSCHLUESSELUNG NACH CODESTAND (Diagnose, NICHT das Urteil)")
+    print("-" * 78)
+    staende = nach_codestand(zeilen)
+    kopf = "Codestand".ljust(24) + "".join(z.name[:13].rjust(14) for z in ZIELE)
+    print(kopf)
+    for stand, gruppe in staende.items():
+        marke = ""
+        if NICHT_REPRODUZIERBAR in stand:
+            marke = "  !! nicht reproduzierbar (Arbeitsverzeichnis war unsauber)"
+        elif stand == OHNE_STEMPEL:
+            marke = "  !! vor der Versionsstempelung"
+        zeile = stand[:22].ljust(24)
+        for ziel in ZIELE:
+            wert = gruppe[ziel.metrik]
+            anteil = wert.anteil
+            zeile += (
+                "--" if anteil is None else f"{anteil:.1%} ({wert.gesamt})"
+            ).rjust(14)
+        print(zeile + marke)
+    print()
+    print("Die Gesamtzahl oben bleibt das Urteil. Diese Tabelle sagt nur, WO die")
+    print("Fehlschlaege sitzen -- an lebendem Code oder an einem ueberholten Stand.")
 
     alarme = pruefe_alarme(werte)
     text = stelle_zu(alarme, args.alarmdatei)

@@ -1,0 +1,22 @@
+============================= test session starts =============================
+platform win32 -- Python 3.11.7, pytest-8.3.4, pluggy-1.6.0 -- C:\Users\Acer\AppData\Local\Programs\Python\Python311\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\Acer\mt5_trading_ai
+configfile: pyproject.toml
+plugins: anyio-4.8.0, base-url-2.1.0, cov-6.0.0, playwright-0.7.2
+collecting ... collected 12 items
+
+tests/test_buchtreue.py::test_gruen_ein_takt_ohne_halt_ist_sauber PASSED [  8%]
+tests/test_buchtreue.py::test_rot_ein_halt_ohne_aufloesung_zaehlt_als_gesperrt PASSED [ 16%]
+tests/test_buchtreue.py::test_ein_im_selben_takt_aufgeloester_halt_sperrt_nicht PASSED [ 25%]
+tests/test_buchtreue.py::test_rot_aufgeloest_aber_weiter_gesperrt_zaehlt_trotzdem_als_gesperrt PASSED [ 33%]
+tests/test_buchtreue.py::test_eine_aufloesung_ohne_das_feld_ist_unbeurteilbar PASSED [ 41%]
+tests/test_buchtreue.py::test_die_aufloesung_wird_dem_richtigen_takt_zugeordnet PASSED [ 50%]
+tests/test_buchtreue.py::test_die_korrektur_rettet_das_ziel_NICHT PASSED [ 58%]
+tests/test_buchtreue.py::test_das_werkzeug_schreibt_weiter_gesperrt_wirklich PASSED [ 66%]
+tests/test_buchtreue.py::test_nach_codestand_trennt_die_staende PASSED   [ 75%]
+tests/test_buchtreue.py::test_saetze_ohne_version_bekommen_eine_eigene_gruppe PASSED [ 83%]
+tests/test_buchtreue.py::test_unsaubere_arbeitsverzeichnisse_sind_am_namen_erkennbar PASSED [ 91%]
+tests/test_buchtreue.py::test_auf_den_echten_journalen_sitzen_die_sperren_im_ueberholten_code PASSED [100%]
+
+============================= 12 passed in 0.44s ==============================

@@ -131,7 +131,7 @@ Einfache, ernsthafte Signallogiken fuer den Edge-Test -- ohne Optimierung.
 
 ## `mt5_trading_ai/betrieb/dienstguete.py`
 
-Zeilen: 325
+Zeilen: 415
 
 Alarmregeln, Dienstgüteziele und Fehlerbudget -- aus dem Betriebsjournal.
 
@@ -144,6 +144,7 @@ Alarmregeln, Dienstgüteziele und Fehlerbudget -- aus dem Betriebsjournal.
 - `def laufabschluss`
 - `def ausstiegsdeckung`
 - `def erhebe`
+- `def nach_codestand`
 - `def pruefe_alarme`
 - `def stelle_zu`
 

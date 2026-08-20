@@ -1,0 +1,30 @@
+==============================================================================
+DIE 20 GESPERRTEN TAKTE — AUFGESCHLUESSELT
+==============================================================================
+
+--- Halt-Gruende ueber alle Journale ---
+   20x  reconcile_drift:notional_drift_exceeds_limit
+
+--- je Journal: hat der Halt WIRKLICH gesperrt? ---
+Journal                           version                 Takte  Halt  erkl.  gesperrt   Eroeffn.versuche in Halt-Takten
+journal-20260817T145606.jsonl     None                        3     2      0         2                                 0
+journal-20260817T160253.jsonl     None                       87    10      0        10                                 0
+journal-20260817T174305.jsonl     4ad1683+aenderungen        46     4      0         4                                 0
+journal-20260817T182951.jsonl     d5c7133                  1122     4      4         0                                16
+
+Lesart: 'erkl.' = im selben Takt aufgeloest (halt_erklaert). Ein Takt mit
+Eroeffnungsversuchen war nicht gesperrt -- die Kette lief.
+
+==============================================================================
+BEFUND
+==============================================================================
+
+16 Takte waren wirklich gesperrt -- null Eroeffnungsversuche, der Lauf hoerte auf,
+es zu versuchen. Sie stammen ALLE aus Codestaenden, die es nicht mehr gibt.
+
+4 Takte trugen halt=true, wurden im selben Takt aufgeloest, und in jedem liefen
+vier Eroeffnungsversuche normal durch. Gesperrt hat dort nichts.
+
+Der einzige sauber gestempelte Codestand (d5c7133, 1.122 Takte, der laengste Lauf
+des Standes) hat KEINEN einzigen gesperrten Takt.
+

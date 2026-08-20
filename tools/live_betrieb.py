@@ -658,12 +658,23 @@ def takt(
     if erklaert and tick.halted and str(venue.halt_reason or "").startswith(
         "reconcile_drift"
     ):
-        journal.schreib("halt_erklaert", grund=venue.halt_reason,
-                        durch="broker_schliessung")
-        print(f"  ..   Halt aufgeloest: {venue.halt_reason} "
+        grund_vorher = venue.halt_reason
+        print(f"  ..   Halt aufgeloest: {grund_vorher} "
               f"war eine erkannte Broker-Schliessung")
         venue.clear_halt()
         tick = scheduler.tick(jetzt)
+        # ``weiter_gesperrt`` ist der Zustand, der die Eintritte unter 4) WIRKLICH
+        # regiert -- der ``takt``-Satz oben kann ihn nicht tragen, weil er vor dieser
+        # Aufloesung geschrieben wird (und das muss so bleiben: die Notbremse unter 2b
+        # kann vorher zurueckkehren, dann waere ein spaeter geschriebener Takt-Satz
+        # ganz verloren).
+        #
+        # Ohne dieses Feld war aus dem Journal nicht ablesbar, ob ein Halt-Takt
+        # tatsaechlich gesperrt hat. ``buchtreue`` zaehlte ihn als gesperrt, obwohl im
+        # langen Lauf vom 2026-08-17 in JEDEM dieser Takte vier Eroeffnungsversuche
+        # normal durchliefen -- einer davon fuehrte zu einer Eroeffnung.
+        journal.schreib("halt_erklaert", grund=grund_vorher,
+                        durch="broker_schliessung", weiter_gesperrt=tick.halted)
 
     # 2b) Notbremse. Vor allem anderen, und sie stellt wirklich glatt.
     if _notbremse(venue, manager, journal, equity_jetzt=konto.equity,

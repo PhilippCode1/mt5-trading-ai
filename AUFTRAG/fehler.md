@@ -554,3 +554,64 @@ vor dem ersten Takt den Start, wenn ein Lauf ein Glattstellen zusagt, das er ohn
 Schreibrecht nicht halten kann, und Positionen offen stehen. Der Fehler lag nicht im
 Glattstellen, sondern darin, dass der Lauf eine Zusage annahm, die er von Anfang an nicht
 halten konnte.
+
+---
+
+## F-017 — Eine Kennzahl, die ihrem eigenen Docstring widersprach
+
+**Stufe 10, Nachtrag Buchtreue.** `buchtreue` zählte jeden Takt mit `halt=true` als
+gesperrt und begründete das im eigenen Docstring mit dem Satz: *„Beides sperrt jede
+Eröffnung."*
+
+**Für 4 von 20 Halt-Takten stimmte dieser Satz nicht.** In genau diesen Takten liefen
+je vier Eröffnungsversuche normal durch; in einem führte einer zu einer Eröffnung. Der
+Halt war im selben Takt aufgelöst worden (`halt_erklaert`, `durch: broker_schliessung`),
+bevor irgendetwas blockiert wurde.
+
+**Warum das passieren konnte.** Der `takt`-Satz wird geschrieben, bevor der Buchabgleich
+läuft — er *kann* die Auflösung nicht kennen. Die Metrik las damit einen
+Zwischenzustand und nannte ihn Ergebnis.
+
+**Wie es aufgefallen ist.** Nicht am Code, sondern beim Aufschlüsseln: alle 20 Halts
+hatten **denselben** Grund. Zwanzig identische Gründe sind kein Befund, sondern eine
+Aufforderung nachzusehen, ob dahinter wirklich dasselbe steckt. Es steckten zwei völlig
+verschiedene Lagen dahinter, und die eine hatte gar nichts blockiert.
+
+**Behoben.** Der `halt_erklaert`-Satz trägt jetzt `weiter_gesperrt` — den Zustand nach
+der erneuten Befragung des Schedulers, also den, der die Eintritte wirklich regiert.
+`buchtreue` zählt danach; Aufzeichnungen ohne das Feld sind `unbeurteilbar` und stehen
+nicht im Nenner (V3).
+
+**Was daraus folgt.** Zwei Dinge, und das zweite ist das wichtigere:
+
+1. Eine Metrik, die einen **Zwischenzustand** liest, misst nicht das Ergebnis. Die Frage
+   ist nicht „was stand da", sondern „was hat gegolten, als entschieden wurde".
+2. **Der Docstring einer Kennzahl ist eine prüfbare Behauptung.** „Beides sperrt jede
+   Eröffnung" ließ sich gegen die Journale halten — und fiel. Wer eine Kennzahl baut und
+   ihre Bedeutung hinschreibt, hat damit einen Testfall geschrieben; er gehört auch
+   gefahren.
+
+---
+
+## F-018 — Die Kennzahlen mischten vier Codestände zu einer Zahl
+
+**Stufe 10, Nachtrag Buchtreue.** Alle 16 wirklich gesperrten Takte stammen aus
+Codeständen, die es nicht mehr gibt: zwei ohne Versionsstempel, einer mit
+`+aenderungen` (unsauberes Arbeitsverzeichnis). Der einzige sauber gestempelte Stand
+(`d5c7133`, 1.122 der 1.360 Takte) hat **keinen einzigen**.
+
+Die Journale tragen ein `version`-Feld. Die Metriken haben es **ignoriert**.
+
+**Warum das in beide Richtungen schadet.** Ein behobener Defekt drückt die Zahl für
+immer — Arbeit, die getan ist, sieht nie danach aus. Und ein neuer Defekt verschwindet
+in der Geschichte: ein Lauf stellt 82 % aller Takte, ein Fehler in den übrigen 18 % fällt
+kaum auf.
+
+**Behoben.** `nach_codestand()` erhebt dieselben Metriken getrennt je Stempel; das
+Werkzeug zeigt die Tabelle unter den Zielen. Zwei Gruppen tragen ihre Einschränkung im
+Namen (`ohne Stempel`, `+aenderungen`).
+
+**Die Falle daneben, ausdrücklich benannt.** Es wäre bequem gewesen, die Ziele auf den
+aktuellen Codestand umzustellen — dann stünde die Buchtreue bei 100 %. Das wäre die
+Auswahl der guten Läufe. Die Ziele urteilen weiter über **alle** Journale; die
+Aufschlüsselung ist Diagnose und sagt das in ihrer Überschrift.

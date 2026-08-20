@@ -144,14 +144,65 @@ def _saetze(zeilen: Iterable[str]) -> list[dict[str, Any]]:
 
 
 def buchtreue(saetze: Sequence[dict[str, Any]]) -> Messwert:
-    """Anteil der Takte ohne gesetzten Halt.
+    """Anteil der Takte, in denen **wirklich** keine Eroeffnung gesperrt war.
 
-    Ein Halt heisst: das Buch und die Meldung des Handelsplatzes gehen auseinander,
-    oder ein Sendeversuch blieb unbeantwortet. Beides sperrt jede Eroeffnung.
+    WAS DIESE METRIK ZUERST GEZAEHLT HAT -- UND WARUM DAS FALSCH WAR
+    ---------------------------------------------------------------
+    Die erste Fassung zaehlte jeden Takt mit ``halt=true``. Ihr eigener Docstring
+    begruendete das mit dem Satz „Beides sperrt jede Eroeffnung". Gemessen an den
+    Journalen stimmte dieser Satz in **4 von 20** Halt-Takten nicht:
+
+        Der Scheduler laeuft VOR dem Buchabgleich. Schliesst der Broker eine Position
+        zwischen zwei Takten (ein voellig normaler Stop-Fill), sieht der Reconcile sie
+        noch im Buch und latcht ``reconcile_drift`` -- fail-closed und richtig so. Der
+        Abgleich im selben Takt erkennt die Schliessung, loest den Halt auf, und die
+        Eintritte laufen normal. Im langen Lauf vom 2026-08-17 liefen in JEDEM dieser
+        vier Takte vier Eroeffnungsversuche durch; einer fuehrte zu einer Eroeffnung.
+
+    Der ``takt``-Satz wird vor dieser Aufloesung geschrieben und kann sie nicht kennen
+    (er muss frueh geschrieben werden, sonst verschluckt eine zurueckkehrende Notbremse
+    ihn ganz). Die Aufloesung steht deshalb im ``halt_erklaert``-Satz desselben Takts,
+    und dort sagt ``weiter_gesperrt``, was die Eintritte wirklich regiert hat.
+
+    **Die Korrektur rettet das Ziel nicht** -- sie hebt den Wert von 98,53 % auf
+    98,82 % bei einer Schwelle von 99,0 %. Sie ist also keine Schwellenverschiebung
+    durch die Hintertuer, sondern bringt die Zaehlung mit ihrer eigenen Definition in
+    Deckung. Die Schwelle ist unveraendert.
+
+    Die Leiter je Takt, ohne Ersatzwerte (V3):
+
+    ==========================  ============================================
+    Lage                        gezaehlt als
+    ==========================  ============================================
+    ``halt`` nicht gesetzt      sauber
+    Halt, kein ``halt_erklaert``  **gesperrt** -- der Halt stand den Takt durch
+    Halt, erklaert, ``weiter_gesperrt=False``  sauber
+    Halt, erklaert, ``weiter_gesperrt=True``   **gesperrt**
+    Halt, erklaert, Feld fehlt  **unbeurteilbar** -- nicht im Nenner
+    ==========================  ============================================
     """
-    takte = [s for s in saetze if s.get("art") == "takt"]
-    ohne_halt = sum(1 for s in takte if not s.get("halt"))
-    return Messwert("buchtreue", ohne_halt, len(takte), "Takte")
+    takte = [i for i, s in enumerate(saetze) if s.get("art") == "takt"]
+    sauber = gesperrt = unbeurteilbar = 0
+    for pos, i in enumerate(takte):
+        if not saetze[i].get("halt"):
+            sauber += 1
+            continue
+        # Bis zum naechsten Takt: steht dort eine Aufloesung?
+        bis = takte[pos + 1] if pos + 1 < len(takte) else len(saetze)
+        erklaerung = next(
+            (s for s in saetze[i + 1:bis] if s.get("art") == "halt_erklaert"), None
+        )
+        if erklaerung is None:
+            gesperrt += 1
+        elif "weiter_gesperrt" not in erklaerung:
+            unbeurteilbar += 1
+        elif erklaerung["weiter_gesperrt"]:
+            gesperrt += 1
+        else:
+            sauber += 1
+    return Messwert(
+        "buchtreue", sauber, sauber + gesperrt, "Takte", unbeurteilbar=unbeurteilbar
+    )
 
 
 def ausstiegsverlaesslichkeit(saetze: Sequence[dict[str, Any]]) -> Messwert:
@@ -286,6 +337,45 @@ def erhebe(zeilen: Iterable[str]) -> dict[str, Messwert]:
     """Alle Metriken auf einmal, aus denselben Saetzen."""
     saetze = _saetze(zeilen)
     return {name: fn(saetze) for name, fn in METRIKEN.items()}
+
+
+#: Codestand eines Laufs, der nicht reproduzierbar ist: das Arbeitsverzeichnis war beim
+#: Lauf nicht sauber. Zu welchem Quelltext die Zahlen gehoeren, weiss danach niemand.
+NICHT_REPRODUZIERBAR = "+aenderungen"
+#: Laeufe aus der Zeit vor der Versionsstempelung.
+OHNE_STEMPEL = "ohne Stempel"
+
+
+def nach_codestand(zeilen: Iterable[str]) -> dict[str, dict[str, Messwert]]:
+    """Dieselben Metriken, aber getrennt nach dem Codestand des Laufs.
+
+    WARUM DAS NOETIG IST
+    --------------------
+    Die Ziele oben urteilen ueber **alle** Journale zusammen. Das ist als Ergebnis
+    richtig -- es ist der Betrieb, den es gegeben hat -- aber als **Diagnose**
+    unbrauchbar, und zwar in beide Richtungen:
+
+    * Ein behobener Defekt drueckt die Zahl fuer immer. Von den 16 gesperrten Takten
+      dieses Standes stammen **alle** aus Codestaenden, die es nicht mehr gibt.
+    * Ein neuer Defekt verschwindet in der Geschichte. Der lange Lauf hat 1.122 der
+      1.360 Takte; ein Fehler in den uebrigen 238 faellt kaum auf.
+
+    Diese Aufschluesselung beantwortet die Frage, die den Betrieb wirklich leitet:
+    **passiert es noch?** Sie ersetzt die Gesamtzahl nicht und darf es nicht -- sonst
+    waere sie die bequeme Auswahl der guten Laeufe.
+
+    Zwei Gruppen tragen ihre Einschraenkung im Namen: ``ohne Stempel`` (aus der Zeit
+    vor der Versionsstempelung) und alles mit ``+aenderungen`` (das Arbeitsverzeichnis
+    war nicht sauber -- zu welchem Quelltext die Zahlen gehoeren, weiss niemand).
+    """
+    gruppen: dict[str, list[dict[str, Any]]] = {}
+    for satz in _saetze(zeilen):
+        stand = str(satz.get("version") or OHNE_STEMPEL)
+        gruppen.setdefault(stand, []).append(satz)
+    return {
+        stand: {name: fn(saetze) for name, fn in METRIKEN.items()}
+        for stand, saetze in sorted(gruppen.items())
+    }
 
 
 def pruefe_alarme(werte: dict[str, Messwert]) -> tuple[Alarm, ...]:
