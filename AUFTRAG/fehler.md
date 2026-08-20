@@ -510,3 +510,47 @@ nirgends erwähnte Funktion weiterhin bei 0 bleibt.
 Antworten möglich, und die Reihenfolge zählt: erst prüfen, ob das Tor eine echte Lücke
 misst; erst wenn nicht, das Tor korrigieren — und die Lockerung dann **benennen und mit
 einem roten Eichfall absichern**, statt sie zu verschweigen.
+
+---
+
+## F-016 — Meine eigene Dienstgüteschicht zählte das Falsche
+
+**Stufe 10, Nachtrag.** Die drei Kennzahlen aus Stufe 10 haben zwei Läufe vom 2026-08-17
+als **sauber** ausgewiesen, die mit offenen Positionen am Broker geendet sind:
+
+```
+"offen_geblieben": ["EURUSD", "GBPUSD", "XAUUSD"]
+"offen_geblieben": ["EURUSD", "GBPUSD"]
+```
+
+`laufabschluss` fragt nur, ob ein `ende`-Satz da ist — beide haben einen.
+`ausstiegsverlaesslichkeit` sieht nur einzelne Schließversuche, nicht das Ergebnis.
+`buchtreue` sieht Takte. **Keine der drei sah den schlimmsten Zustand, den dieser Stand
+je erreicht hat.**
+
+**Das ist kein Rechenfehler, sondern die schlechtere Sorte:** die Zahlen stimmten alle.
+Gezählt wurde das Falsche. Und das Feld, das den Fall die ganze Zeit auswies, stand im
+Journal — gelesen hat es niemand.
+
+**Wie es aufgefallen ist.** Nicht durch Nachdenken über die Metriken, sondern durch die
+Anweisung, die schlechteste Zahl zu **beheben**. Wer eine aggregierte Kennzahl behebt,
+muss sie zuerst aufschlüsseln; und beim Aufschlüsseln der sieben Fehlschläge fiel auf,
+dass fünf davon aus zwei Läufen stammen, die nach der eigenen Dienstgüteschicht in
+Ordnung waren.
+
+**Was daraus folgt — für jede künftige Kennzahl.** Eine Metrik ist erst dann fertig, wenn
+jemand den **schlimmsten vorstellbaren Zustand** des gemessenen Systems hinschreibt und
+prüft, ob die Metrik ihn anzeigt. „Misst sie etwas" ist die falsche Frage; „zeigt sie den
+Fall, wegen dem wir überhaupt messen" ist die richtige. Bei drei Metriken war die Antwort
+dreimal nein.
+
+**Behoben.** Neue Metrik `ausstiegsdeckung` (Anteil der beendeten Läufe ohne offen
+gebliebene Position), Ziel 1,00 ohne Fehlerbudget, Alarmregel `position_offen_geblieben`,
+Runbook-Abschnitt „Position offen geblieben". Auf den echten Journalen: **75,0 % (6 von 8
+beurteilbaren Läufen)** — der Alarm steht.
+
+**Und die Ursache selbst.** `tools/live_betrieb.py::ausstiegszusage_pruefen` verweigert
+vor dem ersten Takt den Start, wenn ein Lauf ein Glattstellen zusagt, das er ohne
+Schreibrecht nicht halten kann, und Positionen offen stehen. Der Fehler lag nicht im
+Glattstellen, sondern darin, dass der Lauf eine Zusage annahm, die er von Anfang an nicht
+halten konnte.

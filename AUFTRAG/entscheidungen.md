@@ -353,3 +353,51 @@ Blindstelle des Zählers zu beheben ist ehrlicher als sie zu umgehen.
 Wer ihn später verschärfen will, braucht eine echte Erreichbarkeitsanalyse — den Weg vom
 Einstiegspunkt zur Tabelle. Das ist Arbeit, die dieser Stand nicht hat, und sie wird hier
 nicht behauptet.
+
+---
+
+## E-012 — Die vierte Schwelle steht auf 1,00 und wurde nach der Messung gesetzt
+
+**Datum:** 2026-08-20 · **Stufe:** 10 (Nachtrag) · **Entschieden von:** ausführender Agent
+
+**Anlass.** Der Nachtrag zur Ausstiegsverlässlichkeit hat einen Zustand sichtbar gemacht,
+den keine der drei Kennzahlen aus Stufe 10 sah: ein beendeter Lauf mit offenen Positionen
+am Broker (F-016). Dafür brauchte es eine vierte Metrik — und damit eine vierte Schwelle,
+gesetzt zu einem Zeitpunkt, zu dem die Daten bereits auf dem Tisch lagen.
+
+**Entscheidung.** `ausstiegsdeckung` bekommt das Ziel **1,00, also kein Fehlerbudget**.
+Dass die Schwelle nach der Messung gesetzt wurde, steht wörtlich in der Begründung im
+Code und im Nachtragsbericht §4 — nicht als Fußnote, sondern im selben Satz wie die Zahl.
+
+**Begründung.** Bei den anderen drei Zielen ist ein Restanteil vertretbar: ein gesperrter
+Takt, ein abgebrochener Lauf, ein misslungener Schließversuch sind ärgerlich und
+beherrschbar. Hier nicht. Ein Lauf, der eine Position offen zurücklässt, lässt Geld am
+Markt **ohne beaufsichtigenden Prozess** — keine Stop-Pflege, kein Abgleich, keine
+Höchsthaltedauer, keine Verlustgrenze. Es gibt keinen Anteil davon, der in Ordnung wäre.
+
+**Zum Verhältnis zu V6.** V6 verbietet, eine Schwelle nachträglich zu bewegen, damit ein
+Ergebnis passt. Diese Schwelle ist **strenger** als der Befund (75,0 %) und lässt ihn
+deutlicher durchfallen, als jede vorher plausibel gesetzte Zahl es getan hätte — bei 95 %
+wie den Nachbarzielen wäre der Alarm derselbe, aber das Fehlerbudget hätte suggeriert, es
+gäbe einen erlaubten Rest. Eine nachträgliche **Verschärfung**, die das eigene Ergebnis
+schlechter aussehen lässt, ist nicht die Anpassung, gegen die V6 gebaut ist.
+
+**Was unangetastet bleibt.** Die drei Schwellen aus Stufe 10 (0,99 / 0,95 / 0,95) und die
+historischen Zahlen. Die Journale werden nicht umgeschrieben (E-007): 78,8 % ist und
+bleibt, was am 2026-08-17 gemessen wurde.
+
+**Verworfene Alternative 1.** Die Schwelle auf 0,95 setzen wie bei den Nachbarn.
+Verworfen: ein Fehlerbudget von 5 % auf dieser Metrik hieße, dass jeder zwanzigste Lauf
+Geld unbeaufsichtigt stehen lassen darf. Das ist keine Toleranz, das ist ein Versehen in
+Zahlenform.
+
+**Verworfene Alternative 2.** Statt einer neuen Metrik die bestehende
+`ausstiegsverlaesslichkeit` so umdefinieren, dass sie offen gebliebene Positionen
+mitzählt. Verworfen: das wäre eine nachträgliche Änderung an einer vorher festgelegten
+Kennzahl, also genau V6 — und der historische Wert 78,8 % wäre nicht mehr mit dem
+verglichen, was Stufe 10 gemessen hat.
+
+**Verworfene Alternative 3.** Läufe ohne das Feld `offen_geblieben` als sauber zählen.
+Verworfen (V3): das ersetzte einen fehlenden Messwert durch einen Standardwert, und zwar
+durch den schmeichelnden. Sie stehen jetzt als `unbeurteilbar` außerhalb des Nenners und
+werden angezeigt — 11 von 19.

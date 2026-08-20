@@ -1,0 +1,21 @@
+============================= test session starts =============================
+platform win32 -- Python 3.11.7, pytest-8.3.4, pluggy-1.6.0 -- C:\Users\Acer\AppData\Local\Programs\Python\Python311\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\Acer\mt5_trading_ai
+configfile: pyproject.toml
+plugins: anyio-4.8.0, base-url-2.1.0, cov-6.0.0, playwright-0.7.2
+collecting ... collected 11 items
+
+tests/test_ausstiegsdeckung.py::test_rot_der_gemessene_fall_wird_jetzt_abgewiesen PASSED [  9%]
+tests/test_ausstiegsdeckung.py::test_gruen_ohne_offene_position_startet_der_lauf PASSED [ 18%]
+tests/test_ausstiegsdeckung.py::test_gruen_mit_schreibrecht_startet_der_lauf PASSED [ 27%]
+tests/test_ausstiegsdeckung.py::test_gruen_wer_kein_glattstellen_zusagt_darf_zusehen PASSED [ 36%]
+tests/test_ausstiegsdeckung.py::test_der_riegel_haengt_wirklich_im_werkzeug PASSED [ 45%]
+tests/test_ausstiegsdeckung.py::test_rot_ein_lauf_mit_offener_position_zaehlt_nicht_als_sauber PASSED [ 54%]
+tests/test_ausstiegsdeckung.py::test_gruen_lauter_saubere_laeufe_ergeben_volle_deckung PASSED [ 63%]
+tests/test_ausstiegsdeckung.py::test_ein_fehlendes_feld_zaehlt_NICHT_als_sauber PASSED [ 72%]
+tests/test_ausstiegsdeckung.py::test_rot_die_neue_regel_schlaegt_auf_den_echten_journalen_an PASSED [ 81%]
+tests/test_ausstiegsdeckung.py::test_die_neue_regel_ist_vollstaendig_gebunden PASSED [ 90%]
+tests/test_ausstiegsdeckung.py::test_dieses_eine_ziel_hat_bewusst_kein_fehlerbudget PASSED [100%]
+
+============================= 11 passed in 0.43s ==============================

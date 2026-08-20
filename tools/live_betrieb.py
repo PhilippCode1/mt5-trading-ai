@@ -83,6 +83,7 @@ import subprocess
 import sys
 import time
 import uuid
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
@@ -741,6 +742,55 @@ def _autotrading_an() -> bool:
     return bool(info is not None and info.trade_allowed)
 
 
+def ausstiegszusage_pruefen(
+    *, kann_schreiben: bool, schliesst_am_ende: bool, offene_symbole: Sequence[str]
+) -> str | None:
+    """Darf dieser Lauf ueberhaupt starten? ``None`` heisst ja, sonst der Grund.
+
+    WARUM DIESER RIEGEL EXISTIERT
+    -----------------------------
+    Gemessen an den Betriebsjournalen vom 2026-08-17: **zwei Laeufe endeten mit offenen
+    Positionen am Broker** (``['EURUSD','GBPUSD','XAUUSD']`` und
+    ``['EURUSD','GBPUSD']``). Beide liefen ohne ``--scharf``, also ohne Schreibrecht.
+    Beide haben beim Start ueber ``adopt_book()`` fremde Positionen uebernommen, einen
+    Takt lang beaufsichtigt -- und **erst beim Herunterfahren** gemerkt, dass sie den
+    zugesagten Ausstieg nicht fahren koennen. Fuenf der sieben misslungenen
+    Schliessversuche dieses Standes stammen aus diesen zwei Laeufen.
+
+    Der Fehler liegt nicht im Glattstellen. Er liegt darin, dass der Lauf **eine Zusage
+    annimmt, die er von Anfang an nicht halten kann**. Ein Aufseher, der nicht
+    aussteigen kann, ist kein Aufseher -- er ist ein Zuschauer, der so aussieht wie
+    einer.
+
+    Der Riegel steht deshalb VOR dem ersten Takt, nicht danach. Dieselbe Begruendung
+    wie beim AutoTrading-Vorcheck darunter: eine Unfaehigkeit, die erst beim Senden
+    auffaellt, sieht dann aus wie ein Fehler der Software.
+
+    Drei Wege heraus, alle ausdruecklich:
+
+    * ``--scharf`` -- der Lauf bekommt das Schreibrecht und kann schliessen.
+    * ``--am-ende-offen-lassen`` -- der Lauf sagt gar kein Glattstellen zu; die
+      Verantwortung fuer die offenen Positionen bleibt beim Menschen, und er hat es
+      hingeschrieben.
+    * Die Positionen von Hand schliessen, dann starten.
+    """
+    if not offene_symbole:
+        # Nichts offen: der Lauf kann nichts zurueckzulassen haben.
+        return None
+    if kann_schreiben or not schliesst_am_ende:
+        return None
+    return (
+        "Dieser Lauf sagt ein Glattstellen am Ende zu, kann es aber nicht halten: "
+        "der Schreibpfad ist gesperrt (ohne --scharf), und am Broker stehen bereits "
+        f"Positionen offen: {sorted(offene_symbole)}.\n"
+        "Gemessen: genau so sind am 2026-08-17 zwei Laeufe mit offenen Positionen "
+        "geendet -- das Geld blieb am Markt, ohne beaufsichtigenden Prozess.\n"
+        "Entweder --scharf (mit Begruendung), oder --am-ende-offen-lassen (dann "
+        "bleibt die Verantwortung ausdruecklich beim Menschen), oder die Positionen "
+        "vorher von Hand schliessen."
+    )
+
+
 def main() -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -785,6 +835,23 @@ def main() -> int:
               file=sys.stderr)
         terminal.shutdown()
         return 2
+    # Der Ausstiegsriegel steht VOR ``adopt_book()``: uebernommen wird nur, was dieser
+    # Lauf auch wieder loswerden kann. Begruendung und Messung in
+    # ``ausstiegszusage_pruefen``.
+    hindernis = ausstiegszusage_pruefen(
+        kann_schreiben=bool(args.scharf),
+        schliesst_am_ende=not args.am_ende_offen_lassen,
+        offene_symbole=[p.symbol for p in venue.get_positions()],
+    )
+    if hindernis is not None:
+        print("=" * 78, file=sys.stderr)
+        print("ABBRUCH — der zugesagte Ausstieg ist nicht fahrbar.", file=sys.stderr)
+        print("", file=sys.stderr)
+        print(hindernis, file=sys.stderr)
+        print("=" * 78, file=sys.stderr)
+        terminal.shutdown()
+        return 2
+
     venue.adopt_book()
 
     # Vorpruefung: der AutoTrading-Knopf des Terminals. Ohne ihn lehnt MT5 JEDE

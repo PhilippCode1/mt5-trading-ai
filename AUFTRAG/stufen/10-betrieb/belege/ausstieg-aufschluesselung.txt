@@ -1,0 +1,50 @@
+==============================================================================
+DIE SIEBEN MISSLUNGENEN SCHLIESSVERSUCHE — AUFGESCHLUESSELT
+==============================================================================
+
+gelungen 26 | fehlgeschlagen 7 | Anteil 78.8%
+
+  2026-08-17T14:57:23+00:00  EURUSD   journal-20260817T145606.jsonl
+      Handelsplatz hat abgelehnt: Done
+  2026-08-17T14:58:42+00:00  EURUSD   journal-20260817T145822.jsonl
+      Handelsplatz hat abgelehnt: Done (retcode=0)
+  2026-08-17T17:34:28+00:00  EURUSD   journal-20260817T173413.jsonl
+      Real-Terminal: Schreibpfad gesperrt (allow_write=False). Erst gegen ein Demo-Terminal smoke-testen, 
+  2026-08-17T17:34:28+00:00  GBPUSD   journal-20260817T173413.jsonl
+      Real-Terminal: Schreibpfad gesperrt (allow_write=False). Erst gegen ein Demo-Terminal smoke-testen, 
+  2026-08-17T17:34:28+00:00  XAUUSD   journal-20260817T173413.jsonl
+      Real-Terminal: Schreibpfad gesperrt (allow_write=False). Erst gegen ein Demo-Terminal smoke-testen, 
+  2026-08-17T18:28:15+00:00  EURUSD   journal-20260817T182800.jsonl
+      Real-Terminal: Schreibpfad gesperrt (allow_write=False). Erst gegen ein Demo-Terminal smoke-testen, 
+  2026-08-17T18:28:15+00:00  GBPUSD   journal-20260817T182800.jsonl
+      Real-Terminal: Schreibpfad gesperrt (allow_write=False). Erst gegen ein Demo-Terminal smoke-testen, 
+
+--- nach Klasse ---
+  5x  Real-Terminal: Schreibpfad gesperrt (allow_write=False). Ers
+  1x  Handelsplatz hat abgelehnt: Done
+  1x  Handelsplatz hat abgelehnt: Done (retcode=0)
+
+==============================================================================
+WAS AM LAUFENDE LIEGEN BLIEB (offen_geblieben im ende-Satz)
+==============================================================================
+  journal-20260817T142137.jsonl      Feld fehlt -> NICHT BEURTEILBAR
+  journal-20260817T142311.jsonl      Feld fehlt -> NICHT BEURTEILBAR
+  journal-20260817T144115.jsonl      Feld fehlt -> NICHT BEURTEILBAR
+  journal-20260817T144355.jsonl      Feld fehlt -> NICHT BEURTEILBAR
+  journal-20260817T144718.jsonl      Feld fehlt -> NICHT BEURTEILBAR
+  journal-20260817T145021.jsonl      Feld fehlt -> NICHT BEURTEILBAR
+  journal-20260817T145330.jsonl      Feld fehlt -> NICHT BEURTEILBAR
+  journal-20260817T145606.jsonl      Feld fehlt -> NICHT BEURTEILBAR
+  journal-20260817T145822.jsonl      Feld fehlt -> NICHT BEURTEILBAR
+  journal-20260817T150024.jsonl      Feld fehlt -> NICHT BEURTEILBAR
+  journal-20260817T150428.jsonl      Feld fehlt -> NICHT BEURTEILBAR
+  journal-20260817T150513.jsonl      KEIN ende-Satz
+  journal-20260817T151045.jsonl      sauber
+  journal-20260817T151127.jsonl      sauber
+  journal-20260817T151324.jsonl      sauber
+  journal-20260817T160253.jsonl      sauber
+  journal-20260817T173032.jsonl      sauber
+  journal-20260817T173413.jsonl      OFFEN GEBLIEBEN: ['EURUSD', 'GBPUSD', 'XAUUSD']
+  journal-20260817T174305.jsonl      sauber
+  journal-20260817T182800.jsonl      OFFEN GEBLIEBEN: ['EURUSD', 'GBPUSD']
+  journal-20260817T182951.jsonl      KEIN ende-Satz

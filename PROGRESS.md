@@ -2469,3 +2469,62 @@ Zustellung bis zu einem Menschen. Der Sprachmodell-Schutz ist nicht bewiesen, so
 gegenstandslos: bewiesen ist, dass es keinen Pfad gibt, auf dem Fremdtext zu einem
 Entscheidungswert würde. Käme je ein Modell hinzu, ist der markierte, längenbegrenzte,
 normalisierte Datenblock **dann** zu bauen.
+
+---
+
+## Nachtrag zu Stufe 10 — die Ausstiegsverlässlichkeit (2026-08-20)
+
+*Auf Anweisung des Auftraggebers („Ausstiegsverlässlichkeit beheben"). Bericht in
+`AUFTRAG/stufen/10-betrieb/nachtrag-ausstieg.md`.*
+
+**Aufgeschlüsselt statt gedeutet.** Die sieben misslungenen Schließversuche hinter den
+78,8 % zerfallen in **zwei Klassen mit völlig verschiedenen Ursachen** — die aggregierte
+Zahl hatte sie verdeckt:
+
+- **2 Fälle** (14:57 und 14:58 UTC): `Handelsplatz hat abgelehnt: Done (retcode=0)`.
+  Dieser Broker meldet Erfolg mit `retcode=0` und `comment='Done'`; ein ausgeführter
+  Schluss galt als Ablehnung. **Behoben in `82c81c3` um 15:03 UTC** — fünf Minuten nach
+  dem zweiten Fall — und gepinnt in
+  `test_schreibpfad_wirkung.py::test_der_gemessene_retcode_null_bleibt_ein_fill`.
+- **5 Fälle** (zwei Läufe): `Real-Terminal: Schreibpfad gesperrt (allow_write=False)`.
+  Ein Lauf **ohne** Schreibrecht hatte über `adopt_book()` fremde Positionen übernommen
+  (23.002,90 belegte Marge) und erst beim Herunterfahren gemerkt, dass er den zugesagten
+  Ausstieg nicht fahren kann. Beide Läufe endeten mit offenen Positionen am Broker.
+
+**Der unangenehmste Befund (F-016): keine der drei Kennzahlen aus Stufe 10 sah das.**
+`laufabschluss` zählte beide Läufe als sauber, weil ein `ende`-Satz da war. Kein
+Rechenfehler — das Falsche gezählt. Das Feld `offen_geblieben` stand die ganze Zeit im
+Journal; gelesen hat es niemand.
+
+**Neu:**
+
+- `tools/live_betrieb.py::ausstiegszusage_pruefen` — der Riegel **vor** `adopt_book()`:
+  ein Lauf, der ein Glattstellen zusagt, das er nicht halten kann, startet nicht mehr.
+  Drei Auswege stehen in der Meldung (`--scharf`, `--am-ende-offen-lassen`, von Hand
+  schließen) — ein Riegel ohne Ausweg wird umgangen.
+- `betrieb/dienstguete.py::ausstiegsdeckung` — Anteil der beendeten Läufe **ohne** offen
+  gebliebene Position. Nicht „wurde es versucht", sondern „ist es aus".
+  Gemessen: **75,0 % (6 von 8 beurteilbaren Läufen)**, Ziel 1,00 **ohne Fehlerbudget**.
+- `Messwert.unbeurteilbar` — 11 Läufe kennen das Feld nicht; sie stehen **nicht im
+  Nenner** und werden **angezeigt** (V3). Sie als sauber zu zählen wäre der schmeichelnde
+  Standardwert.
+- Alarmregel `position_offen_geblieben` + `RUNBOOK.md` §„Position offen geblieben" —
+  erst im Terminal nachsehen und entscheiden, dann Ursachensuche.
+
+**Zur Schwelle, offen gesagt (E-012):** die 1,00 wurde **nach** der Messung gesetzt. Das
+steht so im Code und im Bericht. Sie ist strenger als der Befund und lässt ihn deutlicher
+durchfallen — eine nachträgliche *Verschärfung* ist nicht die Anpassung, gegen die V6
+gebaut ist. Die drei Schwellen aus Stufe 10 bleiben unangetastet, die historischen Zahlen
+ebenso (E-007).
+
+**Abnahme:** 11 Eichfälle in `tests/test_ausstiegsdeckung.py`, rot und grün je
+Eigenschaft. Elf Tore je Exit 0; pytest **1.598 grün**; Tötungsrate 1,000; Zweigdeckung
+jede Geldpfad-Datei über 80 %.
+
+**Ehrliche Grenze / offen:** Die Zahl 78,8 % ist **nicht** gestiegen und wird es erst
+durch einen Betrieb, der stattgefunden hat — dieser Stand hat seit dem 17.08. nicht
+gehandelt. Der Riegel ist gegen die Attrappe geprüft, nicht am Terminal. Nebenbefund,
+außerhalb dieser Arbeit festgehalten:
+`test_live_betrieb_sperren.py::test_ein_reconcile_halt_aus_einer_erkannten_schliessung_wird_aufgeloest`
+hängt an der Wanduhr (`_takt` ruft `takt` ohne `jetzt=`, anders als seine vier
+Geschwister) und ist dadurch sporadisch rot — dieselbe Krankheit wie F-013.

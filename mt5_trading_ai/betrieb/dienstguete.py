@@ -57,6 +57,15 @@ class Messwert:
     gelungen: int
     gesamt: int
     bezug: str
+    #: Vorgaenge, die sich **gar nicht beurteilen** lassen -- weil die Aufzeichnung das
+    #: noetige Feld noch nicht kannte oder es fehlt. Sie stehen NICHT im Nenner.
+    #:
+    #: Das ist V3 an einer Stelle, an der es leicht zu uebersehen waere: einen nicht
+    #: beurteilbaren Vorgang als „gelungen" zu zaehlen, ersetzt einen fehlenden
+    #: Messwert durch einen Standardwert -- und zwar durch den schmeichelnden. Ihn
+    #: stillschweigend als „gescheitert" zu zaehlen waere ebenso falsch, nur in die
+    #: andere Richtung. Er wird deshalb gefuehrt und angezeigt, nicht verrechnet.
+    unbeurteilbar: int = 0
 
     @property
     def anteil(self) -> float | None:
@@ -169,6 +178,37 @@ def laufabschluss(saetze: Sequence[dict[str, Any]]) -> Messwert:
     return Messwert("laufabschluss", ende, start, "Laeufe")
 
 
+def ausstiegsdeckung(saetze: Sequence[dict[str, Any]]) -> Messwert:
+    """Anteil der beendeten Laeufe, die **keine** Position offen zurueckgelassen haben.
+
+    WARUM ES DIESE METRIK BRAUCHT
+    -----------------------------
+    ``laufabschluss`` fragt nur, ob ein ``ende``-Satz da ist.
+    ``ausstiegsverlaesslichkeit`` fragt nur, ob ein einzelner Schliessversuch gelungen
+    ist. **Beide sahen den schlimmsten Fall dieses Standes nicht:**
+
+        Am 2026-08-17 endeten zwei Laeufe mit offenen Positionen am Broker
+        (``['EURUSD','GBPUSD','XAUUSD']`` und ``['EURUSD','GBPUSD']``), weil der
+        Schreibpfad gesperrt war. Beide haben einen ``start``- und einen ``ende``-Satz.
+        **``laufabschluss`` zaehlt sie als saubere Laeufe.** Geld blieb am Markt, die
+        Kennzahl stand auf gruen.
+
+    Diese Metrik misst genau das Ergebnis, auf das es ankommt: ist am Ende wirklich
+    niemand mehr draussen geblieben. Nicht „wurde es versucht", sondern „ist es aus".
+
+    ``offen_geblieben`` fehlt in Aufzeichnungen von vor seiner Einfuehrung. Solche
+    Laeufe sind **unbeurteilbar** und stehen nicht im Nenner (V3) -- siehe
+    ``Messwert.unbeurteilbar``.
+    """
+    enden = [s for s in saetze if s.get("art") == "ende"]
+    beurteilbar = [s for s in enden if "offen_geblieben" in s]
+    sauber = sum(1 for s in beurteilbar if not s.get("offen_geblieben"))
+    return Messwert(
+        "ausstiegsdeckung", sauber, len(beurteilbar), "beendete Laeufe",
+        unbeurteilbar=len(enden) - len(beurteilbar),
+    )
+
+
 #: Metrikname -> Funktion. **Die eine Stelle**, an der eine Metrik existiert; die
 #: Alarmregeln und Ziele unten verweisen nur auf Namen aus diesem Verzeichnis, und ein
 #: Dauertor prueft, dass jeder Verweis hier ankommt.
@@ -176,6 +216,7 @@ METRIKEN: dict[str, Callable[[Sequence[dict[str, Any]]], Messwert]] = {
     "buchtreue": buchtreue,
     "ausstiegsverlaesslichkeit": ausstiegsverlaesslichkeit,
     "laufabschluss": laufabschluss,
+    "ausstiegsdeckung": ausstiegsdeckung,
 }
 
 
@@ -197,6 +238,16 @@ ZIELE: tuple[Dienstgueteziel, ...] = (
         "Ein Lauf ohne Endsatz zwingt den Wiederanlauf, das Buch vom Broker zu "
         "uebernehmen statt es fortzuschreiben.",
     ),
+    Dienstgueteziel(
+        "Ausstiegsdeckung", "ausstiegsdeckung", 1.00,
+        "Das einzige Ziel ohne Fehlerbudget, und das mit Absicht: ein Lauf, der eine "
+        "Position offen zuruecklaesst, laesst Geld am Markt OHNE beaufsichtigenden "
+        "Prozess. Dafuer gibt es keinen vertretbaren Anteil -- jeder einzelne Fall ist "
+        "einer zu viel. Die Schwelle wurde NACH der Messung gesetzt (2 von 8 "
+        "beurteilbaren "
+        "Laeufen gerissen) und ist strenger als der Befund; eine nachtraeglich "
+        "VERSCHAERFTE Schwelle ist nicht die Anpassung, die V6 verbietet.",
+    ),
 )
 
 
@@ -212,6 +263,11 @@ ALARMREGELN: tuple[Alarmregel, ...] = (
         "ausstieg_misslingt", "ausstiegsverlaesslichkeit",
         "Ausstieg misslingt", 0.95,
         "Schliessversuche scheitern -- moeglicherweise steht Geld am Markt.",
+    ),
+    Alarmregel(
+        "position_offen_geblieben", "ausstiegsdeckung",
+        "Position offen geblieben", 1.00,
+        "Ein Lauf ist beendet worden, waehrend eine Position noch offen stand.",
     ),
     Alarmregel(
         "laeufe_brechen_ab", "laufabschluss",

@@ -78,6 +78,45 @@ zweimal scheitert, scheitert auch beim dritten Mal.
 
 ---
 
+## Position offen geblieben
+
+**Was der Alarm sagt.** Ein Lauf wurde beendet, während eine Position noch offen stand.
+**Das ist der ernsteste Zustand, den dieses System melden kann** — schlimmer als ein
+misslungener einzelner Schließversuch, denn hier läuft anschließend *kein Prozess mehr*,
+der die Position beaufsichtigt: keine Stop-Pflege, kein Abgleich, keine Höchsthaltedauer,
+keine Verlustgrenze. Das Geld steht am Markt und niemand sieht hin.
+
+**Sofort, vor jeder Ursachensuche.**
+
+1. **Im Terminal nachsehen**, welche Positionen offen sind — nicht im Journal. Das Journal
+   sagt, was der Lauf *wusste*; der Broker sagt, was *ist*.
+2. Entscheiden: von Hand schließen oder bewusst stehen lassen. Beides ist vertretbar,
+   „ich schaue morgen" ist es nicht.
+
+**Erst danach: woran lag es.** Der `ende`-Satz führt die Symbole unter
+`offen_geblieben`; die `schliessen_fehlgeschlagen`-Sätze davor tragen den Grund.
+
+- **`Real-Terminal: Schreibpfad gesperrt (allow_write=False)`:** Der Lauf lief ohne
+  `--scharf`, also ohne Schreibrecht, hatte aber offene Positionen übernommen. **Seit dem
+  Startriegel kann das nicht mehr passieren** (`tools/live_betrieb.py`,
+  `ausstiegszusage_pruefen`): ein Lauf ohne Schreibrecht, der ein Glattstellen zusagt,
+  startet nicht mehr, solange Positionen offen stehen. Tritt es doch auf, ist der Riegel
+  umgangen worden — dann ist das der eigentliche Befund.
+- **`unbekannt` in der Liste:** Das Glattstellen selbst ist geworfen, der Lauf konnte
+  nicht einmal mehr feststellen, was offen ist. Hier hilft nur das Terminal.
+- **Wortlaut des Handelsplatzes:** siehe Abschnitt „Ausstieg misslingt" — dieselben
+  Fälle, dieselben Griffe.
+
+**Was ausdrücklich nicht zu tun ist.** Den nächsten Lauf starten, bevor die offenen
+Positionen geklärt sind. Er übernimmt sie über `adopt_book()` und rechnet sie in seine
+Grenzen ein, als hätte er sie selbst eröffnet.
+
+**Warum dieses Ziel kein Fehlerbudget hat.** Bei den anderen drei ist ein Restanteil
+vertretbar. Hier nicht: es gibt keinen Anteil an unbeaufsichtigt am Markt stehendem Geld,
+der in Ordnung wäre. Jeder einzelne Fall ist einer zu viel.
+
+---
+
 ## Läufe brechen ab
 
 **Was der Alarm sagt.** Weniger als 95 % der Läufe enden mit einem `ende`-Satz. Ein Lauf

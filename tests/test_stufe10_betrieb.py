@@ -146,25 +146,29 @@ def test_rot_eine_regel_auf_eine_fehlende_metrik_wirft_statt_zu_schweigen() -> N
         pruefe_alarme(werte)
 
 
+def _alles_gruen(**abweichend: Messwert) -> dict[str, Messwert]:
+    """Ein vollstaendiger, makelloser Messwertsatz -- aus ``METRIKEN`` abgeleitet.
+
+    Bewusst nicht von Hand aufgezaehlt: die Liste lief beim Hinzufuegen der vierten
+    Metrik (``ausstiegsdeckung``) aus dem Tritt, und zwei Faelle fielen -- korrekt, denn
+    ``pruefe_alarme`` wirft bei einer fehlenden Metrik. Ein Testwerkzeug, das denselben
+    Fehler ein zweites Mal machen kann, ist eins zu viel.
+    """
+    werte = {name: Messwert(name, 100, 100, "Vorgaenge") for name in METRIKEN}
+    werte.update(abweichend)
+    return werte
+
+
 def test_gruen_vollstaendige_werte_ergeben_eine_pruefbare_antwort() -> None:
-    werte = {
-        "buchtreue": Messwert("buchtreue", 100, 100, "Takte"),
-        "ausstiegsverlaesslichkeit": Messwert(
-            "ausstiegsverlaesslichkeit", 100, 100, "Schliessversuche"
-        ),
-        "laufabschluss": Messwert("laufabschluss", 10, 10, "Laeufe"),
-    }
-    assert pruefe_alarme(werte) == ()
+    assert pruefe_alarme(_alles_gruen()) == ()
 
 
 def test_rot_unterschrittene_schwelle_schlaegt_an_und_nennt_die_anweisung() -> None:
-    werte = {
-        "buchtreue": Messwert("buchtreue", 100, 100, "Takte"),
-        "ausstiegsverlaesslichkeit": Messwert(
+    werte = _alles_gruen(
+        ausstiegsverlaesslichkeit=Messwert(
             "ausstiegsverlaesslichkeit", 26, 33, "Schliessversuche"
-        ),
-        "laufabschluss": Messwert("laufabschluss", 10, 10, "Laeufe"),
-    }
+        )
+    )
     alarme = pruefe_alarme(werte)
     assert [a.regel.name for a in alarme] == ["ausstieg_misslingt"]
     zeile = alarme[0].als_zeile()

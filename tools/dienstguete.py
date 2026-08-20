@@ -96,6 +96,12 @@ def main() -> int:
     for ziel in ZIELE:
         wert = werte[ziel.metrik]
         print(f"  {ziel.name}: {wert.gelungen} von {wert.gesamt} {wert.bezug}")
+        if wert.unbeurteilbar:
+            # Muss sichtbar sein (V3): ein Anteil aus 8 Vorgaengen, waehrend 11 weitere
+            # gar nicht beurteilbar waren, sagt etwas anderes als ein Anteil aus 19.
+            # Sie stillschweigend wegzulassen ist dieselbe Luege wie sie mitzuzaehlen.
+            print(f"    NICHT BEURTEILBAR: {wert.unbeurteilbar} weitere "
+                  f"{wert.bezug} -- Feld fehlt in der Aufzeichnung, nicht im Nenner")
         print(f"    Warum diese Schwelle: {ziel.begruendung}")
 
     alarme = pruefe_alarme(werte)
