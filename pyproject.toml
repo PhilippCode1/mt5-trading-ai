@@ -21,6 +21,9 @@ markers = ["slow: faehrt einen Unterprozess ueber die Suite (Mutationstor)"]
 line-length = 88
 target-version = "py311"
 src = ["mt5_trading_ai", "tests", "tools"]
+# PROGRAMM/ ist Eingang und Beleg-Archiv des Programms NEUAUFBAU (fremde Pruefskripte,
+# Rohausgaben der Bewertung), kein Code dieses Pakets -- wird nicht gelintet.
+extend-exclude = ["PROGRAMM"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
