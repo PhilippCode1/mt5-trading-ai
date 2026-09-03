@@ -10,7 +10,7 @@ nichts weiss. Das ist der Zustand, den Stufe 5 des Auftrags verlangt::
     der sichtbar bleibt und vor der naechsten Eroeffnung aufgeloest werden muss.
 
 Bis hierher lag dieser Zustand in einem ``dict`` im Prozessgedaechtnis. Zwei Messungen
-dazu (``AUFTRAG/stufen/05-ausfuehrung/belege/``):
+dazu (``archiv/AUFTRAG/stufen/05-ausfuehrung/belege/``):
 
 * **Er sperrte die naechste Eroeffnung nicht.** Der Sendeversuch latcht zwar den
   Global-Halt, aber ``clear_halt()`` raeumt die Arbeitsliste ausdruecklich nicht ab --

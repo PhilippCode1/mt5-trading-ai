@@ -1,0 +1,30 @@
+# Zweigdeckung direkt (ohne tools/zweigdeckung.py --messen, das unter Windows scheitert), Worktree 306bbaa, 2026-09-03
+$ python -m coverage run --branch --source=mt5_trading_ai -m pytest -q -p no:cacheprovider
+FAILED tests/test_stufe5_ausfuehrung.py::test_das_redigierwerkzeug_laeuft_und_bestaetigt_die_aufzeichnung
+9 failed, 1613 passed, 2 skipped in 450.15s (0:07:30)
+[exit=1, Dauer 469 s]
+$ python -m coverage json -o C:/Users/Acer/AppData/Local/Temp/claude/C--Users-Acer-OneDrive-Documents-Cursor1-mt5-trading-ai/d519626c-32fb-4c44-8526-edc9791110ae/scratchpad/wt_coverage.json
+Wrote JSON report to C:/Users/Acer/AppData/Local/Temp/claude/C--Users-Acer-OneDrive-Documents-Cursor1-mt5-trading-ai/d519626c-32fb-4c44-8526-edc9791110ae/scratchpad/wt_coverage.json
+$ python tools/zweigdeckung.py --bericht C:/Users/Acer/AppData/Local/Temp/claude/C--Users-Acer-OneDrive-Documents-Cursor1-mt5-trading-ai/d519626c-32fb-4c44-8526-edc9791110ae/scratchpad/wt_coverage.json
+==========================================================================
+ZWEIGDECKUNG JE DATEI DES GELDPFADS
+==========================================================================
+Schwelle je Datei: 80%
+
+Datei                                      Zeilen   Zweige
+venue/mt5.py                                88.0%    80.7%
+venue/protocol.py                          100.0%   100.0%
+execution/risk_manager.py                   99.5%    98.2%
+execution/schwebende_auftraege.py           93.3%    92.9%
+execution/cost_gate.py                     100.0%   100.0%
+risk/sizing.py                              95.2%    90.6%
+risk/stop_budget.py                         97.4%    94.4%
+risk/limits.py                             100.0%   100.0%
+risk/leverage.py                            90.5%    83.3%
+costs/model.py                              92.6%    83.3%
+gates/erkundung.py                          97.4%    93.8%
+gates/herausforderer.py                     91.9%    85.7%
+
+Paket gesamt: Zeilen 93.6 %, Zweige 88.2 %
+ok — jede Datei des Geldpfads ueber der Schwelle.
+[exit=0]

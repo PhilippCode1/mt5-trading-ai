@@ -1,6 +1,6 @@
 """Sperrtest: ohne vollstaendige Freigabe kein eroeffnender Order-Submit.
 
-Der Test wird einmal absichtlich negativ gefahren (Ausgabe in PROGRESS.md), damit
+Der Test wird einmal absichtlich negativ gefahren (Ausgabe in archiv/PROGRESS.md), damit
 belegt ist, dass er bei defekter Sperre rot wird und nicht nur bei korrektem Code
 gruen ist.
 """

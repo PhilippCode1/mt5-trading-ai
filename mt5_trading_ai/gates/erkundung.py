@@ -11,7 +11,8 @@ Stufe 7 des Auftrags benennt ihn wörtlich::
     Schwellen, die exakt auf dem Maximum der Ersatzheuristik liegen, davon entkoppeln.
 
 Gemessen an den echten Betriebsjournalen dieses Standes
-(``AUFTRAG/stufen/07-kaltstart/belege/``): von **4.343** Eroeffnungsversuchen wurden
+(``archiv/AUFTRAG/stufen/07-kaltstart/belege/``): von **4.343** Eroeffnungsversuchen
+wurden
 **32** eroeffnet und **4.311** abgelehnt. Das sind **0,74 %**, die ueberhaupt zu Daten
 wurden. Ueber die anderen 99,26 % weiss das System bis heute nichts -- nicht, weil sie
 schlecht waren, sondern weil sie nie gefahren wurden.

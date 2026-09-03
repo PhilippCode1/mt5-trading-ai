@@ -20,7 +20,8 @@ Eine Alarmregel taugt nur, wenn drei Dinge existieren, und alle drei werden gepr
 
 1. **Eine Metrik**, die es wirklich gibt -- eine Funktion in diesem Modul, die sie aus
    dem Journal rechnet. Eine Regel auf eine Zahl, die niemand erhebt, feuert nie.
-2. **Eine Handlungsanweisung**, die es wirklich gibt -- ein Abschnitt in ``RUNBOOK.md``.
+2. **Eine Handlungsanweisung**, die es wirklich gibt -- ein Abschnitt in
+``archiv/RUNBOOK.md``.
    Ein Alarm ohne Anweisung weckt jemanden, der dann nicht weiss, was zu tun ist.
 3. **Eine Schwelle**, die vorher feststeht. Danach wird sie nicht bewegt (V6).
 
@@ -101,7 +102,7 @@ class Alarmregel:
 
     name: str
     metrik: str
-    #: Ueberschrift des zugehoerigen Abschnitts in ``RUNBOOK.md``. Exakt, nicht
+    #: Ueberschrift des zugehoerigen Abschnitts in ``archiv/RUNBOOK.md``. Exakt, nicht
     #: sinngemaess.
     handlungsanweisung: str
     schwelle: float
@@ -121,7 +122,7 @@ class Alarm:
             f"ALARM {self.regel.name}: {anteil} "
             f"({self.wert.gelungen}/{self.wert.gesamt} {self.wert.bezug}), "
             f"Schwelle {self.regel.schwelle:.1%}. {self.regel.bedeutet} "
-            f"-> RUNBOOK.md: {self.regel.handlungsanweisung}"
+            f"-> archiv/RUNBOOK.md: {self.regel.handlungsanweisung}"
         )
 
 
@@ -228,7 +229,7 @@ def laufabschluss(saetze: Sequence[dict[str, Any]]) -> Messwert:
     ------------------------------------------------------
     Sie steht bei 90,5 % gegen ein Ziel von 95 %, und sie bleibt es. Drei Gruende, warum
     sie **nicht** als Sicherheitsanzeige gelesen werden darf; alle drei sind an den 21
-    Journalen dieses Standes gemessen (``AUFTRAG/stufen/10-betrieb/nachtrag-
+    Journalen dieses Standes gemessen (``archiv/AUFTRAG/stufen/10-betrieb/nachtrag-
     laufabschluss.md``):
 
     1. **Sie verlangt vom Prozess, seinen eigenen Tod zu ueberleben.** Gemessen mit
@@ -447,7 +448,7 @@ ZIELE: tuple[Dienstgueteziel, ...] = (
 
 
 #: Die Alarmregeln. Jede nennt ihre Metrik und den EXAKTEN Abschnittstitel in
-#: ``RUNBOOK.md``; beides wird geprueft.
+#: ``archiv/RUNBOOK.md``; beides wird geprueft.
 ALARMREGELN: tuple[Alarmregel, ...] = (
     Alarmregel(
         "buchtreue_unter_ziel",
@@ -473,7 +474,7 @@ ALARMREGELN: tuple[Alarmregel, ...] = (
     Alarmregel(
         "laeufe_brechen_ab",
         "laufabschluss",
-        # Der EXAKTE Abschnittstitel aus ``RUNBOOK.md``, Umlaut inklusive -- eine
+        # Der EXAKTE Abschnittstitel aus ``archiv/RUNBOOK.md``, Umlaut inklusive -- eine
         # Handlungsanweisung wird ueber ihre Ueberschrift gefunden, nicht sinngemaess.
         # Die ASCII-Fassung stand hier zuerst und lief ins Leere; das Dauertor
         # ``test_jede_alarmregel_hat_eine_existierende_handlungsanweisung`` hat sie

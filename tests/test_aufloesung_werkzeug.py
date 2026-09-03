@@ -4,7 +4,7 @@ WARUM DIESE DATEI SPAET KOMMT UND TROTZDEM NOETIG IST
 -----------------------------------------------------
 ``tools/aufloesung.py`` hat die Aufloesungstabelle gemessen, aus der das Kandidatenfeld
 folgt, und stand dabei bei null Prozent Abdeckung. Drei der sechs in
-``ABSCHLUSS-3a/09-EIGENE-FEHLER.md`` benannten Fehler sassen in genau diesem Werkzeug --
+``archiv/ABSCHLUSS-3a/09-EIGENE-FEHLER.md`` benannten Fehler sassen in genau diesem Werkzeug --
 in der Historienabfrage, im Schnitt vor der Euro-Einfuehrung und in der Kostenzeile. Ein
 Werkzeug, dessen Ausgabe als Beleg zitiert wird, muss nachpruefbar sein wie eine Messung.
 

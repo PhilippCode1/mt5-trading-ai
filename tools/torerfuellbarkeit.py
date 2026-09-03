@@ -289,7 +289,7 @@ def main() -> int:
         type=int,
         default=60,
         help="Zahl der vorregistrierten Kampagnenversuche fuer die Deflation "
-        "(ABBRUCH.md §2; dieselbe Zahl, die edge_test als "
+        "(archiv/ABBRUCH.md §2; dieselbe Zahl, die edge_test als "
         "--campaign-trials bekommt)",
     )
     args = ap.parse_args()

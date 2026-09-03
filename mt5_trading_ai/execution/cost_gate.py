@@ -26,7 +26,7 @@ genau dann ueberein, wenn Notierungs- = Kontowaehrung ist. Darum gilt das Tor nu
 **gleich notierte** Instrumente (rate = 1); ein kreuznotiertes Instrument (z. B. USDJPY
 auf USD-Konto) wird **fail-closed** abgewiesen -- die korrekte Umrechnung braucht einen
 **instrumentspezifischen** Live-FX-Kurs, den ein einzelner Venue-Skalar nicht liefern
-kann (siehe ``SPAETER.md`` S10). Lieber nicht handeln als falsch bepreisen.
+kann (siehe ``archiv/SPAETER.md`` S10). Lieber nicht handeln als falsch bepreisen.
 """
 
 from __future__ import annotations

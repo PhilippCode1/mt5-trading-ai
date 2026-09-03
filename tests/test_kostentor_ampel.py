@@ -1,7 +1,7 @@
 """Tests fuer das M1-Urteil aus ``tools/kostentor.py``.
 
 Diese Datei existiert, weil die Berichtigung von Abbruchbedingung 1 monatelang **nur im
-Dokument** stand: ``ABBRUCH.md`` erklaerte die ROT-Schwelle auf "alle bewertbaren,
+Dokument** stand: ``archiv/ABBRUCH.md`` erklaerte die ROT-Schwelle auf "alle bewertbaren,
 mindestens vier" umgestellt, ``tools/kostentor.py`` pruefte weiter gegen alle sechs.
 Kein Test konnte den Unterschied bemerken, weil das Urteil nur als Nebenwirkung einer
 ``print``-Kaskade entstand.

@@ -24,7 +24,7 @@ Gegenfall hat: ein Tor, das nur gruen gefahren wird, ist nicht nachgewiesen, son
 behauptet.
 
 Zwei der Faelle sind aus einer echten Luecke entstanden, die die Messung dieser Stufe
-gefunden hat (``AUFTRAG/stufen/04-risikokern/bericht.md``):
+gefunden hat (``archiv/AUFTRAG/stufen/04-risikokern/bericht.md``):
 
 * Eine Gegenposition **unter** dem Mindestvolumen liess sich nicht schliessen --
   ``_validate_volume`` stand vor der Reduce-Weiche. Eine Sperre auf dem Risikoabbau,

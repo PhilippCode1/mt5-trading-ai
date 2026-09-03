@@ -542,7 +542,7 @@ def test_ein_fehlendes_register_wird_nicht_angelegt(
     assert not fehlt.exists(), "ein fehlendes Register wird nie neu angelegt"
     text = str(fehler.value)
     assert "Versuchsregister" in text
-    assert "ABSCHLUSS-3a/07-AUSGABEN/trials.jsonl" in text
+    assert "archiv/ABSCHLUSS-3a/07-AUSGABEN/trials.jsonl" in text
 
 
 def test_ein_abgebrochener_lauf_verbraucht_trotzdem_einen_versuch(
@@ -844,8 +844,11 @@ def test_ein_register_im_repo_heisst_relativ_zum_repo() -> None:
     Namensrechnung und liest die Platte nicht an.
     """
     assert werkzeug._registerkennung(werkzeug.REPO / "TRIALS.jsonl") == "TRIALS.jsonl"
-    tief = werkzeug.REPO / "ABSCHLUSS-3a" / "07-AUSGABEN" / "trials.jsonl"
-    assert werkzeug._registerkennung(tief) == "ABSCHLUSS-3a/07-AUSGABEN/trials.jsonl"
+    tief = werkzeug.REPO / "archiv" / "ABSCHLUSS-3a" / "07-AUSGABEN" / "trials.jsonl"
+    assert (
+        werkzeug._registerkennung(tief)
+        == "archiv/ABSCHLUSS-3a/07-AUSGABEN/trials.jsonl"
+    )
 
 
 def test_ein_register_ausserhalb_des_repos_wird_als_solches_benannt(
@@ -1146,9 +1149,11 @@ def test_main_meldet_rot_sobald_eine_studie_nicht_bewertbar_ist(
 #: an drei Stellen und muss an allen dreien derselbe sein: im Kopf des Abzugs, in jedem
 #: seiner sieben Messbloecke (``code_commit``) und in ``04-EREIGNISSTUDIE.md``.
 ABZUG_WERKZEUGSTAND = "a9ed7ad57dac"
-ABZUG = werkzeug.REPO / "ABSCHLUSS-3a" / "07-AUSGABEN" / "ereignisstudie.txt"
-ABZUG_DOKUMENT = werkzeug.REPO / "ABSCHLUSS-3a" / "04-EREIGNISSTUDIE.md"
-ABZUG_REGISTER = werkzeug.REPO / "ABSCHLUSS-3a" / "07-AUSGABEN" / "trials.jsonl"
+ABZUG = werkzeug.REPO / "archiv" / "ABSCHLUSS-3a" / "07-AUSGABEN" / "ereignisstudie.txt"
+ABZUG_DOKUMENT = werkzeug.REPO / "archiv" / "ABSCHLUSS-3a" / "04-EREIGNISSTUDIE.md"
+ABZUG_REGISTER = (
+    werkzeug.REPO / "archiv" / "ABSCHLUSS-3a" / "07-AUSGABEN" / "trials.jsonl"
+)
 
 
 def test_der_eingefrorene_abzug_nennt_seinen_werkzeugstand() -> None:

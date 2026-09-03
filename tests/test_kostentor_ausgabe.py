@@ -1,6 +1,6 @@
 """Das Beleg-Tor: die Ausgabe des Kostentors gegen den eingefrorenen Beleg.
 
-``ABSCHLUSS-3a/07-AUSGABEN/kostentor.txt`` ist der Beleg, auf dem Abbruchbedingung 1
+``archiv/ABSCHLUSS-3a/07-AUSGABEN/kostentor.txt`` ist der Beleg, auf dem Abbruchbedingung 1
 des Vorhabens steht. Bisher war er ein Textstueck neben dem Werkzeug: nichts hielt die
 beiden zusammen. Wer das Werkzeug umbaute, konnte den Beleg still ungueltig machen --
 und genau umgekehrt konnte der Beleg eine Rechnung behaupten, die das Werkzeug nicht
@@ -25,7 +25,7 @@ import pytest
 from tools import kostentor
 
 REPO = Path(__file__).resolve().parents[1]
-BELEG = REPO / "ABSCHLUSS-3a" / "07-AUSGABEN" / "kostentor.txt"
+BELEG = REPO / "archiv" / "ABSCHLUSS-3a" / "07-AUSGABEN" / "kostentor.txt"
 
 #: Der Beleg traegt die Aufrufzeile als erste und den Rueckgabewert als letzte Zeile.
 KOPFZEILE = "$ python tools/kostentor.py"

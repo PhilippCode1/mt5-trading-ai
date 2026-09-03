@@ -34,7 +34,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 MANIFEST = "MANIFEST.sha256"
-STANDARD = ("archiv/altstand-306bbaa", "PROGRAMM/eingang", "PROGRAMM/masterprompts")
+STANDARD = ("archiv", "PROGRAMM/eingang", "PROGRAMM/masterprompts")
 
 
 def _hash(p: Path) -> str:

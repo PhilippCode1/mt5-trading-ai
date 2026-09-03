@@ -1,0 +1,68 @@
+# T5 Schritt 1: Archivierung (git mv) und Nachziehen der Verweise, 2026-09-03, Stand d45d3a0
+$ python PROGRAMM/auftrag-01-fundament/belege/05-archivieren.py
+# Archivziel: archiv/altstand-306bbaa
+  git mv AUFTRAG -> archiv/altstand-306bbaa/AUFTRAG
+  git mv ABSCHLUSS -> archiv/altstand-306bbaa/ABSCHLUSS
+  git mv ABSCHLUSS-3a -> archiv/altstand-306bbaa/ABSCHLUSS-3a
+  git mv docs -> archiv/altstand-306bbaa/docs
+  git mv ABBRUCH.md -> archiv/altstand-306bbaa/ABBRUCH.md
+  git mv ABNAHME_PLAN.md -> archiv/altstand-306bbaa/ABNAHME_PLAN.md
+  git mv ALPHA.md -> archiv/altstand-306bbaa/ALPHA.md
+  git mv BERICHT_TEIL3.md -> archiv/altstand-306bbaa/BERICHT_TEIL3.md
+  git mv FEHLT.md -> archiv/altstand-306bbaa/FEHLT.md
+  git mv MASTERBERICHT.md -> archiv/altstand-306bbaa/MASTERBERICHT.md
+  git mv PROGRESS.md -> archiv/altstand-306bbaa/PROGRESS.md
+  git mv RECHERCHE_DATEN.md -> archiv/altstand-306bbaa/RECHERCHE_DATEN.md
+  git mv RECHERCHE_KOSTEN.md -> archiv/altstand-306bbaa/RECHERCHE_KOSTEN.md
+  git mv RUNBOOK.md -> archiv/altstand-306bbaa/RUNBOOK.md
+  git mv SPAETER.md -> archiv/altstand-306bbaa/SPAETER.md
+  git mv VERLUST.md -> archiv/altstand-306bbaa/VERLUST.md
+  config/broker_costs.json: 1 Verweis(e) nachgezogen
+  config/ereigniskalender.json: 2 Verweis(e) nachgezogen
+  config/instrument_catalog.json: 2 Verweis(e) nachgezogen
+  mt5_trading_ai/backtest/ereignisstudie.py: 2 Verweis(e) nachgezogen
+  mt5_trading_ai/backtest/kalender.py: 2 Verweis(e) nachgezogen
+  mt5_trading_ai/backtest/resolution.py: 2 Verweis(e) nachgezogen
+  mt5_trading_ai/betrieb/dienstguete.py: 6 Verweis(e) nachgezogen
+  mt5_trading_ai/costs/model.py: 1 Verweis(e) nachgezogen
+  mt5_trading_ai/execution/cost_gate.py: 1 Verweis(e) nachgezogen
+  mt5_trading_ai/execution/schwebende_auftraege.py: 1 Verweis(e) nachgezogen
+  mt5_trading_ai/gates/erkundung.py: 1 Verweis(e) nachgezogen
+  mt5_trading_ai/gates/evaluation.py: 1 Verweis(e) nachgezogen
+  mt5_trading_ai/gates/herausforderer.py: 1 Verweis(e) nachgezogen
+  mt5_trading_ai/gates/trials.py: 1 Verweis(e) nachgezogen
+  mt5_trading_ai/risk/limits.py: 1 Verweis(e) nachgezogen
+  mt5_trading_ai/venue/mt5.py: 3 Verweis(e) nachgezogen
+  tests/test_aufloesung_werkzeug.py: 1 Verweis(e) nachgezogen
+  tests/test_auftrag_doku_tore.py: 30 Verweis(e) nachgezogen
+  tests/test_ausstiegsdeckung.py: 1 Verweis(e) nachgezogen
+  tests/test_deflation_versuchszahl.py: 2 Verweis(e) nachgezogen
+  tests/test_ereignisstudie_werkzeug.py: 2 Verweis(e) nachgezogen
+  tests/test_kopien_abgleichen.py: 2 Verweis(e) nachgezogen
+  tests/test_kostentor_ampel.py: 1 Verweis(e) nachgezogen
+  tests/test_kostentor_ausgabe.py: 1 Verweis(e) nachgezogen
+  tests/test_kostentor_rechnungen.py: 7 Verweis(e) nachgezogen
+  tests/test_laufabschluss.py: 1 Verweis(e) nachgezogen
+  tests/test_live_release.py: 1 Verweis(e) nachgezogen
+  tests/test_readme_numbers.py: 7 Verweis(e) nachgezogen
+  tests/test_resolution.py: 3 Verweis(e) nachgezogen
+  tests/test_sharpe_einheit.py: 3 Verweis(e) nachgezogen
+  tests/test_stufe10_betrieb.py: 5 Verweis(e) nachgezogen
+  tests/test_stufe4_risikokern.py: 1 Verweis(e) nachgezogen
+  tests/test_stufe5_ausfuehrung.py: 1 Verweis(e) nachgezogen
+  tests/test_stufe6_modellpfad.py: 1 Verweis(e) nachgezogen
+  tools/betrieb_auswerten.py: 1 Verweis(e) nachgezogen
+  tools/check_doc_numbers.py: 20 Verweis(e) nachgezogen
+  tools/check_docs_claims.py: 10 Verweis(e) nachgezogen
+  tools/dienstguete.py: 2 Verweis(e) nachgezogen
+  tools/ereignisstudie.py: 4 Verweis(e) nachgezogen
+  tools/kopien_abgleichen.py: 2 Verweis(e) nachgezogen
+  tools/kostentor.py: 3 Verweis(e) nachgezogen
+  tools/live_betrieb.py: 3 Verweis(e) nachgezogen
+  tools/live_konsole.py: 1 Verweis(e) nachgezogen
+  tools/mutationstor.py: 1 Verweis(e) nachgezogen
+  tools/oberflaeche.py: 1 Verweis(e) nachgezogen
+  tools/torerfuellbarkeit.py: 1 Verweis(e) nachgezogen
+# Verweise nachgezogen: 147
+geschrieben: archiv/altstand-306bbaa/MANIFEST.sha256 (159 Dateien)
+[exit=0]

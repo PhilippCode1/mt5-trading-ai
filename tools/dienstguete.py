@@ -15,7 +15,8 @@ das einen Alarm nur ausdruckt und mit 0 endet, wird in jeder Automatik uebersehe
 WAS ES NICHT TUT
 ----------------
 Es verschickt nichts. Kein Netzdienst, kein Anbieter. Die Begruendung steht in
-``RUNBOOK.md`` unter „Wenn die Zustellung selbst scheitert": eine Zustellung, die still
+``archiv/RUNBOOK.md`` unter „Wenn die Zustellung selbst scheitert": eine Zustellung,
+die still
 scheitert, weil jemand nicht antwortet, ist schlechter als keine -- sie erweckt den
 Eindruck, jemand sei benachrichtigt worden.
 
@@ -151,7 +152,7 @@ def main() -> int:
     print()
     print(f"Zugestellt nach: {args.alarmdatei}")
     print(
-        "FEHLGESCHLAGEN — Alarm steht. Handlungsanweisung in RUNBOOK.md.",
+        "FEHLGESCHLAGEN — Alarm steht. Handlungsanweisung in archiv/RUNBOOK.md.",
         file=sys.stderr,
     )
     return 1

@@ -47,14 +47,14 @@ ECHTE_DATEI = REPO / "config" / "aufloesung.json"
 
 #: Die Zeile, an der der Fehler aufgefallen ist: K3 (Monatsende-Fixing) auf GBPJPY im
 #: 1h-Fenster. Zahlen aus ``config/aufloesung.json`` und
-#: ``ABSCHLUSS-3a/07-AUSGABEN/ereignisstudie.txt``.
+#: ``archiv/ABSCHLUSS-3a/07-AUSGABEN/ereignisstudie.txt``.
 K3_EREIGNISSE = 193
 K3_GEMESSEN = 192
 K3_STREUUNG = 14.1517
 K3_KOSTEN = 1.8351
 K3_VERSUCHE = 12
 
-#: Ueberschrift des Vorbehalts in ``ABSCHLUSS-3a/01-AUFLOESUNG.md``. Solange
+#: Ueberschrift des Vorbehalts in ``archiv/ABSCHLUSS-3a/01-AUFLOESUNG.md``. Solange
 #: ``config/aufloesung.json`` nicht gegen ``OOS_ANTEIL`` gerechnet ist, muss dieser Text
 #: dort stehen.
 VORBEHALT_MARKE = "Vorbehalt zur gesamten Tabelle"
@@ -658,7 +658,7 @@ def test_die_echte_aufloesungsdatei_ist_in_sich_stimmig() -> None:
     Rechnet die Datei nicht gegen ``OOS_ANTEIL``, stammt sie aus der Zeit vor der
     Korrektur; sie wird dann so nachgerechnet, wie sie entstanden ist. Damit sie nicht
     stillschweigend weiterlebt, darf sie in diesem Zustand nur zusammen mit dem
-    Vorbehalt in ``ABSCHLUSS-3a/01-AUFLOESUNG.md`` existieren. Wer den Vorbehalt
+    Vorbehalt in ``archiv/ABSCHLUSS-3a/01-AUFLOESUNG.md`` existieren. Wer den Vorbehalt
     streicht, ohne neu zu messen, faellt hier auf.
 
     Massgeblich ist der WERT von ``oos_share``, nicht sein Vorhandensein -- siehe
@@ -690,7 +690,7 @@ def test_die_echte_aufloesungsdatei_ist_in_sich_stimmig() -> None:
         assert nach.resolvable == e["resolvable"]
 
     if not stimmig:
-        bericht = (REPO / "ABSCHLUSS-3a" / "01-AUFLOESUNG.md").read_text(
+        bericht = (REPO / "archiv" / "ABSCHLUSS-3a" / "01-AUFLOESUNG.md").read_text(
             encoding="utf-8"
         )
         assert VORBEHALT_MARKE in bericht, (

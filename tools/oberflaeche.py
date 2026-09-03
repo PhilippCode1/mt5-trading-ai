@@ -885,7 +885,7 @@ def seite(
     <b>Keine zugelassene Strategie.</b> Sieben Ereignisstudien haben keine tragfähige
     Zwangslage gefunden; größter Bruttoeffekt 1,36 bp gegen 5,51 bp nötig. Was hier
     läuft, prüft die <i>Maschine</i>, nicht einen Vorteil.
-    Urteil: <span class="mono">ABSCHLUSS-3a/05-URTEIL.md</span>
+    Urteil: <span class="mono">archiv/ABSCHLUSS-3a/05-URTEIL.md</span>
   </div>
   <h2>Konto und Verbindung</h2>{_abschnitt_konto(stand)}
   <h2>Offene Positionen</h2>{_abschnitt_positionen(stand)}

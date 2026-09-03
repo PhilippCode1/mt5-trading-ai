@@ -36,7 +36,8 @@ Je Eintrag:
 Punkt 4 ist keine Formsache. In dieser Sitzung ist einmal ``git checkout`` benutzt
 worden, um eine Mutation zurueckzunehmen -- er stellte den letzten Commit her und
 loeschte damit
-die noch nicht eingecheckte Arbeit (``AUFTRAG/fehler.md``, F-010). Dieses Werkzeug kennt
+die noch nicht eingecheckte Arbeit (``archiv/AUFTRAG/fehler.md``, F-010). Dieses
+Werkzeug kennt
 den Befehl nicht.
 
 DIE SCHWELLE

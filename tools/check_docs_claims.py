@@ -7,7 +7,20 @@ Dokumentation wird nicht wertlos, weil sie umfangreich ist, sondern weil sie
 Zusicherungen enthaelt, die niemand einloesen kann. Eine Behauptung ist hier
 zulaessig, wenn direkt darunter ein AUSFUEHRBARER Beleg steht -- ein Testname,
 ein CI-Job oder ein Skript. Wer den Beleg nicht nennen kann, soll die Behauptung
-nicht aufstellen. Geprueft wird jede vom Git verfolgte Markdown-Datei.
+nicht aufstellen.
+
+GEGENSTAND (Programm NEUAUFBAU, Katalog A14)
+--------------------------------------------
+Geprueft wird die Menge der **lebenden Dokumente** aus ``tools/doku_menge.py``: die
+drei Wurzeldateien und die eigenen Dateien unter ``PROGRAMM/``. Das Archiv des
+Altstands und die fremden Eingaenge (Bewertung, Masterprompts) werden nicht gescannt --
+sie zitieren Zusicherungen als Befund -- sondern per Manifest auf Unveraendertheit
+gesichert. Keine Ausnahmeliste: was nicht in der Menge ist, ist es, weil die Menge
+positiv definiert ist.
+
+Drei Pruefungen: (1) die Wurzel traegt genau ``README.md``, ``MODULES.md``,
+``CLAUDE.md``; (2) hoechstens ``MAX_MARKDOWN_FILES`` lebende Dokumente; (3) keine
+gesperrte Phrase ohne Beleg in einem lebenden Dokument.
 
 Aufruf:  python tools/check_docs_claims.py
 Exit 1 bei Verstoss.
@@ -16,46 +29,20 @@ Exit 1 bei Verstoss.
 from __future__ import annotations
 
 import re
-import subprocess
 import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
+if str(REPO) not in sys.path:
+    sys.path.insert(0, str(REPO))
 
-# Bewusst angehoben, zweimal, jeweils fuer einen vorgeschriebenen Abschlussordner.
-# Die Grenze soll Doku-Wildwuchs bremsen, nicht einen Auftrag verhindern.
-#   12 -> 24 (Paket 2): neun Dateien aus ABSCHLUSS/ plus die drei Wurzeldokumente
-#                       ABBRUCH.md, ALPHA.md und HALAL-VORFRAGE.md.
-#   24 -> 32 (Paket 3a): die acht Dateien aus ABSCHLUSS-3a/.
-# Jede weitere neue Markdown-Datei laesst das Tor wieder rot werden -- die Bremse bleibt
-# scharf, sie steht nur ein Stueck weiter. Wer sie erneut anhebt, benennt hier, wofuer.
+from tools import doku_menge  # noqa: E402
+
+# Der Altstand hob diese Grenze zweimal an (12 -> 24 -> 32), je fuer einen
+# Abschlussordner. Sie bleibt bei 32 und gilt jetzt fuer die lebende Doku insgesamt
+# (Wurzel + PROGRAMM/): rund acht feste Programmdateien plus Plan und Bericht je
+# Auftrag. Wer sie anhebt, benennt hier, wofuer -- und lockert damit ein Tor (Regel 3).
 MAX_MARKDOWN_FILES = 32
-
-# ``AUFTRAG/`` wird NICHT mitgezaehlt -- und die Grenze wurde dafuer auch nicht ein
-# drittes Mal angehoben. Grund: dieser Ordner ist der vom Dauerauftrag vorgeschriebene
-# Abschlussordner und waechst *bauartbedingt* mit jeder Stufe (ein Bericht je Stufe, bis
-# zu elf). Die Grenze bei jeder Stufe nachzuziehen waere genau die Ratsche, vor der der
-# Kommentar darueber warnt; die Bremse bliebe dem Namen nach scharf und waere es der
-# Sache nach nicht mehr. Sie steht deshalb unveraendert bei 32 fuer die Doku des
-# Projekts, und der Auftragsordner faellt gar nicht erst in ihren Geltungsbereich.
-#
-# Die Behauptungspruefung laeuft weiter ueber ``AUFTRAG/`` -- nur die ZAEHLUNG nicht.
-# Das ist die scharfe Haelfte: der Dauerauftrag verbietet Notenbehauptungen
-# ausdruecklich, und ein Bericht darin soll daran genauso scheitern wie jede
-# andere Datei.
-# ``PROGRAMM/`` (Programm NEUAUFBAU) ist der vom Masterprompt vorgeschriebene
-# Programmordner -- derselbe Fall wie AUFTRAG/: er waechst bauartbedingt (Zustand,
-# Entscheidungen, Plan und Bericht je Auftrag) und faellt deshalb nicht in die
-# Zaehlung. Die Behauptungspruefung gilt fuer die eigenen Dateien darin weiter.
-EXCLUDED_FROM_COUNT = ("AUFTRAG/", "PROGRAMM/")
-
-# Fremde, unveraenderliche Eingaenge: die Bewertung samt Rohausgaben und die neun
-# Masterprompts. Sie sind nicht die Doku dieses Projekts, sondern sein Pruefauftrag;
-# sie werden weder gezaehlt noch auf Zusicherungen geprueft -- sie zitieren solche
-# absichtlich (etwa den Commit-Titel „produktionsreif" als Befund). Dass sie
-# unveraendert bleiben, sichert in Auftrag 1 ein Manifest mit Pruefsumme, nicht
-# dieses Tor.
-FREMDE_EINGAENGE = ("PROGRAMM/eingang/", "PROGRAMM/masterprompts/")
 
 CLAIMS: list[tuple[str, re.Pattern[str]]] = [
     ("Notenbehauptung 10/10", re.compile(r"\b10\s*/\s*10\b")),
@@ -73,17 +60,13 @@ CLAIMS: list[tuple[str, re.Pattern[str]]] = [
     ("betriebsbereit", re.compile(r"betriebsbereit", re.I)),
     ("vollstaendig implementiert", re.compile(r"vollst[aä]ndig\s+implementiert", re.I)),
     ("fully implemented", re.compile(r"fully\s+implemented", re.I)),
-    # Paket 2, A4.2: „abnahmefertig" fehlte in dieser Liste. PROGRESS.md schloss damit
-    # auf „System abnahmefertig." -- eine Reifegrad-Zusicherung ohne jeden Beleg, die
-    # genau dieses Tor haette fangen sollen und durch eine Luecke im Wortschatz lief.
+    # Paket 2, A4.2 des Altstands: „abnahmefertig" fehlte in dieser Liste, und ein
+    # Logbuch schloss damit -- eine Reifegrad-Zusicherung ohne jeden Beleg.
     ("abnahmefertig", re.compile(r"abnahme(?:fertig|reif|bereit)", re.I)),
 ]
 
-# Eine ausdruecklich WIDERRUFENE Zusicherung ist keine Zusicherung mehr. Ohne diese
-# Ausnahme gaebe es fuer ein anhaengendes Logbuch (Kernregel 22: nie ueberschreiben)
-# keinen Weg, eine falsche Aussage zu korrigieren, ohne die Geschichte zu faelschen:
-# loeschen ist verboten, stehen lassen ist unwahr. Der Widerruf loest beides -- der
-# alte Satz bleibt lesbar, und er behauptet nichts mehr.
+# Eine ausdruecklich WIDERRUFENE Zusicherung ist keine Zusicherung mehr: der alte Satz
+# bleibt lesbar (nie ueberschreiben), und er behauptet nichts mehr.
 WITHDRAWN = re.compile(r"WIDERRUFEN\b")
 
 # Ein Beleg ist ausfuehrbar, wenn er auf einen Test, einen CI-Job oder ein Skript zeigt.
@@ -95,14 +78,8 @@ PROOF = re.compile(
 
 
 def tracked_markdown() -> list[Path]:
-    out = subprocess.run(
-        ["git", "ls-files", "*.md"],
-        cwd=REPO,
-        capture_output=True,
-        text=True,
-        check=True,
-    ).stdout.split()
-    return [REPO / p for p in out]
+    """Die lebenden Dokumente (siehe tools/doku_menge.py)."""
+    return doku_menge.lebende_dokumente(REPO)
 
 
 def check_file(path: Path) -> list[str]:
@@ -110,11 +87,9 @@ def check_file(path: Path) -> list[str]:
     lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
     rel = path.relative_to(REPO).as_posix()
     for i, line in enumerate(lines):
-        # Eine Zeile, die SELBST der Beleg ist, stellt keine Behauptung auf. Ohne diese
-        # Ausnahme wuerde `Beleg: git grep -l '10/10' ...` sich selbst ausloesen.
+        # Eine Zeile, die SELBST der Beleg ist, stellt keine Behauptung auf.
         if PROOF.search(line):
             continue
-        # Ein Widerruf auf derselben Zeile nimmt die Zusicherung zurueck.
         if WITHDRAWN.search(line):
             continue
         for label, rx in CLAIMS:
@@ -130,42 +105,29 @@ def check_file(path: Path) -> list[str]:
     return problems
 
 
-def ist_fremder_eingang(path: Path) -> bool:
-    return path.relative_to(REPO).as_posix().startswith(FREMDE_EINGAENGE)
-
-
-def pruefbar(files: list[Path]) -> list[Path]:
-    """Die Dateien, die auf Zusicherungen geprueft werden: alle eigenen."""
-    return [p for p in files if not ist_fremder_eingang(p)]
-
-
 def counted(files: list[Path]) -> list[Path]:
-    """Die Dateien, die gegen ``MAX_MARKDOWN_FILES` zaehlen (siehe dort)."""
-    return [
-        p
-        for p in files
-        if not p.relative_to(REPO).as_posix().startswith(EXCLUDED_FROM_COUNT)
-    ]
+    """Die Dateien, die gegen ``MAX_MARKDOWN_FILES`` zaehlen: alle lebenden."""
+    return list(files)
 
 
 def main() -> int:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     files = tracked_markdown()
-    eigene = pruefbar(files)
-    zaehlend = counted(eigene)
-    failures: list[str] = []
+    zaehlend = counted(files)
+    failures: list[str] = list(doku_menge.wurzel_befunde(REPO))
 
     if len(zaehlend) > MAX_MARKDOWN_FILES:
         failures.append(
-            f"Obergrenze ueberschritten: {len(zaehlend)} Markdown-Dateien, "
-            f"erlaubt sind "
-            f"{MAX_MARKDOWN_FILES}. Eine loeschen oder die Grenze bewusst anheben."
+            f"Obergrenze ueberschritten: {len(zaehlend)} lebende Markdown-Dateien, "
+            f"erlaubt sind {MAX_MARKDOWN_FILES}. Archivieren, nicht die Grenze anheben."
         )
 
-    for md in eigene:
+    for md in files:
         failures.extend(check_file(md))
 
     if failures:
-        print("FEHLGESCHLAGEN - Zusicherung ohne Beleg oder zu viele Doku-Dateien:\n")
+        print("FEHLGESCHLAGEN - Zusicherung ohne Beleg, Wurzel oder Obergrenze:\n")
         for failure in failures:
             print(f"  {failure}")
         print(
@@ -175,11 +137,11 @@ def main() -> int:
         )
         return 1
 
+    gesichert = ", ".join(doku_menge.PRUEFSUMMEN_GESICHERT)
     print(
-        f"ok - {len(zaehlend)}/{MAX_MARKDOWN_FILES} gezaehlte Markdown-Dateien "
-        f"(+{len(eigene) - len(zaehlend)} in AUFTRAG/ und PROGRAMM/ auf Behauptungen "
-        f"geprueft, nicht gezaehlt; {len(files) - len(eigene)} fremde Eingaenge "
-        f"nicht geprueft), keine Zusicherung ohne Beleg"
+        f"ok - {len(zaehlend)}/{MAX_MARKDOWN_FILES} lebende Markdown-Dateien "
+        f"(Wurzel: {', '.join(doku_menge.PFLICHT_WURZEL)}), keine Zusicherung ohne "
+        f"Beleg; per Manifest gesichert statt gescannt: {gesichert}"
     )
     return 0
 

@@ -117,7 +117,7 @@ Bearbeitung.
 ## E-008 — Ein Standdokument, ein erzeugtes Architekturdokument, Archiv mit Prüfsumme (2026-09-03)
 
 **Entscheidung.** Lebend: `README.md`, `MODULES.md` (generiert, um Aufrufer je Modul
-erweitert), `CLAUDE.md`, `PROGRAMM/`. Alles Übrige nach `archiv/altstand-306bbaa/` per
+erweitert), `CLAUDE.md`, `PROGRAMM/`. Alles Übrige nach `archiv/` per
 `git mv` mit `MANIFEST.sha256`. Doku-Tore als Mengenregel: Wurzel = genau die drei
 Dateien; eigene Markdown-Dateien ≤ 32, phrasen- und zahlengeprüft; `archiv/`,
 `PROGRAMM/eingang/`, `PROGRAMM/masterprompts/` per Prüfsumme auf Unverändertheit geprüft.
@@ -195,3 +195,55 @@ Bewertung abgeleitet (Kopfzeile nennt die Quelle); die Vorlage trägt 170 Lint-B
 
 **Verworfen.** Lint erzwingen: Aufwand ohne Wirkung auf das Produkt; Belege dürfen fremd aussehen,
 solange ihre Herkunft und ihre Ausgabe daneben liegen.
+
+## E-014 — Alarmregeln tragen ihre Handlungsanweisung selbst; `RUNBOOK.md` wird archiviert (2026-09-03)
+
+**Entscheidung.** `betrieb/dienstguete.py`: jede `Alarmregel` bekommt `handlung` (zwei bis vier
+Sätze, imperativ, aus den vier RUNBOOK-Abschnitten destilliert) und verweist nicht mehr auf einen
+Abschnittstitel in `RUNBOOK.md`; die Alarmzeile druckt die Handlung. `RUNBOOK.md` geht ins Archiv.
+Die Tests, die RUNBOOK-Abschnitte je Regel verlangen (`test_stufe10_betrieb.py`,
+`test_ausstiegsdeckung.py`, `test_laufabschluss.py`), prüfen stattdessen die Handlung im Code.
+
+**Messung.** `dienstguete.py:104,124,450-476` koppelt lebenden Code an den exakten Abschnittstitel
+einer Datei, die nach A8 archiviert wird; ein archiviertes Dokument darf keine Abhängigkeit lebenden
+Codes sein (sonst wäre das Archiv nicht eingefroren). Vier Regeln, vier Abschnitte (195–332 Wörter);
+das Runbook für den Dauerbetrieb entsteht in Auftrag 8 (F4) neu.
+
+**Verworfen.** RUNBOOK.md als lebendes Dokument behalten: verletzt A8 („ein Standdokument") und
+enthält Handgriffe, die auf nicht existierende Werkzeuge zeigen (Bewertung §2). Tests auf den
+Archivpfad umbiegen: bindet Code an Archiv.
+
+## E-015 — Pfadverweise auf archivierte Dokumente werden nachgezogen; Kopien-Tor gilt nur lebenden Dokumenten (2026-09-03)
+
+**Entscheidung.** Beim Verschieben (`belege/05-archivieren.py`) werden Verweise in Code, Tests,
+Konfiguration und CI auf `archiv/…` umgeschrieben (gezählt, Ausgabe im Beleg);
+Tests, die eingefrorene Belegdateien lesen (`ABSCHLUSS-3a/07-AUSGABEN/*`, `01-AUFLOESUNG.md`), lesen
+sie im Archiv weiter — sie bewachen, dass das Werkzeug zu seinem Beleg passt. `tools/kopien_abgleichen.py`
+überspringt `archiv/`: dort sichert das Manifest; die Kopie `ABSCHLUSS/04-ALPHA.md` bleibt als
+historisches Dokument, ohne dass ihr Kopf gegen ein bewegtes Original geprüft wird.
+
+**Messung.** 45 Dateien nennen Archivkandidaten (Zählung 2026-09-03); die meisten Nennungen sind
+Fundstellenangaben in Docstrings. Ein Verweis, der ins Leere zeigt, ist Doku-Drift (Befund F5).
+
+**Verworfen.** Tests löschen, die Archivdateien lesen: verliert die Bindung Werkzeug ↔ Beleg. Verweise
+stehen lassen: Drift.
+
+## E-016 — Archivwurzel ist `archiv/`, nicht `archiv/altstand-306bbaa/` (2026-09-03)
+
+**Entscheidung.** Der Altstand liegt direkt unter `archiv/` (Herkunft in `archiv/HERKUNFT.txt`,
+Manifest `archiv/MANIFEST.sha256`). Die Nennung `archiv/altstand-306bbaa/` in E-008, E-014, E-015,
+im Plan und in `zustand.md` ist damit durch `archiv/` zu lesen; die älteren Einträge wurden an dieser
+einen Stelle berichtigt, nicht umgeschrieben.
+
+**Messung.** Nach dem Nachziehen der 147 Verweise meldete `ruff` 45 überlange Zeilen (E501), fast alle
+in Docstrings, die eine Fundstelle nennen; der um 24 Zeichen längere Pfad war die Ursache. Mit `archiv/`
+blieben 22, davon 15 als Prosa umgebrochen und 2 gekürzt.
+
+**Verworfen.** Die Zeilen mit `# noqa` freistellen: das wäre eine Ausnahmeliste im Kleinen.
+
+**Nachtrag zu E-015 (2026-09-03).** Zwei Stellen werden nicht nachgezogen: der Wortlaut der
+Kostentor-Ausgabe (`tools/kostentor.py`, ein Satz) und die Herkunftsangaben in `config/broker_costs.json`
+und `config/instrument_catalog.json`, weil `tests/test_kostentor_ausgabe.py` die Werkzeugausgabe
+zeilengenau gegen den eingefrorenen Beleg `archiv/ABSCHLUSS-3a/07-AUSGABEN/kostentor.txt` hält
+(Messung: Zeile 110 und 414 wichen ab). Ein Beleg, der bei einer Pfadumbenennung rot wird, bewacht
+den Wortlaut, und der Wortlaut nennt das Dokument mit seinem damaligen Namen.

@@ -36,7 +36,8 @@ DIE ZULASSUNG -- WAS ``--scharf`` WIRKLICH TUT
 -----------------------------------------------
 Der Orderpfad prueft als Erstes die §9.3-Zulassung: ohne bestandenes Bewertungstor
 handelt keine Strategie. **Es gibt keine bestandene Zulassung** -- alle sieben Studien
-aus Paket 3a sind gescheitert (``ABSCHLUSS-3a/05-URTEIL.md``), und ``ABBRUCH.md``
+aus Paket 3a sind gescheitert (``archiv/ABSCHLUSS-3a/05-URTEIL.md``), und
+``archiv/ABBRUCH.md``
 Bedingung 6 ist ausgeloest.
 
 ``--scharf "<Begruendung>"`` uebergeht dieses eine Tor. Es tut das **sichtbar**: mit
@@ -1109,7 +1110,7 @@ def main() -> int:
         zulassung_uebergangen=args.scharf,
         hinweis=(
             "Zum Zeitpunkt dieses Laufs war KEINE Strategie nach §9.3 "
-            "zugelassen. Siehe ABSCHLUSS-3a/05-URTEIL.md."
+            "zugelassen. Siehe archiv/ABSCHLUSS-3a/05-URTEIL.md."
         ),
         strategie=f"moving_average_crossover({SCHNELL},{LANGSAM})",
     )

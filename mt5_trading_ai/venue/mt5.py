@@ -6,7 +6,8 @@ Drei Eigenschaften bestimmen den Aufbau:
   (``account.is_demo is False``) passiert nur, wenn die mehrteilige Live-Freigabe
   (``execution/release.py``) vollstaendig ist. Fehlt sie, wird die Order abgelehnt --
   nicht gesendet. Demokonten und Reduce-Only (Risikoabbau) passieren ohne Freigabe.
-  Der Adapter baut damit den Anschluss, den ``FEHLT.md`` als offen markiert hat, **mit**
+  Der Adapter baut damit den Anschluss, den ``archiv/FEHLT.md`` als offen markiert hat,
+  **mit**
   dem Tor, nicht daran vorbei.
 * **Testbar ohne Terminal.** Der Adapter spricht gegen die schmale Naht
   :class:`Mt5Terminal`. Der Vertragstest injiziert ein Fake-Terminal; kein echtes MT5
@@ -463,7 +464,8 @@ class Mt5Venue(TradingVenue):
     schuetzen vor realem Geld und realer Zinsbelastung — auf einem Demokonto gibt es
     beides nicht. Die Risikoschicht dagegen prueft, ob der **Mechanismus** traegt, und
     genau das muss auf dem Demokonto laufen, weil das Demokonto der Beweisplatz vor
-    jedem Live-Pfad ist (Reihenfolge-Regel aus ``FEHLT.md``). Eine Sperre, die nur auf
+    jedem Live-Pfad ist (Reihenfolge-Regel aus ``archiv/FEHLT.md``). Eine Sperre, die
+    nur auf
     dem Konto laeuft, das man noch nicht benutzt, ist nicht verdrahtet.
     Fehlt der Manager, wird jede Eroeffnung fail-closed abgelehnt.
     Drawdown-Halt setzt ``_halted``.
@@ -2130,7 +2132,8 @@ class RealMt5Terminal:
         #:
         #: Warum das ueberhaupt eine Wahl ist: die Zone ist eine Eigenschaft des
         #: BROKERS und laesst sich nicht erraten. Sie muss gemessen werden (siehe
-        #: ABSCHLUSS-3a/02-DATENLAGE.md). Ein fest verdrahteter Wert waere fuer jeden
+        #: archiv/ABSCHLUSS-3a/02-DATENLAGE.md). Ein fest verdrahteter Wert waere fuer
+        #: jeden
         #: anderen Broker falsch, und falsch waere hier schlimmer als unbekannt.
         self._server_tz = ZoneInfo(server_tz) if server_tz else None
         #: Fail-closed: der Schreibpfad (Orders senden/aendern) ist gesperrt, bis er

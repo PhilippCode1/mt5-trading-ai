@@ -1,7 +1,7 @@
 """Tests fuer das Kopie-Tor aus ``tools/kopien_abgleichen.py``.
 
-Anlass: ``ABSCHLUSS/04-ALPHA.md`` trug im Kopf die Zusicherung, wortgleiche Kopie von
-``ALPHA.md`` zu sein, und war um den gesamten Block "Stand Paket 3a -- nach der Messung"
+Anlass: ``archiv/ABSCHLUSS/04-ALPHA.md`` trug im Kopf die Zusicherung, wortgleiche Kopie von
+``archiv/ALPHA.md`` zu sein, und war um den gesamten Block "Stand Paket 3a -- nach der Messung"
 veraltet. Der Abschlussordner gab damit zur Kernfrage des Vorhabens zwei einander
 widersprechende Antworten, von denen eine sich selbst als identisch mit der anderen
 bezeichnete. Eine Zusicherung, die niemand prueft, ist keine.

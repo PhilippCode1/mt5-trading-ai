@@ -77,7 +77,7 @@ from mt5_trading_ai.venue.protocol import OrderRejectedError, OrderSide
 from test_mt5_venue import _mt5_position, _order, _venue
 
 ROOT = Path(__file__).resolve().parents[1]
-RUNBOOK = ROOT / "RUNBOOK.md"
+RUNBOOK = ROOT / "archiv/RUNBOOK.md"
 WIEDERANLAUFPROBE = ROOT / "tools" / "wiederanlaufprobe.py"
 
 
@@ -88,7 +88,7 @@ WIEDERANLAUFPROBE = ROOT / "tools" / "wiederanlaufprobe.py"
 
 
 def _runbook_abschnitte() -> set[str]:
-    """Die ``## ``-Ueberschriften von ``RUNBOOK.md``."""
+    """Die ``## ``-Ueberschriften von ``archiv/RUNBOOK.md``."""
     text = RUNBOOK.read_text(encoding="utf-8")
     return {m.strip() for m in re.findall(r"^## (.+)$", text, flags=re.MULTILINE)}
 
@@ -109,7 +109,7 @@ def test_jede_alarmregel_hat_eine_existierende_handlungsanweisung() -> None:
         if r.handlungsanweisung not in abschnitte
     ]
     assert fehlend == [], (
-        f"Alarmregeln ohne Abschnitt in RUNBOOK.md: {fehlend}. Vorhanden: "
+        f"Alarmregeln ohne Abschnitt in archiv/RUNBOOK.md: {fehlend}. Vorhanden: "
         f"{sorted(abschnitte)}"
     )
 
@@ -173,7 +173,7 @@ def test_rot_unterschrittene_schwelle_schlaegt_an_und_nennt_die_anweisung() -> N
     assert [a.regel.name for a in alarme] == ["ausstieg_misslingt"]
     zeile = alarme[0].als_zeile()
     assert "26/33" in zeile  # Zaehler und Nenner, nicht nur der Anteil
-    assert "RUNBOOK.md: Ausstieg misslingt" in zeile
+    assert "archiv/RUNBOOK.md: Ausstieg misslingt" in zeile
 
 
 def test_leerer_nenner_ergibt_keinen_ersatzwert_und_keinen_alarm(
@@ -703,7 +703,7 @@ def test_v5_der_abbau_geht_trotz_ausfall_durch() -> None:
 
 
 def test_die_wiederanlaufprobe_laeuft_und_haelt() -> None:
-    """Gruener Eichfall: das Werkzeug, das ``RUNBOOK.md`` nennt, existiert und faellt
+    """Gruener Eichfall: das Werkzeug, das ``archiv/RUNBOOK.md`` nennt, existiert und faellt
     nicht."""
     lauf = subprocess.run(
         [sys.executable, str(WIEDERANLAUFPROBE)],

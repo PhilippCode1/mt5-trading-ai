@@ -1,7 +1,7 @@
 """Die Versuchszahl der Deflation -- aus dem Register, und nachrechenbar.
 
 Vier Zahlen standen fuer dieselbe Groesse im Umlauf: ``VERSUCHE_ANGENOMMEN = 12`` in
-der Ereignisstudie, sieben Zeilen im Register, 60 in ``ABBRUCH.md`` (Bedingung 2) und
+der Ereignisstudie, sieben Zeilen im Register, 60 in ``archiv/ABBRUCH.md`` (Bedingung 2) und
 die stille Eins, die aus ``max(1, total_trials())`` faellt, wenn das Register fehlt.
 Genau eine davon ist die gemessene: die im Register.
 
@@ -39,7 +39,7 @@ from mt5_trading_ai.backtest.kalender import KANDIDATEN
 from mt5_trading_ai.gates import trials as ledger
 from mt5_trading_ai.gates.criteria import deflated_sharpe_ratio, expected_max_sharpe
 
-#: Der gemessene Fall aus ``ABSCHLUSS-3a/07-AUSGABEN/ereignisstudie.txt``: K3
+#: Der gemessene Fall aus ``archiv/ABSCHLUSS-3a/07-AUSGABEN/ereignisstudie.txt``: K3
 #: (Monatsende-Fixing, GBPJPY), 192 gemessene Ereignisse, davon 64 Out-of-Sample. Die
 #: Sharpe je Ereignis ist die, die mit der alten Konstante 12 die berichteten 0,686
 #: ergibt -- sie ist der Bezugspunkt fuer jede Zahl in dieser Datei.

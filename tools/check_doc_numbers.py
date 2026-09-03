@@ -4,7 +4,7 @@
 WARUM ES DIESES SKRIPT GIBT
 ---------------------------
 Die Kennzahlen, die per Test gesperrt waren (der README-KENNZAHLEN-Block), stimmten
-immer. Die, die niemand sperrte (frei in MASTERBERICHT.md hingeschriebene Modul-,
+immer. Die, die niemand sperrte (frei in archiv/MASTERBERICHT.md hingeschriebene Modul-,
 Zeilen-, Test- und Commit-Zahlen), drifteten alle. Der Grund ist nicht Nachlaessigkeit,
 sondern Struktur: eine Zahl, die an zwei Stellen von Hand steht, geht an einer davon
 irgendwann falsch. Dieses Tor macht die Struktur richtig.
@@ -26,7 +26,8 @@ DIE REGELN (Teil 3, Paket 0, A0.4; Kernregel 9: jede Angabe nur an EINER Stelle)
    Live-Dokument,
    die einen Modulpfad mit einer nackten Zahl daneben fuehrt, wird geblockt.
 
-   Warum diese Regel dazukam (Paket 2, A4.1): ``MASTERBERICHT.md`` §3 fuehrte eine
+   Warum diese Regel dazukam (Paket 2, A4.1): ``archiv/MASTERBERICHT.md`` §3 fuehrte
+   eine
    Spalte
    „Zeilen" je Modul, die keine der Regeln 1-4 erfasste -- die Regexe suchten nach
    „N Module", „N Testfunktionen", „N Zeilen Kerncode", „N Commits" und „N Faelle",
@@ -37,13 +38,13 @@ DIE REGELN (Teil 3, Paket 0, A0.4; Kernregel 9: jede Angabe nur an EINER Stelle)
    schliesst Regel 5 -- und zwar an der Ursache: die Zahl wird nicht mehr an zwei
    Stellen gefuehrt, sondern an einer erzeugt.
 
-WAS AUSGENOMMEN IST -- UND WARUM
---------------------------------
-``PROGRESS.md`` ist ein anhaengendes Logbuch (Kernregel 22: nie ueberschreiben); jeder
-Eintrag ist der Zeilenstand ZU DIESEM Paket und war damals wahr. ``docs/audit/`` ist ein
-datierter Pruef-Snapshot. Ihre Zahlen sind Zeitpunkt-Belege, kein Ist-Zustand -- sie
-gegen den heutigen Code zu "korrigieren", waere Geschichtsfaelschung. Darum prueft
-dieses Tor sie NICHT gegen den aktuellen Code.
+GEGENSTAND (Programm NEUAUFBAU, A14)
+-----------------------------------
+Regel 1 prueft den README-Block. Die Regeln 2-5 gelten den Wurzeldokumenten (Menge aus
+``tools/doku_menge.py``). ``PROGRAMM/`` ist Messprotokoll mit Commit-Kennungen und
+Messwerten je Modul -- dort sind Zahlen Inhalt, keine Drift (E-012). Das Archiv des
+Altstands und die fremden Eingaenge werden nicht gescannt, sondern per Manifest auf
+Unveraendertheit gesichert (``tools/archiv_manifest.py``). Keine Ausnahmeliste.
 
 Aufruf:  python tools/check_doc_numbers.py
 Exit 1 bei Verstoss. Laeuft in der CI bei jedem Push und PR.
@@ -53,47 +54,18 @@ from __future__ import annotations
 
 import ast
 import re
-import subprocess
 import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
+if str(REPO) not in sys.path:
+    sys.path.insert(0, str(REPO))
+
+from tools import doku_menge  # noqa: E402
+
 PKG = REPO / "mt5_trading_ai"
 TESTS = REPO / "tests"
 README = REPO / "README.md"
-
-#: Anhaengendes Logbuch bzw. datierte Snapshots -- eingefrorene Zeitpunkt-Belege.
-#:
-#: ``AUFTRAG/`` ist aus zwei Gruenden dabei, und beide sind es wert, benannt zu
-#: werden:
-#:
-#: 1. ``AUFTRAG/masterprompt-freigabereife.md`` ist ein von aussen vorgegebener
-#:    Vertrag, der **unveraendert** hinterlegt sein muss. Er nennt Kennzahlen im
-#:    Fliesstext. Ihn diesem Tor zu unterwerfen hiesse, ihn umschreiben zu
-#:    muessen -- damit waere er nicht mehr der Vertrag, den der Auftraggeber
-#:    gestellt hat.
-#: 2. Die Stufenberichte unter ``AUFTRAG/stufen/`` sind datierte Messprotokolle
-#:    derselben Art wie ``docs/audit/``: ihre Zahlen sind Zeitpunkt-Belege, keine
-#:    Ist-Aussage.
-#:
-#: Ehrlich benannter Rest: ``AUFTRAG/zustand.md`` ist KEIN historisches Dokument,
-#: sondern der laufende Stand -- und es traegt eine harte Commit-Kennung, weil
-#: §10 des Vertrags genau das Format ``Zuletzt: <Datum, Commit>`` vorschreibt.
-#: Hier stehen Vertrag und Tor im Widerspruch; die Entscheidung dafuer steht in
-#: ``AUFTRAG/entscheidungen.md`` (E-004).
-#: Die beiden Abschlussordner sind in Stufe 9 dazugekommen. ``ABSCHLUSS/06`` traegt im
-#: Kopf woertlich „EINGEFROREN AUF DEM STAND VON PAKET 2 ... wird bewusst NICHT mehr
-#: nachgezogen"; ``ABSCHLUSS-3a`` ist derselbe Fall. Sie nennen Fallzahlen, die am
-#: jeweiligen Stichtag stimmten -- als Stufe 9 zwoelf Testfaelle entfernte, wurde eine
-#: davon falsch. Sie **nachzuziehen** hiesse, einen datierten Bericht rueckwirkend zu
-#: aendern; das verbietet E-007. Sie stehen deshalb hier, wie ``PROGRESS.md`` auch.
-HISTORICAL = (
-    "PROGRESS.md",
-    "docs/audit/",
-    "AUFTRAG/",
-    "ABSCHLUSS/",
-    "ABSCHLUSS-3a/",
-)
 
 
 # --- Kanonische Kennzahlen aus dem Code ----------------------------------------
@@ -134,43 +106,18 @@ def canonical() -> dict[str, int]:
 
 
 def tracked_markdown() -> list[Path]:
-    out = subprocess.run(
-        ["git", "ls-files", "*.md"],
-        cwd=REPO,
-        capture_output=True,
-        text=True,
-        check=True,
-    ).stdout.split()
-    return [REPO / p for p in out]
+    """Die lebenden Dokumente (tools/doku_menge.py)."""
+    return doku_menge.lebende_dokumente(REPO)
 
 
-def is_historical(rel: str) -> bool:
-    return any(rel == h or rel.startswith(h) for h in HISTORICAL)
+def ist_zahlen_gegenstand(rel: str) -> bool:
+    """Regeln 2-5 gelten den Wurzeldokumenten.
 
-
-#: Fremde, unveraenderliche Eingaenge des Programms NEUAUFBAU: die Bewertung samt
-#: Rohausgaben und die neun Masterprompts. Sie nennen Kennzahlen eines Stichtags
-#: (306bbaa) und sind kein Live-Dokument dieses Repos; nachgezogen werden sie nie
-#: (ihre Unveraendertheit sichert ein Manifest mit Pruefsumme).
-FREMDE_EINGAENGE = ("PROGRAMM/eingang/", "PROGRAMM/masterprompts/")
-
-
-def ist_fremder_eingang(rel: str) -> bool:
-    return rel.startswith(FREMDE_EINGAENGE)
-
-
-#: Der Programmordner selbst (Zustand, Entscheidungen, Fehler, Berichte, Belege je
-#: Auftrag). Seine Dateien tragen bauartbedingt Commit-Kennungen ("Zuletzt: Datum,
-#: Commit"), Messwerte je Modul und gezaehlte Testfaelle -- das sind datierte
-#: Messprotokolle wie AUFTRAG/stufen/, keine Ist-Aussagen, die neben dem README
-#: driften koennten. Derselbe Konflikt wie E-004 des Altstands; Entscheidung in
-#: PROGRAMM/entscheidungen.md. Die Behauptungspruefung (check_docs_claims) gilt
-#: fuer diese Dateien uneingeschraenkt.
-PROGRAMMORDNER = ("PROGRAMM/",)
-
-
-def ist_programmordner(rel: str) -> bool:
-    return rel.startswith(PROGRAMMORDNER)
+    ``PROGRAMM/`` ist Messprotokoll (Commit-Kennungen, Messwerte je Modul und gezaehlte
+    Faelle sind dort Inhalt, keine Drift; E-012); Archiv und Eingaenge werden per
+    Manifest gesichert, nicht gescannt (A14).
+    """
+    return doku_menge.ist_lebend(rel) and doku_menge.ist_wurzel(rel)
 
 
 def _int(raw: str) -> int:
@@ -279,7 +226,7 @@ def main() -> int:
     failures = check_readme_block(canon)
     for md in tracked_markdown():
         rel = md.relative_to(REPO).as_posix()
-        if is_historical(rel) or ist_fremder_eingang(rel) or ist_programmordner(rel):
+        if not ist_zahlen_gegenstand(rel):
             continue
         failures.extend(check_live_doc(md))
 
@@ -288,8 +235,8 @@ def main() -> int:
         for f in failures:
             print(f"  {f}")
         print(
-            "\nKennzahlen leben im README-KENNZAHLEN-Block; andere Docs verweisen. "
-            "PROGRESS.md und docs/audit/ sind historische Belege und ausgenommen."
+            "\nKennzahlen leben im README-KENNZAHLEN-Block; andere Wurzeldokumente "
+            "verweisen. Archiv und Eingaenge sind per Manifest gesichert (A14)."
         )
         return 1
 

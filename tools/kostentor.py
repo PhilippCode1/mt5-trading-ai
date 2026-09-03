@@ -77,7 +77,8 @@ M1_GRUEN_MAX = Decimal("0.56")
 M1_GELB_MAX = Decimal("0.62")
 M1_MIN_INSTRUMENTE_GRUEN = 3
 #: Die Untergrenze an BEWERTBAREN Instrumenten, unter der M1 nicht mehr beurteilt wird.
-#: Berichtigung vom 2026-08-17 (ABBRUCH.md, Bedingung 1): die erste Fassung verlangte
+#: Berichtigung vom 2026-08-17 (archiv/ABBRUCH.md, Bedingung 1): die erste Fassung
+#: verlangte
 #: fuer ROT "alle sechs" Instrumente. Da BTCUSD dauerhaft nicht bewertbar ist, konnte
 #: ROT damit NIE eintreten -- eine Ampel, die nicht rot werden kann, schuetzt nicht.
 #: Seither laeuft die ROT-Schwelle gegen die bewertbaren Instrumente, und zu duenne
@@ -349,7 +350,7 @@ def _q(wert: Decimal, stellen: str = "0.01") -> Decimal:
 # laesst sich nicht nachrechnen -- und genau so konnte die falsche ROT-Schwelle
 # monatelang unbemerkt bleiben. Der Druck unten ruft diese Funktionen auf; die
 # Ausgabe bleibt dabei Zeichen fuer Zeichen dieselbe (Beleg:
-# ``ABSCHLUSS-3a/07-AUSGABEN/kostentor.txt``, gesichert durch
+# ``archiv/ABSCHLUSS-3a/07-AUSGABEN/kostentor.txt``, gesichert durch
 # ``tests/test_kostentor_ausgabe.py``).
 # ---------------------------------------------------------------------------
 

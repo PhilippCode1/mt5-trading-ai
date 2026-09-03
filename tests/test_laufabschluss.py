@@ -252,7 +252,7 @@ def test_kein_lauf_ohne_endsatz_hatte_eine_stoppdatei() -> None:
 def test_das_runbook_behauptet_die_widerlegte_ungenauigkeit_nicht_mehr() -> None:
     """Eine Handlungsanweisung, die auf eine unmoegliche Lage zeigt, ist schlimmer als
     keine -- sie verbraucht die Aufmerksamkeit, die der echte Fall braucht."""
-    text = (ROOT / "RUNBOOK.md").read_text(encoding="utf-8")
+    text = (ROOT / "archiv/RUNBOOK.md").read_text(encoding="utf-8")
     assert "bekannte Ungenauigkeit der Metrik" not in text
     abschnitt = text[text.index("## Läufe brechen ab") :]
     abschnitt = abschnitt[: abschnitt.index("\n---")]

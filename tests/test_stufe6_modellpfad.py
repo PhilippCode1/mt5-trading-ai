@@ -16,7 +16,7 @@ Woertlich::
 WAS DIE MESSUNG GEFUNDEN HAT
 ----------------------------
 Der Modellpfad dieses Standes ist ``gates/learning_phase.py`` -- aus Trades entstehen
-Parametersaetze. Gemessen (``AUFTRAG/stufen/06-modellpfad/belege/``):
+Parametersaetze. Gemessen (``archiv/AUFTRAG/stufen/06-modellpfad/belege/``):
 
 * Befoerderung war bereits aus. **Erfuellt.**
 * Eine Rangliste entstand aus **einem einzigen Trade**; acht Parameter liessen sich

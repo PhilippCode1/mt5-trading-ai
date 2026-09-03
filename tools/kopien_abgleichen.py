@@ -4,9 +4,9 @@
 Der Abschlussordner muss in sich geschlossen sein, darum liegen einzelne Dokumente
 dort ein zweites Mal. Jede dieser Kopien traegt im Kopf die Zusicherung::
 
-    <!-- Wortgleiche Kopie von ALPHA.md (...). -->
+    <!-- Wortgleiche Kopie von archiv/ALPHA.md (...). -->
 
-Diese Zusicherung war nachweislich nicht selbsttragend: ``ABSCHLUSS/04-ALPHA.md``
+Diese Zusicherung war nachweislich nicht selbsttragend: ``archiv/ABSCHLUSS/04-ALPHA.md``
 bezeichnete sich als wortgleich und wich um 311 Zeilen ab -- der Abschlussordner gab
 zur Kernfrage des Vorhabens zwei einander widersprechende Antworten, von denen eine
 sich selbst als identisch mit der anderen bezeichnete.
@@ -29,6 +29,10 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
+if str(REPO) not in sys.path:
+    sys.path.insert(0, str(REPO))
+
+from tools import doku_menge  # noqa: E402
 
 #: Der Kopf einer Kopie: ein HTML-Kommentar, der das Original benennt. Die Gruppe
 #: faengt den Dateinamen -- ohne ihn ist die Zusicherung nicht pruefbar und die Datei
@@ -100,7 +104,11 @@ def finde_kopien() -> list[Path]:
     """Alle Markdown-Dateien des Repos, die sich selbst als Kopie ausweisen."""
     gefunden: list[Path] = []
     for pfad in sorted(REPO.rglob("*.md")):
+        # archiv/: eingefroren, per Manifest gesichert (tools/archiv_manifest.py); die
+        # Kopie-Zusicherungen dort beziehen sich auf bewegte Originale (E-015).
         if any(teil in {".git", "node_modules"} for teil in pfad.parts):
+            continue
+        if not doku_menge.ist_lebend(pfad.relative_to(REPO).as_posix()):
             continue
         try:
             text = _lies(pfad)

@@ -39,7 +39,8 @@ saehe unveraendert richtig aus und rechnete unveraendert falsch. Wer die Deflati
 der ganzen Stichprobe fuehrt, sagt das mit ``oos_share=1.0`` ausdruecklich.
 
 Diese Stelle ist die zweite Auspraegung des Fehlers, der in
-``ABSCHLUSS-3a/09-EIGENE-FEHLER.md`` unter Nr. 6 steht: dort lief die Rechnung gegen die
+``archiv/ABSCHLUSS-3a/09-EIGENE-FEHLER.md`` unter Nr. 6 steht: dort lief die Rechnung
+gegen die
 geplante statt die messbare Ereigniszahl, hier gegen die gemessene statt die
 deflationierte. Beide Male ist die eingesetzte Stichprobe groesser als die, auf der das
 Urteil faellt.
@@ -62,7 +63,7 @@ from mt5_trading_ai.gates.criteria import deflated_sharpe_ratio
 
 RESOLUTION_POLICY_VERSION = "resolution-v1"
 
-#: Schwelle des Deflationsurteils. Wie ``gates/criteria.py`` und ``ABBRUCH.md``.
+#: Schwelle des Deflationsurteils. Wie ``gates/criteria.py`` und ``archiv/ABBRUCH.md``.
 DEFAULT_DSR_THRESHOLD = 0.95
 
 #: Vielfaches der Round-Turn-Kosten, das ein Effekt erreichen muss (M6.1).

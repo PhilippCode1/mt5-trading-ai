@@ -10,7 +10,7 @@ steht als Rechnung im Kommentar darueber, und die Eingaben sind ueberwiegend so 
 dass die Rechnung ohne Rechner aufgeht (Preis 2,00, Kontrakt 100 000, ATR 20 bp). Wo
 gegen die echten Projektzahlen geprueft wird, ist die Herkunft der Eingabe benannt.
 
-Die Hausfehlerklasse dieses Repos steht in ``ABSCHLUSS-3a/09-EIGENE-FEHLER.md``:
+Die Hausfehlerklasse dieses Repos steht in ``archiv/ABSCHLUSS-3a/09-EIGENE-FEHLER.md``:
 eine Bedingung, die nicht ausloesen kann; eine fehlende Waehrungsumrechnung; eine
 Einheitenverwechslung zwischen Punkten, Basispunkten und Prozent. Nach genau diesen
 drei ist hier gesucht -- und zwei davon sind gefunden worden; sie stehen unten unter
@@ -20,7 +20,7 @@ ZWEITE REGEL, NACHGETRAGEN AM 2026-08-18: JEDE SCHWELLE WIRD AN IHRER KANTE GEPR
 ------------------------------------------------------------------------------------
 Bandmitten sagen ueber eine Schwelle nichts aus. Ein Fall mit 55 %, 57,5 % und 65 %
 laesst offen, ob 56,0 % noch gruen ist -- und das ist die einzige Stelle, an der es
-eng ist: ``ABBRUCH.md`` haelt ausdruecklich fest, dass das gruene Kostentor KEINE
+eng ist: ``archiv/ABBRUCH.md`` haelt ausdruecklich fest, dass das gruene Kostentor KEINE
 Reserve hat und EURUSD bei ic_markets_eu mit 55,7 % nur 0,3 Punkte unter der Linie
 steht. Kippt die Linie um eine Stelle, kippt das Urteil des Vorhabens.
 
@@ -36,7 +36,7 @@ drei Stellen der ``M2_MAX_JAHRESLAST``-Grenze (``m2_urteil`` und die beiden Mark
 
 Der Grund fuer diese Breite ist immer derselbe: eine Schwelle steht in diesem Werkzeug
 mehrfach -- einmal rechnend und ein- bis zweimal druckend. Genau daraus ist die
-falsche ROT-Schwelle entstanden (``ABBRUCH.md``, Bedingung 1): eine Schwelle an zwei
+falsche ROT-Schwelle entstanden (``archiv/ABBRUCH.md``, Bedingung 1): eine Schwelle an zwei
 Stellen, geprueft an einer.
 
 WAS OFFEN BLEIBT, ausdruecklich benannt statt stillschweigend: die Gleichstandsregeln
@@ -277,7 +277,7 @@ def test_kommission_wird_in_die_notierungswaehrung_umgerechnet() -> None:
 
     OHNE die Umrechnung stuenden dort 10 / 20 000 000 x 10 000 = 0,005 bp --
     Faktor 150 zu klein und damit ein zu billiges, schmeichelndes K. Genau dieser
-    Fehler ist in ``ABSCHLUSS-3a/09-EIGENE-FEHLER.md`` Nr. 2 dokumentiert.
+    Fehler ist in ``archiv/ABSCHLUSS-3a/09-EIGENE-FEHLER.md`` Nr. 2 dokumentiert.
     """
     z = rechne(
         kosten_eintrag=kosten(quote_currency="JPY"),
@@ -573,7 +573,7 @@ def test_lesart_d_setzt_einen_unbekannten_swap_still_auf_null() -> None:
     56,3 auf 57,9 % und ist nicht gruen.
 
     Nicht behoben, weil jede Behebung die eingefrorene Ausgabe verschoebe
-    (ABSCHLUSS-3a/07-AUSGABEN/kostentor.txt). Dieser Test haelt den Mangel fest,
+    (archiv/ABSCHLUSS-3a/07-AUSGABEN/kostentor.txt). Dieser Test haelt den Mangel fest,
     damit er nicht ein zweites Mal nur im Dokument steht.
     """
     ohne_swap = lesarten(zeile(swap_bps_nacht=None))
@@ -897,7 +897,7 @@ def test_gruene_je_broker_zaehlt_die_schwelle_selbst_noch_mit() -> None:
     ``einteilung`` und ``gruene_je_broker`` schreiben die 56-%-Grenze getrennt
     hin. Genau daraus ist in diesem Haus schon einmal ein Schaden entstanden:
     eine Schwelle an zwei Stellen, geprueft an einer (die falsche ROT-Schwelle,
-    ``ABBRUCH.md`` Bedingung 1). Auf dieser Zahl steht der Urteilssatz
+    ``archiv/ABBRUCH.md`` Bedingung 1). Auf dieser Zahl steht der Urteilssatz
     "ic_markets_eu allein traegt 3 davon" -- und damit M1 = GRUEN.
 
     Von Hand bei ATR50 = 20 bp: p* = 0,5 + K/40, also K = 2,4 bp -> p* = 56,0 %
@@ -949,7 +949,7 @@ def test_einteilung_trennt_gruen_gelb_rot_in_den_baendern() -> None:
 def test_die_gruene_schwelle_ist_einschliessend() -> None:
     """56,0 % zaehlt NOCH als gruen -- 56,0 % plus ein Hauch nicht mehr.
 
-    Hier haengt das Urteil des Vorhabens. ``ABBRUCH.md`` haelt fest, dass das
+    Hier haengt das Urteil des Vorhabens. ``archiv/ABBRUCH.md`` haelt fest, dass das
     gruene Kostentor keine Reserve hat: EURUSD bei ic_markets_eu steht auf
     55,7 %, also 0,3 Punkte unter der Linie. Wuerde die Linie ausschliessend
     gelesen (``<`` statt ``<=``), verschoebe sich nichts an diesem Stand -- aber

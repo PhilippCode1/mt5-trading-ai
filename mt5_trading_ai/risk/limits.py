@@ -3,7 +3,8 @@
 WAS DIESES MODUL TRAEGT -- UND WAS NICHT (Paket 2, A3.5)
 --------------------------------------------------------
 Die Kopfzeile hiess frueher schlicht „Verlustgrenzen und Kill-Switch", waehrend
-``FEHLT.md`` §7 den Kill-Switch als **nicht mitgekommen** fuehrte. Gemessen ist beides
+``archiv/FEHLT.md`` §7 den Kill-Switch als **nicht mitgekommen** fuehrte. Gemessen ist
+beides
 halb richtig, und die Praezisierung steht darum hier:
 
 * **Hier** liegt das *Kriterium* und der *Zustand*: wann gehalten wird

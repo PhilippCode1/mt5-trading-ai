@@ -43,7 +43,7 @@ Backtest-Maschine: fuehrt Splits, Daten und Kostenmodell zusammen.
 
 ## `mt5_trading_ai/backtest/ereignisstudie.py`
 
-Zeilen: 491
+Zeilen: 492
 
 Ereignisstudie — traegt eine bekannte Zwangslage mehr als ihre Kosten?
 
@@ -96,7 +96,7 @@ Herkunft eines Backtest-Laufs: der Codestand aus git (Paket 6).
 
 ## `mt5_trading_ai/backtest/resolution.py`
 
-Zeilen: 363
+Zeilen: 364
 
 Aufloesung einer Ereignisstudie — kann sie den Effekt ueberhaupt sehen?
 
@@ -131,7 +131,7 @@ Einfache, ernsthafte Signallogiken fuer den Edge-Test -- ohne Optimierung.
 
 ## `mt5_trading_ai/betrieb/dienstguete.py`
 
-Zeilen: 567
+Zeilen: 568
 
 Alarmregeln, Dienstgüteziele und Fehlerbudget -- aus dem Betriebsjournal.
 
@@ -181,7 +181,7 @@ Broker-Kostentabelle — versioniert, belegt, fail-closed.
 
 ## `mt5_trading_ai/costs/model.py`
 
-Zeilen: 224
+Zeilen: 225
 
 Kostenmodell: die realen Kosten einer Order, gemessen statt angenommen.
 
@@ -382,7 +382,7 @@ Vorregistrierte Kriterien und ihre Auswertung (Phase 9.3).
 
 ## `mt5_trading_ai/gates/erkundung.py`
 
-Zeilen: 231
+Zeilen: 232
 
 Kaltstart: den Kreis aufbrechen, ohne die Sperren aufzuweichen.
 
@@ -478,7 +478,7 @@ Gesetzlicher Hebeldeckel je Anlageklasse — geladen aus einer versionierten Dat
 
 ## `mt5_trading_ai/risk/limits.py`
 
-Zeilen: 173
+Zeilen: 174
 
 Verlustgrenzen und das **Kriterium** des Kill-Switch (Phase 6.4).
 
@@ -544,7 +544,7 @@ Paket 5: Registrierung und Fortschritts-Tor des Demo-Betriebs (§8.5).
 
 ## `mt5_trading_ai/venue/mt5.py`
 
-Zeilen: 2718
+Zeilen: 2721
 
 MT5-Anbindung an das ``TradingVenue``-Protokoll.
 

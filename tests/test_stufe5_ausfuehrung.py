@@ -20,7 +20,7 @@ behauptet und nicht nachgewiesen.
 WAS DIESE STUFE GEFUNDEN HAT
 ----------------------------
 Der Zustand „Antwort blieb aus" existierte, aber als ``dict`` im Prozessgedaechtnis.
-Zwei Messungen (``AUFTRAG/stufen/05-ausfuehrung/belege/``):
+Zwei Messungen (``archiv/AUFTRAG/stufen/05-ausfuehrung/belege/``):
 
 * Nach ``clear_halt()`` ging die naechste Eroeffnung durch, **waehrend der ungeklaerte
   Eintrag noch stand** -- der Auftrag verlangt das Gegenteil.

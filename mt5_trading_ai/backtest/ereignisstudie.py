@@ -100,7 +100,8 @@ HYPOTHESE = "umkehr"
 M61_FAKTOR = 3.0
 #: M6.2, zeitliche Stabilitaet: in BEIDEN Zeithaelften dieses Vielfache.
 M62_STABIL_FAKTOR = 1.5
-#: M6.2, Deflation: dieselbe Schwelle wie ``gates/criteria.py`` und ``ABBRUCH.md``.
+#: M6.2, Deflation: dieselbe Schwelle wie ``gates/criteria.py`` und
+#: ``archiv/ABBRUCH.md``.
 M62_DSR_SCHWELLE = 0.95
 #: M6.2, Randomisierung: so viele verschobene Ereignismengen, so viel darf durchkommen.
 M62_ZIEHUNGEN = 1000
@@ -437,7 +438,7 @@ def bestaetige(
     # Streuung wird ``sharpe`` beliebig gross (gemessen an den synthetischen Reihen
     # des Pruefstands: 3,06e13), und die Deflation saettigt auf 1,0 -- maximale
     # Bestaetigung aus einer entarteten Reihe. Das ist ein Streuungs- und kein
-    # Einheitenproblem; siehe SPAETER.md, S9.
+    # Einheitenproblem; siehe archiv/SPAETER.md, S9.
     dsr = deflated_sharpe_ratio(
         observed_sharpe=sharpe,
         observations=len(oos),

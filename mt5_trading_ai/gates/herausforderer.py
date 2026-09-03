@@ -21,7 +21,7 @@ Hier trainiert nichts ein neuronales Netz. Der Modellpfad ist
 abgeleitete Groesse, die spaeter Entscheidungen faerben soll --, und alle sechs
 Forderungen greifen daran.
 
-Gemessen wurde vor dieser Stufe (``AUFTRAG/stufen/06-modellpfad/belege/``):
+Gemessen wurde vor dieser Stufe (``archiv/AUFTRAG/stufen/06-modellpfad/belege/``):
 
 * **Befoerderung** war bereits aus: ``Proposal.state`` ist ``"candidate"``, und
   ``validate_proposal`` weist alles andere ab. Diese Forderung war erfuellt.

@@ -50,7 +50,8 @@ from mt5_trading_ai.venue.catalog import (
 from mt5_trading_ai.venue.protocol import AssetClass, FeeSchedule, OrderSide
 
 #: Standard-Slippage je Seite in **Pips** (nicht Ticks -- die Recherche denkt in Pips).
-#: 0,5 Pip/Seite ist der obere Rand des ruhigen Bandes (RECHERCHE_KOSTEN.md, EURUSD
+#: 0,5 Pip/Seite ist der obere Rand des ruhigen Bandes (archiv/RECHERCHE_KOSTEN.md,
+#: EURUSD
 #: ruhig 0-0,5 Pip/Seite): bewusst nicht optimistisch. Fuer News/duenne Liquiditaet
 #: setzt der Backtest ihn hoeher (dort 3-10+ Pip). Ein Nullwert waere optimistisch.
 DEFAULT_SLIPPAGE_PIPS_PER_SIDE = Decimal("0.5")

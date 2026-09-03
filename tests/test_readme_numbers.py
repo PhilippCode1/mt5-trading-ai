@@ -8,13 +8,13 @@ im README steht. Weicht eine ab, ist der Test rot.
 AUSWEITUNG (Paket 2, A4.1)
 --------------------------
 Der Test deckte lange **nur** ``README.md`` ab. Das reichte fuer den README-Block und
-fuer nichts sonst: ``MASTERBERICHT.md`` fuehrte eine eigene Spalte mit Zeilenzahlen je
+fuer nichts sonst: ``archiv/MASTERBERICHT.md`` fuehrte eine eigene Spalte mit Zeilenzahlen je
 Modul, von der 13 von 18 Werten falsch waren, und kein Test bemerkte es. Der Grund war
 nicht Nachlaessigkeit, sondern Struktur -- eine Zahl, die an zwei Stellen von Hand steht,
 geht an einer davon irgendwann falsch.
 
 Dieser Test spannt darum jetzt drei Dateien unter denselben Waechter:
-``README.md``, ``MASTERBERICHT.md`` und ``FEHLT.md``. Er ruft dafuer die Regeln von
+``README.md``, ``archiv/MASTERBERICHT.md`` und ``archiv/FEHLT.md``. Er ruft dafuer die Regeln von
 ``tools/check_doc_numbers.py`` direkt auf, statt sie nachzubauen -- eine zweite Kopie
 derselben Regeln waere genau der Fehler, den beide verhindern sollen.
 """
@@ -35,10 +35,10 @@ PKG = ROOT / "mt5_trading_ai"
 TESTS = ROOT / "tests"
 README = ROOT / "README.md"
 
-#: Die Live-Dokumente, die unter dem Waechter stehen. ``PROGRESS.md`` und ``docs/audit/``
+#: Die Live-Dokumente, die unter dem Waechter stehen. ``archiv/PROGRESS.md`` und ``archiv/docs/audit/``
 #: fehlen hier bewusst: sie sind anhaengende Logbuecher bzw. datierte Snapshots, deren
 #: Zahlen Zeitpunkt-Belege sind (siehe ``tools/check_doc_numbers.py``, A4.2).
-BEWACHTE_DOKUMENTE = ("README.md", "MASTERBERICHT.md", "FEHLT.md")
+BEWACHTE_DOKUMENTE = ("README.md", "MODULES.md", "CLAUDE.md")
 
 
 def _lade_tor() -> Any:
@@ -116,10 +116,10 @@ def test_bewachtes_dokument_hat_keine_zahlen_drift(name: str) -> None:
 
 @pytest.mark.parametrize("name", BEWACHTE_DOKUMENTE)
 def test_bewachtes_dokument_ist_nicht_von_der_pruefung_ausgenommen(name: str) -> None:
-    """Die historische Ausnahme darf keines dieser drei Dokumente erfassen."""
+    """Die Wurzelmenge ist Gegenstand -- ohne Ausnahmeliste (tools/doku_menge.py)."""
     tor = _lade_tor()
-    assert not tor.is_historical(name), (
-        f"{name} faellt unter die HISTORICAL-Ausnahme und waere damit ungeprueft."
+    assert tor.ist_zahlen_gegenstand(name), (
+        f"{name} ist Wurzeldokument und muss Gegenstand des Zahlen-Tors sein (A14)."
     )
 
 

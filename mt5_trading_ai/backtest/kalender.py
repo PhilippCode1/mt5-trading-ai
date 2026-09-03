@@ -23,8 +23,8 @@ amerikanischen: am 10.03.2024 (US-Umstellung) aendert sich nichts, am 31.03.2024
 (EU) springt es. Liest man die Zeitstempel als naive ``Europe/Helsinki``-Ortszeit,
 betraegt die Abweichung in jedem einzelnen Monat des Jahres 0,09 bp.
 
-Belege: ``ABSCHLUSS-3a/02-DATENLAGE.md`` Abschnitt 3, Rohausgabe in
-``ABSCHLUSS-3a/07-AUSGABEN/gegenprobe.txt``.
+Belege: ``archiv/ABSCHLUSS-3a/02-DATENLAGE.md`` Abschnitt 3, Rohausgabe in
+``archiv/ABSCHLUSS-3a/07-AUSGABEN/gegenprobe.txt``.
 
 WAS DIESES MODUL NICHT TUT
 --------------------------

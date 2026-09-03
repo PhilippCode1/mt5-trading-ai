@@ -222,7 +222,7 @@ def auswerten(pfad: Path) -> int:
         print("    hier zu sehen ist.")
         print("    Dieser Lauf beantwortet: LIEF DIE MASCHINE. Er beantwortet nicht:")
         print("    TAUGT DIE STRATEGIE. Fuer die zweite Frage steht das Urteil aus")
-        print("    Paket 3a (ABSCHLUSS-3a/05-URTEIL.md), und es lautet nein.")
+        print("    Paket 3a (archiv/ABSCHLUSS-3a/05-URTEIL.md), und es lautet nein.")
     print()
     print("  Wer jetzt die Parameter auf dieses Ergebnis dreht, betreibt Anpassung an")
     print("  eine Stichprobe dieser Groesse. Genau dagegen ist die Deflation in")

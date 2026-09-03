@@ -5,7 +5,7 @@ WORUM ES GEHT
 Stufe 3 des Dauerauftrags verlangt, Rechenfehler in geldnahen Groessen **vor** dem
 ersten Lauf zu korrigieren: Maximalverlust, Stueckzahlberechnung, Kennzahleinheiten.
 Alle drei waren im verworfenen Stand defekt. Hier wurde jede
-nachgerechnet (Beleg: ``AUFTRAG/stufen/03-simulator/belege/01-geldnahe-groessen.txt``):
+nachgerechnet (Beleg: ``archiv/AUFTRAG/stufen/03-simulator/belege/01-geldnahe-groessen.txt``):
 die ersten beiden rechnen richtig.
 
 Die dritte ist kein aktiver Fehler, aber eine scharfe Kante:
@@ -21,7 +21,7 @@ Beobachtung abweist. Sie brach **sieben** bestehende Faelle, deren synthetische 
 per Konstruktion fast keine Streuung haben und darum Sharpes von 24 bis 3e13 erzeugen
 -- kein Einheitenfehler, sondern deterministische Pruefdaten. Eine Sperre, die
 legitime Pruefreihen bestraft, ist das falsche Werkzeug; sie wurde zurueckgenommen
-(AUFTRAG/fehler.md, F-007).
+(archiv/AUFTRAG/fehler.md, F-007).
 
 Was bleibt, ist das, was wirklich schiefgehen kann und keinen Preis hat: die
 **Feldwahl** festnageln, ueber den Syntaxbaum, damit ein Umschreiben auffaellt.
@@ -98,7 +98,7 @@ def test_deflationiert_wird_die_nicht_annualisierte_trade_sharpe() -> None:
     """Genau ``report.trade_sharpe_per_obs`` -- kein anderes Feld, keine Umrechnung.
 
     Ueber den Syntaxbaum und nicht ueber den Text: ein Vorkommen des Feldnamens in
-    einem Kommentar zaehlt nicht (AUFTRAG/fehler.md, F-005).
+    einem Kommentar zaehlt nicht (archiv/AUFTRAG/fehler.md, F-005).
     """
     arg = _observed_sharpe_argument()
     assert isinstance(arg, ast.Attribute), (

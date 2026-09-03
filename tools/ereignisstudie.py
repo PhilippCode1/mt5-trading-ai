@@ -35,13 +35,13 @@ Weg, erst zu messen und dann zu entscheiden, ob der Versuch zaehlt.
 
 DER EINGEFRORENE ABZUG IST AELTER ALS DIESES WERKZEUG
 ------------------------------------------------------
-``ABSCHLUSS-3a/07-AUSGABEN/ereignisstudie.txt`` ist mit dem Werkzeugstand
+``archiv/ABSCHLUSS-3a/07-AUSGABEN/ereignisstudie.txt`` ist mit dem Werkzeugstand
 ``a9ed7ad57dac`` erzeugt worden und laesst sich mit dem heutigen nicht mehr Zeile fuer
 Zeile nachbauen: die Deflation zaehlt seit Welle 1b in ganzen Kampagnen statt
 Registerzeilen, und die Berichtszeile nennt die Versuchszahl seitdem mit. Das ist eine
 gewollte Verschaerfung, keine Drift. Der Abzug traegt darum einen Kopf, der den
 Werkzeugstand nennt; was sich geaendert hat und warum nicht neu gemessen wird, steht in
-``ABSCHLUSS-3a/04-EREIGNISSTUDIE.md``, Abschnitt 6. Wer hier etwas an der Ausgabe
+``archiv/ABSCHLUSS-3a/04-EREIGNISSTUDIE.md``, Abschnitt 6. Wer hier etwas an der Ausgabe
 aendert, zieht diesen Abschnitt mit nach -- ein Beleg, den sein eigenes Werkzeug
 stillschweigend nicht mehr erzeugt, ist keiner.
 
@@ -147,7 +147,7 @@ def verlange_register(pfad: Path | str | None = None) -> Path:
 
     Ein LEERES Register ist zulaessig (dann laeuft die erste Kampagne), ein fehlendes
     nicht. Geheilt wird es durch den versionierten Abzug
-    ``ABSCHLUSS-3a/07-AUSGABEN/trials.jsonl``, nicht durch einen weiteren Lauf.
+    ``archiv/ABSCHLUSS-3a/07-AUSGABEN/trials.jsonl``, nicht durch einen weiteren Lauf.
     """
     ledger = Path(pfad) if pfad is not None else default_ledger_path()
     if not ledger.is_file():
@@ -155,7 +155,7 @@ def verlange_register(pfad: Path | str | None = None) -> Path:
             f"Versuchsregister {ledger} fehlt. Es wird hier NICHT angelegt: ein "
             "frisches Register meldete die Kampagnengroesse statt aller bisherigen "
             "Versuche, und eine zu kleine Versuchszahl macht die Deflation milder. "
-            "Den versionierten Abzug ABSCHLUSS-3a/07-AUSGABEN/trials.jsonl "
+            "Den versionierten Abzug archiv/ABSCHLUSS-3a/07-AUSGABEN/trials.jsonl "
             "zurueckspielen. Ein leeres Register ist zulaessig, ein fehlendes nicht."
         )
     return ledger

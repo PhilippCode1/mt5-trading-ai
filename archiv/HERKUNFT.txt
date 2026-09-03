@@ -1,0 +1,4 @@
+Archiv des Altstands mt5-trading-ai, Stand 306bbaa (2026-08-20, 114 Commits), verschoben am 2026-09-03 in Auftrag 1
+des Programms NEUAUFBAU (E-008). Inhalt unveraendert (git mv); Unveraendertheit sichert MANIFEST.sha256
+(tools/archiv_manifest.py --pruefen). Diese Dateien sind keine lebende Dokumentation: lebend sind README.md,
+MODULES.md, CLAUDE.md und PROGRAMM/ (tools/doku_menge.py). Verweise aus Code und Tests wurden nachgezogen (E-015).

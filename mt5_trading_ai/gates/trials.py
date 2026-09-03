@@ -262,7 +262,7 @@ def deflation_trials(kampagne: Kampagne, path: Path | str | None = None) -> int:
     Kampagnengroesse: sie ist die Untergrenze, die ein verlorenes Register ueberlebt.
     Vollstaendig ist dieser Schutz nicht -- Laeufe FREMDER Reihen sind nach einem
     Registerverlust verloren, und die Wiederherstellung ist der versionierte Abzug
-    (``ABSCHLUSS-3a/07-AUSGABEN/trials.jsonl``), nicht dieses Modul.
+    (``archiv/ABSCHLUSS-3a/07-AUSGABEN/trials.jsonl``), nicht dieses Modul.
     """
     ledger = Path(path) if path is not None else default_ledger_path()
     if not ledger.is_file():

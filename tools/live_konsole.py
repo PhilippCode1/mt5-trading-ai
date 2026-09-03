@@ -30,7 +30,7 @@ Die Kette prueft als Erstes die §9.3-Zulassung: ohne bestandenes Bewertungstor 
 keine Strategie. Ohne ``--vorfuehrung`` reicht diese Konsole **keine** bestandene
 Zulassung herein, und die Kette bleibt bei Stufe A stehen. Das ist kein Mangel der
 Konsole, sondern der Zustand des Vorhabens: es gibt keine zugelassene Strategie
-(siehe ``ABSCHLUSS-3a/05-URTEIL.md``).
+(siehe ``archiv/ABSCHLUSS-3a/05-URTEIL.md``).
 
 ``--vorfuehrung`` reicht einen deutlich markierten Platzhalter herein, damit die
 uebrigen elf Sperren sichtbar arbeiten. Am Schreibschutz aendert das nichts — die
