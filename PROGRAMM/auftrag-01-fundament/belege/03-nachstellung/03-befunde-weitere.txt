@@ -1,0 +1,111 @@
+
+==============================================================================
+D8  Persistenz per Vorgabe fluechtig (Umgebung leer, wie ein frischer Betriebsstart)
+==============================================================================
+RiskManager().zustand_dauerhaft = False
+_schwebeakte_waehlen().dauerhaft = False | pfad = None
+tools/live_betrieb.py baut den RiskManager so:
+  live_betrieb.py:832: manager = RiskManager()
+Lesestellen von os.environ im Paket: 7
+  mt5_trading_ai/execution/risiko_zustand.py:397: umg = os.environ if umgebung is None else umgebung
+  mt5_trading_ai/execution/risiko_zustand.py:427: umg = os.environ if umgebung is None else umgebung
+  mt5_trading_ai/execution/risk_manager.py:432: if os.environ.get(UMGEBUNG_ZUSTANDSDATEI) or os.environ.get(
+  mt5_trading_ai/execution/schwebende_auftraege.py:97: umg = os.environ if umgebung is None else umgebung
+  mt5_trading_ai/venue/mt5.py:359: os.environ.get(UMGEBUNG_SCHWEBEDATEI)
+  mt5_trading_ai/venue/mt5.py:360: or os.environ.get(UMGEBUNG_ZUSTANDSDATEI)
+  mt5_trading_ai/venue/mt5.py:361: or os.environ.get(UMGEBUNG_ZUSTANDSORDNER)
+.env.example sagt: # Bewusst leer: der aktuelle Kern liest keine Umgebungsvariablen. Diese Datei
+Markdown-Dateien, die eine der drei Variablen nennen: 0
+
+==============================================================================
+Z   Zulassung ist ein Kommandozeilenargument (--scharf <Freitext>)
+==============================================================================
+  live_betrieb.py:35: DIE ZULASSUNG -- WAS ``--scharf`` WIRKLICH TUT
+  live_betrieb.py:42: ``--scharf "<Begruendung>"`` uebergeht dieses eine Tor. Es tut das **sichtbar**: mit
+  live_betrieb.py:47: Ohne ``--scharf`` laeuft alles gleich, nur bleibt die Kette an der Zulassung stehen und
+  live_betrieb.py:74: python tools/live_betrieb.py --dauer 24 --scharf "Maschinenprobe Demo 2026-08-18"
+  live_betrieb.py:765: ``['EURUSD','GBPUSD']``). Beide liefen ohne ``--scharf``, also ohne Schreibrecht.
+  live_betrieb.py:782: * ``--scharf`` -- der Lauf bekommt das Schreibrecht und kann schliessen.
+  live_betrieb.py:795: "der Schreibpfad ist gesperrt (ohne --scharf), und am Broker stehen bereits "
+  live_betrieb.py:799: "Entweder --scharf (mit Begruendung), oder --am-ende-offen-lassen (dann "
+  live_betrieb.py:814: ap.add_argument("--scharf", default=None, metavar="BEGRUENDUNG",
+  live_betrieb.py:827: allow_write=bool(args.scharf), server_tz=SERVER_TZ_NAME
+  live_betrieb.py:853: kann_schreiben=bool(args.scharf),
+  live_betrieb.py:872: if args.scharf and not _autotrading_an():
+  live_betrieb.py:915: if args.scharf:
+  live_betrieb.py:919: print(f"Begruendung: {args.scharf}")
+  live_betrieb.py:923: print("TROCKEN. Die Kette haelt an der Zulassung. Mit --scharf wird gehandelt.")
+  live_betrieb.py:924: zulassung = CriteriaVerdict(passed=bool(args.scharf), results=())
+  live_betrieb.py:933: scharf=bool(args.scharf), zulassung_uebergangen=args.scharf,
+bool('Maschinenprobe') = True -> passed=True ohne Torurteil
+CriteriaVerdict(passed=bool(args.scharf), results=()).passed = True
+Konstruktionsstellen mit settings= (Live-Freigabe) in Paket+tools: 1 (Zuweisung self._settings = settings im Venue mitgezaehlt)
+
+==============================================================================
+D13/D20  Serverzone fest 'Europe/Helsinki'; Sommerzeit-Versatz; keine Gap-Sperre
+==============================================================================
+  kalender.py:17: ``SERVER_TZ`` steht nicht hier, weil es ueblich waere, sondern weil es gemessen wurde:
+  kalender.py:50: SERVER_TZ_NAME = "Europe/Helsinki"
+  kalender.py:51: SERVER_TZ = ZoneInfo(SERVER_TZ_NAME)
+  kalender.py:71: return ts.replace(tzinfo=None).replace(tzinfo=SERVER_TZ).astimezone(UTC)
+  kalender.py:189: zone_name=SERVER_TZ_NAME,
+  kalender.py:328: if roh["server_tz"] != SERVER_TZ_NAME:
+  kalender.py:331: f"{SERVER_TZ_NAME!r} ab. Ein anderer Broker braucht eine EIGENE Messung, "
+Tage im Jahr 2026, an denen EU- und US-Sommerzeitregel nicht deckungsgleich sind: 28
+  freshness.py:19: ``MAX_SNAPSHOT_AGE = 5 Sekunden``.
+  freshness.py:63: ``FUTURE_TOLERANCE = 1 Sekunde`` faengt gewoehnliche Rundungs- und
+  freshness.py:164: MAX_SNAPSHOT_AGE = timedelta(seconds=5)
+  freshness.py:167: FUTURE_TOLERANCE = timedelta(seconds=1)
+  -> ein Stundenversatz (3600 s) > MAX_SNAPSHOT_AGE: jeder Schnappschuss gilt als veraltet
+  risk_manager.py:348: gap_events: tuple[datetime, ...] = (),
+  live_betrieb.py nennt gap_events/Wochenende/Freitag: 1 Zeilen
+
+==============================================================================
+T   Selbstueberspringer und Windows-Pfad-Test
+==============================================================================
+pytest.skip(-Stellen in tests/: 20
+  davon mit Bezug auf betrieb/ oder Journale: 13
+  test_ausstiegsdeckung.py:281: pytest.skip("keine Betriebsjournale im Arbeitsbaum")
+  test_buchtreue.py:142: pytest.skip("keine Betriebsjournale im Arbeitsbaum")
+  test_buchtreue.py:223: pytest.skip("keine Betriebsjournale im Arbeitsbaum")
+  test_journal_leser.py:409: pytest.skip("kein betrieb/-Verzeichnis")
+  test_journal_leser.py:412: pytest.skip("keine Journale vorhanden")
+  test_laufabschluss.py:83: pytest.skip("keine Betriebsjournale im Arbeitsbaum")
+  test_laufabschluss.py:112: pytest.skip("keine Betriebsjournale im Arbeitsbaum")
+  test_laufabschluss.py:136: pytest.skip("keine Betriebsjournale im Arbeitsbaum")
+  test_laufabschluss.py:165: pytest.skip("keine Betriebsjournale im Arbeitsbaum")
+  test_laufabschluss.py:169: pytest.skip(f"{name} fehlt im Arbeitsbaum")
+  test_laufabschluss.py:190: pytest.skip("journal-20260817T182951.jsonl fehlt im Arbeitsbaum")
+  test_laufabschluss.py:217: pytest.skip("keine Betriebsjournale im Arbeitsbaum")
+  test_laufabschluss.py:233: pytest.skip("keine Betriebsjournale im Arbeitsbaum")
+  test_laufabschluss.py:276: pytest.skip("keine Betriebsjournale im Arbeitsbaum")
+  test_resolution.py:655: pytest.skip("config/aufloesung.json nicht vorhanden")
+  test_resolution.py:699: pytest.skip("config/aufloesung.json nicht vorhanden")
+  test_resolution.py:733: pytest.skip("keine EURUSD-Manifeste vorhanden")
+  test_resolution.py:752: pytest.skip("config/aufloesung.json nicht vorhanden")
+  test_studienreihe_pruefsumme.py:138: pytest.skip("config/reihen/EURUSD_H1.manifest.json nicht vorhanden")
+  test_volatility.py:314: pytest.skip("config/atr_measurements.json nicht vorhanden")
+betrieb/ in .gitignore: True
+betrieb/ im Worktree vorhanden: False
+
+Windows-Pfad-Test (tests/test_risiko_zustand.py): Mechanik des Fehlschlags unter POSIX
+  Path('C:\\Users\\Test\\AppData\\Local').is_absolute() unter Windows: True
+  PurePosixPath('C:\\Users\\Test\\AppData\\Local').is_absolute() (Linux-Sicht): False
+  risiko_zustand.py:47: ``PurePosixPath("C:\\\\Users\\\\Test\\\\AppData\\\\Local").is_absolute()`` ist
+  risiko_zustand.py:360: if not pfad.is_absolute():
+  risiko_zustand.py:407: if roh and Path(roh).is_absolute():
+  -> unter Linux faellt LOCALAPPDATA durch is_absolute() und der Fallback ~/.local/state greift
+
+==============================================================================
+Doku-Widersprueche (Stichprobe aus Bewertung 6.2)
+==============================================================================
+FEHLT.md nennt Backtest/Strategie in 4 Zeilen, z. B.:
+  FEHLT.md:77: ## 5. Strategie
+  FEHLT.md:83: ## 6. Backtest-Maschine
+  FEHLT.md:85: - Eine Backtest-Maschine, die die Zeitreihen-Splits (`mt5_trading_ai/backtest/splits.py`) mit
+  mt5_trading_ai/backtest/engine.py existiert: True | strategies.py: True
+README.md verweist auf venue/mt5.py:447 in 1 Zeile(n)
+  mt5.py:447 ist: 
+  Aufruf der Live-Freigabe steht in Zeile(n): [968]
+Markdown-Dateien mit 'Stand' in den ersten 12 Zeilen: 10
+Markdown-Dateien gesamt: 57 | Woerter: 116062

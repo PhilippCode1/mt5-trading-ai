@@ -1,0 +1,39 @@
+FeeSchedule EURUSD: FeeSchedule(commission_per_lot_round_turn=Decimal('7'), typical_spread_points=Decimal('6'), swap_long_per_lot_per_night=Decimal('-8.24'), swap_short_per_lot_per_night=Decimal('1.51'), triple_swap_weekday=2, currency='USD')
+
+(A) FILL-PREIS: Signal auf Bar i -> welcher Preis?
+   entry_ts=2024-03-04T10:00:00+00:00 exit_ts=2024-03-04T11:00:00+00:00 gross=500.00 USD
+   -> gross = (Close_1 - Close_0) * 100000 = (1.105-1.1)*1e5 = 500.00
+   Der Trade wird zum CLOSE des Signalbars gefuellt (1.1000), nicht zum OPEN des Folgebars (1.1050).
+   Waere Fill am Open_{i+1}: gross = (Close_1-Open_1)*1e5 = 0.00 USD
+
+(B) KOSTEN JE ROUNDTURN, 1 Lot, 0 Naechte (Handrechnung):
+   spread=1.00 comm=7.00 slippage=10.00 -> total=18.00 USD
+   engine: spread=1.00 comm=7.00 slip=10.00 fin=0.00 carry=0.00 -> trade.cost=18.00
+   in bp des Nominals (110000 USD): 1.6364 bp  (Slippage-Anteil 55.6 %)
+
+(C) EQUITY-DEFINITION:
+   equity_base = cs*vol*Close_0/lev = 22000.00 USD (= Margin bei 5:1)
+   net_return = 2.191 %  = net 482.00 / 22000.00  -> 50 Pips (0.45 % Preis) ergeben 2.27 % 'gross_return' (Hebel 5 eingerechnet)
+   hurdle_pct = 0.0818 %  = Reibung 18.00 / 22000.00
+   net_over_hurdle = 2.1909 % = gross_return - hurdle = net_return - carry/eb
+
+(D) NAECHTE: Kalendertag-Wechsel nach UTC vs. FX-Rollover 17:00 NY (=21/22 UTC):
+   Einstieg 19:00 UTC, 2 h gehalten: engine nights=0 fin=0.00 USD | kreuzt 21/22 UTC -> real 1 Nacht
+   Einstieg 22:00 UTC, 3 h gehalten: engine nights=1 fin=8.24 USD | kreuzt UTC-Mitternacht, NICHT den 22-UTC-Rollover -> real 0 Naechte
+   Einstieg 23:00 UTC, 1 h gehalten: engine nights=1 fin=8.24 USD | Entscheidungsbar 23:00, Fill um 00:00 -> real 0 Naechte
+
+(E) PURGE/EMBARGO auf H1-Bars, purge=embargo=3_600_000 ms (wie edge_test.py):
+   Bar-Ranges (ms/3.6e6 = Stunde): [(0, 1), (1, 2), (2, 3), (3, 4)] ...
+   Fold 0: test=0..9  Band=[-1h,11h]  train=[]..[]  (n_train=0)
+   Fold 1: test=10..19  Band=[9h,44h]  train=[0, 1, 2]..[6, 7, 8]  (n_train=9)
+           gepurgte Trainingsbars: [9]  -> Bar 9 hat Range [9h,10h), Band beginnt bei 9h -> ueberlappt; Bar 8 endet bei 9h = Bandanfang -> _overlaps False (a.end <= b.start)
+   => purge=1h entfernt auf luekenlosen H1-Bars genau EINEN Bar. Eine Strategie mit 120-Bar-Lookback und tagelanger Haltedauer
+      haette Labels, die weit in den Testblock reichen -- 1 Bar Purge deckt das nicht (moot, solange der Fitter ein No-op ist).
+
+(F) KONTO-RUIN: Equity kann negativ werden, der Lauf laeuft weiter:
+   net_return=-84.3 %  max_drawdown=99.0 %  trades=1343
+   -> ein net_return < -100 % heisst: Margin mehr als einmal verloren; kein Margin-Call, keine Stop-Out-Logik im Backtest.
+   (Zum Vergleich Beleg 05-laeufe: Zufalls-Referenz Mittel -218.3 % -- dieselbe Groessenordnung.)
+
+(G) MarketView kopiert je Bar die gesamte Vergangenheit (tuple(bars[:i+1])):
+   fuer n=18715: Summe der Kopien = n(n+1)/2 = 175,134,970 Elementreferenzen je Backtest-Lauf

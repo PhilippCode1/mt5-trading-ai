@@ -1,0 +1,11 @@
+{
+  "fassung": 1,
+  "eintraege": [
+    {
+      "client_order_id": "open-EURUSD-0cac971438",
+      "grund": "VenueUnavailableError: Real-Terminal: Schreibpfad gesperrt (allow_write=False). Erst gegen ein Demo-Terminal smoke-testen, dann bewusst freigeben.",
+      "seit": "2026-08-11T12:00:00+00:00",
+      "symbol": "EURUSD"
+    }
+  ]
+}

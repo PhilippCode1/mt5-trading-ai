@@ -1,0 +1,50 @@
+{
+ "bindung": {
+  "abdruck": "e56ab6cc1ea65ffb6a34e9005680afe7f79769a75511466049f2ae38aef02b24",
+  "runden": 200000,
+  "salz": "6008433d80b701ad5a955eb502e8913a"
+ },
+ "equity": {
+  "fenster": [
+   [
+    "2026-08-12T12:00:00+00:00",
+    "10000"
+   ]
+  ],
+  "tag": "2026-08-12",
+  "tagesstart": "10000"
+ },
+ "geschrieben_am": "2026-09-03T18:24:09.084307+00:00",
+ "halt": {
+  "aktiv": false,
+  "grund": "",
+  "seit": null
+ },
+ "letzter_trade_at": {
+  "EURUSD": "2026-08-09T12:00:00+00:00",
+  "GBPUSD": "2026-08-09T12:00:00+00:00",
+  "XAUUSD": "2026-08-09T12:00:00+00:00"
+ },
+ "offene_positionen": [
+  {
+   "eroeffnet_am": "2026-08-09T12:00:00+00:00",
+   "instrument": "EURUSD"
+  },
+  {
+   "eroeffnet_am": "2026-08-09T12:00:00+00:00",
+   "instrument": "GBPUSD"
+  },
+  {
+   "eroeffnet_am": "2026-08-09T12:00:00+00:00",
+   "instrument": "XAUUSD"
+  }
+ ],
+ "schema": "risiko-zustand-v1",
+ "tageszaehler": {
+  "gesperrt": false,
+  "je_instrument": {},
+  "je_konto": 0,
+  "tag": "2026-08-12"
+ },
+ "waehrung": "USD"
+}

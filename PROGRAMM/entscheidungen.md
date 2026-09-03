@@ -183,3 +183,15 @@ Reifegrad-Zusicherungen des Altstands als Befund — der Commit-Titel 651c752 un
 Abschlussformel der Abnahme-Pakete).
 
 **Verworfen.** Obergrenze anheben oder Phrasen streichen: eine Absenkung (Regel 3).
+
+## E-013 — Belegskripte unter `PROGRAMM/auftrag-*/belege/` werden nicht gelintet (2026-09-03)
+
+**Entscheidung.** `ruff` (check und format) nimmt `PROGRAMM/auftrag-*/belege/` aus; `PROGRAMM/hooks/`
+bleibt gelintet und mit `mypy --strict` typgeprüft.
+
+**Messung.** Die Nachstellungsskripte sind Messprotokolle, drei davon aus den Nachproben der
+Bewertung abgeleitet (Kopfzeile nennt die Quelle); die Vorlage trägt 170 Lint-Befunde
+(`ruff check PROGRAMM/eingang`, 2026-09-03). Sie umzuschreiben änderte die Messung, nicht den Code.
+
+**Verworfen.** Lint erzwingen: Aufwand ohne Wirkung auf das Produkt; Belege dürfen fremd aussehen,
+solange ihre Herkunft und ihre Ausgabe daneben liegen.

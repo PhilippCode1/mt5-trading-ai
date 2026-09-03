@@ -1,0 +1,40 @@
+# Volle Testsuite im Worktree 306bbaa (wie ein frischer Klon: ohne betrieb/, ohne daten/), Windows, Python 3.11.7, 2026-09-03
+# Befehl: PYTHONDONTWRITEBYTECODE=1 python -m pytest -q -rs -p no:cacheprovider
+........................................................................ [  4%]
+.........s.............................................................. [  8%]
+......................s....s............................................ [ 13%]
+........................................................................ [ 17%]
+........................................................................ [ 22%]
+........................................................................ [ 26%]
+........................................................................ [ 31%]
+........s............................................................... [ 35%]
+....................................................................ssss [ 39%]
+sss.s................................................................... [ 44%]
+........................................................................ [ 48%]
+........................................................................ [ 53%]
+........................................................................ [ 57%]
+........................................................................ [ 62%]
+........................................................................ [ 66%]
+........................................................................ [ 70%]
+........................................................................ [ 75%]
+........................................................................ [ 79%]
+........................................................................ [ 84%]
+........................................................................ [ 88%]
+........................................................................ [ 93%]
+........................................................................ [ 97%]
+........................................                                 [100%]
+=========================== short test summary info ===========================
+SKIPPED [1] tests\test_ausstiegsdeckung.py:281: keine Betriebsjournale im Arbeitsbaum
+SKIPPED [1] tests\test_buchtreue.py:142: keine Betriebsjournale im Arbeitsbaum
+SKIPPED [1] tests\test_buchtreue.py:223: keine Betriebsjournale im Arbeitsbaum
+SKIPPED [1] tests\test_journal_leser.py:409: kein betrieb/-Verzeichnis
+SKIPPED [1] tests\test_laufabschluss.py:83: keine Betriebsjournale im Arbeitsbaum
+SKIPPED [1] tests\test_laufabschluss.py:112: keine Betriebsjournale im Arbeitsbaum
+SKIPPED [1] tests\test_laufabschluss.py:136: keine Betriebsjournale im Arbeitsbaum
+SKIPPED [1] tests\test_laufabschluss.py:165: keine Betriebsjournale im Arbeitsbaum
+SKIPPED [1] tests\test_laufabschluss.py:190: journal-20260817T182951.jsonl fehlt im Arbeitsbaum
+SKIPPED [1] tests\test_laufabschluss.py:217: keine Betriebsjournale im Arbeitsbaum
+SKIPPED [1] tests\test_laufabschluss.py:233: keine Betriebsjournale im Arbeitsbaum
+SKIPPED [1] tests\test_laufabschluss.py:276: keine Betriebsjournale im Arbeitsbaum
+1612 passed, 12 skipped in 149.13s (0:02:29)
+[exit=0]

@@ -1,0 +1,23 @@
+{
+  "fassung": 1,
+  "eintraege": [
+    {
+      "client_order_id": "open-A",
+      "grund": "Timeout",
+      "seit": "2026-08-17T10:00:00+00:00",
+      "symbol": "EURUSD"
+    },
+    {
+      "client_order_id": "open-B",
+      "grund": "unlesbar",
+      "seit": "2026-09-03T18:24:09+00:00",
+      "symbol": ""
+    },
+    {
+      "client_order_id": "open-D",
+      "grund": "neu",
+      "seit": "2026-08-11T12:00:00+00:00",
+      "symbol": "GBPUSD"
+    }
+  ]
+}

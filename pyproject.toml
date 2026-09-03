@@ -22,8 +22,10 @@ line-length = 88
 target-version = "py311"
 src = ["mt5_trading_ai", "tests", "tools"]
 # PROGRAMM/eingang/ ist das Beleg-Archiv der Bewertung (fremde Pruefskripte,
-# Rohausgaben), kein Code dieses Pakets -- wird nicht gelintet. PROGRAMM/hooks/ dagegen ja.
-extend-exclude = ["PROGRAMM/eingang"]
+# Rohausgaben), kein Code dieses Pakets -- wird nicht gelintet; ebenso die Belegskripte
+# unter PROGRAMM/auftrag-*/belege/ (Messprotokolle, teils aus der Bewertung abgeleitet,
+# E-013). PROGRAMM/hooks/ dagegen wird gelintet und typgeprueft.
+extend-exclude = ["PROGRAMM/eingang", "PROGRAMM/auftrag-*/belege"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]

@@ -1,0 +1,1 @@
+# Trennschaerfe des Sechs-Bedingungen-Tors, nachgestellt gegen 306bbaa (PYTHONPATH=Worktree), 2026-09-03
