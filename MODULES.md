@@ -9,7 +9,7 @@ von Hand gefuehrte Zeilenzahl mit dem naechsten Commit driftet.
 
 ## `mt5_trading_ai/backtest/edge.py`
 
-Zeilen: 113
+Zeilen: 128
 
 Das Sechs-Bedingungen-Tor des Edge-Tests (Paket 4, §7.2).
 
@@ -21,7 +21,7 @@ Das Sechs-Bedingungen-Tor des Edge-Tests (Paket 4, §7.2).
 
 ## `mt5_trading_ai/backtest/engine.py`
 
-Zeilen: 703
+Zeilen: 731
 
 Backtest-Maschine: fuehrt Splits, Daten und Kostenmodell zusammen.
 
@@ -43,7 +43,7 @@ Backtest-Maschine: fuehrt Splits, Daten und Kostenmodell zusammen.
 
 ## `mt5_trading_ai/backtest/ereignisstudie.py`
 
-Zeilen: 482
+Zeilen: 491
 
 Ereignisstudie — traegt eine bekannte Zwangslage mehr als ihre Kosten?
 
@@ -61,7 +61,7 @@ Ereignisstudie — traegt eine bekannte Zwangslage mehr als ihre Kosten?
 
 ## `mt5_trading_ai/backtest/kalender.py`
 
-Zeilen: 365
+Zeilen: 373
 
 Ereigniskalender — wann genau ist das Ereignis, in echtem UTC?
 
@@ -77,7 +77,7 @@ Ereigniskalender — wann genau ist das Ereignis, in echtem UTC?
 
 ## `mt5_trading_ai/backtest/llm_compare.py`
 
-Zeilen: 71
+Zeilen: 74
 
 Paket 5: das Tor fuer ein LLM im Entscheidungspfad (§8.2-8.4).
 
@@ -96,7 +96,7 @@ Herkunft eines Backtest-Laufs: der Codestand aus git (Paket 6).
 
 ## `mt5_trading_ai/backtest/resolution.py`
 
-Zeilen: 360
+Zeilen: 363
 
 Aufloesung einer Ereignisstudie — kann sie den Effekt ueberhaupt sehen?
 
@@ -131,7 +131,7 @@ Einfache, ernsthafte Signallogiken fuer den Edge-Test -- ohne Optimierung.
 
 ## `mt5_trading_ai/betrieb/dienstguete.py`
 
-Zeilen: 549
+Zeilen: 567
 
 Alarmregeln, Dienstgüteziele und Fehlerbudget -- aus dem Betriebsjournal.
 
@@ -150,7 +150,7 @@ Alarmregeln, Dienstgüteziele und Fehlerbudget -- aus dem Betriebsjournal.
 
 ## `mt5_trading_ai/betrieb/journal.py`
 
-Zeilen: 596
+Zeilen: 629
 
 Betriebsjournale lesen -- die eine Stelle, an der aus Zeilen Aussagen werden.
 
@@ -168,7 +168,7 @@ Betriebsjournale lesen -- die eine Stelle, an der aus Zeilen Aussagen werden.
 
 ## `mt5_trading_ai/costs/broker_costs.py`
 
-Zeilen: 454
+Zeilen: 453
 
 Broker-Kostentabelle — versioniert, belegt, fail-closed.
 
@@ -181,7 +181,7 @@ Broker-Kostentabelle — versioniert, belegt, fail-closed.
 
 ## `mt5_trading_ai/costs/model.py`
 
-Zeilen: 229
+Zeilen: 224
 
 Kostenmodell: die realen Kosten einer Order, gemessen statt angenommen.
 
@@ -192,7 +192,7 @@ Kostenmodell: die realen Kosten einer Order, gemessen statt angenommen.
 
 ## `mt5_trading_ai/costs/volatility.py`
 
-Zeilen: 385
+Zeilen: 391
 
 Gemessene Volatilitaet je Instrument — ATR(14) und die Ablage dafuer.
 
@@ -211,7 +211,7 @@ Gemessene Volatilitaet je Instrument — ATR(14) und die Ablage dafuer.
 
 ## `mt5_trading_ai/data/loader.py`
 
-Zeilen: 452
+Zeilen: 466
 
 Lader fuer historische Bars -- an das Datenqualitaetstor gekettet.
 
@@ -233,7 +233,7 @@ Lader fuer historische Bars -- an das Datenqualitaetstor gekettet.
 
 ## `mt5_trading_ai/data/quality.py`
 
-Zeilen: 225
+Zeilen: 229
 
 Datenqualitaet als Gate (Phase 7.2).
 
@@ -245,7 +245,7 @@ Datenqualitaet als Gate (Phase 7.2).
 
 ## `mt5_trading_ai/execution/cost_gate.py`
 
-Zeilen: 135
+Zeilen: 137
 
 Pre-Trade-Kostentor am Order-Pfad.
 
@@ -255,7 +255,7 @@ Pre-Trade-Kostentor am Order-Pfad.
 
 ## `mt5_trading_ai/execution/freshness.py`
 
-Zeilen: 246
+Zeilen: 244
 
 Frische-Latch fuer den Kontozustand — S2 aus Paket 0.
 
@@ -283,7 +283,7 @@ Private Ereignis-Synchronisation: der Kontostrom haelt das Buch aktuell.
 
 ## `mt5_trading_ai/execution/reconcile.py`
 
-Zeilen: 113
+Zeilen: 111
 
 Order-Lebenszyklus und Reconcile: Konto gegen Buch.
 
@@ -305,7 +305,7 @@ Mehrteilige Freigabe fuer Order-Submit an einen echten Markt.
 
 ## `mt5_trading_ai/execution/risiko_zustand.py`
 
-Zeilen: 1596
+Zeilen: 1586
 
 Der Risikozustand, der einen Neustart ueberdauert -- und wie er fail-closed liest.
 
@@ -323,7 +323,7 @@ Der Risikozustand, der einen Neustart ueberdauert -- und wie er fail-closed lies
 
 ## `mt5_trading_ai/execution/risk_manager.py`
 
-Zeilen: 1192
+Zeilen: 1188
 
 Risikoschicht am Order-Pfad: die vier Grenzen als letzte Verteidigungslinie.
 
@@ -335,7 +335,7 @@ Risikoschicht am Order-Pfad: die vier Grenzen als letzte Verteidigungslinie.
 
 ## `mt5_trading_ai/execution/runner.py`
 
-Zeilen: 473
+Zeilen: 500
 
 Integrierender Paper/Dry-Run-Runner (Paket 7): die eine beweisbare Kette.
 
@@ -346,7 +346,7 @@ Integrierender Paper/Dry-Run-Runner (Paket 7): die eine beweisbare Kette.
 
 ## `mt5_trading_ai/execution/scheduler.py`
 
-Zeilen: 123
+Zeilen: 121
 
 Treiber-Loop/Scheduler (Paket 7): Frische, Drift und Drawdown-Peak getaktet pruefen.
 
@@ -544,7 +544,7 @@ Paket 5: Registrierung und Fortschritts-Tor des Demo-Betriebs (§8.5).
 
 ## `mt5_trading_ai/venue/mt5.py`
 
-Zeilen: 2723
+Zeilen: 2718
 
 MT5-Anbindung an das ``TradingVenue``-Protokoll.
 
@@ -591,7 +591,7 @@ Plattformunabhaengiger Handelsplatz-Vertrag.
 
 ## `mt5_trading_ai/venue/smoke.py`
 
-Zeilen: 339
+Zeilen: 344
 
 Demo-Smoke-Test der MT5-Bindung — die Orchestrierung, terminalunabhaengig.
 

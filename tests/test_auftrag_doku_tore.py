@@ -179,7 +179,9 @@ def test_eigene_programmdatei_bleibt_scharf_geprueft(
     ordner = tmp_path / "PROGRAMM"
     ordner.mkdir()
     datei = ordner / "bericht.md"
-    inhalt = "# Auftrag 1" + 2 * chr(10) + "Das Fundament ist produktionsreif." + chr(10)
+    inhalt = (
+        "# Auftrag 1" + 2 * chr(10) + "Das Fundament ist produktionsreif." + chr(10)
+    )
     datei.write_text(inhalt, encoding="utf-8")
     probleme = check_docs_claims.check_file(datei)
     assert probleme, "eine Zusicherung ohne Beleg muss gemeldet werden"
