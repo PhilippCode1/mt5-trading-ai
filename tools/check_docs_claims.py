@@ -43,7 +43,19 @@ MAX_MARKDOWN_FILES = 32
 # Das ist die scharfe Haelfte: der Dauerauftrag verbietet Notenbehauptungen
 # ausdruecklich, und ein Bericht darin soll daran genauso scheitern wie jede
 # andere Datei.
-EXCLUDED_FROM_COUNT = ("AUFTRAG/",)
+# ``PROGRAMM/`` (Programm NEUAUFBAU) ist der vom Masterprompt vorgeschriebene
+# Programmordner -- derselbe Fall wie AUFTRAG/: er waechst bauartbedingt (Zustand,
+# Entscheidungen, Plan und Bericht je Auftrag) und faellt deshalb nicht in die
+# Zaehlung. Die Behauptungspruefung gilt fuer die eigenen Dateien darin weiter.
+EXCLUDED_FROM_COUNT = ("AUFTRAG/", "PROGRAMM/")
+
+# Fremde, unveraenderliche Eingaenge: die Bewertung samt Rohausgaben und die neun
+# Masterprompts. Sie sind nicht die Doku dieses Projekts, sondern sein Pruefauftrag;
+# sie werden weder gezaehlt noch auf Zusicherungen geprueft -- sie zitieren solche
+# absichtlich (etwa den Commit-Titel „produktionsreif" als Befund). Dass sie
+# unveraendert bleiben, sichert in Auftrag 1 ein Manifest mit Pruefsumme, nicht
+# dieses Tor.
+FREMDE_EINGAENGE = ("PROGRAMM/eingang/", "PROGRAMM/masterprompts/")
 
 CLAIMS: list[tuple[str, re.Pattern[str]]] = [
     ("Notenbehauptung 10/10", re.compile(r"\b10\s*/\s*10\b")),
@@ -118,6 +130,15 @@ def check_file(path: Path) -> list[str]:
     return problems
 
 
+def ist_fremder_eingang(path: Path) -> bool:
+    return path.relative_to(REPO).as_posix().startswith(FREMDE_EINGAENGE)
+
+
+def pruefbar(files: list[Path]) -> list[Path]:
+    """Die Dateien, die auf Zusicherungen geprueft werden: alle eigenen."""
+    return [p for p in files if not ist_fremder_eingang(p)]
+
+
 def counted(files: list[Path]) -> list[Path]:
     """Die Dateien, die gegen ``MAX_MARKDOWN_FILES` zaehlen (siehe dort)."""
     return [
@@ -129,7 +150,8 @@ def counted(files: list[Path]) -> list[Path]:
 
 def main() -> int:
     files = tracked_markdown()
-    zaehlend = counted(files)
+    eigene = pruefbar(files)
+    zaehlend = counted(eigene)
     failures: list[str] = []
 
     if len(zaehlend) > MAX_MARKDOWN_FILES:
@@ -139,7 +161,7 @@ def main() -> int:
             f"{MAX_MARKDOWN_FILES}. Eine loeschen oder die Grenze bewusst anheben."
         )
 
-    for md in files:
+    for md in eigene:
         failures.extend(check_file(md))
 
     if failures:
@@ -155,8 +177,9 @@ def main() -> int:
 
     print(
         f"ok - {len(zaehlend)}/{MAX_MARKDOWN_FILES} gezaehlte Markdown-Dateien "
-        f"(+{len(files) - len(zaehlend)} in AUFTRAG/, auf Behauptungen geprueft, "
-        f"nicht gezaehlt), keine Zusicherung ohne Beleg"
+        f"(+{len(eigene) - len(zaehlend)} in AUFTRAG/ und PROGRAMM/ auf Behauptungen "
+        f"geprueft, nicht gezaehlt; {len(files) - len(eigene)} fremde Eingaenge "
+        f"nicht geprueft), keine Zusicherung ohne Beleg"
     )
     return 0
 

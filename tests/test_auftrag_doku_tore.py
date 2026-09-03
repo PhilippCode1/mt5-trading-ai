@@ -144,3 +144,61 @@ def test_das_zahlen_tor_bleibt_fuer_projektdoku_scharf() -> None:
         "ABSCHLUSS-3a/05-URTEIL.md",
     ):
         assert check_doc_numbers.is_historical(eingefroren), eingefroren
+
+
+# --- Programm NEUAUFBAU: PROGRAMM/ ist Programmordner, eingang/ und masterprompts/ ---
+# --- sind fremde Eingaenge -----------------------------------------------------
+
+
+def test_programm_zaehlt_nicht_gegen_die_obergrenze() -> None:
+    """``PROGRAMM/`` ist wie ``AUFTRAG/`` der vorgeschriebene Programmordner."""
+    alle = [REPO / "README.md", REPO / "PROGRAMM" / "zustand.md"]
+    gezaehlt = check_docs_claims.counted(alle)
+    assert REPO / "README.md" in gezaehlt
+    assert REPO / "PROGRAMM" / "zustand.md" not in gezaehlt
+
+
+def test_fremde_eingaenge_werden_nicht_auf_zusicherungen_geprueft() -> None:
+    """Bewertung und Masterprompts zitieren Zusicherungen als Befund; eigene nicht."""
+    bewertung = REPO / "PROGRAMM" / "eingang" / "BEWERTUNG.md"
+    prompt = REPO / "PROGRAMM" / "masterprompts" / "MASTERPROMPT-CC-01-FUNDAMENT.md"
+    eigene = REPO / "PROGRAMM" / "zustand.md"
+    readme = REPO / "README.md"
+    pruefbar = check_docs_claims.pruefbar([bewertung, prompt, eigene, readme])
+    assert bewertung not in pruefbar
+    assert prompt not in pruefbar
+    assert eigene in pruefbar
+    assert readme in pruefbar
+
+
+def test_eigene_programmdatei_bleibt_scharf_geprueft(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """ROTER EICHFALL: eine Zusicherung in einer eigenen PROGRAMM/-Datei faellt auf."""
+    monkeypatch.setattr(check_docs_claims, "REPO", tmp_path)
+    ordner = tmp_path / "PROGRAMM"
+    ordner.mkdir()
+    datei = ordner / "bericht.md"
+    inhalt = "# Auftrag 1" + 2 * chr(10) + "Das Fundament ist produktionsreif." + chr(10)
+    datei.write_text(inhalt, encoding="utf-8")
+    probleme = check_docs_claims.check_file(datei)
+    assert probleme, "eine Zusicherung ohne Beleg muss gemeldet werden"
+    assert any("produktionsreif" in p for p in probleme)
+
+
+def test_das_echte_repo_hat_fremde_eingaenge_im_baum() -> None:
+    """Gruener Eichfall am echten Bestand: die Eingaenge liegen da, ausgenommen."""
+    alle = check_docs_claims.tracked_markdown()
+    fremd = [p for p in alle if check_docs_claims.ist_fremder_eingang(p)]
+    assert len(fremd) >= 11, "zehn Masterprompts und die Bewertung"
+    pruefbar = check_docs_claims.pruefbar(alle)
+    assert not any(p in pruefbar for p in fremd)
+
+
+def test_doc_numbers_nimmt_fremde_eingaenge_aus_und_prueft_eigene() -> None:
+    assert check_doc_numbers.ist_fremder_eingang("PROGRAMM/eingang/BEWERTUNG.md")
+    assert check_doc_numbers.ist_fremder_eingang(
+        "PROGRAMM/masterprompts/MASTERPROMPT-CC-01-FUNDAMENT.md"
+    )
+    assert not check_doc_numbers.ist_fremder_eingang("PROGRAMM/zustand.md")
+    assert not check_doc_numbers.is_historical("PROGRAMM/zustand.md")

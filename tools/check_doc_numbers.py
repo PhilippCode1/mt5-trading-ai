@@ -148,6 +148,17 @@ def is_historical(rel: str) -> bool:
     return any(rel == h or rel.startswith(h) for h in HISTORICAL)
 
 
+#: Fremde, unveraenderliche Eingaenge des Programms NEUAUFBAU: die Bewertung samt
+#: Rohausgaben und die neun Masterprompts. Sie nennen Kennzahlen eines Stichtags
+#: (306bbaa) und sind kein Live-Dokument dieses Repos; nachgezogen werden sie nie
+#: (ihre Unveraendertheit sichert ein Manifest mit Pruefsumme).
+FREMDE_EINGAENGE = ("PROGRAMM/eingang/", "PROGRAMM/masterprompts/")
+
+
+def ist_fremder_eingang(rel: str) -> bool:
+    return rel.startswith(FREMDE_EINGAENGE)
+
+
 def _int(raw: str) -> int:
     """'4.112' / '4,112' -> 4112 (deutsche/englische Tausendertrennung)."""
     return int(raw.replace(".", "").replace(",", ""))
@@ -254,7 +265,7 @@ def main() -> int:
     failures = check_readme_block(canon)
     for md in tracked_markdown():
         rel = md.relative_to(REPO).as_posix()
-        if is_historical(rel):
+        if is_historical(rel) or ist_fremder_eingang(rel):
             continue
         failures.extend(check_live_doc(md))
 
