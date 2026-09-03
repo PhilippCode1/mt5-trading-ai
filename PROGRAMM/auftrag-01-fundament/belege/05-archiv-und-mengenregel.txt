@@ -18,3 +18,7 @@ $ git ls-files '*.md' | grep -v '^archiv/' | grep -v '^PROGRAMM/'
 CLAUDE.md
 MODULES.md
 README.md
+# T5 Schritt 1, Nachbesserung 2026-09-03: config-Herkunftsangaben im Wortlaut des Belegs
+$ python -m pytest -q tests/test_kostentor_*.py tests/test_resolution.py tests/test_ereignisstudie_werkzeug.py tests/test_doku_menge.py
+191 passed in 18.49s
+[exit=0]

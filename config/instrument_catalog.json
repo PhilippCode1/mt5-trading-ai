@@ -13,14 +13,14 @@
       "note": "Die asset_class je Symbol folgt der Klasseneinteilung, die den Hebeldeckel steuert."
     },
     {
-      "title": "Kosten: IC Markets (EU) Raw, aus R1 (archiv/RECHERCHE_KOSTEN.md, Tor E3)",
+      "title": "Kosten: IC Markets (EU) Raw, aus R1 (RECHERCHE_KOSTEN.md, Tor E3)",
       "reference": "icmarkets.eu Preis-/Swap-Seiten; Abruf 2026-08-12",
       "date": "2026-08-12",
       "note": "Kommission je Lot Roundturn: FX und Gold 7 USD (IC Markets Raw, measured), Indizes 0 (nur-Spread). Swaps fuer EURUSD/EURGBP/XAUUSD/US500 aus R1 (floaten taeglich, gerundet/konservativ); EURGBP-Swaps von GBP-Punkten auf USD umgerechnet (Kurs ~1,27, approx); GBPUSD/USDJPY/BTCUSD-Swaps bleiben indikativ. typical_spread_points ist ein indikativer Referenzwert -- das Kostenmodell rechnet den Spread aus dem echten Bid/Ask, nicht aus diesem Feld. Handelszeiten vereinfacht. Vor Live-Handel je Konto verifizieren."
     }
   ],
   "_sessions_status": "UNBELEGT -- KEIN VEROEFFENTLICHTER BOERSENKALENDER. Die sessions-Zeilen sind eine konservative Annahme, kein Beleg. Sie duerfen darum ausschliesslich VERENGEN: Mt5Venue.is_trading_open verlangt zusaetzlich, dass der Broker fuer das Symbol einen frischen Kurs stellt (Frist = dieselbe wie am Frische-Latch). 'Offen' sagt damit der Kursstrom, nie diese Tabelle allein; die Tabelle kann nur schliessen. Wer hier eine Zeit aendert, aendert nur, wieviel zusaetzlich weggeschnitten wird -- er kann keinen geschlossenen Platz aufsperren. FEIERTAGE STEHEN BEWUSST NICHT HIER: ein geschlossener Platz druckt keine Preise, und das faellt am Kursstempel auf. Dieselbe Entscheidung wie in config/ereigniskalender.json ('ein Ereignis ohne Kerze faellt heraus, und das ist genauer als ein gepflegter Feiertagskalender').",
-  "_fx_sessions": "Mo-Fr 00:00-24:00 UTC minus der Freitagabend-Schnitt um 21:00. Beleg fuer den Schnitt: archiv/RECHERCHE_DATEN.md Abschnitt 5 -- die FX-Woche ankert an New York 17:00, in UTC also saisonal 21:00 (Sommer) oder 22:00 (Winter). 21:00 ist die konservative Schnittmenge beider Lagen. Der Wochenanfang (Sonntagabend-Eroeffnung) ist NICHT eingetragen: er faellt in dieselbe Unsicherheit, und ihn wegzuschneiden ist die harmlose Richtung. Die Zeilen fuer XAUUSD und US500 tragen dieselben Zahlen wie FX -- das ist fuer diese beiden nachweislich zu grob (ein Index-CFD folgt seiner Kassa-Sitzung, kein FX-Fenster) und aus demselben Grund unschaedlich: zu grob heisst hier zu weit, und zu weit wird vom Kursstrom geschlossen, nicht von dieser Zeile.",
+  "_fx_sessions": "Mo-Fr 00:00-24:00 UTC minus der Freitagabend-Schnitt um 21:00. Beleg fuer den Schnitt: RECHERCHE_DATEN.md Abschnitt 5 -- die FX-Woche ankert an New York 17:00, in UTC also saisonal 21:00 (Sommer) oder 22:00 (Winter). 21:00 ist die konservative Schnittmenge beider Lagen. Der Wochenanfang (Sonntagabend-Eroeffnung) ist NICHT eingetragen: er faellt in dieselbe Unsicherheit, und ihn wegzuschneiden ist die harmlose Richtung. Die Zeilen fuer XAUUSD und US500 tragen dieselben Zahlen wie FX -- das ist fuer diese beiden nachweislich zu grob (ein Index-CFD folgt seiner Kassa-Sitzung, kein FX-Fenster) und aus demselben Grund unschaedlich: zu grob heisst hier zu weit, und zu weit wird vom Kursstrom geschlossen, nicht von dieser Zeile.",
   "instruments": {
     "EURUSD": {
       "asset_class": "fx_major",

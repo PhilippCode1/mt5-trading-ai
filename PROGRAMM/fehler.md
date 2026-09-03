@@ -45,3 +45,16 @@ gezeigt, weil der Schritt hinter den (noch roten) Tests uebersprungen wird.
 **Was sich aendert.** Nicht mehr „Disziplin": der Pre-Commit-Hook (T2) faehrt die Tore
 ueber den **Index**, also nach dem Stagen -- genau die Stelle, an der ich zweimal
 vorbeigelaufen bin. Bis dahin: Tore nur nach `git add -A` fahren.
+
+## F-004 — Commit 102f68d trotz eines roten Tests (2026-09-03)
+
+**Was geschah.** Vor dem Commit lief ein Teil der Suite mit „1 failed, 181 passed"; der Commit
+hing nur an den neun Toren des Pre-Commit-Hooks, nicht am Testergebnis. Der rote Test
+(`tests/test_kostentor_ausgabe.py`, Zeile 414 der eingefrorenen Ausgabe) blieb im Commit.
+
+**Was es kostete.** Ein weiterer Commit im Verlauf mit rotem Test; der Pre-Push-Hook haette den
+Push abgewiesen, der Verlauf ist aber nicht sauber.
+
+**Was sich aendert.** Der Commit-Befehl im Arbeitsskript haengt ab jetzt am Rueckgabewert des
+Testlaufs (`[ $rc -eq 0 ] || exit 1` VOR `git commit`), so wie die Tore es tun. F-002 hatte dieselbe
+Klasse fuer die Tore geschlossen, nicht fuer die Tests.
