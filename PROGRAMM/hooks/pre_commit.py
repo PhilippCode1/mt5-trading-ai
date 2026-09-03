@@ -53,6 +53,7 @@ TORE: tuple[tuple[str, list[str]], ...] = (
     ("Doku-Behauptungen", [sys.executable, "tools/check_docs_claims.py"]),
     ("Doku-Zahlen", [sys.executable, "tools/check_doc_numbers.py"]),
     ("Kopien", [sys.executable, "tools/kopien_abgleichen.py", "--pruefen"]),
+    ("Manifeste", [sys.executable, "tools/archiv_manifest.py", "--pruefen"]),
 )
 
 
