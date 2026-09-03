@@ -1,0 +1,29 @@
+# Erster Lauf des Pre-Commit-Hooks (Commit T2, 2026-09-03). Ausgabe von git commit:
+pre-commit: Sperren
+pre-commit: Tore (ueber den Index)
+  ok  Katalog-Hash ( 0.1 s): ok - Abnahmekatalog unveraendert (25b6ff9aaf93c3a4...), zustand.md nennt ihn
+  ok  ruff check ( 0.2 s): All checks passed!
+  ok  ruff format ( 0.2 s): 175 files already formatted
+  ok  mypy strict ( 0.6 s): Success: no issues found in 84 source files
+  ok  MODULES.md ( 0.3 s): ok — MODULES.md ist aktuell (601 Zeilen).
+  ok  Doku-Behauptungen ( 0.3 s): ok - 32/32 gezaehlte Markdown-Dateien (+34 in AUFTRAG/ und PROGRAMM/ auf Behauptungen geprueft, nich
+  ok  Doku-Zahlen ( 0.5 s): ok - Code: 42 Module, 1414 Testfunktionen, 16979 Quellzeilen; Doku widerspruchsfrei.
+  ok  Kopien ( 0.3 s): ok â€” 1 Kopie(n) wortgleich mit ihren Originalen.
+pre-commit: 8 Tore in 2.3 s, 0 rot
+[master a3c623d] T2: Abnahmekatalog eingefroren (SHA-256 25b6ff9a...), Waechter-Hook, Git-Hooks, Live-Schalter-Datei
+ 18 files changed, 789 insertions(+), 9 deletions(-)
+ create mode 100644 .claude/settings.json
+ create mode 100755 .githooks/pre-commit
+ create mode 100755 .githooks/pre-push
+ create mode 100644 PROGRAMM/abnahmekatalog-verschaerfungen.md
+ create mode 100644 PROGRAMM/abnahmekatalog.md
+ create mode 100644 PROGRAMM/abnahmekatalog.sha256
+ create mode 100644 PROGRAMM/auftrag-01-fundament/belege/00-ci-nach-t0.txt
+ create mode 100644 PROGRAMM/auftrag-01-fundament/belege/00-tore-lokal-nach-t0.txt
+ create mode 100644 PROGRAMM/auftrag-01-fundament/belege/02-eichfall-pre-commit.py
+ create mode 100644 PROGRAMM/auftrag-01-fundament/belege/02-hook-waechter-selbsttest.txt
+ create mode 100644 PROGRAMM/hooks/pre_commit.py
+ create mode 100644 PROGRAMM/hooks/waechter.py
+ create mode 100644 config/live_freigabe.json
+ create mode 100644 tools/katalog_hash.py
+[git commit exit=0]

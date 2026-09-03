@@ -1,0 +1,36 @@
+# Eichfall A7: Pre-Commit-Hook und Katalog-Hash in einem Wegwerf-Klon (2026-09-03, Stand a3c623d)
+$ python PROGRAMM/auftrag-01-fundament/belege/02-eichfall-pre-commit.py
+Klon: C:\Users\Acer\AppData\Local\Temp\tmpnjrqwfn3\klon  HEAD=a3c623d
+
+OK  Abnahmekatalog aendern (PROGRAMM/abnahmekatalog.md): git commit exit=1, erwartet Abweisung
+     pre-commit: Sperren
+       ABGEWIESEN PROGRAMM/abnahmekatalog.md: M -- eingefroren
+     Commit abgewiesen: eingefrorene Dateien werden nicht veraendert. Aenderung zuruecknehmen (git restore --staged / git checkout); Verschaerfung nur in PROGRAMM/abnahmekatalog-verschaerfungen.md.
+
+OK  Live-Schalter aendern (config/live_freigabe.json): git commit exit=1, erwartet Abweisung
+     pre-commit: Sperren
+       ABGEWIESEN config/live_freigabe.json: M -- eingefroren
+     Commit abgewiesen: eingefrorene Dateien werden nicht veraendert. Aenderung zuruecknehmen (git restore --staged / git checkout); Verschaerfung nur in PROGRAMM/abnahmekatalog-verschaerfungen.md.
+
+OK  Vorregistrierung aendern (PROGRAMM/vorregistrierung/00-HINWEIS.md): git commit exit=1, erwartet Abweisung
+     pre-commit: Sperren
+       ABGEWIESEN PROGRAMM/vorregistrierung/00-HINWEIS.md: M -- Vorregistrierung, unveraenderlich
+     Commit abgewiesen: eingefrorene Dateien werden nicht veraendert. Aenderung zuruecknehmen (git restore --staged / git checkout); Verschaerfung nur in PROGRAMM/abnahmekatalog-verschaerfungen.md.
+
+OK  gewoehnliche Datei aendern (README.md): git commit exit=0, erwartet Annahme
+     pre-commit: Sperren
+     pre-commit: Tore (ueber den Index)
+       ok  Katalog-Hash ( 0.2 s): ok - Abnahmekatalog unveraendert (25b6ff9aaf93c3a4...), zustand.md nennt ihn
+       ok  ruff check ( 0.6 s): All checks passed!
+       ok  ruff format ( 0.2 s): 175 files already formatted
+       ok  mypy strict ( 6.9 s): Success: no issues found in 84 source files
+
+OK  katalog_hash --pruefen nach Aenderung: exit=1 (erwartet 1)
+     ABWEICHUNG: der Abnahmekatalog wurde veraendert.
+       festgeschrieben: 25b6ff9aaf93c3a4b7298d811c5d5534163ae0830b9a16f2a42b40138716b76a
+       jetzt:           c38e93ad9eda4499f5fda8180ca93744685b5c76685e4f33b0901d50920a1fac
+       Der Katalog ist eingefroren; Aenderung zuruecknehmen.
+OK  katalog_hash --pruefen unveraendert: exit=0 (erwartet 0): ok - Abnahmekatalog unveraendert (25b6ff9aaf93c3a4...), zustand.md nennt ihn
+
+Eichfall: 0 Abweichungen von der Erwartung
+[exit=0]

@@ -101,3 +101,24 @@ T0 geht vor dem Einfrieren: er repariert Zustände, die ich verursacht habe, und
 ## 6 · Verifikation (Abnahme A1–A9, je Belegdatei)
 
 A1 GitHub-Lauf grün + Container-Log · A2 `pytest -rs` 0 Skips, Skip-Gate im Eichfall rot · A3 je Befund D1–D8, Z, T rot/grün-Ausgabe · A4 Zweigdeckungsbericht ≥ 90 % je Datei; Katalog 16/16, gesamt ≥ 0,90 bei ≥ 50 · A5 Scan-Exit ≠ 0 mit gepflanztem Geheimnis, 0 neue Funde am Bestand, Laufzeit · A6 kill-Eichfall · A7 Hook-Abweisungen als Ausgabe, Katalog-Hash · A8 Dateizählung + Manifest · A9 Smoke-Ausgabe mit Versatz.
+
+---
+
+## Fortschritt (fortgeschrieben; der Plantext oben bleibt wortgleich)
+
+| Teilschritt | Stand | Commit | Belege |
+|---|---|---|---|
+| T0 Eigene Brüche, Boden | erledigt 2026-09-03 | beb4401 (.gitattributes), 9f13f44 (ruff format, 112 Dateien), aa28bfa/0b959da (Doku-Tore, Kennzahlen), 3a268f1 (Zahlen-Tor, Pins, fehler.md, Worktrees), ede2b2f (Quelltext-Anker) | 00-ci-nach-t0.txt (CI 4d02db3: Tests 1 failed = Windows-Pfad-Test, 1616 passed, 12 skipped — Altzustand), 00-tore-lokal-nach-t0.txt, 00-pytest-lokal-nach-t0.txt |
+| T1 Programmgerüst | erledigt 2026-09-03 | 4d02db3 | zustand.md, entscheidungen.md (E-001–E-012), haltepunkte.md (H-003), fehler.md (F-001–F-003), geloescht.md, versuchsregister.jsonl, vorregistrierung/00-HINWEIS.md |
+| T2 Katalog + Wächter | erledigt 2026-09-03, ein Punkt offen | a3c623d | 02-hook-waechter-selbsttest.txt (11/11, stdin Exit 2), 02-pre-commit-erster-lauf.txt (8 Tore, 2,3 s), 02-eichfall-pre-commit.txt (Klon: 3 Abweisungen, 1 Annahme, Hash rot/grün), 02-eichfall-live-arbeitsrepo.txt (Pre-Commit-Abweisung live). **Offen:** Live-Abweisung durch den Claude-Code-Hook — Hooks laden beim Sitzungsstart; Wiederholung zu Beginn der nächsten Sitzung. |
+| T3 Nachstellung + Grundmessung | offen | | |
+| T4 Bestandszählung, Wahl je Modul | offen | | |
+| T5 Archiv und Löschungen | offen | | |
+| T6 Behebungen mit Eichfällen | offen | | |
+| T7 Ehrliche CI | offen | | |
+| T8 kill-Eichfall | offen | | |
+| T9 Smoke-Test | offen | | |
+| T10 Gegenlese | offen | | |
+| T11 Abschluss | offen | | |
+
+Abweichungen vom Plan bisher: (1) T0 brauchte zwei Nachbesserungen (F-002, F-003: Tore vor `git add` bzw. mit verschluckten Rückgabewerten gefahren) — beide Klassen jetzt im Pre-Commit-Hook abgefangen. (2) Das Zahlen-Tor nimmt `PROGRAMM/` als Messprotokoll aus (E-012), nicht nur die fremden Eingänge. (3) `ruff` lintet `PROGRAMM/hooks/` und `PROGRAMM/auftrag-*/belege/*.py`; nur `PROGRAMM/eingang/` ist ausgenommen.
