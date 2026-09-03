@@ -35,6 +35,7 @@ Eintritte wirklich regiert.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -172,7 +173,11 @@ def test_das_werkzeug_schreibt_weiter_gesperrt_wirklich() -> None:
     NACH der Aufloesung traegt; genau die steht hier.
     """
     quelle = (ROOT / "tools" / "live_betrieb.py").read_text(encoding="utf-8")
-    schreiben = quelle.index('journal.schreib("halt_erklaert"')
+    # Der Anker ist whitespace-tolerant: der Formatierer darf den Aufruf umbrechen,
+    # ohne dass diese Quelltext-Pruefung ihren Gegenstand verliert.
+    anker = re.search(r'journal\.schreib\(\s*"halt_erklaert"', quelle)
+    assert anker is not None, "halt_erklaert-Satz nicht gefunden"
+    schreiben = anker.start()
     assert "weiter_gesperrt=tick.halted" in quelle[schreiben : schreiben + 400]
     neu_befragt = quelle.index(
         "tick = scheduler.tick(jetzt)", quelle.index("clear_halt")
