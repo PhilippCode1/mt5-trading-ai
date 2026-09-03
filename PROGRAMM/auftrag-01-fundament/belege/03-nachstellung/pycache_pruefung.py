@@ -15,13 +15,24 @@ import importlib.util
 import marshal
 import struct
 import sys
+import types
 from pathlib import Path
+
+
+def _ohne_dateiname(code: object) -> object:
+    """Code-Objekt mit geleertem co_filename, rekursiv ueber co_consts."""
+    if not isinstance(code, types.CodeType):
+        return code
+    consts = tuple(_ohne_dateiname(c) for c in code.co_consts)
+    return code.replace(co_filename="", co_consts=consts)
 
 
 def pruefe(repo: Path) -> int:
     vergiftet: list[str] = []
     geprueft = 0
     for pyc in sorted(list(repo.glob("mt5_trading_ai/**/__pycache__/*.pyc")) + list(repo.glob("tools/__pycache__/*.pyc"))):
+        if "-pytest-" in pyc.name:
+            continue  # von pytest umgeschriebener Bytecode (Assertions), kein Vergleichsgegenstand
         name = pyc.name.split(".")[0] + ".py"
         quelle = pyc.parent.parent / name
         if not quelle.is_file():
@@ -42,8 +53,13 @@ def pruefe(repo: Path) -> int:
             im_cache = marshal.loads(roh[16:])
         except Exception:
             continue
-        frisch = compile(quelle.read_bytes(), str(quelle), "exec")
-        if marshal.dumps(im_cache) != marshal.dumps(frisch):
+        # Wie der Import-Mechanismus: keine Future-Flags dieses Skripts vererben.
+        frisch = compile(quelle.read_bytes(), str(quelle), "exec", dont_inherit=True)
+        # Dateinamen im Code-Objekt (co_filename, rekursiv) sind kein Inhalt: der
+        # Import-Mechanismus und compile() schreiben verschiedene Pfadformen hinein.
+        if marshal.dumps(_ohne_dateiname(im_cache)) != marshal.dumps(
+            _ohne_dateiname(frisch)
+        ):
             vergiftet.append(pyc.relative_to(repo).as_posix())
     print(f"gueltige .pyc-Dateien geprueft: {geprueft}")
     print(f"davon mit Bytecode, der NICHT der Quelle entspricht: {len(vergiftet)}")

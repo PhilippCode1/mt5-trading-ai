@@ -1,0 +1,10 @@
+# T (d), deterministisch: Mechanik der Bytecode-Vergiftung, Worktree 306bbaa, 2026-09-03
+$ python pycache_mechanik.py C:/Users/Acer/nachstellung-306bbaa
+1) Quelle unveraendert, frischer Cache:  cost_floor_bps(0.65) = 6.5 (Soll 6.5)
+2) Mutant geschrieben (gleiche Groesse), pytest-aehnlicher Lauf compiliert ihn: 3.25 (Mutant: 3.25)
+3) Quelle byteweise zurueckgestellt, mtime wie der Mutant:
+   git status: (sauber)
+   cost_floor_bps(0.65) mit vorhandenem Cache = 3.25 <- VERGIFTET, wenn 3.25
+   dasselbe mit PYTHONPYCACHEPREFIX auf leerem Ordner = 6.5 (Soll 6.5)
+4) Cache geloescht, erneut: 6.5 (Soll 6.5)
+[exit=0]
