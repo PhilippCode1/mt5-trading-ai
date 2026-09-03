@@ -159,6 +159,20 @@ def ist_fremder_eingang(rel: str) -> bool:
     return rel.startswith(FREMDE_EINGAENGE)
 
 
+#: Der Programmordner selbst (Zustand, Entscheidungen, Fehler, Berichte, Belege je
+#: Auftrag). Seine Dateien tragen bauartbedingt Commit-Kennungen ("Zuletzt: Datum,
+#: Commit"), Messwerte je Modul und gezaehlte Testfaelle -- das sind datierte
+#: Messprotokolle wie AUFTRAG/stufen/, keine Ist-Aussagen, die neben dem README
+#: driften koennten. Derselbe Konflikt wie E-004 des Altstands; Entscheidung in
+#: PROGRAMM/entscheidungen.md. Die Behauptungspruefung (check_docs_claims) gilt
+#: fuer diese Dateien uneingeschraenkt.
+PROGRAMMORDNER = ("PROGRAMM/",)
+
+
+def ist_programmordner(rel: str) -> bool:
+    return rel.startswith(PROGRAMMORDNER)
+
+
 def _int(raw: str) -> int:
     """'4.112' / '4,112' -> 4112 (deutsche/englische Tausendertrennung)."""
     return int(raw.replace(".", "").replace(",", ""))
@@ -265,7 +279,7 @@ def main() -> int:
     failures = check_readme_block(canon)
     for md in tracked_markdown():
         rel = md.relative_to(REPO).as_posix()
-        if is_historical(rel) or ist_fremder_eingang(rel):
+        if is_historical(rel) or ist_fremder_eingang(rel) or ist_programmordner(rel):
             continue
         failures.extend(check_live_doc(md))
 

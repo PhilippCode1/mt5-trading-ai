@@ -11,3 +11,8 @@
 ruff==0.9.2
 mypy==1.14.1
 pytest==8.3.4
+# Programm NEUAUFBAU, Auftrag 1: die CI misst Zweigdeckung und faehrt den
+# Geheimnis-Scan als Tor -- beide brauchen ihr Werkzeug auf dem frischen Klon.
+# Keines von beiden spricht ein Terminal an; die Aussage oben bleibt wahr.
+coverage==7.13.5
+detect-secrets==1.5.0

@@ -204,3 +204,10 @@ def test_doc_numbers_nimmt_fremde_eingaenge_aus_und_prueft_eigene() -> None:
     )
     assert not check_doc_numbers.ist_fremder_eingang("PROGRAMM/zustand.md")
     assert not check_doc_numbers.is_historical("PROGRAMM/zustand.md")
+    # Der Programmordner ist Messprotokoll (Commit-Kennungen, Messwerte je Modul):
+    # vom Zahlen-Tor ausgenommen, vom Behauptungs-Tor nicht.
+    assert check_doc_numbers.ist_programmordner("PROGRAMM/zustand.md")
+    assert not check_doc_numbers.ist_programmordner("README.md")
+    assert REPO / "PROGRAMM" / "zustand.md" in check_docs_claims.pruefbar(
+        [REPO / "PROGRAMM" / "zustand.md"]
+    )
