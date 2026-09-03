@@ -1,0 +1,7 @@
+Auftrag: 1 von 9 — Fundament (`PROGRAMM/masterprompts/MASTERPROMPT-CC-01-FUNDAMENT.md`); Plan mit Teilschritten T0–T11 in `PROGRAMM/auftrag-01-fundament/plan.md`, freigegeben 2026-09-03.
+Zustand: in Arbeit — T0 (eigene Brüche, Zeilenenden, Formatierung, Pins, Worktrees) und T1 (Programmgerüst) erledigt; der Abnahmekatalog ist noch nicht eingefroren, deshalb ist noch kein Befund gemessen.
+Zuletzt: 2026-09-03, Commit 3a268f1 gepusht (T0 abgeschlossen); T1-Dateien folgen im nächsten Commit — Belege unter `PROGRAMM/auftrag-01-fundament/belege/00-*`.
+Abnahme belegt: nichts von A1–A9; T0-Ergebnis belegt: CI-Tests am Altzustand (Windows-Pfad-Test rot, 12 Skips), Ruff/Format/mypy/Doku-Tore lokal grün (Belege 00-*).
+Nächster Schritt: T2 — `PROGRAMM/abnahmekatalog.md` aus MP01 §2/§5 plus Verschärfungen A10–A18 schreiben, SHA-256 hier eintragen, `tools/katalog_hash.py`, PreToolUse-Hook und Git-Hooks einrichten und mit einem eigenen Schreibversuch (abgewiesen) belegen.
+Offene Haltepunkte: H-003 (Zugangsdaten im OneDrive-Altbestand; Widerruf nur durch Philipp) — `PROGRAMM/haltepunkte.md`; dazu die Terminal-Anmeldung für A9 als Handlung von Philipp.
+Ehrliche Restschätzung: T2–T11 offen; der größte Block ist T6 (D2, D3, D8 sequentiell in `venue/mt5.py`, 94 Teststellen umzubauen, neue Aufzeichnung mit takt-Sätzen); Abnahme frühestens nach einem grünen GitHub-Lauf, dem kill-Eichfall und der Gegenlese zweier Prüf-Subagenten.

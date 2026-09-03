@@ -1,0 +1,160 @@
+# Lokale Testsuite nach T0 (vor der Anker-Korrektur), Windows, Python 3.11.7
+# Befehl: python -m pytest -q -rs -m "not slow" -p no:cacheprovider   (2026-09-03, Stand 3a268f1)
+# Pfade mit Kontonamen redigiert.
+........................................................................ [  4%]
+........................................................................ [  8%]
+............................F........................................... [ 13%]
+........................................................................ [ 17%]
+........................................................................ [ 22%]
+........................................................................ [ 26%]
+........................................................................ [ 30%]
+........................................................................ [ 35%]
+........................................................................ [ 39%]
+.................................................................F...... [ 44%]
+........................................................................ [ 48%]
+........................................................................ [ 53%]
+........................................................................ [ 57%]
+........................................................................ [ 61%]
+........................................................................ [ 66%]
+........................................................................ [ 70%]
+........................................................................ [ 75%]
+........................................................................ [ 79%]
+........................................................................ [ 84%]
+........................................................................ [ 88%]
+........................................................................ [ 92%]
+........................................................................ [ 97%]
+............................................                             [100%]
+================================== FAILURES ===================================
+_____________ test_das_werkzeug_schreibt_weiter_gesperrt_wirklich _____________
+
+    def test_das_werkzeug_schreibt_weiter_gesperrt_wirklich() -> None:
+        """V1: ein Feld, das die Metrik liest und niemand schreibt, ist Zierrat.
+    
+        Geprueft wird der Quelltext: ``weiter_gesperrt`` steht im ``halt_erklaert``-Satz,
+        und der Scheduler wird VORHER erneut befragt -- sonst truege das Feld den alten
+        Zustand und saegte genau die Aussage ab, fuer die es da ist.
+    
+        **Die Reihenfolge ist das Eigentliche hier.** Dass der Satz ueberhaupt geschrieben
+        wird und der Pfad laeuft, deckt schon
+        ``test_live_betrieb_sperren.py::test_ein_reconcile_halt_...`` ab -- der faehrt
+        ``takt()`` wirklich. Was dort nicht steht, ist die Frage, ob das Feld den Zustand
+        NACH der Aufloesung traegt; genau die steht hier.
+        """
+        quelle = (ROOT / "tools" / "live_betrieb.py").read_text(encoding="utf-8")
+>       schreiben = quelle.index('journal.schreib("halt_erklaert"')
+E       ValueError: substring not found
+
+tests\test_buchtreue.py:175: ValueError
+___ test_ein_reconcile_halt_aus_einer_erkannten_schliessung_wird_aufgeloest ___
+
+tmp_path = WindowsPath('C:/Users/<konto>/AppData/Local/Temp/pytest-of-Acer/pytest-4/test_ein_reconcile_halt_aus_ei0')
+
+    def test_ein_reconcile_halt_aus_einer_erkannten_schliessung_wird_aufgeloest(
+        tmp_path: Path,
+    ) -> None:
+        """Gemessen am 17.08.2026, Takt 43: ein normaler Stop-Fill setzte den Global-Halt.
+    
+        Der Scheduler laeuft VOR dem Buchabgleich und sieht die vom Broker geschlossene
+        Position noch im Buch; bei ``max_notional_drift=0`` latcht das
+        ``reconcile_drift``. Ab da eroeffnete der Lauf nichts mehr -- ein voellig normales
+        Trade-Ende war bitgleich mit einem katastrophalen Desync.
+        """
+        venue = HaltVenue(
+            kerzen={"XAUUSD": FALLEND},
+            halt_reason="reconcile_drift:notional_drift_exceeds_limit",
+        )
+>       j, _, _ = _takt(tmp_path, venue, bekannt={"XAUUSD": _lage()})
+
+tests\test_live_betrieb_sperren.py:539: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\test_live_betrieb_sperren.py:509: in _takt
+    lage, gestoppt = takt(
+tools\live_betrieb.py:854: in takt
+    _eroeffne(venue, manager, symbol, basis.signal, jetzt, zulassung, journal)
+tools\live_betrieb.py:452: in _eroeffne
+    bericht = run_signal(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+    def run_signal(
+        *,
+        venue: Mt5Venue,
+        risk_manager: RiskManager,
+        admission: CriteriaVerdict,
+        symbol: str,
+        side: Signal,
+        config: RunnerConfig,
+        now: datetime,
+        client_order_id: str,
+    ) -> RunnerReport:
+        """Fuehre EIN Signal durch die volle Kette. Gibt die Checkliste + das Ergebnis.
+    
+        ``admission`` ist das §9.3-Zulassungsurteil (``evaluate_criteria``) -- ohne
+        bestandene Zulassung handelt die Strategie nicht (Stufe A, fail-closed). ``side``
+        ist die Signalrichtung; ``Signal.FLAT`` eroeffnet nichts (kein Handel).
+        """
+        report = RunnerReport()
+    
+        # Stufe A: Zulassung (§9.3). Provenienz + Deflation stecken in der Evidenz
+        # (deflated_sharpe/trial_count aus dem herkunftsgebundenen Register).
+        if not admission.passed:
+            # Stufe 7 hat den Erkundungspfad gebaut, Stufe 9 verdrahtet ihn: eine
+            # **nicht zugelassene** Strategie wird auf dem Papierkonto mit kleiner
+            # Wahrscheinlichkeit trotzdem gefahren, damit ihr Ausgang beobachtbar wird.
+            # Sonst sammelt dieses Haus nur Daten ueber die eigenen Zusagen und kann
+            # seine Absagen nie ueberpruefen (gemessen: 32 von 4.343).
+            #
+            # Die Ausnahme greift NUR hier, an der Zulassung. Jede Sperre danach --
+            # Global-Halt, Stop-Pflicht, Frische, Kostentor, Risikoschicht -- laeuft
+            # unveraendert; ``venue.submit_order`` prueft sie ohnehin ein zweites Mal.
+            # Erkundung kauft Wissen, sie bezahlt nie mit einer Sperre.
+            entscheidung = entscheide_erkundung(
+                ist_papierkonto=venue.get_account().is_demo,
+                ablehnungsgrund="strategy_not_admitted",
+                # Der Schluessel identifiziert die GELEGENHEIT, nicht den Augenblick.
+                # Die erste Fassung nahm ``now.isoformat()`` -- eine Wanduhrzeit mit
+                # Mikrosekunden. Damit wiederholt sich dieselbe Lage nie, und genau die
+                # Reproduzierbarkeit war der Punkt von Stufe 7 ("derselbe Schluessel ergibt
+                # in jedem Lauf dieselbe Entscheidung"). Im Pruefstand machte es die Suite
+                # zu 5 % wackelig, im Betrieb waere eine Auswertung nicht nachrechenbar
+                # gewesen. Die Auftragskennung ist je Gelegenheit fest.
+                schluessel=f"{symbol}|{side.name}|{client_order_id}",
+            )
+            if not entscheidung.erkunden:
+                return report._reject(
+                    "zulassung",
+                    "strategy_not_admitted",
+                    detail=(
+                        f"nicht erfuellt: {', '.join(admission.unmet) or 'unbekannt'}"
+                        f" (Erkundung: {entscheidung.verweigert_weil or 'nicht gezogen'})"
+                    ),
+                )
+            report.erkundet = True
+            report.erkundung_p = entscheidung.wahrscheinlichkeit
+            report.add(
+                "zulassung",
+                True,
+                f"ERKUNDUNG (p={entscheidung.wahrscheinlichkeit}) trotz: "
+                f"{', '.join(admission.unmet) or 'unbekannt'}",
+            )
+        else:
+            report.add("zulassung", True, "§9.3-Kriterien bestanden")
+    
+        # 1) Signal.
+        if side is Signal.FLAT:
+            report.add("signal", True, "FLAT -- keine Eroeffnung")
+            return report
+        side_enum = OrderSide.BUY if side is Signal.LONG else OrderSide.SELL
+        report.add("signal", True, side_enum.value)
+    
+        # 2) Daten-Tor: Instrument/Quote/Konto; Referenzpreis > 0.
+        try:
+>           instrument = venue.get_instrument(symbol)
+E           AttributeError: 'HaltVenue' object has no attribute 'get_instrument'
+
+mt5_trading_ai\execution\runner.py:247: AttributeError
+---------------------------- Captured stdout call -----------------------------
+[18:02:47] Takt 1 | Equity 50000 EUR | Halt: JA
+  WEG  XAUUSD (Broker hat geschlossen, vermutlich Stop)
+  ..   Halt aufgeloest: reconcile_drift:notional_drift_exceeds_limit war eine erkannte Broker-Schliessung
+2 failed, 1626 passed, 1 deselected in 112.71s (0:01:52)
+[exit=1]
