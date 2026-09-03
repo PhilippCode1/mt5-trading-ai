@@ -1,0 +1,20 @@
+# Eichfall A7: Claude-Code-Hook PROGRAMM/hooks/waechter.py, Selbsttest mit den JSON-Eingaengen, die Claude Code einem PreToolUse-Hook gibt (2026-09-03)
+$ python PROGRAMM/hooks/waechter.py --selbsttest
+OK  Write auf den Katalog: erwartet BLOCK, erhalten BLOCK -- PROGRAMM/abnahmekatalog.md ist eingefroren (Rahmen 0.5, Regel 3).
+OK  Edit auf den Katalog (absoluter Pfad): erwartet BLOCK, erhalten BLOCK -- PROGRAMM/abnahmekatalog.md ist eingefroren (Rahmen 0.5, Regel 3).
+OK  Write auf die Live-Schalter: erwartet BLOCK, erhalten BLOCK -- config/live_freigabe.json ist eingefroren (Rahmen 0.5, Regel 3).
+OK  Bash: Umleitung in den Katalog: erwartet BLOCK, erhalten BLOCK -- Bash-Befehl nennt abnahmekatalog.md und enthaelt ein Schreibmuster; eingefrorene Dateien werden nicht beschrieben (Rahmen 0.5).
+OK  Bash: sed -i auf die Live-Schalter: erwartet BLOCK, erhalten BLOCK -- Bash-Befehl nennt live_freigabe.json und enthaelt ein Schreibmuster; eingefrorene Dateien werden nicht beschrieben (Rahmen 0.5).
+OK  Bash: Python-Heredoc, das den Katalog nennt: erwartet BLOCK, erhalten BLOCK -- Bash-Befehl nennt abnahmekatalog.md und enthaelt ein Schreibmuster; eingefrorene Dateien werden nicht beschrieben (Rahmen 0.5).
+OK  Bash: nur lesen (cat): erwartet frei, erhalten frei
+OK  Bash: Hash pruefen: erwartet frei, erhalten frei
+OK  Write auf eine gewoehnliche Datei: erwartet frei, erhalten frei
+OK  Edit auf vorhandene Vorregistrierung: erwartet BLOCK, erhalten BLOCK -- PROGRAMM/vorregistrierung/00-HINWEIS.md ist eine Vorregistrierung und nach dem Schreiben unveraenderlich.
+OK  Write auf neue Vorregistrierung: erwartet frei, erhalten frei
+Selbsttest: 11/11 Faelle wie erwartet
+[exit=0]
+
+# Derselbe Hook ueber stdin, wie Claude Code ihn ruft (Exit 2 = blockiert, stderr = Begruendung):
+$ echo {"tool_name":"Write","tool_input":{"file_path":"PROGRAMM/abnahmekatalog.md"}} | python PROGRAMM/hooks/waechter.py
+WAECHTER: abgewiesen -- PROGRAMM/abnahmekatalog.md ist eingefroren (Rahmen 0.5, Regel 3). Nicht umgehen; Aenderungswunsch in PROGRAMM/entscheidungen.md eintragen, Verschaerfung in PROGRAMM/abnahmekatalog-verschaerfungen.md.
+[exit=2]

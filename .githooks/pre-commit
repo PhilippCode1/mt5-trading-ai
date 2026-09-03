@@ -1,0 +1,4 @@
+#!/bin/sh
+# Programm NEUAUFBAU: Sperren und schnelle Tore vor jedem Commit (PROGRAMM/hooks/pre_commit.py).
+# Aktiv, wenn ``git config core.hooksPath .githooks`` gesetzt ist (README, Abschnitt Tore).
+exec python PROGRAMM/hooks/pre_commit.py

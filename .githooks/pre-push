@@ -1,0 +1,4 @@
+#!/bin/sh
+# Programm NEUAUFBAU: die volle Testsuite vor jedem Push -- dieselbe Suite wie in der CI.
+echo "pre-push: python -m pytest -q -p no:cacheprovider"
+exec python -m pytest -q -p no:cacheprovider

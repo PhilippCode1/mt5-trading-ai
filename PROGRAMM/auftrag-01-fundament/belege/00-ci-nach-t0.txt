@@ -1,0 +1,25 @@
+# CI-Lauf auf GitHub (ubuntu-latest, frischer Klon) fuer 4d02db3 -- Ergebnis von T0
+# Befehl: gh run view 33788682214 (2026-09-03)
+# Erwartung T0: Tests am Altzustand (1 failed = Windows-Pfad-Test, 12 skipped); Ruff/Doku-Tore werden in der CI erst nach gruenen Tests gefahren (Schrittfolge) -- lokal gruen, siehe 00-tore-lokal-nach-t0.txt
+
+conclusion=failure sha=4d02db3 createdAt=2026-09-03T18:08:02Z
+  1 success	Set up job
+  2 success	Run actions/checkout@v4
+  3 success	Python 3.11
+  4 success	Werkzeuge (gepinnt)
+  5 failure	Tests
+  6 skipped	Ruff
+  7 skipped	Mypy (strict)
+  8 skipped	MODULES.md aktuell
+  9 skipped	Doku-Behauptungen belegt
+  10 skipped	Doku-Zahlen = Code
+  11 skipped	Kopien wortgleich mit ihren Originalen
+  21 skipped	Post Python 3.11
+  22 success	Post Run actions/checkout@v4
+  23 success	Complete job
+
+## Tests-Schritt (Auszug, Zeitstempel entfernt)
+E       AssertionError: assert ('/', 'home',...cal', 'state') == ('C:\\Users\\...Data\\Local',)
+tests/test_risiko_zustand.py:192: AssertionError
+FAILED tests/test_risiko_zustand.py::test_localappdata_wird_nur_unter_windows_gefragt - AssertionError: assert ('/', 'home',...cal', 'state') == ('C:\\Users\\...Data\\Local',)
+1 failed, 1616 passed, 12 skipped in 47.40s

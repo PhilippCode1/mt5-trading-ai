@@ -1,0 +1,22 @@
+# Lokale Tore nach T0 (Windows, 2026-09-03, Stand 4d02db3)
+$ python -m ruff check .
+All checks passed!
+[exit=0]
+$ python -m ruff format --check .
+171 files already formatted
+[exit=0]
+$ python -m mypy --strict mt5_trading_ai tools
+Success: no issues found in 81 source files
+[exit=0]
+$ python tools/gen_docs.py --check
+ok — MODULES.md ist aktuell (601 Zeilen).
+[exit=0]
+$ python tools/check_docs_claims.py
+Eine Behauptung ist zulaessig, wenn in einer der beiden Folgezeilen ein ausfuehrbarer Beleg steht, z. B.:  Beleg: tests/security/test_x.py::test_y
+[exit=1]
+$ python tools/check_doc_numbers.py
+ok - Code: 42 Module, 1414 Testfunktionen, 16979 Quellzeilen; Doku widerspruchsfrei.
+[exit=0]
+$ python tools/kopien_abgleichen.py --pruefen
+ok â€” 1 Kopie(n) wortgleich mit ihren Originalen.
+[exit=0]

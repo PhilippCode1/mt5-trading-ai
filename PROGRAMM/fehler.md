@@ -32,3 +32,16 @@ nicht davon abhaengig gemacht.
 **Was sich aendert.** Jedes Tor laeuft einzeln, sein Rueckgabewert wird gesammelt, und
 der Commit haengt an der Summe (`FEHLER == 0`). Genau diese Regel wird in Teilschritt 2
 zum Pre-Commit-Hook -- damit sie nicht von meiner Disziplin abhaengt.
+
+## F-003 — Derselbe Fehler wie F-001 ein zweites Mal: Behauptungs-Tor vor dem `git add` gefahren (2026-09-03)
+
+**Was geschah.** Beim T1-Commit (4d02db3) lief `check_docs_claims.py` gruen, weil
+`PROGRAMM/entscheidungen.md` noch nicht im Index war. Der Eintrag E-012 zitierte zwei
+gesperrte Phrasen woertlich; nach dem `git add` war das Tor rot. Die CI hat es nicht
+gezeigt, weil der Schritt hinter den (noch roten) Tests uebersprungen wird.
+
+**Was es kostete.** Ein Commit mit rotem Tor im Verlauf; Korrektur in T2.
+
+**Was sich aendert.** Nicht mehr „Disziplin": der Pre-Commit-Hook (T2) faehrt die Tore
+ueber den **Index**, also nach dem Stagen -- genau die Stelle, an der ich zweimal
+vorbeigelaufen bin. Bis dahin: Tore nur nach `git add -A` fahren.

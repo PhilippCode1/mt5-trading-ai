@@ -178,7 +178,8 @@ Unverändertheit sichert ein Manifest.
 **Messung.** Der Rahmen schreibt `Zuletzt: <Datum, Commit>` in `zustand.md` und
 Messwerte je Modul im Bericht vor; das Zahlen-Tor verbietet beides in Live-Dokumenten
 (Regeln 2 und 5, gelesen). Ohne die Ausnahme wären 14 Befunde in fremden Dateien und
-jeder Bericht rot (Bewertung und Masterprompt 09 zitieren „produktionsreif" und
-„abnahmefertig" als Befund).
+jeder Bericht rot (Bewertung und Masterprompt 09 zitieren gesperrte
+Reifegrad-Zusicherungen des Altstands als Befund — der Commit-Titel 651c752 und die
+Abschlussformel der Abnahme-Pakete).
 
 **Verworfen.** Obergrenze anheben oder Phrasen streichen: eine Absenkung (Regel 3).

@@ -1,0 +1,9 @@
+{
+  "fassung": "live-release-v1",
+  "hinweis": "Die vier Schalter der Live-Freigabe und die Freigabekennung (mt5_trading_ai/execution/release.py). Alle aus. Kein Werkzeug setzt sie; der Live-Pfad bleibt in allen neun Auftraegen des Programms NEUAUFBAU technisch geschlossen. Nur Philipp aendert diese Datei, mit schriftlicher Freigabekennung, ausserhalb der Auftraege. Geschuetzt durch PROGRAMM/hooks/waechter.py (Claude Code) und .githooks/pre-commit (Git).",
+  "live_release_owner_ack": false,
+  "live_release_strategy_approved": false,
+  "live_release_risk_limits_configured": false,
+  "live_release_venue_demo_verified": false,
+  "live_release_id": ""
+}
