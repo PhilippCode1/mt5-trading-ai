@@ -178,6 +178,7 @@ def test_zwei_verschiedene_kennungen_erzeugen_zwei_auftraege(tmp_path: Path) -> 
                 side=OrderSide.SELL,
                 volume=Decimal("0.01"),
                 reduce_only=True,
+                position_ticket="t1",
                 stop_loss=Decimal("0"),
             )
         )

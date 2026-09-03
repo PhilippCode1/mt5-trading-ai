@@ -75,6 +75,7 @@ def _abbau(**overrides: Any):
         "side": OrderSide.SELL,
         "volume": Decimal("0.01"),
         "reduce_only": True,
+        "position_ticket": "t-gross",  # D2: Ticket der Standard-Gegenposition
         "stop_loss": Decimal("0"),
     }
     base.update(overrides)
@@ -96,7 +97,11 @@ def test_abbau_einer_position_unter_dem_mindestvolumen_geht_durch() -> None:
     """
     venue, terminal = _venue(is_demo=True, positions=_WINZIGE_LONG)
     ergebnis = venue.submit_order(
-        _abbau(client_order_id="v5-winzig", volume=Decimal("0.005"))
+        _abbau(
+            position_ticket="t-winzig",
+            client_order_id="v5-winzig",
+            volume=Decimal("0.005"),
+        )
     )
     assert ergebnis.accepted is True
     assert terminal.order_send_calls == 1
@@ -146,7 +151,13 @@ def test_abbau_ueber_die_gegenposition_hinaus_ist_eine_eroeffnung() -> None:
     """Ein Abbau, der die Position reisst, dreht sie -- und Drehen ist Eroeffnen."""
     venue, terminal = _venue(is_demo=True, positions=_WINZIGE_LONG)
     with pytest.raises(OrderRejectedError) as ex:
-        venue.submit_order(_abbau(client_order_id="v5-flip", volume=Decimal("0.01")))
+        venue.submit_order(
+            _abbau(
+                position_ticket="t-winzig",
+                client_order_id="v5-flip",
+                volume=Decimal("0.01"),
+            )
+        )
     assert ex.value.reason == "missing_stop_loss"
     assert terminal.order_send_calls == 0
 

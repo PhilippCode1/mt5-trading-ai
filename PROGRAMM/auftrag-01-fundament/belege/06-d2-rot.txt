@@ -1,0 +1,21 @@
+# Eichfall D2, ROT gegen 306bbaa (Worktree, 2026-09-03): tests/eichfall_d2.py dort ausgefuehrt
+$ python -m pytest -q -p no:cacheprovider tests/eichfall_d2.py
+E       Failed: DID NOT RAISE <class 'ValueError'>
+E       AssertionError: es wurde ohne Gegenposition gesendet -- neue Gegenposition
+E       assert [{'action': 1...8686794, ...}] == []
+E         
+E         Left contains one more item: {'action': 1, 'comment': 'close-EURUSD-abc', 'deviation': 20, 'magic': 5706942953888686794, ...}
+E         Use -v to get more diff
+E       AssertionError: assert [{'action': 1...8686794, ...}] == []
+E         
+E         Left contains one more item: {'action': 1, 'comment': 'close-EURUSD-abc', 'deviation': 20, 'magic': 5706942953888686794, ...}
+E         Use -v to get more diff
+E       Failed: DID NOT RAISE <class 'mt5_trading_ai.venue.protocol.VenueUnavailableError'>
+E       KeyError: 'symbol'
+FAILED tests/eichfall_d2.py::test_schliessauftrag_ohne_ticket_ist_nicht_konstruierbar
+FAILED tests/eichfall_d2.py::test_verschwundene_position_wird_nicht_gesendet
+FAILED tests/eichfall_d2.py::test_fremdes_ticket_wird_nicht_gesendet - Assert...
+FAILED tests/eichfall_d2.py::test_schliessung_ohne_ticket_wird_vom_terminal_abgewiesen
+FAILED tests/eichfall_d2.py::test_modify_stops_sendet_symbol_und_laesst_take_profit_stehen
+5 failed, 1 passed in 1.44s
+[exit=1]

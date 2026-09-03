@@ -699,6 +699,7 @@ def test_reduce_only_erreicht_den_riegel_nicht() -> None:
         volume=Decimal("0.01"),
         stop_loss=Decimal("0"),
         reduce_only=True,
+        position_ticket="4711",
     )
     assert venue.submit_order(schliessung).accepted is True
     assert terminal.sendeversuche == 1

@@ -240,6 +240,26 @@ class FakeMt5Terminal:
         if isinstance(request, dict):
             volume = Decimal(str(request["volume"]))
         self.order_send_calls += 1
+        if isinstance(request, dict) and request.get("reduce_only"):
+            # D2: wie das echte Terminal -- ohne Treffer fuer das Ticket wird nichts
+            # gesendet, die Antwort lautet ``position_vanished``.
+            gegen_long = request["side"] == "sell"
+            treffer = [
+                p
+                for p in self._positions
+                if p.ticket == request.get("position_ticket")
+                and p.symbol == request["symbol"]
+                and p.is_buy == gegen_long
+            ]
+            if not treffer:
+                return Mt5SendResult(
+                    accepted=False,
+                    venue_order_id=None,
+                    filled_volume=Decimal("0"),
+                    average_price=None,
+                    ts=TS,
+                    reason="position_vanished",
+                )
         return Mt5SendResult(
             accepted=True,
             venue_order_id="V-1",
@@ -635,6 +655,7 @@ def test_reduce_only_close_records_close_at_risk_manager() -> None:
             client_order_id="close-1",
             side=OrderSide.SELL,
             reduce_only=True,
+            position_ticket="t1",
             volume=Decimal("0.01"),
         )
     )
@@ -668,6 +689,7 @@ def test_reduce_only_close_records_close_in_sync_mode() -> None:
             client_order_id="close-sync",
             side=OrderSide.SELL,
             reduce_only=True,
+            position_ticket="t1",
             volume=Decimal("0.10"),
         )
     )
@@ -882,7 +904,12 @@ def test_live_reduce_only_passes_without_release() -> None:
         positions=(_mt5_position("EURUSD", is_buy=True, volume=Decimal("0.50")),),
     )
     result = venue.submit_order(
-        _order(client_order_id="r-1", side=OrderSide.SELL, reduce_only=True)
+        _order(
+            client_order_id="r-1",
+            side=OrderSide.SELL,
+            reduce_only=True,
+            position_ticket="t1",
+        )
     )
     assert result.accepted is True
     assert terminal.order_send_calls == 1
@@ -894,7 +921,12 @@ def test_live_reduce_only_without_position_is_gated_as_opening() -> None:
     venue, terminal = _venue(is_demo=False, settings=None)  # keine Positionen
     with pytest.raises(OrderRejectedError) as ex:
         venue.submit_order(
-            _order(client_order_id="fake-ro", side=OrderSide.SELL, reduce_only=True)
+            _order(
+                client_order_id="fake-ro",
+                side=OrderSide.SELL,
+                reduce_only=True,
+                position_ticket="t1",
+            )
         )
     assert ex.value.reason == "live_release_incomplete"
     assert terminal.order_send_calls == 0
@@ -914,6 +946,7 @@ def test_reduce_only_over_fill_is_gated_as_opening() -> None:
                 client_order_id="overfill",
                 side=OrderSide.SELL,
                 reduce_only=True,
+                position_ticket="t1",
                 volume=Decimal("1.00"),
             )
         )
@@ -1099,7 +1132,12 @@ def test_reconcile_drift_halts_and_blocks_opening() -> None:
         venue.submit_order(_order(client_order_id="o-1"))
     assert excinfo.value.reason == "global_halt"
     reduce = venue.submit_order(
-        _order(client_order_id="r-1", side=OrderSide.SELL, reduce_only=True)
+        _order(
+            client_order_id="r-1",
+            side=OrderSide.SELL,
+            reduce_only=True,
+            position_ticket="t1",
+        )
     )
     assert reduce.accepted is True
 
@@ -1179,6 +1217,8 @@ def test_emergency_flatten_closes_all_and_halts() -> None:
     assert excinfo.value.reason == "global_halt"
     # ... Reduce-Only (weiterer Abbau) bleibt frei.
     assert (
-        venue.submit_order(_order(client_order_id="ro", reduce_only=True)).accepted
+        venue.submit_order(
+            _order(client_order_id="ro", reduce_only=True, position_ticket="p2")
+        ).accepted
         is True
     )

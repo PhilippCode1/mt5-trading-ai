@@ -539,8 +539,8 @@ Paket 5: Registrierung und Fortschritts-Tor des Demo-Betriebs (§8.5).
 
 ## `mt5_trading_ai/venue/mt5.py`
 
-Zeilen: 2724
-Aufrufer: Paket 3 · Werkzeuge 7 · Tests 33
+Zeilen: 2763
+Aufrufer: Paket 3 · Werkzeuge 7 · Tests 34
 
 MT5-Anbindung an das ``TradingVenue``-Protokoll.
 
@@ -560,8 +560,8 @@ MT5-Anbindung an das ``TradingVenue``-Protokoll.
 
 ## `mt5_trading_ai/venue/protocol.py`
 
-Zeilen: 531
-Aufrufer: Paket 12 · Werkzeuge 8 · Tests 43
+Zeilen: 543
+Aufrufer: Paket 12 · Werkzeuge 8 · Tests 44
 
 Plattformunabhaengiger Handelsplatz-Vertrag.
 
@@ -588,7 +588,7 @@ Plattformunabhaengiger Handelsplatz-Vertrag.
 
 ## `mt5_trading_ai/venue/smoke.py`
 
-Zeilen: 344
+Zeilen: 358
 Aufrufer: Paket 0 · Werkzeuge 1 · Tests 2
 
 Demo-Smoke-Test der MT5-Bindung — die Orchestrierung, terminalunabhaengig.

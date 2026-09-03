@@ -344,6 +344,7 @@ def test_schliessung_mit_abfragbarem_bestand_traegt_das_ticket() -> None:
     auftrag = _marktauftrag()
     auftrag["reduce_only"] = True
     auftrag["side"] = "sell"
+    auftrag["position_ticket"] = "777"  # D2: Schliessung nur mit Ticket
     attrappe = _Mt5Attrappe(
         antwort=_Ergebnis(retcode=DONE, order=555, volume=0.11),
         positionen=(SimpleNamespace(ticket=777, type=0, symbol="EURUSD"),),
@@ -506,10 +507,15 @@ def test_take_profit_wird_ebenso_nachgemessen() -> None:
 
 
 def test_stop_mit_fehlercode_fragt_gar_nicht_erst_nach() -> None:
-    attrappe = _Mt5Attrappe(antwort=_Ergebnis(retcode=10016, comment="Invalid stops"))
+    attrappe = _Mt5Attrappe(
+        antwort=_Ergebnis(retcode=10016, comment="Invalid stops"),
+        positionen=(_position(sl=1.08000),),
+    )
     echt = _terminal(attrappe)
     assert echt.modify_stops("777", Decimal("1.08000"), None) is False
-    assert attrappe.positionen_abfragen == 0
+    # D2/V2b: EINE Abfrage vor dem Senden (aktuelle Stops lesen, damit ``None``
+    # "nicht anfassen" heisst) -- aber KEINE Nachlesung nach dem Fehlercode.
+    assert attrappe.positionen_abfragen == 1
 
 
 def test_ohne_bekannte_preisstufe_kein_beleg() -> None:

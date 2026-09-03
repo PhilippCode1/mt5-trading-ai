@@ -386,6 +386,7 @@ def _schliesse(
         volume=lage.volumen,
         stop_loss=Decimal("0"),  # bei reduce_only nicht geprueft -- kein Stop noetig
         reduce_only=True,
+        position_ticket=lage.position_id,  # D2: Schliessung nur mit Ticket
         comment=f"live_betrieb: {grund}",
     )
     try:

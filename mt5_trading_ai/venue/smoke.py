@@ -63,6 +63,7 @@ from mt5_trading_ai.venue.protocol import (
     Position,
     Quote,
     Timeframe,
+    TradingVenue,
     VenueError,
 )
 
@@ -336,9 +337,22 @@ def _write_probe(
                 volume=volume,
                 stop_loss=Decimal("0"),
                 reduce_only=True,
+                position_ticket=_offenes_ticket(venue, symbol),  # D2
                 comment="smoke-close",
             )
         )
         report.add("write_close", closed.accepted, f"id={closed.venue_order_id}")
     except VenueError as exc:
         report.add("write_probe", False, str(exc))
+
+
+def _offenes_ticket(venue: TradingVenue, symbol: str) -> str:
+    """Ticket der eben eroeffneten Kaufposition; ohne Ticket keine Schliessung (D2).
+
+    Findet die Probe keine Position, traegt der Schliessauftrag ein Ticket, das es
+    nicht gibt ("0"); das Terminal antwortet dann position_vanished statt zu senden.
+    """
+    for pos in venue.get_positions():
+        if pos.symbol == symbol and pos.side is OrderSide.BUY:
+            return pos.venue_position_id
+    return "0"

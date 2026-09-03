@@ -324,8 +324,20 @@ class OrderRequest:
     take_profit: Decimal | None = None
     limit_price: Decimal | None = None
     reduce_only: bool = False
+    #: Das Ticket der Position, die ein reduzierender Auftrag abbaut. Ein
+    #: Schliessauftrag ohne Ticket ist nicht darstellbar (D2, E-005): der
+    #: Konstruktor weist ihn ab, der Handelsplatz sendet ihn nie.
+    position_ticket: str | None = None
     comment: str = ""
     meta: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if self.reduce_only and not (self.position_ticket or "").strip():
+            raise ValueError(
+                f"{self.client_order_id}: reduce_only ohne position_ticket ist nicht "
+                "darstellbar -- eine Schliessung ohne Ticket wuerde auf einem "
+                "Hedging-Konto zur Gegenposition (D2)"
+            )
 
 
 @dataclass(frozen=True)

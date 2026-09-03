@@ -149,7 +149,12 @@ def test_synced_venue_gap_halts_and_blocks_opening() -> None:
     assert excinfo.value.reason == "global_halt"
     # Reduce-Only (echter Abbau der Long, autoritativ vom Terminal) passiert trotz Halt.
     assert venue.submit_order(
-        _order(client_order_id="r-1", side=OrderSide.SELL, reduce_only=True)
+        _order(
+            client_order_id="r-1",
+            side=OrderSide.SELL,
+            reduce_only=True,
+            position_ticket="t1",
+        )
     ).accepted
     # Freigabe resynchronisiert den Strom und gibt Eroeffnungen frei. Der Abbau von
     # eben ist beim Broker angekommen; ohne das antwortet der Doppelorder-Riegel (die

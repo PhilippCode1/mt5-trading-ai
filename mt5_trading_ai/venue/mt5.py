@@ -1189,16 +1189,23 @@ class Mt5Venue(TradingVenue):
         die Gegenposition nicht reisst (hedging-faehig: Summe der Gegen-Tickets). Nur
         fuer ``reduce_only``-Orders gerufen.
         """
-        opposite = sum(
-            (
-                pos.volume
-                for pos in self.get_positions()
-                if pos.symbol == request.symbol and pos.side is not request.side
-            ),
-            Decimal("0"),
-        )
-        # opposite > 0: Gegenposition da; volume <= opposite: kein Flip/Over-Fill.
-        return opposite > 0 and request.volume <= opposite
+        # D2 (E-005): nicht die Summe der Gegenpositionen entscheidet, sondern GENAU
+        # die Position, deren Ticket der Auftrag traegt -- frisch beim Broker gelesen.
+        # Fehlt sie (Stop gefeuert, Handschliessung), ist die Order keine Schliessung
+        # und faellt durch alle Tore; das Terminal sendet sie ohnehin nicht (siehe
+        # ``RealMt5Terminal.order_send``).
+        ticket = request.position_ticket
+        if ticket is None:
+            return False
+        for pos in self.get_positions():
+            if pos.venue_position_id != ticket:
+                continue
+            return (
+                pos.symbol == request.symbol
+                and pos.side is not request.side
+                and request.volume <= pos.volume
+            )
+        return False
 
     def _enforce_account_freshness(self, symbol: str) -> None:
         """Frische-Latch (S2) fuer eine eroeffnende Order -- auf JEDEM Konto.
@@ -1520,6 +1527,7 @@ class Mt5Venue(TradingVenue):
             "take_profit": request.take_profit,
             "limit_price": request.limit_price,
             "reduce_only": request.reduce_only,
+            "position_ticket": request.position_ticket,
             "comment": request.comment,
         }
 
@@ -1861,6 +1869,7 @@ class Mt5Venue(TradingVenue):
                         volume=position.volume,
                         stop_loss=Decimal("0"),
                         reduce_only=True,
+                        position_ticket=position.venue_position_id,
                         comment="emergency-flatten",
                     )
                 )
@@ -2511,17 +2520,18 @@ class RealMt5Terminal:
         if take_profit is not None:
             req["tp"] = float(take_profit)
         if request.get("reduce_only") and action == mt5.TRADE_ACTION_DEAL:
-            # Gegenposition gezielt schliessen (Ticket setzen) — sonst entsteht auf
-            # Hedging-Konten eine neue Position statt eines Close.
-            #
-            # ``or ()`` stand hier und war dieselbe None-Falle, die 56 Zeilen weiter
-            # oben ausdruecklich fail-closed behandelt wird -- nur mit der
-            # gegenteiligen Antwort: ein Abfragefehler wurde still zu "keine
-            # Position", ``req['position']`` blieb leer, und der Broker machte auf
-            # einem Hedging-Konto aus der Schliessung eine NEUE Gegenposition. Das ist
-            # der Reduce-Only-Pfad; hier ist die schmeichelnde Richtung besonders
-            # teuer, weil sie Risiko AUFBAUT, wo Risiko abgebaut werden sollte.
-            roh = mt5.positions_get(symbol=symbol)
+            # D2 (E-005): eine Schliessung traegt ihr Ticket, oder sie wird nicht
+            # gesendet. Frueher wurde die Gegenposition hier per Symbol gesucht und
+            # bei leerem Treffer die Marktorder OHNE ``position`` geschickt -- auf
+            # einem Hedging-Konto eine neue Gegenposition ohne Stop, an allen Toren
+            # vorbei (Bewertung D2, nachgestellt in belege/03-nachstellung V2).
+            ticket_roh = request.get("position_ticket")
+            if not ticket_roh:
+                raise VenueUnavailableError(
+                    f"{symbol}: Schliessung ohne Positionsticket -- nicht gesendet"
+                )
+            ticket = int(ticket_roh)
+            roh = mt5.positions_get(ticket=ticket)
             if roh is None:
                 raise VenueUnavailableError(
                     f"{symbol}: der Positionsbestand ist nicht abfragbar -- welche "
@@ -2531,10 +2541,27 @@ class RealMt5Terminal:
                 )
             want_long = not is_buy
             buy_type = int(getattr(mt5, "POSITION_TYPE_BUY", 0))
-            for pos in tuple(roh):
-                if (int(pos.type) == buy_type) == want_long:
-                    req["position"] = int(pos.ticket)
-                    break
+            treffer = [
+                pos
+                for pos in tuple(roh)
+                if int(pos.ticket) == ticket
+                and str(pos.symbol) == symbol
+                and (int(pos.type) == buy_type) == want_long
+            ]
+            if not treffer:
+                # Die Position ist zwischen Pruefung und Senden verschwunden (Stop
+                # gefeuert, Handschliessung). Nichts senden; der Aufrufer sieht
+                # ``position_vanished`` und der naechste Reconcile das Buch.
+                return Mt5SendResult(
+                    accepted=False,
+                    venue_order_id=None,
+                    filled_volume=Decimal("0"),
+                    average_price=None,
+                    ts=now,
+                    reason="position_vanished",
+                    retryable=False,
+                )
+            req["position"] = ticket
         res = mt5.order_send(req)
         # Zwei Fragen, nicht eine: durfte die Order ins System (``angenommen``), und
         # ist dabei etwas ausgefuehrt worden (``gefuellt``)? Bei
@@ -2684,11 +2711,23 @@ class RealMt5Terminal:
         self._require_write()
         mt5 = self._mt5
         ticket = int(venue_position_id)
-        req: dict[str, Any] = {"action": mt5.TRADE_ACTION_SLTP, "position": ticket}
-        if stop_loss is not None:
-            req["sl"] = float(stop_loss)
-        if take_profit is not None:
-            req["tp"] = float(take_profit)
+        # V2b (Bewertung): der SLTP-Request nannte kein ``symbol`` und liess bei
+        # ``tp=None`` das Feld weg -- der Server loeschte damit den bestehenden
+        # Take-Profit. ``None`` heisst hier "nicht anfassen": der aktuelle Wert
+        # wird gelesen und mitgeschickt.
+        vorher = mt5.positions_get(ticket=ticket)
+        if not vorher:
+            return False  # Position weg oder Bestand nicht abfragbar: kein Beleg
+        aktuell = tuple(vorher)[0]
+        req: dict[str, Any] = {
+            "action": mt5.TRADE_ACTION_SLTP,
+            "position": ticket,
+            "symbol": str(aktuell.symbol),
+            "sl": float(stop_loss) if stop_loss is not None else float(aktuell.sl),
+            "tp": float(take_profit)
+            if take_profit is not None
+            else float(getattr(aktuell, "tp", 0.0) or 0.0),
+        }
         res = mt5.order_send(req)
         if not _ohne_fehlercode(mt5, res):
             return False

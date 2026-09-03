@@ -672,6 +672,7 @@ def test_v5_der_abbau_geht_trotz_ausfall_durch() -> None:
         side=OrderSide.SELL,
         volume=Decimal("0.10"),
         reduce_only=True,
+        position_ticket="t1",
         stop_loss=None,
     )
     assert venue.is_halted() is True  # der Latch steht wirklich

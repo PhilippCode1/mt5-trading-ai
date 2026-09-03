@@ -1,0 +1,13 @@
+# Eichfall D2, GRUEN gegen HEAD (2026-09-03): tests/eichfall_d2.py und die volle Suite
+$ python -m pytest -q -p no:cacheprovider tests/eichfall_d2.py
+6 passed in 0.47s
+
+$ python -m pytest -q -p no:cacheprovider   (volle Suite)
+1513 passed in 295.60s (0:04:55)
+[exit=0]
+
+# Klasse: OrderRequest.position_ticket (mt5_trading_ai/venue/protocol.py), __post_init__ weist reduce_only ohne Ticket ab;
+# Mt5Venue._reduces_position gleicht per Ticket, Symbol und Seite ab; RealMt5Terminal.order_send prueft das Ticket
+# per positions_get(ticket=) unmittelbar vor dem Senden und sendet bei Abweichung nichts (position_vanished);
+# modify_stops sendet symbol und laesst nicht gewuenschte Stops stehen; emergency_flatten, live_betrieb._schliesse und
+# die Schreibprobe des Smoke-Tests uebergeben das Ticket. Rot gegen 306bbaa: 06-d2-rot.txt (5 von 6 Faellen rot).

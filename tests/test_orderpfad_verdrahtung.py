@@ -413,6 +413,7 @@ def test_reduce_only_bleibt_frei(monkeypatch: pytest.MonkeyPatch) -> None:
             client_order_id="reduce-1",
             side=OrderSide.SELL,
             reduce_only=True,
+            position_ticket="t1",
             stop_loss=Decimal("0"),
         )
     )
