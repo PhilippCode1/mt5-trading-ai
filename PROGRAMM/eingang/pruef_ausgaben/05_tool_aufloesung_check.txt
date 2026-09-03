@@ -1,0 +1,11 @@
+$ python tools/aufloesung.py --check
+FEHLGESCHLAGEN — aufloesung.json fuehrt kein brauchbares oos_share und ist damit gegen die VOLLE Ereigniszahl gerechnet.
+Die Deflation der Ereignisstudie sieht nur das Out-of-Sample-Drittel; die Verhaeltnisse der Datei sind rund Faktor 1,7 zu guenstig.
+  EURUSD   1h   monatlich  N=193    N_defl=65     0.7818 -> 1.3958  aufloesbar -> blind
+  EURUSD   1d   taeglich   N=6959   N_defl=2320   0.6917 -> 1.1990  aufloesbar -> blind
+  GBPJPY   1h   monatlich  N=193    N_defl=65     0.6229 -> 1.1121  aufloesbar -> blind
+  XAUUSD   4h   taeglich   N=5589   N_defl=1863   0.7781 -> 1.3494  aufloesbar -> blind
+  DE40     1h   taeglich   N=3535   N_defl=1179   0.6079 -> 1.0545  aufloesbar -> blind
+  NVDA     4h   taeglich   N=5777   N_defl=1926   0.8192 -> 1.4204  aufloesbar -> blind
+Abhilfe: `python tools/aufloesung.py` neu messen (braucht MT5).
+[exit=1, 1s]

@@ -1,0 +1,3 @@
+$ python tools/journal_sichern.py --ziel /tmp/claude-0/-home-claude/85b30f78-3ff6-555e-ade8-afd8ec0d28d5/scratchpad/tool_ablagen/journal_sicherung
+Nichts zu sichern — /root/mt5-trading-ai/betrieb ist leer.
+[exit=1, 0s]

@@ -1,0 +1,27 @@
+$ python tools/zweigdeckung.py --messen --bericht /root/pruef_ausgaben/06_coverage_messen.json
+        naechste Start sie als „neu" und damit als „frei" liest.
+    
+        Beide Plattformen werden hier **explizit** gefahren, nicht die des Testlaeufers:
+        die Regel muss auf beiden gelten, und ``os.name`` laesst sich nicht umbiegen, ohne
+        ``pathlib`` mitzureissen.
+        """
+        lokal = r"C:\Users\Test\AppData\Local"
+        xdg = Path.home() / "eigener-zustand"  # auf beiden Plattformen absolut
+        umgebung = {"LOCALAPPDATA": lokal, "XDG_STATE_HOME": str(xdg)}
+        windows = standard_zustandsordner(umgebung=umgebung, ist_windows=True)
+        posix = standard_zustandsordner(umgebung=umgebung, ist_windows=False)
+    
+        # Unter Windows zaehlt LOCALAPPDATA ...
+>       assert windows.parts[:-2] == Path(lokal).parts
+E       AssertionError: assert ('/', 'root',...cal', 'state') == ('C:\\Users\\...Data\\Local',)
+E         
+E         At index 0 diff: '/' != 'C:\\Users\\Test\\AppData\\Local'
+E         Left contains 3 more items, first extra item: 'root'
+E         Use -v to get more diff
+
+tests/test_risiko_zustand.py:194: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_risiko_zustand.py::test_localappdata_wird_nur_unter_windows_gefragt
+1 failed, 1611 passed, 12 skipped in 106.26s (0:01:46)
+
+[exit=1, 107s]

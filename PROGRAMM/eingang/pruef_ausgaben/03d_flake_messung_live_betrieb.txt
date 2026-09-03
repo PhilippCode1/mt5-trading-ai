@@ -1,0 +1,41 @@
+# 30 Wiederholungen: python -m pytest -q -p no:cacheprovider tests/test_live_betrieb.py
+Lauf 1: 29 passed in 0.30s  
+Lauf 2: 29 passed in 0.15s  
+Lauf 3: 29 passed in 0.15s  
+Lauf 4: 1 failed, 28 passed in 0.23s  FAILED tests/test_live_betrieb.py::test_der_takt_schreibt_den_kontozustand 
+Lauf 5: 29 passed in 0.15s  
+Lauf 6: 29 passed in 0.17s  
+Lauf 7: 29 passed in 0.14s  
+Lauf 8: 29 passed in 0.15s  
+Lauf 9: 29 passed in 0.16s  
+Lauf 10: 29 passed in 0.16s  
+Lauf 11: 29 passed in 0.16s  
+Lauf 12: 29 passed in 0.16s  
+Lauf 13: 29 passed in 0.17s  
+Lauf 14: 29 passed in 0.16s  
+Lauf 15: 29 passed in 0.17s  
+Lauf 16: 29 passed in 0.15s  
+Lauf 17: 29 passed in 0.16s  
+Lauf 18: 29 passed in 0.16s  
+Lauf 19: 29 passed in 0.16s  
+Lauf 20: 29 passed in 0.16s  
+Lauf 21: 29 passed in 0.15s  
+Lauf 22: 29 passed in 0.15s  
+Lauf 23: 29 passed in 0.16s  
+Lauf 24: 29 passed in 0.16s  
+Lauf 25: 29 passed in 0.20s  
+Lauf 26: 29 passed in 0.18s  
+Lauf 27: 29 passed in 0.15s  
+Lauf 28: 29 passed in 0.15s  
+Lauf 29: 29 passed in 0.15s  
+Lauf 30: 29 passed in 0.15s  
+Laeufe mit mindestens einem Fehlschlag: 1 von 30
+
+# 100 weitere Wiederholungen (nur Fehlschlaege gelistet)
+Lauf 53: 1 failed, 28 passed in 0.35s  FAILED tests/test_live_betrieb.py::test_der_takt_schreibt_den_kontozustand 
+Lauf 69: 1 failed, 28 passed in 0.32s  FAILED tests/test_live_betrieb.py::test_der_takt_schreibt_den_kontozustand 
+Lauf 93: 1 failed, 28 passed in 0.39s  FAILED tests/test_live_betrieb.py::test_der_takt_schreibt_den_kontozustand 
+Lauf 99: 1 failed, 28 passed in 0.34s  FAILED tests/test_live_betrieb.py::test_der_takt_schreibt_den_kontozustand 
+Laeufe mit mindestens einem Fehlschlag: 4 von 100
+  FAILED: 4x
+  tests/test_live_betrieb.py::test_der_takt_schreibt_den_kontozustand: 4x

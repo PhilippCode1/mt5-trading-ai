@@ -1,0 +1,4 @@
+$ python tools/atr_messung.py
+FEHLGESCHLAGEN — MetaTrader5 nicht installiert (pip install MetaTrader5)
+Keine Ersatzzahlen. Ohne Terminal keine Volatilitaet.
+[exit=2, 0s]

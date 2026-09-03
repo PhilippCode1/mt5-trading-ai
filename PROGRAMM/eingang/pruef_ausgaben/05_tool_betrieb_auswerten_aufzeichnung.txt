@@ -1,0 +1,15 @@
+$ python tools/betrieb_auswerten.py /root/mt5-trading-ai/aufzeichnungen/demo-2026-08-17.jsonl
+Traceback (most recent call last):
+  File "/root/mt5-trading-ai/tools/betrieb_auswerten.py", line 247, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/root/mt5-trading-ai/tools/betrieb_auswerten.py", line 243, in main
+    return auswerten(pfad)
+           ^^^^^^^^^^^^^^^
+  File "/root/mt5-trading-ai/tools/betrieb_auswerten.py", line 75, in auswerten
+    lauf = lies_journal(pfad)
+           ^^^^^^^^^^^^^^^^^^
+  File "/root/mt5-trading-ai/mt5_trading_ai/betrieb/journal.py", line 443, in lies_journal
+    raise JournalError(f"{pfad.name}:{nr}: ts oder art fehlt")
+mt5_trading_ai.betrieb.journal.JournalError: demo-2026-08-17.jsonl:1: ts oder art fehlt
+[exit=1, 0s]

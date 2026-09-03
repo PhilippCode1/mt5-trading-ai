@@ -1,0 +1,161 @@
+$ python tools/kostentor.py --kurz
+====================================================================================================
+KOSTENTOR — Paket 2, A1.3/A1.4
+====================================================================================================
+Kostendatei : broker-costs-paket2 (geprueft 2026-08-17), 4 Broker
+Messdatei   : ATR(14) H1, 12 Monate, gemessen ueber den lesenden MT5-Demo-Pfad
+Umrechnung  : {'EURUSD': 1.15704, 'GBPUSD': 1.3534, 'USDJPY': 159.317}
+
+Kostenzeilen: 18 von 24 rechenbar (6 Instrumente x 4 Broker)
+
+----------------------------------------------------------------------------------------------------
+TABELLE 1 — Round-Turn-Kosten K in Basispunkten des Nominals
+----------------------------------------------------------------------------------------------------
+Instrument Broker              Spread     Komm.   Slip.         K    ATR50    ATR25
+EURUSD     ic_markets_eu         0.05      0.60    0.50      1.15    10.04     8.64
+EURUSD     admirals_eu           0.77      0.00    0.50      1.27    10.04     8.64
+EURUSD     tickmill_eu           0.09      0.52    0.50      1.10    10.04     8.64
+EURUSD     pepperstone_eu        0.09      0.60    0.50      1.19    10.04     8.64
+GBPJPY     ic_markets_eu         0.31      0.53    1.00      1.84    11.72     9.76
+GBPJPY     admirals_eu           2.60      0.00    1.00      3.60    11.72     9.76
+GBPJPY     tickmill_eu           0.47      0.45    1.00      1.93    11.72     9.76
+GBPJPY     pepperstone_eu        0.57      0.53    1.00      2.10    11.72     9.76
+XAUUSD     ic_markets_eu         0.19      0.16    0.50      0.85    41.80    33.70
+XAUUSD     admirals_eu           1.13      0.00    0.50      1.63    41.80    33.70
+XAUUSD     tickmill_eu           0.21      0.14    0.50      0.85    41.80    33.70
+XAUUSD     pepperstone_eu        0.28      0.16    0.50      0.94    41.80    33.70
+DE40       ic_markets_eu         0.60      0.00    0.50      1.10    26.81    21.09
+DE40       admirals_eu           0.49      0.00    0.50      0.99    26.81    21.09
+DE40       tickmill_eu           0.37      0.00    0.50      0.87    26.81    21.09
+DE40       pepperstone_eu        0.62      0.00    0.50      1.12    26.81    21.09
+BTCUSD     ic_markets_eu    NICHT RECHENBAR — Volatilitaet nicht gemessen: Symbol 'BTCUSD' auf dem erreichbaren Terminal nicht vorhanden
+BTCUSD     admirals_eu      NICHT RECHENBAR — Volatilitaet nicht gemessen: Symbol 'BTCUSD' auf dem erreichbaren Terminal nicht vorhanden
+BTCUSD     tickmill_eu      NICHT RECHENBAR — Volatilitaet nicht gemessen: Symbol 'BTCUSD' auf dem erreichbaren Terminal nicht vorhanden
+BTCUSD     pepperstone_eu   NICHT RECHENBAR — Volatilitaet nicht gemessen: Symbol 'BTCUSD' auf dem erreichbaren Terminal nicht vorhanden
+NVDA       ic_markets_eu         2.07     20.00    1.00     23.07    91.18    77.38
+NVDA       admirals_eu           1.06      2.13    1.00      4.19    91.18    77.38
+NVDA       tickmill_eu      NICHT RECHENBAR — spread_nicht_veroeffentlicht: Tickmill EU fuehrt den Aktien-CFD ('NVDA.NAS -- Nvidia Corp CFD', 'No Commissions.'), veroeffentlicht fuer Aktien-CFDs aber keinerlei Spreadtabelle. Ohne Spread und ohne Kommission waere die Kostenzeile Null -- und Null waere falsch, denn die Kosten stecken laut Broker vollstaendig im Spread.
+NVDA       pepperstone_eu   NICHT RECHENBAR — spread_nicht_veroeffentlicht: Pepperstone EU fuehrt den Aktien-CFD und veroeffentlicht die Kommission (0,02 USD je Aktie je Seite), aber KEINE Spreadtabelle fuer Aktien-CFDs: 'Share CFD trades are charged a commission in addition with any spread which differs by underlying exchange.' Ohne Spread bliebe nur die Kommission -- und das waere zu niedrig.
+
+----------------------------------------------------------------------------------------------------
+TABELLE 2 — erforderliche Trefferquote p* bei CRV 1:1
+            S = Vielfaches x Median-ATR(14) H1. Zweite Zeile je Fall: das
+            25. Perzentil (ruhige Marktphase) -- dort beissen die Kosten am staerksten.
+----------------------------------------------------------------------------------------------------
+Instrument Broker                 S=1.0xATR       S=1.5xATR       S=2.0xATR
+EURUSD     ic_markets_eu         55.7% GRUE      53.8% GRUE      52.9% GRUE   (Median)
+                                 56.7% GELB      54.5% GRUE      53.3% GRUE   (25. Perzentil)
+EURUSD     admirals_eu           56.3% GELB      54.2% GRUE      53.2% GRUE   (Median)
+                                 57.4% GELB      54.9% GRUE      53.7% GRUE   (25. Perzentil)
+EURUSD     tickmill_eu           55.5% GRUE      53.7% GRUE      52.7% GRUE   (Median)
+                                 56.4% GELB      54.3% GRUE      53.2% GRUE   (25. Perzentil)
+EURUSD     pepperstone_eu        55.9% GRUE      53.9% GRUE      53.0% GRUE   (Median)
+                                 56.9% GELB      54.6% GRUE      53.4% GRUE   (25. Perzentil)
+GBPJPY     ic_markets_eu         57.8% GELB      55.2% GRUE      53.9% GRUE   (Median)
+                                 59.4% GELB      56.3% GELB      54.7% GRUE   (25. Perzentil)
+GBPJPY     admirals_eu           65.4%  ROT      60.2% GELB      57.7% GELB   (Median)
+                                 68.5%  ROT      62.3%  ROT      59.2% GELB   (25. Perzentil)
+GBPJPY     tickmill_eu           58.2% GELB      55.5% GRUE      54.1% GRUE   (Median)
+                                 59.9% GELB      56.6% GELB      54.9% GRUE   (25. Perzentil)
+GBPJPY     pepperstone_eu        58.9% GELB      56.0% GRUE      54.5% GRUE   (Median)
+                                 60.7% GELB      57.2% GELB      55.4% GRUE   (25. Perzentil)
+XAUUSD     ic_markets_eu         51.0% GRUE      50.7% GRUE      50.5% GRUE   (Median)
+                                 51.3% GRUE      50.8% GRUE      50.6% GRUE   (25. Perzentil)
+XAUUSD     admirals_eu           52.0% GRUE      51.3% GRUE      51.0% GRUE   (Median)
+                                 52.4% GRUE      51.6% GRUE      51.2% GRUE   (25. Perzentil)
+XAUUSD     tickmill_eu           51.0% GRUE      50.7% GRUE      50.5% GRUE   (Median)
+                                 51.3% GRUE      50.8% GRUE      50.6% GRUE   (25. Perzentil)
+XAUUSD     pepperstone_eu        51.1% GRUE      50.7% GRUE      50.6% GRUE   (Median)
+                                 51.4% GRUE      50.9% GRUE      50.7% GRUE   (25. Perzentil)
+DE40       ic_markets_eu         52.0% GRUE      51.4% GRUE      51.0% GRUE   (Median)
+                                 52.6% GRUE      51.7% GRUE      51.3% GRUE   (25. Perzentil)
+DE40       admirals_eu           51.9% GRUE      51.2% GRUE      50.9% GRUE   (Median)
+                                 52.4% GRUE      51.6% GRUE      51.2% GRUE   (25. Perzentil)
+DE40       tickmill_eu           51.6% GRUE      51.1% GRUE      50.8% GRUE   (Median)
+                                 52.1% GRUE      51.4% GRUE      51.0% GRUE   (25. Perzentil)
+DE40       pepperstone_eu        52.1% GRUE      51.4% GRUE      51.0% GRUE   (Median)
+                                 52.6% GRUE      51.8% GRUE      51.3% GRUE   (25. Perzentil)
+NVDA       ic_markets_eu         62.7%  ROT      58.4% GELB      56.3% GELB   (Median)
+                                 64.9%  ROT      59.9% GELB      57.5% GELB   (25. Perzentil)
+NVDA       admirals_eu           52.3% GRUE      51.5% GRUE      51.1% GRUE   (Median)
+                                 52.7% GRUE      51.8% GRUE      51.4% GRUE   (25. Perzentil)
+
+====================================================================================================
+URTEIL GEGEN M1 — Kennzahl: p* bei CRV 1:1 und S = 1,0 x Median-ATR(14) H1
+====================================================================================================
+  EURUSD   Haupt-Waehrungspaar        bestes p* = 55.5 % -> GRUEN (ESMA-Deckel 30:1)
+  GBPJPY   Nebenpaar                  bestes p* = 57.8 % -> GELB  (ESMA-Deckel 20:1)
+  XAUUSD   Edelmetall                 bestes p* = 51.0 % -> GRUEN (ESMA-Deckel 20:1)
+  DE40     Hauptindex (DAX40)         bestes p* = 51.6 % -> GRUEN (ESMA-Deckel 20:1)
+  BTCUSD   Krypto                     NICHT BEWERTBAR (siehe Tabelle 1)
+  NVDA     Einzelaktie (Technik/KI)   bestes p* = 52.3 % -> GRUEN (ESMA-Deckel 5:1)
+
+  gruen: 4 von 6 Instrumenten ['EURUSD', 'XAUUSD', 'DE40', 'NVDA']
+  gelb : 1 von 6 Instrumenten ['GBPJPY']
+  rot  : 0 von 6 Instrumenten []
+  nicht bewertbar: 1 von 6 ['BTCUSD']
+
+  Strenge Lesart ('bei mindestens einem Broker') — gruene Instrumente je Broker:
+    admirals_eu      3 ['DE40', 'NVDA', 'XAUUSD']
+    ic_markets_eu    3 ['DE40', 'EURUSD', 'XAUUSD']
+    pepperstone_eu   3 ['DE40', 'EURUSD', 'XAUUSD']
+    tickmill_eu      3 ['DE40', 'EURUSD', 'XAUUSD']
+    -> bester einzelner Broker: ic_markets_eu mit 3 gruenen Instrumenten (gefordert: mindestens 3)
+
+  M1-AMPEL: GRUEN — p* <= 56 % bei 4 Instrumenten, und ic_markets_eu allein traegt 3 davon (gefordert: mindestens 3).
+
+  ZUR AMPEL SELBST, ausdruecklich: die erste Fassung von M1 verlangte fuer
+  ROT 'bei allen sechs Instrumenten'. Weil BTCUSD dauerhaft nicht
+  bewertbar ist (['BTCUSD']), konnte ROT damit NIE eintreten --
+  fail-open gegen die Kernregel 'nicht bewertbar = nicht erfuellt'. Seit
+  der Berichtigung vom 2026-08-17 (ABBRUCH.md, Bedingung 1) laeuft die
+  ROT-Schwelle gegen die BEWERTBAREN Instrumente (hier 5), und
+  unter 4 bewertbaren gilt M1 fail-closed als
+  ausgeloest. Das nicht bewertbare Instrument zaehlt weiterhin als NICHT
+  gruen.
+
+----------------------------------------------------------------------------------------------------
+TABELLE 2b — ROBUSTHEIT: p* bei S = 1,0 x ATR unter fuenf Lesarten
+----------------------------------------------------------------------------------------------------
+  A  wie gerechnet: veroeffentlichter Spread, Median-ATR, ohne Swap
+  B  GEMESSENER Median-Spread des Demo-Feeds statt des veroeffentlichten
+  C  Slippage-Annahme verdoppelt (sie ist der einzige ungemessene Posten in K)
+  D  Swap eingerechnet: 25 % der Trades kreuzen den Rollover (4 RT/Tag)
+  E  25. Perzentil der Volatilitaet statt des Medians (ruhige Marktphase)
+  F  B, C, D und E zusammen -- die unguenstige, aber vertretbare Lesart
+
+Instrument Broker                   A         B         C         D         E         F
+EURUSD     ic_markets_eu        55.7*     56.3      58.2      55.7*     56.7      60.3 
+EURUSD     admirals_eu          56.3      53.3*     58.8      57.9      57.4      58.6 
+EURUSD     tickmill_eu          55.5*     55.9*     58.0      55.5*     56.4      59.8 
+EURUSD     pepperstone_eu       55.9*     56.3      58.4      55.9*     56.9      60.3 
+GBPJPY     ic_markets_eu        57.8      59.9      62.1      57.8      59.4      67.1 
+GBPJPY     admirals_eu          65.4      57.7      69.6      65.4      68.5      64.4 
+GBPJPY     tickmill_eu          58.2      59.6      62.5      58.2      59.9      66.7 
+GBPJPY     pepperstone_eu       58.9      59.9      63.2      58.9      60.7      67.1 
+XAUUSD     ic_markets_eu        51.0*     50.9*     51.6*     51.0*     51.3*     51.9*
+XAUUSD     admirals_eu          52.0*     50.7*     52.6*     52.5*     52.4*     52.3*
+XAUUSD     tickmill_eu          51.0*     50.9*     51.6*     51.0*     51.3*     51.8*
+XAUUSD     pepperstone_eu       51.1*     50.9*     51.7*     51.1*     51.4*     51.9*
+DE40       ic_markets_eu        52.0*     51.5*     53.0*     52.0*     52.6*     53.1*
+DE40       admirals_eu          51.9*     51.5*     52.8*     52.5*     52.4*     53.8*
+DE40       tickmill_eu          51.6*     51.5*     52.6*     51.6*     52.1*     53.1*
+DE40       pepperstone_eu       52.1*     51.5*     53.0*     52.1*     52.6*     53.1*
+NVDA       ic_markets_eu        62.7      61.8      63.2      62.9      64.9      64.8 
+NVDA       admirals_eu          52.3*     52.0*     52.8*     52.6*     52.7*     53.3*
+  * = unter der 56-%-Schwelle
+
+  Zahl der gruenen Instrumente je Lesart (gefordert: mindestens 3):
+    A: 4 von 6 -> GRUEN       ['DE40', 'EURUSD', 'NVDA', 'XAUUSD']
+    B: 4 von 6 -> GRUEN       ['DE40', 'EURUSD', 'NVDA', 'XAUUSD']
+    C: 3 von 6 -> GRUEN       ['DE40', 'NVDA', 'XAUUSD']
+    D: 4 von 6 -> GRUEN       ['DE40', 'EURUSD', 'NVDA', 'XAUUSD']
+    E: 3 von 6 -> GRUEN       ['DE40', 'NVDA', 'XAUUSD']
+    F: 3 von 6 -> GRUEN       ['DE40', 'NVDA', 'XAUUSD']
+
+  Ausgangslage (Lesart A): 4 gruene Instrumente ['DE40', 'EURUSD', 'NVDA', 'XAUUSD'].
+
+====================================================================================================
+ERGEBNIS: M1 = GRUEN. Bezugsgroesse: 18 rechenbare Kostenzeilen aus 6 Instrumenten x 4 Brokern.
+====================================================================================================
+[exit=0, 0s]

@@ -1,0 +1,4 @@
+$ curl -sS -o /dev/null -w '%{http_code}\n' --max-time 20 https://datafeed.dukascopy.com/datafeed/EURUSD/2024/BID_candles_day_1.bi5
+curl: (56) CONNECT tunnel failed, response 403
+000
+[exit=56]

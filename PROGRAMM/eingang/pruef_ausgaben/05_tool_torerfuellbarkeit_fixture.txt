@@ -1,0 +1,60 @@
+$ python tools/torerfuellbarkeit.py --csv tests/fixtures/smoke_eurusd_h1.csv --instrument EURUSD --timeframe H1 --kampagne 60
+==============================================================================
+ERFUELLBARKEIT DES VORREGISTRIERTEN TORS -- kein Backtest, kein Versuch
+==============================================================================
+Reihe        : EURUSD H1, 420 Bars 2023-06-04..2023-06-28
+Pruefsumme   : 944fd2409a403e517f92548151cc42cd2c64ee322ab4618cfc6b0a5855321be2
+In-Sample    : 294 Bars -- hier wird gemessen
+Out-of-Sample: 126 Bars (30%) -- nur Gegenprobe
+
+------------------------------------------------------------------------------
+1) WAS BEDINGUNG 3 VERLANGT (gelesen aus EdgeThresholds)
+------------------------------------------------------------------------------
+Mindest-Trades im OoS-Block  : 2000
+OoS-Bars                     : 126
+-> mittlere Haltedauer       : 0.06 Bars = 0.06 Handelsstunden
+OoS-Kalenderspanne           : 0.020 Jahre
+-> Trades je Jahr            : 101341
+
+------------------------------------------------------------------------------
+2) WAS BEDINGUNG 1 DARAUS MACHT
+------------------------------------------------------------------------------
+Geforderte Trade-Sharpe (annualisiert)  : 1.0
+Annualisierungsfaktor sqrt(Trades/Jahr) : 318.34
+-> noetige Sharpe JE TRADE              : 0.00314
+
+------------------------------------------------------------------------------
+2b) WAS BEDINGUNG 2 VERLANGT -- AN DERSELBEN GROESZE
+------------------------------------------------------------------------------
+Geforderte Deflated Sharpe              : > 0.95
+Beobachtungen (= min_trades)            : 2000
+Versuche der Kampagne                   : 60
+-> noetige Sharpe JE TRADE              : 0.08942
+-> dasselbe annualisiert                : 28.467  (Bedingung 1 nennt 1.0)
+
+==> BINDEND IST: Bedingung 2 (Deflation), Sharpe je Trade 0.08942
+    Bedingung 2 ist um den Faktor 28.47 strenger als Bedingung 1. Die in der
+    Doku genannte Schwelle 1.0 ist damit nicht der wirksame Anspruch.
+
+------------------------------------------------------------------------------
+3) WAS EIN TRADE KOSTET (order_roundturn_cost -- wie im Backtest)
+------------------------------------------------------------------------------
+Median-Kurs der Reihe : 1.10006
+Gehaltene Naechte     : 0 (Haltedauer unter 24 h)
+  spread        :   0.0909 bp
+  kommission    :   0.6363 bp
+  slippage      :   0.9090 bp
+  finanzierung  :   0.0000 bp
+  SUMME K       :   1.6363 bp des Nominals je Round-Turn
+
+Traceback (most recent call last):
+  File "/root/mt5-trading-ai/tools/torerfuellbarkeit.py", line 530, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "/root/mt5-trading-ai/tools/torerfuellbarkeit.py", line 403, in main
+    m_bp, s_bp, n = bewegung_bp(kurse, horizont)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/mt5-trading-ai/tools/torerfuellbarkeit.py", line 122, in bewegung_bp
+    raise TorFehler(
+TorFehler: Horizont 0 < 1 Bar -- die Mindest-Trade-Zahl verlangt mehr Trades als der Block Bars hat. Damit ist Bedingung 3 auf dieser Reihe arithmetisch unerfuellbar.
+[exit=1, 0s]

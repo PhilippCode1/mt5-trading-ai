@@ -1,0 +1,7 @@
+$ python tools/multi_instrument_edge.py --instrument EURUSD tests/fixtures/smoke_eurusd_h1.csv --ledger /tmp/claude-0/-home-claude/85b30f78-3ff6-555e-ade8-afd8ec0d28d5/scratchpad/tool_ablagen/mie_ledger.jsonl --code-commit pruefung
+=== MULTI-INSTRUMENT-EDGE (jedes einzeln durchs Sechs-Bedingungen-Tor) ===
+  EURUSD   |    2 Trades | Netto   +6.94 % | DSR 0.5444 | KEIN EDGE (offen: deflated_sharpe_beats_threshold, trade_count, consecutive_positive_folds)
+
+Instrumente mit belegtem Edge: 0 / 1
+Ergebnis: KEIN Instrument besteht -- kein Ausbau (§8.1)
+[exit=0, 0s]

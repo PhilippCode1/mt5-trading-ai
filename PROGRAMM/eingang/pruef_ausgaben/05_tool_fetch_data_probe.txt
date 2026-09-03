@@ -1,0 +1,16 @@
+$ python tools/fetch_data.py --instrument EURUSD --from-year 2024 --to-year 2024 --timeframe D1 --out /tmp/claude-0/-home-claude/85b30f78-3ff6-555e-ade8-afd8ec0d28d5/scratchpad/tool_ablagen/fetch_probe.csv --cache /tmp/claude-0/-home-claude/85b30f78-3ff6-555e-ade8-afd8ec0d28d5/scratchpad/tool_ablagen/bi5
+Dukascopy EURUSD D1 2024-2024 ...
+Traceback (most recent call last):
+  File "/root/mt5-trading-ai/tools/fetch_data.py", line 291, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/root/mt5-trading-ai/tools/fetch_data.py", line 197, in main
+    year_bars = fetch_dukascopy_year(args.instrument, year)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/mt5-trading-ai/tools/fetch_data.py", line 78, in fetch_dukascopy_year
+    raw = http_get(url)
+          ^^^^^^^^^^^^^
+  File "/root/mt5-trading-ai/tools/fetch_data.py", line 70, in http_get
+    raise DataLoadError(f"Abruf fehlgeschlagen nach {tries} Versuchen: {url} ({last})")
+mt5_trading_ai.data.loader.DataLoadError: Abruf fehlgeschlagen nach 6 Versuchen: https://datafeed.dukascopy.com/datafeed/EURUSD/2024/BID_candles_day_1.bi5 (<urlopen error Tunnel connection failed: 403 Forbidden>)
+[exit=1, 44s]

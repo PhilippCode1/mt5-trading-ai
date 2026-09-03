@@ -1,0 +1,4 @@
+$ python tools/mt5_smoke.py
+!! connect: MetaTrader5 nicht installiert (pip install MetaTrader5)
+SMOKE FEHLGESCHLAGEN
+[exit=1, 0s]

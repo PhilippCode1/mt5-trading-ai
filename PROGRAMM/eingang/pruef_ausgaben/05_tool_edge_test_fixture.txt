@@ -1,0 +1,33 @@
+$ python tools/edge_test.py --csv tests/fixtures/smoke_eurusd_h1.csv --ledger /tmp/claude-0/-home-claude/85b30f78-3ff6-555e-ade8-afd8ec0d28d5/scratchpad/tool_ablagen/edge_ledger.jsonl --strategy ma_crossover --campaign-trials 60 --code-commit pruefung
+Daten: 420 H1-Bars 2023-06-04..2023-06-28 | obs/Jahr ~ 6670 | MA(24,120), Trendfolge
+In-Sample 294 | OoS (30%) 126 Bars ab 2023-06-21 -- je Strategie einmal angefasst
+
+OoS: 1 Trades | Netto -2.94 % | Trade-Sharpe 0.000 | Bar-Sharpe -13.586 | MaxDD 3.0 % | net_over_hurdle -2.94 %
+Deflated Sharpe (Versuche im Register): 0.0000
+WF In-Sample (Netto je Fenster): [0.0, 0.0, 0.0, 0.0, 0.0]
+Zufalls-Referenz (5 Seeds) Mittel -6.6 % -> negativ=True | Leckage gefangen=True
+Versuchsregister: 6 Zeilen, unversehrt
+
+=== SECHS-BEDINGUNGEN-TOR ===
+  [NICHT ERFUELLT] oos_sharpe_after_costs: 0.0 (verlangt >= 1.0)
+  [NICHT ERFUELLT] deflated_sharpe_beats_threshold: 0.0 (verlangt > 0.95)
+  [NICHT ERFUELLT] trade_count: 1 (verlangt >= 2000)
+  [NICHT ERFUELLT] consecutive_positive_folds: 0 (verlangt >= 3)
+  [NICHT ERFUELLT] clears_cost_hurdle: -0.02943088091249503 (verlangt gross_return - hurdle > 0 (Kosten gedeckt))
+  [ERFUELLT] leakage_green_and_random_negative: {'leakage_green': True, 'random_negative': True} (verlangt beide wahr)
+
+ERGEBNIS: KEIN EDGE (nicht erfuellt: oos_sharpe_after_costs, deflated_sharpe_beats_threshold, trade_count, consecutive_positive_folds, clears_cost_hurdle)
+
+=== VOLLE KRITERIEN (Zusatz, §9.3) ===
+  [NICHT ERFUELLT] net_expectancy_positive: -0.02943088091249503
+  [NICHT ERFUELLT] annualised_sharpe: 0.0
+  [NICHT ERFUELLT] deflated_sharpe: 0.0
+  [NICHT ERFUELLT] walk_forward_folds: 0
+  [NICHT BEWERTBAR] instrument_breadth: None
+  [ERFUELLT] random_percentile: 1.0
+  [ERFUELLT] max_drawdown: 0.030300533692179867
+  [NICHT ERFUELLT] trade_count: 1
+  [NICHT ERFUELLT] cost_stress: -0.029842821702872092
+  [ERFUELLT] trial_count_honest: 6
+cost_stress bei 1.5x Kosten: net_over_hurdle -2.98 %
+[exit=0, 1s]

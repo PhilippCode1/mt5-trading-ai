@@ -1,0 +1,101 @@
+
+==============================================================================
+V1  Trockenlauf + Erkundung: _require_write-Wurf wird als 'schwebender Auftrag' + Global-Halt gelatcht
+==============================================================================
+Erkundungs-Kennung: open-EURUSD-db8ce9e09f p= 0.05
+  OK zulassung: ERKUNDUNG (p=0.05) trotz: unbekannt
+  OK signal: buy
+  OK daten-tor: ref=1.10000 spread=0.00010
+  OK hebel: eff_lev=5 (requested)
+  OK kostentor: cost_fraction=0.0002454545454545454545454545455 (2.45 bp roundturn, gemessen)
+  OK stop-preis: 24.5bps -> stop=1.09730
+  OK limits: Kill-Switch: NORMAL
+  OK evaluation: Drossel: ausgewaehlt
+  OK stop-budget: [24.5, 333.3]bps (Kosten 2.45bp gemessen)
+  OK sizing: volume=0.09
+  OK margen-deckel: nicht bindend
+  !! submit: Real-Terminal: Schreibpfad gesperrt (allow_write=False). Erst gegen ein Demo-Terminal smok
+reject_reason: submit_rejected
+venue.is_halted(): True | halt_reason: sendeversuch_unklar:open-EURUSD-db8ce9e09f
+Schwebeakte auf Platte: {
+  "fassung": 1,
+  "eintraege": [
+    {
+      "client_order_id": "open-EURUSD-db8ce9e09f",
+      "grund": "VenueUnavailableError: Real-Terminal: Schreibpfad gesperrt (allow_write=False). Erst gegen ein Demo-Terminal smoke-testen, dann bewusst freigeben.",
+      "seit": "2026-08-11T12:00:00+00:00",
+      "symbol": "EURUSD"
+    }
+  ]
+}
+-> naechste Eroeffnung (auch nach clear_halt):
+   OrderRejectedError schwebender_auftrag Ungeklaerter Sendeversuch -- beim Broker nachsehen und aufloesen: open-EURUSD-db8ce9e09f
+
+==============================================================================
+V2  RealMt5Terminal.order_send: Reduce-Only ohne passende Position -> Marktorder OHNE 'position' geht raus
+==============================================================================
+gesendeter Request: {'action': 1, 'symbol': 'EURUSD', 'volume': 0.1, 'type': 1, 'price': 1.0999, 'sl': 0.0, 'deviation': 20, 'type_time': 0, 'type_filling': 0, 'comment': 'close-EURUSD-abc'}
+'position' im Request? False | sl = 0.0
+Mt5SendResult.accepted = True filled = 0.1
+
+==============================================================================
+V2b RealMt5Terminal.modify_stops: Request ohne 'symbol'; nur-SL-Aufruf schickt kein 'tp'
+==============================================================================
+SLTP-Request: {'action': 6, 'position': 777, 'sl': 1.09}
+
+==============================================================================
+V3  Positionsgroesse ohne Waehrungsumrechnung (Konto USD, Instrument EURGBP, Notierung GBP)
+==============================================================================
+volume=0.39  risk_currency(USD)=50.000  Verlust am Stop = 49.72 GBP = 63.15 USD (+26 % ueber Budget)
+USDJPY auf USD-Konto: volume = None reasons = ('below_volume_min',) (korrekt waeren ~ 0.17 Lot)
+
+==============================================================================
+V3b Hebelklammer: effektiver Hebel je Klasse ohne requested_leverage (Betriebsfall)
+==============================================================================
+  fx_major             class_cap= 30 -> effektiv=5 (requested)
+  fx_minor             class_cap= 20 -> effektiv=5 (requested)
+  gold                 class_cap= 20 -> effektiv=5 (requested)
+  index_major          class_cap= 20 -> effektiv=5 (requested)
+  index_minor          class_cap= 10 -> effektiv=5 (requested)
+  commodity_non_gold   class_cap= 10 -> effektiv=5 (requested)
+  equity               class_cap=  5 -> effektiv=5 (class_cap)
+  crypto               class_cap=  2 -> effektiv=2 (class_cap)
+
+==============================================================================
+V3c leverage_preflight USDJPY (USD-Konto, 0,01 Lot, margin_free 5000 USD)
+==============================================================================
+approved = False reason = insufficient_margin required_margin = 30000.00 (echte Marge bei 1:30 = 0,01*100000/30 = 33 USD)
+
+==============================================================================
+V4  reconcile() ueberschreibt einen fremden Halt-Grund; live_betrieb loest 'reconcile_drift*'
+==============================================================================
+vorher: tagesverlust
+nach reconcile(): reconcile_drift:notional_drift_exceeds_limit | startswith('reconcile_drift') = True
+
+==============================================================================
+V5  Geisterpositionen: Zustand mit 3 offenen Positionen, Broker hat sie im Stillstand geschlossen
+==============================================================================
+Datei offene_positionen: [{'eroeffnet_am': '2026-08-09T12:00:00+00:00', 'instrument': 'EURUSD'}, {'eroeffnet_am': '2026-08-09T12:00:00+00:00', 'instrument': 'GBPUSD'}, {'eroeffnet_am': '2026-08-09T12:00:00+00:00', 'instrument': 'XAUUSD'}]
+open_position_count nach Neustart: 3 | approved: False | reason: risk_concurrent_position_cap
+
+==============================================================================
+V6  SchwebeAkte: vermerken() auf defekter Akte verwirft die unlesbaren Eintraege dauerhaft
+==============================================================================
+vorher: eintraege = ['open-A', 'open-B'] | sperrgrund = schwebeakte_defekt: Eintrag open-B unvollstaendig
+nachher: eintraege = ['open-A', 'open-B', 'open-D'] | sperrgrund = None | 'open-C' noch da? False
+
+==============================================================================
+V7  submit_order-except-Zweig: scheitert vermerken() (OSError), bleibt _halted False
+==============================================================================
+Ausnahme nach aussen: OSError - [Errno 28] No space left on device
+venue.is_halted(): False | unklare_sendeversuche: {'open-EURUSD-z': 'TimeoutError: Antwort blieb aus'}
+
+==============================================================================
+V8  kennmarke: Groesse der magic-Zahl
+==============================================================================
+magic = 1041574110080518917 | bits = 60 | > 2^32: True | > 2^53: True
+
+==============================================================================
+V9  _fuellart: Bitmaske 4 wird als ORDER_FILLING_RETURN gedeutet
+==============================================================================
+filling_mode=4 -> 2 (MT5: Bit 4 = SYMBOL_FILLING_BOC, ORDER_FILLING_BOC=3)

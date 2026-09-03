@@ -1,0 +1,5 @@
+$ python tools/modelllauf.py --ablage /tmp/claude-0/-home-claude/85b30f78-3ff6-555e-ade8-afd8ec0d28d5/scratchpad/tool_ablagen/modell --lesen
+Ablage: /tmp/claude-0/-home-claude/85b30f78-3ff6-555e-ade8-afd8ec0d28d5/scratchpad/tool_ablagen/modell
+  gelesen   : 0
+  verworfen : 0
+[exit=0, 0s]

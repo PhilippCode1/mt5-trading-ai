@@ -1,0 +1,4 @@
+$ python tools/atr_messung.py --check
+ok — atr_measurements.json ladbar: 6 von 7 Instrumenten gemessen.
+  nicht gemessen: BTCUSD — Symbol 'BTCUSD' auf dem erreichbaren Terminal nicht vorhanden
+[exit=0, 0s]

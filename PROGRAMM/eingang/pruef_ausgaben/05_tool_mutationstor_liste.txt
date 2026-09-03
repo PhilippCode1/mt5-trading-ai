@@ -1,0 +1,35 @@
+$ python tools/mutationstor.py --liste
+16 Sonden:
+   1. reduce-only-sperre         mt5_trading_ai/venue/mt5.py
+      Der Risikoabbau laeuft durch die Eroeffnungstore (V5-Verstosz).
+   2. kontopruefung              mt5_trading_ai/venue/mt5.py
+      Leere Kontodaten stuerzen wieder ab, statt mit Grund abzulehnen.
+   3. schwebender-auftrag        mt5_trading_ai/venue/mt5.py
+      Nach einem Sendeversuch ohne Antwort wird weiter eroeffnet.
+   4. schwebeakte-fluechtig      mt5_trading_ai/execution/schwebende_auftraege.py
+      Ein ungeklaerter Auftrag ueberlebt den Neustart nicht mehr.
+   5. aufloesung-ohne-befund     mt5_trading_ai/execution/schwebende_auftraege.py
+      Ein schwebender Auftrag laesst sich ohne Nachsehen abraeumen.
+   6. ueberlappung               mt5_trading_ai/gates/herausforderer.py
+      Fuenfmal dieselbe Marktbewegung zaehlt wieder als fuenf Belege.
+   7. mindestmenge               mt5_trading_ai/gates/herausforderer.py
+      Acht Parameter lassen sich wieder aus drei Trades schaetzen.
+   8. schemahash                 mt5_trading_ai/gates/herausforderer.py
+      Ein Artefakt aus einer anderen Feldwelt wird still gedeutet.
+   9. erkundung-positivliste     mt5_trading_ai/gates/erkundung.py
+      Jede Sicherheitssperre wird erkundbar -- auch der Global-Halt.
+  10. erkundung-echtgeld         mt5_trading_ai/gates/erkundung.py
+      Erkundet wird mit echtem Geld.
+  11. gewichtung                 mt5_trading_ai/gates/erkundung.py
+      Erkundete Beobachtungen wiegen wie regulaere.
+  12. kostenpraemisse            mt5_trading_ai/execution/risk_manager.py
+      Die Kostenschwelle misst wieder ihre eigene Ausgabe (V2).
+  13. stop-kostenboden           mt5_trading_ai/risk/stop_budget.py
+      Die Stop-Untergrenze halbiert sich; Kosten fressen mehr vom Rand.
+  14. margen-obergrenze          mt5_trading_ai/risk/stop_budget.py
+      Der Abstand zum Margin-Close-out schrumpft fast auf null.
+  15. geschlossene-kerze         mt5_trading_ai/venue/protocol.py
+      Auf der noch offenen Kerze wird gerechnet (Leckage).
+  16. journal-zeitstempel        tools/live_betrieb.py
+      Das Betriebsprotokoll wirft wieder bei eingefrorener Uhr (F-008).
+[exit=0, 0s]

@@ -1,0 +1,13 @@
+T=   59: noetige Sharpe je Trade fuer DSR>0,95 bei N=60: 0.5641  = annualisiert 4.57
+T=  123: noetige Sharpe je Trade fuer DSR>0,95 bei N=60: 0.3737  = annualisiert 4.37
+T= 2000: noetige Sharpe je Trade fuer DSR>0,95 bei N=60: 0.0894  = annualisiert 4.22
+
+Passwahrscheinlichkeit (Monte-Carlo, 3000 Wiederholungen je Zeile, T=2000 Trades, 0,9 Jahre OoS, N=60):
+wahre ann. Sharpe | P(Bed.1: ann>=1,0) | P(Bed.2: DSR>0,95) | P(beide)
+              0.0 |              17.0% |               0.0% |     0.0%
+              0.5 |              33.2% |               0.0% |     0.0%
+              1.0 |              50.2% |               0.1% |     0.1%
+              2.0 |              82.3% |               1.5% |     1.5%
+              3.0 |              97.2% |              12.1% |    12.1%
+              4.0 |              99.8% |              41.7% |    41.7%
+              5.0 |             100.0% |              78.9% |    78.9%

@@ -1,0 +1,17 @@
+Collecting detect-secrets
+  Downloading detect_secrets-1.5.0-py3-none-any.whl.metadata (23 kB)
+Collecting coverage
+  Downloading coverage-7.16.0-cp311-cp311-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl.metadata (8.6 kB)
+Requirement already satisfied: pyyaml in /usr/local/lib/python3.11/dist-packages (from detect-secrets) (6.0.3)
+Requirement already satisfied: requests in /root/.local/lib/python3.11/site-packages (from detect-secrets) (2.33.1)
+Requirement already satisfied: charset_normalizer<4,>=2 in /root/.local/lib/python3.11/site-packages (from requests->detect-secrets) (3.4.7)
+Requirement already satisfied: idna<4,>=2.5 in /root/.local/lib/python3.11/site-packages (from requests->detect-secrets) (3.13)
+Requirement already satisfied: urllib3<3,>=1.26 in /root/.local/lib/python3.11/site-packages (from requests->detect-secrets) (2.6.3)
+Requirement already satisfied: certifi>=2023.5.7 in /root/.local/lib/python3.11/site-packages (from requests->detect-secrets) (2026.4.22)
+Downloading detect_secrets-1.5.0-py3-none-any.whl (120 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 120.3/120.3 kB 26.2 MB/s eta 0:00:00
+Downloading coverage-7.16.0-cp311-cp311-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl (255 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 255.8/255.8 kB 37.9 MB/s eta 0:00:00
+Installing collected packages: coverage, detect-secrets
+Successfully installed coverage-7.16.0 detect-secrets-1.5.0
+WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv

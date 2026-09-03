@@ -1,0 +1,29 @@
+$ python tools/auswertung.py --journal aufzeichnungen/demo-2026-08-17.jsonl
+==========================================================================
+AUSWERTUNG MIT HERKUNFTSSPALTE
+==========================================================================
+Quelle : aufzeichnungen/demo-2026-08-17.jsonl
+Zeilen : 4343
+  gefahren         32  ( 0.74 %)
+  erkundet          0  ( 0.00 %)
+  abgelehnt      4311  (99.26 %)
+
+Handelsquote (trade_rate)    : 0.74 % der Bewertungen
+Zeilen MIT Ergebnis          : 11
+Anteil erkundender Beobachtungen: 0.00 %
+Gewichteter Mittelwert       : 2.5950
+
+Ablehnungsgruende -- die Zeilen, ueber die es sonst nichts gaebe:
+  cost_unverifiable                                2258
+  throttle_instrument_daily_cap                     828
+  Trade disabled (retcode=10017)                    753
+  risk_concurrent_position_cap                      376
+  throttle_cooldown_active                           58
+  strategy_not_admitted                              21
+  AutoTrading disabled by client                      5
+  Unsupported filling mode                            4
+  No money                                            3
+  insufficient_margin                                 3
+  Done                                                1
+  Done (retcode=0)                                    1
+[exit=0, 0s]

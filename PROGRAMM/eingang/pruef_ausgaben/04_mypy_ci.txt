@@ -1,0 +1,5 @@
+tools/live_betrieb.py:749: error: Unused "type: ignore" comment  [unused-ignore]
+tools/live_betrieb.py:749: error: Cannot find implementation or library stub for module named "MetaTrader5"  [import-not-found]
+tools/live_betrieb.py:749: note: Error code "import-not-found" not covered by "type: ignore" comment
+tools/live_betrieb.py:749: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+Found 2 errors in 1 file (checked 81 source files)

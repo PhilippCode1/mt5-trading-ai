@@ -1,0 +1,435 @@
+################ python tools/atr_messung.py --help
+usage: atr_messung.py [-h] [--check] [--monate MONATE]
+
+ATR(14) auf H1 ueber den lesenden MT5-Demo-Pfad messen.
+
+options:
+  -h, --help       show this help message and exit
+  --check          nur die vorhandene Messdatei laden und pruefen (ohne
+                   Terminal)
+  --monate MONATE  Fensterlaenge in Monaten (Default 12)
+[exit=0]
+
+################ python tools/aufloesung.py --help
+usage: aufloesung.py [-h] [--check] [--gegenprobe CSV]
+
+A1: Historientiefe, Herkunft und Fensterstreuung messen.
+
+options:
+  -h, --help        show this help message and exit
+  --check           die vorhandene Datei Zeile fuer Zeile nachrechnen (ohne
+                    MT5)
+  --gegenprobe CSV  Terminal-Feed gegen eine Dukascopy-CSV halten (A1.2)
+[exit=0]
+
+################ python tools/aufzeichnung_redigieren.py --help
+usage: aufzeichnung_redigieren.py [-h] [--pruefen]
+
+Betriebsjournale zu redigierten Aufzeichnungen machen -- einchecken statt
+erzaehlen. WARUM ----- Stufe 5 des Auftrags verlangt Ausfuehrungserfahrung
+**gegen die Demoumgebung**, „als redigierte Aufzeichnungen einchecken", und in
+der Abnahme: *„mindestens eine echte, aufgezeichnete Antwort des
+Handelsplatzes liegt im Repo"*. Die Antworten existierten bereits -- 21
+Journale mit 17.166 Saetzen aus einem echten Demolauf am 2026-08-17. Sie lagen
+nur nicht **im Repo**: ``/betrieb/`` steht in ``.gitignore``, und das aus
+gutem Grund (Laufzeitdatenhalde, taeglich neu). Dieses Werkzeug schlaegt die
+Bruecke: es liest die Journale und schreibt eine redigierte, verkleinerte
+Fassung nach ``aufzeichnungen/``, die eingecheckt wird. WAS REDIGIERT WIRD --
+UND WIE ----------------------------- Ersetzt werden **fortlaufend
+nummeriert**, nicht gehasht:: konto -> KONTO-1 order_id -> ORDER-0001
+position_id -> POSITION-01 client_order_id -> KENNUNG-0001 lauf -> LAUF-01
+pfad -> <pfad entfernt> Die Nummerierung ist **nicht umkehrbar**: es gibt kein
+Salz, keinen Schluessel und keine gespeicherte Zuordnung. Ein Hash waere die
+schlechtere Wahl -- eine Kontonummer hat so wenig Entropie, dass ein Hash
+davon in Sekunden zurueckgerechnet ist, und ein gesalzener Hash braeuchte ein
+Salz, das irgendwo liegen muss. Die laufende Nummer loest beides: sie haelt
+gleiche Werte gleich (die Aufzeichnung bleibt lesbar) und traegt nichts vom
+Original in sich. Erhalten bleiben Preise, Volumina, Zeitstempel, Symbole,
+Gruende und Fehlertexte des Handelsplatzes. Das ist der Inhalt, um
+dessentwillen die Aufzeichnung existiert. WAS WEGGELASSEN WIRD -- UND WARUM ES
+DASTEHT -------------------------------------------- Drei Satzarten machen den
+Grossteil des Umfangs aus und tragen keine Auskunft ueber eine Entscheidung:
+``kurs``, ``signal`` und ``takt``. Sie werden weggelassen.
+``eroeffnungsversuch`` wurde in der ersten Fassung ebenfalls weggelassen --
+ein Fehler, der erst in Stufe 7 auffiel und dort korrigiert wurde. Begruendung
+an :data:`BEHALTEN`. **Die Zahl der weggelassenen Saetze steht je Art im Kopf
+jeder Datei.** Eine stille Verkleinerung waere eine Aufzeichnung, die
+vollstaendig aussieht und es nicht ist -- und genau das soll eine Aufzeichnung
+nicht koennen. Aufruf:: python tools/aufzeichnung_redigieren.py # schreibt
+aufzeichnungen/ python tools/aufzeichnung_redigieren.py --pruefen # meldet nur
+Abweichungen
+
+options:
+  -h, --help  show this help message and exit
+  --pruefen   nur melden, nichts schreiben (Rueckgabe 1 bei Abweichung)
+[exit=0]
+
+################ python tools/auswertung.py --help
+usage: auswertung.py [-h] --journal JOURNAL [--csv CSV]
+
+Auswertung mit Herkunftsspalte
+
+options:
+  -h, --help         show this help message and exit
+  --journal JOURNAL
+  --csv CSV
+[exit=0]
+
+################ python tools/betrieb_auswerten.py --help
+/root/mt5-trading-ai/betrieb/--help gibt es nicht.
+[exit=1]
+
+################ python tools/betrieb_reihe.py --help
+usage: betrieb_reihe.py [-h] [--verzeichnis VERZEICHNIS] [--nur-scharf]
+
+Alle Betriebslaeufe hintereinander
+
+options:
+  -h, --help            show this help message and exit
+  --verzeichnis VERZEICHNIS
+  --nur-scharf          Trockenlaeufe auslassen
+[exit=0]
+
+################ python tools/check_doc_numbers.py --help
+ok - Code: 42 Module, 1409 Testfunktionen, 16835 Quellzeilen; Doku widerspruchsfrei.
+[exit=0]
+
+################ python tools/check_docs_claims.py --help
+ok - 31/32 gezaehlte Markdown-Dateien (+25 in AUFTRAG/, auf Behauptungen geprueft, nicht gezaehlt), keine Zusicherung ohne Beleg
+[exit=0]
+
+################ python tools/dienstguete.py --help
+usage: dienstguete.py [-h] [--journal JOURNAL] [--alarmdatei ALARMDATEI]
+
+Dienstgueteziele und Alarme
+
+options:
+  -h, --help            show this help message and exit
+  --journal JOURNAL
+  --alarmdatei ALARMDATEI
+[exit=0]
+
+################ python tools/edge_test.py --help
+Traceback (most recent call last):
+  File "/root/mt5-trading-ai/tools/edge_test.py", line 268, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/root/mt5-trading-ai/tools/edge_test.py", line 104, in main
+    args = ap.parse_args()
+           ^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.11/argparse.py", line 1886, in parse_args
+    args, argv = self.parse_known_args(args, namespace)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.11/argparse.py", line 1919, in parse_known_args
+    namespace, args = self._parse_known_args(args, namespace)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.11/argparse.py", line 2140, in _parse_known_args
+    start_index = consume_optional(start_index)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.11/argparse.py", line 2080, in consume_optional
+    take_action(action, args, option_string)
+  File "/usr/lib/python3.11/argparse.py", line 1995, in take_action
+    action(self, namespace, argument_values, option_string)
+  File "/usr/lib/python3.11/argparse.py", line 1134, in __call__
+    parser.print_help()
+  File "/usr/lib/python3.11/argparse.py", line 2623, in print_help
+    self._print_message(self.format_help(), file)
+                        ^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.11/argparse.py", line 2607, in format_help
+    return formatter.format_help()
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.11/argparse.py", line 299, in format_help
+    help = self._root_section.format_help()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.11/argparse.py", line 229, in format_help
+    item_help = join([func(*args) for func, args in self.items])
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.11/argparse.py", line 229, in <listcomp>
+    item_help = join([func(*args) for func, args in self.items])
+                      ^^^^^^^^^^^
+  File "/usr/lib/python3.11/argparse.py", line 229, in format_help
+    item_help = join([func(*args) for func, args in self.items])
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.11/argparse.py", line 229, in <listcomp>
+    item_help = join([func(*args) for func, args in self.items])
+                      ^^^^^^^^^^^
+  File "/usr/lib/python3.11/argparse.py", line 558, in _format_action
+    help_text = self._expand_help(action)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.11/argparse.py", line 655, in _expand_help
+    return self._get_help_string(action) % params
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~
+ValueError: unsupported format character 'v' (0x76) at index 53
+[exit=1]
+
+################ python tools/ereignisstudie.py --help
+usage: ereignisstudie.py [-h] [--selbsttest] [--kandidat KANDIDAT]
+                         [--instrument INSTRUMENT] [--alle]
+
+Ereignisstudie (Paket 3a)
+
+options:
+  -h, --help            show this help message and exit
+  --selbsttest          synthetische Reihe, registriert KEINEN Versuch
+  --kandidat KANDIDAT
+  --instrument INSTRUMENT
+  --alle                alle Kandidaten des Feldes
+[exit=0]
+
+################ python tools/fetch_data.py --help
+usage: fetch_data.py [-h]
+                     [--instrument {AUDUSD,EURGBP,EURJPY,EURUSD,GBPJPY,GBPUSD,NZDUSD,USDCAD,USDCHF,USDJPY}]
+                     --from-year FROM_YEAR --to-year TO_YEAR
+                     [--timeframe {D1,H1}] --out OUT [--cache CACHE]
+
+Historische Bars laden + Gegenprobe
+
+options:
+  -h, --help            show this help message and exit
+  --instrument {AUDUSD,EURGBP,EURJPY,EURUSD,GBPJPY,GBPUSD,NZDUSD,USDCAD,USDCHF,USDJPY}
+  --from-year FROM_YEAR
+  --to-year TO_YEAR
+  --timeframe {D1,H1}
+  --out OUT
+  --cache CACHE         Verzeichnis fuer die rohen .bi5-Dateien (spart Abrufe
+                        beim Wiederanlauf)
+[exit=0]
+
+################ python tools/geheimnis_scan.py --help
+==========================================================================================
+GEHEIMNISPRUEFUNG — Paket 2, A4.4
+==========================================================================================
+Repo: /root/mt5-trading-ai
+
+------------------------------------------------------------------------------------------
+1) ARBEITSBAUM — detect-secrets (alle eingebauten Detektoren)
+------------------------------------------------------------------------------------------
+FEHLGESCHLAGEN: /usr/bin/python: No module named detect_secrets
+
+[exit=2]
+
+################ python tools/gen_docs.py --help
+usage: gen_docs.py [-h] [--check]
+
+MODULES.md aus dem Code erzeugen.
+
+options:
+  -h, --help  show this help message and exit
+  --check     nur pruefen, nicht schreiben
+[exit=0]
+
+################ python tools/journal_sichern.py --help
+usage: journal_sichern.py [-h] --ziel ZIEL [--pruefen]
+
+Betriebsjournale sichern und pruefen
+
+options:
+  -h, --help   show this help message and exit
+  --ziel ZIEL  Verzeichnis der Sicherung, ausserhalb des Repos
+  --pruefen    nur die Pruefsummen einer vorhandenen Sicherung vergleichen
+[exit=0]
+
+################ python tools/kopien_abgleichen.py --help
+usage: kopien_abgleichen.py [-h] [--pruefen]
+
+Zieht die Dokumentkopien des Abschlussordners an ihren Originalen nach. Der
+Abschlussordner muss in sich geschlossen sein, darum liegen einzelne Dokumente
+dort ein zweites Mal. Jede dieser Kopien traegt im Kopf die Zusicherung:: <!--
+Wortgleiche Kopie von ALPHA.md (...). --> Diese Zusicherung war nachweislich
+nicht selbsttragend: ``ABSCHLUSS/04-ALPHA.md`` bezeichnete sich als wortgleich
+und wich um 311 Zeilen ab -- der Abschlussordner gab zur Kernfrage des
+Vorhabens zwei einander widersprechende Antworten, von denen eine sich selbst
+als identisch mit der anderen bezeichnete. Dieses Werkzeug schreibt; geprueft
+wird in ``tools/check_doc_numbers.py``. Beide benutzen dieselbe Zerlegung aus
+diesem Modul, damit die Regel nicht zweimal im Haus steht -- genau die
+Fehlerklasse, gegen die dieses Repo an mehreren Stellen anlaeuft. Aufruf::
+python tools/kopien_abgleichen.py # schreibt python tools/kopien_abgleichen.py
+--pruefen # meldet nur, aendert nichts
+
+options:
+  -h, --help  show this help message and exit
+  --pruefen   nur melden, nichts schreiben (Rueckgabe 1 bei Abweichung)
+[exit=0]
+
+################ python tools/kostentor.py --help
+usage: kostentor.py [-h] [--kurz]
+
+Kostentor: erforderliche Trefferquote und Jahreskostenlast.
+
+options:
+  -h, --help  show this help message and exit
+  --kurz      nur die Urteilstabelle
+[exit=0]
+
+################ python tools/live_betrieb.py --help
+usage: live_betrieb.py [-h] [--dauer DAUER] [--takt TAKT] [--symbol SYMBOL]
+                       [--max-haltedauer MAX_HALTEDAUER]
+                       [--scharf BEGRUENDUNG] [--verlustgrenze PROZENT]
+                       [--am-ende-offen-lassen]
+
+Demo-Handelsbetrieb (nur Demokonto)
+
+options:
+  -h, --help            show this help message and exit
+  --dauer DAUER         Laufzeit in Stunden
+  --takt TAKT           Sekunden je Takt
+  --symbol SYMBOL
+  --max-haltedauer MAX_HALTEDAUER
+                        Hoechste Haltedauer je Position in Stunden
+  --scharf BEGRUENDUNG  Die §9.3-Zulassung uebergehen und WIRKLICH handeln.
+                        Begruendung ist Pflicht und geht ins Journal.
+  --verlustgrenze PROZENT
+                        Bei diesem Verlust seit Laufbeginn wird glattgestellt
+                        und der Lauf beendet (Vorgabe 2 %)
+  --am-ende-offen-lassen
+                        Positionen am Ende NICHT glattstellen (Vorgabe:
+                        schliessen)
+[exit=0]
+
+################ python tools/live_konsole.py --help
+usage: live_konsole.py [-h] [--symbol SYMBOL] [--takt TAKT] [--takte TAKTE]
+                       [--leit LEIT] [--vorfuehrung]
+
+Live-Konsole gegen das MT5-Demokonto (nur lesend)
+
+options:
+  -h, --help       show this help message and exit
+  --symbol SYMBOL  Instrument, mehrfach angebbar (Vorgabe: ganzer Katalog)
+  --takt TAKT      Sekunden je Takt
+  --takte TAKTE    Anzahl Takte (0 = endlos)
+  --leit LEIT      Instrument fuer Signal und Kette (Vorgabe: EURUSD)
+  --vorfuehrung    Platzhalter-Zulassung hereinreichen, damit die uebrigen
+                   Sperren sichtbar arbeiten. AENDERT NICHTS am Schreibschutz.
+[exit=0]
+
+################ python tools/modelllauf.py --help
+usage: modelllauf.py [-h] [--journal JOURNAL] --ablage ABLAGE [--lesen]
+                     [--strategy-id STRATEGY_ID] [--base-version BASE_VERSION]
+                     [--data-checksum DATA_CHECKSUM]
+                     [--code-commit CODE_COMMIT]
+
+Trainingslauf des Modellpfads
+
+options:
+  -h, --help            show this help message and exit
+  --journal JOURNAL
+  --ablage ABLAGE
+  --lesen               nur die Ablage anzeigen
+  --strategy-id STRATEGY_ID
+  --base-version BASE_VERSION
+  --data-checksum DATA_CHECKSUM
+  --code-commit CODE_COMMIT
+[exit=0]
+
+################ python tools/mt5_smoke.py --help
+usage: mt5_smoke.py [-h] [--symbol SYMBOL] [--allow-write] [--login LOGIN]
+                    [--server SERVER] [--path PATH]
+
+Demo-Smoke-Test der MT5-Bindung
+
+options:
+  -h, --help       show this help message and exit
+  --symbol SYMBOL
+  --allow-write    winzige Demo-Order platzieren und sofort schliessen (nur
+                   Demokonto)
+  --login LOGIN    Kontonummer
+  --server SERVER
+  --path PATH      Pfad zur terminal64.exe
+[exit=0]
+
+################ python tools/multi_instrument_edge.py --help
+usage: multi_instrument_edge.py [-h] --instrument SYMBOL CSV --ledger LEDGER
+                                [--data-checksum DATA_CHECKSUM]
+                                [--code-commit CODE_COMMIT]
+
+Multi-Instrument-Edge (Paket 5, §8.1)
+
+options:
+  -h, --help            show this help message and exit
+  --instrument SYMBOL CSV
+                        Symbol und CSV-Pfad; mehrfach fuer mehrere Instrumente
+  --ledger LEDGER
+  --data-checksum DATA_CHECKSUM
+  --code-commit CODE_COMMIT
+[exit=0]
+
+################ python tools/mutationstor.py --help
+usage: mutationstor.py [-h] [--liste] [--sonde SONDE]
+
+Mutationstor auf dem Geldpfad
+
+options:
+  -h, --help     show this help message and exit
+  --liste        nur den Katalog zeigen
+  --sonde SONDE  nur diese Sonde (1-basiert)
+[exit=0]
+
+################ python tools/oberflaeche.py --help
+usage: oberflaeche.py [-h] [--port PORT] [--kein-browser] [--takt TAKT]
+
+Lesende Oberflaeche (nur lokal)
+
+options:
+  -h, --help      show this help message and exit
+  --port PORT
+  --kein-browser
+  --takt TAKT     Sekunden zwischen zwei Sammellaeufen (Vorgabe 5)
+[exit=0]
+
+################ python tools/paper_run.py --help
+usage: paper_run.py [-h] [--symbol SYMBOL]
+
+Paper-Run: volle Kette + Checkliste
+
+options:
+  -h, --help       show this help message and exit
+  --symbol SYMBOL
+[exit=0]
+
+################ python tools/torerfuellbarkeit.py --help
+usage: torerfuellbarkeit.py [-h] --csv CSV [--instrument INSTRUMENT]
+                            [--timeframe TIMEFRAME] [--kampagne KAMPAGNE]
+
+Erfuellbarkeit des Sechs-Bedingungen-Tors
+
+options:
+  -h, --help            show this help message and exit
+  --csv CSV
+  --instrument INSTRUMENT
+  --timeframe TIMEFRAME
+  --kampagne KAMPAGNE   Zahl der vorregistrierten Kampagnenversuche fuer die
+                        Deflation (ABBRUCH.md §2; dieselbe Zahl, die edge_test
+                        als --campaign-trials bekommt)
+[exit=0]
+
+################ python tools/torzaehlung.py --help
+usage: torzaehlung.py [-h] [--journal JOURNAL]
+
+Tore ohne Ausloesung melden
+
+options:
+  -h, --help         show this help message and exit
+  --journal JOURNAL
+[exit=0]
+
+################ python tools/wiederanlaufprobe.py --help
+usage: wiederanlaufprobe.py [-h] [--behalten]
+
+Geprobter Wiederanlauf
+
+options:
+  -h, --help  show this help message and exit
+  --behalten  den Probeordner nicht loeschen
+[exit=0]
+
+################ python tools/zweigdeckung.py --help
+usage: zweigdeckung.py [-h] [--messen] [--bericht BERICHT]
+
+Zweigdeckungstor auf dem Geldpfad
+
+options:
+  -h, --help         show this help message and exit
+  --messen           erst die Suite unter coverage fahren
+  --bericht BERICHT
+[exit=0]
+

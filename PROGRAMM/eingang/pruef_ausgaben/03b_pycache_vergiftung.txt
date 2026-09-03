@@ -1,0 +1,36 @@
+# Nachweis: vergifteter Bytecode nach dem Mutationstor (git-Baum sauber)
+$ git status --short  ->  '' (leer = sauber)
+$ sha256sum mt5_trading_ai/risk/stop_budget.py
+d7ae1c15f280534d26300d14e2cca79580f5bab3d16456c5febb80f8cdcf6edd  mt5_trading_ai/risk/stop_budget.py
+$ git show HEAD:mt5_trading_ai/risk/stop_budget.py | sha256sum
+d7ae1c15f280534d26300d14e2cca79580f5bab3d16456c5febb80f8cdcf6edd  -
+$ grep -n 'return cost_bps /' mt5_trading_ai/risk/stop_budget.py
+242:    return cost_bps / (2 * max_cost_drag)
+$ ls -la --time-style=full-iso mt5_trading_ai/risk/__pycache__/
+total 64
+drwxr-xr-x 2 root root  4096 2026-09-02 15:35:04.578248126 +0000 .
+drwxr-xr-x 3 root root  4096 2026-09-02 15:33:50.438717118 +0000 ..
+-rw-r--r-- 1 root root   161 2026-09-02 15:33:50.442792268 +0000 __init__.cpython-311.pyc
+-rw-r--r-- 1 root root 11474 2026-09-02 15:33:50.444552383 +0000 leverage.cpython-311.pyc
+-rw-r--r-- 1 root root  8767 2026-09-02 15:33:50.739950471 +0000 limits.cpython-311.pyc
+-rw-r--r-- 1 root root  9983 2026-09-02 15:33:50.743871074 +0000 sizing.cpython-311.pyc
+-rw-r--r-- 1 root root 15193 2026-09-02 15:35:04.578248126 +0000 stop_budget.cpython-311.pyc
+$ stat -c '%y %s %n' mt5_trading_ai/risk/stop_budget.py
+2026-09-02 15:35:04.989671930 +0000 16200 mt5_trading_ai/risk/stop_budget.py
+$ python -c "import importlib.util,sys; ..." (pyc-Header: mtime/size der Quelle, die der Cache zu kennen glaubt)
+pyc-Header: flags=0 src_mtime=1788363304 (2026-09-02T15:35:04Z) src_size=16200
+Quelle jetzt: mtime=1788363304 (2026-09-02T15:35:04Z) size=16200
+=> Cache gilt als gueltig: True
+$ python -c 'from mt5_trading_ai.risk.stop_budget import cost_floor_bps; from decimal import Decimal; print(cost_floor_bps(Decimal("0.65")))'  (MIT Cache)
+3.25
+$ python -B -c ... mit PYTHONPYCACHEPREFIX auf leeres Verzeichnis (OHNE den vorhandenen Cache)
+6.5
+$ python -m dis-Vergleich: Konstante im Cache-Bytecode von cost_floor_bps
+cost_floor_bps co_consts im Cache: [0, 4]
+
+# Alle __pycache__/*.pyc unter mt5_trading_ai/ und tools/ gegen frischen Compile der Quelle
+ABWEICHUNG  mt5_trading_ai/risk/__pycache__/stop_budget.cpython-311.pyc  pyc-mtime=1788363304 src-mtime=1788363304 size=16200/16200
+ABWEICHUNG  tools/__pycache__/edge_test.cpython-311-pytest-8.3.4.pyc  pyc-mtime=1788363027 src-mtime=1788363027 size=11330/11330
+2 von 73 pyc-Dateien weichen vom frischen Compile der (git-sauberen) Quelle ab:
+    mt5_trading_ai/risk/stop_budget.py
+    tools/edge_test.py

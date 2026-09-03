@@ -1,0 +1,442 @@
+........................................................................ [  4%]
+.........s.............................................................. [  8%]
+......................s....s............................................ [ 13%]
+........................................................................ [ 17%]
+........................................................................ [ 22%]
+........................................................................ [ 26%]
+........................................................................ [ 31%]
+........s...............................................F............... [ 35%]
+................................................................F...ssss [ 39%]
+sss.s................................................................... [ 44%]
+........................................................................ [ 48%]
+........................................................................ [ 53%]
+........................................................................ [ 57%]
+........................................................................ [ 62%]
+................................................F....................... [ 66%]
+........................................................................ [ 70%]
+F...........F........................................................... [ 75%]
+.............................FF...FF.F.....F.........FFFF..F.......FF..F [ 79%]
+........................................................................ [ 84%]
+........................................................................ [ 88%]
+........................................................................ [ 93%]
+........................................................................ [ 97%]
+.......................................                                  [100%]
+=================================== FAILURES ===================================
+____________ test_die_ausgabe_stimmt_zeile_fuer_zeile_mit_dem_beleg ____________
+
+capsys = <_pytest.capture.CaptureFixture object at 0x7f03e2cfcf90>
+
+    def test_die_ausgabe_stimmt_zeile_fuer_zeile_mit_dem_beleg(
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Zeile fuer Zeile, nicht als Ganzes -- damit die Fehlermeldung die Stelle nennt."""
+        erwartet = _beleg_zeilen()
+        tatsaechlich = _lauf(capsys)
+    
+        for nummer, (soll, ist) in enumerate(zip(erwartet, tatsaechlich, strict=False), 1):
+>           assert ist == soll, (
+                f"Zeile {nummer} weicht vom eingefrorenen Beleg ab.\n"
+                f"  Beleg  : {soll!r}\n"
+                f"  Werkzeug: {ist!r}"
+            )
+E           AssertionError: Zeile 455 weicht vom eingefrorenen Beleg ab.
+E               Beleg  : 'EURUSD         1.10        11.01     10.04                   NEIN'
+E               Werkzeug: 'EURUSD         1.10         5.51     10.04                     ja'
+E           assert 'EURUSD      ...           ja' == 'EURUSD      ...         NEIN'
+E             
+E             - EURUSD         1.10        11.01     10.04                   NEIN
+E             ?                             ----                             ^^^^
+E             + EURUSD         1.10         5.51     10.04                     ja
+E             ?                            ++++                              ^^^^
+
+tests/test_kostentor_ausgabe.py:61: AssertionError
+____________ test_die_kostenuntergrenze_darf_den_atr_genau_treffen _____________
+
+capsys = <_pytest.capture.CaptureFixture object at 0x7f03e2d136d0>
+
+    def test_die_kostenuntergrenze_darf_den_atr_genau_treffen(
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """``Kostenuntergrenze <= ATR50`` -- gleich ist noch zulaessig.
+    
+        Die Untergrenze der Risikoschicht ist ``10 x K`` (max_cost_drag = 0,05). Bei
+        K = 2,0 bp sind das genau 20 bp, also genau der gebaute ATR50. Diese Zeile
+        muss "ja" ergeben: die hauseigene Politik verlangt ``R >= C / (2 x drag)``,
+        und Gleichheit erfuellt ein ``>=``. Ein Hauch mehr K kippt sie auf "NEIN".
+    
+        An dieser Spalte haengt der BEFUND-Absatz, mit dem der Beleg feststellt, dass
+        ein Stop von 1,0 x ATR fuer bestimmte Instrumente nach eigener Politik nicht
+        handelbar ist.
+        """
+        _gegenrechnung(
+            _lage(("EURUSD", "a", "2.0"), ("GBPJPY", "a", Decimal("2.0") + K_SCHRITT))
+        )
+        ausgabe = _druck(capsys)
+        spalte = {
+            teile[0]: teile[-1]
+            for teile in (z.split() for z in ausgabe.splitlines())
+            if teile and teile[-1] in ("ja", "NEIN")
+        }
+>       assert spalte == {"EURUSD": "ja", "GBPJPY": "NEIN"}
+E       AssertionError: assert {'EURUSD': 'j...GBPJPY': 'ja'} == {'EURUSD': 'j...PJPY': 'NEIN'}
+E         
+E         Omitting 1 identical items, use -vv to show
+E         Differing items:
+E         {'GBPJPY': 'ja'} != {'GBPJPY': 'NEIN'}
+E         Use -v to get more diff
+
+tests/test_kostentor_rechnungen.py:1157: AssertionError
+_______________ test_localappdata_wird_nur_unter_windows_gefragt _______________
+
+    def test_localappdata_wird_nur_unter_windows_gefragt() -> None:
+        """Sonst laege die Zustandsdatei auf der CI (ubuntu-latest) IM Arbeitsbaum.
+    
+        Ein Windows-Pfad ist unter POSIX ein einziges **relatives** Namensstueck:
+        ``Path("C:\\\\Users\\\\Test\\\\AppData\\\\Local")`` hat dort weder Wurzel noch
+        Laufwerk. ``resolve()`` haengt das Arbeitsverzeichnis davor -- und damit landet die
+        Datei mit dem Drawdown-Halt im Repo, wo ``git clean -xdf`` sie loescht und der
+        naechste Start sie als „neu" und damit als „frei" liest.
+    
+        Beide Plattformen werden hier **explizit** gefahren, nicht die des Testlaeufers:
+        die Regel muss auf beiden gelten, und ``os.name`` laesst sich nicht umbiegen, ohne
+        ``pathlib`` mitzureissen.
+        """
+        lokal = r"C:\Users\Test\AppData\Local"
+        xdg = Path.home() / "eigener-zustand"  # auf beiden Plattformen absolut
+        umgebung = {"LOCALAPPDATA": lokal, "XDG_STATE_HOME": str(xdg)}
+        windows = standard_zustandsordner(umgebung=umgebung, ist_windows=True)
+        posix = standard_zustandsordner(umgebung=umgebung, ist_windows=False)
+    
+        # Unter Windows zaehlt LOCALAPPDATA ...
+>       assert windows.parts[:-2] == Path(lokal).parts
+E       AssertionError: assert ('/', 'root',...cal', 'state') == ('C:\\Users\\...Data\\Local',)
+E         
+E         At index 0 diff: '/' != 'C:\\Users\\Test\\AppData\\Local'
+E         Left contains 3 more items, first extra item: 'root'
+E         Use -v to get more diff
+
+tests/test_risiko_zustand.py:194: AssertionError
+_____________________ test_rejects_untradeable_stop_budget _____________________
+
+    def test_rejects_untradeable_stop_budget() -> None:
+        # safety=300 -> Margin-Obergrenze < Kosten-Untergrenze -> Budget untradeable.
+        rm = RiskManager(RiskPolicy(safety=Decimal("300")))
+        auth = _authorize(rm, request=_request(volume="0.01"), account=_account())
+        assert auth.approved is False
+>       assert auth.reason == "stop_budget_cost_floor_above_margin_ceiling"
+E       AssertionError: assert 'risk_sizing_...xceeds_budget' == 'stop_budget_...argin_ceiling'
+E         
+E         - stop_budget_cost_floor_above_margin_ceiling
+E         + risk_sizing_stop_floor_exceeds_budget
+
+tests/test_risk_manager.py:125: AssertionError
+______________________ test_rejects_stop_below_cost_floor ______________________
+
+    def test_rejects_stop_below_cost_floor() -> None:
+        # §9 #2: fx_minor Kosten-Floor = 40 bps; ein 25-bps-Stop ist unhandelbar.
+        rm = RiskManager()
+        inst = _instrument(asset_class=AssetClass.FX_MINOR)
+        # stop_loss 1.09725 -> ~25 bps von 1.10000; Tiefe-Floor 15 bps aendert das nicht.
+        req = _request(volume="0.01", stop_loss="1.09725")
+        auth = _authorize(rm, request=req, account=_account(), instrument=inst)
+>       assert auth.approved is False
+E       AssertionError: assert True is False
+E        +  where True = RiskAuthorization(approved=True, reason=None, latch_halt=False, sizing=SizingResult(volume=Decimal('0.09'), stop_floor...op-budget-v3-measured-cost', cost_is_measured=False), detail={'budget_volume': '0.09', 'cost_basis': 'annahme 4.0 bp'}).approved
+
+tests/test_risk_manager.py:267: AssertionError
+________________ test_cost_floor_follows_the_breakeven_formula _________________
+
+    def test_cost_floor_follows_the_breakeven_formula() -> None:
+        """R = C / (2 * drag). Bei 5 Prozentpunkten Aufschlag also R = 10 * C."""
+>       assert cost_floor_bps(Decimal("0.65")) == Decimal("6.5")
+E       AssertionError: assert Decimal('3.25') == Decimal('6.5')
+E        +  where Decimal('3.25') = cost_floor_bps(Decimal('0.65'))
+E        +    where Decimal('0.65') = Decimal('0.65')
+E        +  and   Decimal('6.5') = Decimal('6.5')
+
+tests/test_stop_budget.py:19: AssertionError
+_________________ test_cost_floor_and_breakeven_are_consistent _________________
+
+    def test_cost_floor_and_breakeven_are_consistent() -> None:
+        for cost in (Decimal("0.65"), Decimal("7"), Decimal("20")):
+            floor = cost_floor_bps(cost)
+>           assert breakeven_hit_rate(cost_bps=cost, stop_bps=floor) == Decimal("0.55")
+E           AssertionError: assert Decimal('0.6') == Decimal('0.55')
+E            +  where Decimal('0.6') = breakeven_hit_rate(cost_bps=Decimal('0.65'), stop_bps=Decimal('3.25'))
+E            +  and   Decimal('0.55') = Decimal('0.55')
+
+tests/test_stop_budget.py:27: AssertionError
+_____________________ test_equity_is_not_tradeable_at_ten ______________________
+
+    def test_equity_is_not_tradeable_at_ten() -> None:
+        assert stop_budget(asset_class="equity", leverage=5).tradeable is True
+        ten = stop_budget(asset_class="equity", leverage=10)
+>       assert ten.tradeable is False
+E       AssertionError: assert True is False
+E        +  where True = StopBudget(lower_bps=Decimal('1.0E+2'), upper_bps=Decimal('166.6666666666666666666666667'), cost_bps=Decimal('20.0'), ...uity', leverage=10, tradeable=True, reason=None, policy_version='stop-budget-v3-measured-cost', cost_is_measured=False).tradeable
+
+tests/test_stop_budget.py:56: AssertionError
+_____________ test_crypto_is_not_tradeable_at_any_allowed_leverage _____________
+
+    def test_crypto_is_not_tradeable_at_any_allowed_leverage() -> None:
+        for leverage in range(5, 11):
+>           assert stop_budget(asset_class="crypto", leverage=leverage).tradeable is False
+E           AssertionError: assert True is False
+E            +  where True = StopBudget(lower_bps=Decimal('2.0E+2'), upper_bps=Decimal('333.3333333333333333333333333'), cost_bps=Decimal('40.0'), ...rypto', leverage=5, tradeable=True, reason=None, policy_version='stop-budget-v3-measured-cost', cost_is_measured=False).tradeable
+E            +    where StopBudget(lower_bps=Decimal('2.0E+2'), upper_bps=Decimal('333.3333333333333333333333333'), cost_bps=Decimal('40.0'), ...rypto', leverage=5, tradeable=True, reason=None, policy_version='stop-budget-v3-measured-cost', cost_is_measured=False) = stop_budget(asset_class='crypto', leverage=5)
+
+tests/test_stop_budget.py:62: AssertionError
+___________________ test_measured_cost_beats_the_assumption ____________________
+
+    def test_measured_cost_beats_the_assumption() -> None:
+        assumed = stop_budget(asset_class="fx_major", leverage=5)
+        measured = stop_budget(
+            asset_class="fx_major", leverage=5, measured_cost_bps=Decimal("2.0")
+        )
+        assert assumed.cost_is_measured is False
+        assert measured.cost_is_measured is True
+>       assert measured.lower_bps == Decimal("20")
+E       AssertionError: assert Decimal('1E+1') == Decimal('20')
+E        +  where Decimal('1E+1') = StopBudget(lower_bps=Decimal('1E+1'), upper_bps=Decimal('333.3333333333333333333333333'), cost_bps=Decimal('2.0'), ass..._major', leverage=5, tradeable=True, reason=None, policy_version='stop-budget-v3-measured-cost', cost_is_measured=True).lower_bps
+E        +  and   Decimal('20') = Decimal('20')
+
+tests/test_stop_budget.py:78: AssertionError
+___________ test_gemessene_kostenlage_ergibt_ein_anderes_stop_budget ___________
+
+    def test_gemessene_kostenlage_ergibt_ein_anderes_stop_budget() -> None:
+        """1,554 bp gemessen -> Untergrenze 15,54 bp; 0,65 bp angenommen -> 6,5 bp.
+    
+        Der numerische Anker des Befunds. Halb roter Eichfall, und die Haelfte gehoert
+        benannt: die vier Zahlen-Zusicherungen waeren auch gegen die alte Fassung gruen
+        gewesen -- ``stop_budget`` konnte eine Messung schon verarbeiten --, die beiden
+        ``cost_basis``-Zusicherungen dagegen nicht: die Eigenschaft gab es dort nicht
+        (``hasattr(StopBudget, "cost_basis")`` war ``False``, der Test waere mit
+        ``AttributeError`` gefallen). Rot an der Sache selbst wird die alte Fassung erst
+        bei den Aufrufern weiter unten: dort wurde die Messung nie uebergeben, und genau
+        das war der Befund.
+        """
+        angenommen = stop_budget(asset_class="fx_major", leverage=5)
+        gemessen = stop_budget(
+            asset_class="fx_major", leverage=5, measured_cost_bps=GEMESSEN_BPS
+        )
+>       assert angenommen.lower_bps == Decimal("6.5")
+E       AssertionError: assert Decimal('3.25') == Decimal('6.5')
+E        +  where Decimal('3.25') = StopBudget(lower_bps=Decimal('3.25'), upper_bps=Decimal('333.3333333333333333333333333'), cost_bps=Decimal('0.65'), as...major', leverage=5, tradeable=True, reason=None, policy_version='stop-budget-v3-measured-cost', cost_is_measured=False).lower_bps
+E        +  and   Decimal('6.5') = Decimal('6.5')
+
+tests/test_stop_budget_kostenbasis.py:159: AssertionError
+__________ test_uebergebene_messung_hebt_die_untergrenze_am_orderpfad __________
+
+    def test_uebergebene_messung_hebt_die_untergrenze_am_orderpfad() -> None:
+        """ROTER EICHFALL: alt kannte ``authorize_opening`` das Argument nicht.
+    
+        Und selbst wenn: es befragte allein ``policy.measured_cost_bps``, das kein
+        Aufrufer je fuellte -> Untergrenze 6,5 statt 15,54 bp.
+        """
+        auth = _autorisiere(RiskManager(), measured_cost_bps=GEMESSEN_BPS)
+        assert auth.budget is not None
+        assert auth.budget.cost_is_measured is True
+>       assert auth.budget.lower_bps == Decimal("15.54")
+E       AssertionError: assert Decimal('7.77') == Decimal('15.54')
+E        +  where Decimal('7.77') = StopBudget(lower_bps=Decimal('7.77'), upper_bps=Decimal('333.3333333333333333333333333'), cost_bps=Decimal('1.554'), a..._major', leverage=5, tradeable=True, reason=None, policy_version='stop-budget-v3-measured-cost', cost_is_measured=True).lower_bps
+E        +    where StopBudget(lower_bps=Decimal('7.77'), upper_bps=Decimal('333.3333333333333333333333333'), cost_bps=Decimal('1.554'), a..._major', leverage=5, tradeable=True, reason=None, policy_version='stop-budget-v3-measured-cost', cost_is_measured=True) = RiskAuthorization(approved=True, reason=None, latch_halt=False, sizing=SizingResult(volume=Decimal('0.02'), stop_floor...-budget-v3-measured-cost', cost_is_measured=True), detail={'budget_volume': '0.02', 'cost_basis': 'gemessen 1.554 bp'}).budget
+E        +  and   Decimal('15.54') = Decimal('15.54')
+
+tests/test_stop_budget_kostenbasis.py:282: AssertionError
+_____________ test_messung_reist_im_meta_zur_zweiten_pruefung_mit ______________
+
+    def test_messung_reist_im_meta_zur_zweiten_pruefung_mit() -> None:
+        """ROTER EICHFALL: alt las niemand ``meta[measured_cost_bps]``.
+    
+        ``submit_order`` faehrt die Risikoschicht ein zweites Mal und bekommt kein eigenes
+        Argument. Ohne diesen Kanal rechnete die zweite Pruefung gegen die Annahmetabelle
+        -- also milder als die erste, die sie absichern soll.
+        """
+        auth = _autorisiere(RiskManager(), meta={MEASURED_COST_BPS_META_KEY: GEMESSEN_BPS})
+        assert auth.budget is not None
+        assert auth.budget.cost_is_measured is True
+>       assert auth.budget.lower_bps == Decimal("15.54")
+E       AssertionError: assert Decimal('7.77') == Decimal('15.54')
+E        +  where Decimal('7.77') = StopBudget(lower_bps=Decimal('7.77'), upper_bps=Decimal('333.3333333333333333333333333'), cost_bps=Decimal('1.554'), a..._major', leverage=5, tradeable=True, reason=None, policy_version='stop-budget-v3-measured-cost', cost_is_measured=True).lower_bps
+E        +    where StopBudget(lower_bps=Decimal('7.77'), upper_bps=Decimal('333.3333333333333333333333333'), cost_bps=Decimal('1.554'), a..._major', leverage=5, tradeable=True, reason=None, policy_version='stop-budget-v3-measured-cost', cost_is_measured=True) = RiskAuthorization(approved=True, reason=None, latch_halt=False, sizing=SizingResult(volume=Decimal('0.02'), stop_floor...p-budget-v3-measured-cost', cost_is_measured=True), detail={'budget_volume': '0.02', 'cost_basis': 'auftrag 1.554 bp'}).budget
+E        +  and   Decimal('15.54') = Decimal('15.54')
+
+tests/test_stop_budget_kostenbasis.py:295: AssertionError
+___________ test_auftragsdaten_koennen_die_politik_nicht_unterbieten ___________
+
+    def test_auftragsdaten_koennen_die_politik_nicht_unterbieten() -> None:
+        """ROTER EICHFALL: die mitgereiste Zahl schlug die Politik des Betreibers.
+    
+        Gemessen an der Vorfassung: ``RiskPolicy(measured_cost_bps={'fx_major': 5.0})``
+        ergab eine Untergrenze von 50 bp; dieselbe Politik mit
+        ``meta={'measured_cost_bps': 0.001}`` ergab 0,01 bp, ``approved=True`` und das
+        Etikett 'gemessen 0.001 bp'. Ein Auftrag konnte damit die Kostenpraemisse des
+        Systems von aussen setzen -- und ausgerechnet die zweite Pruefung im Venue, die
+        einen Fehler der ersten abfangen soll, rechnete mit der Zahl des Aufrufers.
+    
+        Jetzt bewegt die mitgereiste Zahl die Rechnung nur nach oben. Die Klammerung ist
+        nicht still: die verworfene Zahl steht mit ihrem Grund in der Akte.
+        """
+        politik = RiskPolicy(measured_cost_bps={"fx_major": Decimal("5.0")})
+        ohne = _autorisiere(RiskManager(politik))
+        assert ohne.budget is not None
+>       assert ohne.budget.lower_bps == Decimal("50")
+E       AssertionError: assert Decimal('25') == Decimal('50')
+E        +  where Decimal('25') = StopBudget(lower_bps=Decimal('25'), upper_bps=Decimal('333.3333333333333333333333333'), cost_bps=Decimal('5.0'), asset..._major', leverage=5, tradeable=True, reason=None, policy_version='stop-budget-v3-measured-cost', cost_is_measured=True).lower_bps
+E        +    where StopBudget(lower_bps=Decimal('25'), upper_bps=Decimal('333.3333333333333333333333333'), cost_bps=Decimal('5.0'), asset..._major', leverage=5, tradeable=True, reason=None, policy_version='stop-budget-v3-measured-cost', cost_is_measured=True) = RiskAuthorization(approved=True, reason=None, latch_halt=False, sizing=SizingResult(volume=Decimal('0.02'), stop_floor...op-budget-v3-measured-cost', cost_is_measured=True), detail={'budget_volume': '0.02', 'cost_basis': 'kampagne 5.0 bp'}).budget
+E        +  and   Decimal('50') = Decimal('50')
+
+tests/test_stop_budget_kostenbasis.py:314: AssertionError
+____ test_auftragsdaten_koennen_den_plausibilitaetsboden_nicht_unterbieten _____
+
+    def test_auftragsdaten_koennen_den_plausibilitaetsboden_nicht_unterbieten() -> None:
+        """ROTER EICHFALL: ohne Messkampagne war die Luecke noch weiter offen.
+    
+        Ohne ``RiskPolicy.measured_cost_bps`` gab es in der ersten Fassung gar keine Zahl,
+        gegen die die mitgereiste haette antreten koennen -- 0,001 bp aus dem ``meta``
+        drueckten die Untergrenze auf 0,01 bp statt 6,5 bp.
+    
+        **Geaendert in Stufe 7:** Die Praemisse ist nicht mehr die Annahmetabelle, sondern
+        ein getrennt gepflegter Plausibilitaetsboden (``KOSTENPRAEMISSE_BPS``). Der Grund
+        steht dort: dieselbe Zahl als Rueckfall UND als Schwelle zu benutzen hiess, dass
+        ein wirklich billigerer Zugang nie erkannt werden konnte. Die Sache dieses Falls
+        ist davon unberuehrt -- 0,001 bp liegt auch unter dem Boden und wird verworfen.
+        """
+        auth = _autorisiere(
+            RiskManager(), meta={MEASURED_COST_BPS_META_KEY: Decimal("0.001")}
+        )
+        assert auth.budget is not None
+>       assert auth.budget.lower_bps == Decimal("6.5")
+E       AssertionError: assert Decimal('3.25') == Decimal('6.5')
+E        +  where Decimal('3.25') = StopBudget(lower_bps=Decimal('3.25'), upper_bps=Decimal('333.3333333333333333333333333'), cost_bps=Decimal('0.65'), as...major', leverage=5, tradeable=True, reason=None, policy_version='stop-budget-v3-measured-cost', cost_is_measured=False).lower_bps
+E        +    where StopBudget(lower_bps=Decimal('3.25'), upper_bps=Decimal('333.3333333333333333333333333'), cost_bps=Decimal('0.65'), as...major', leverage=5, tradeable=True, reason=None, policy_version='stop-budget-v3-measured-cost', cost_is_measured=False) = RiskAuthorization(approved=True, reason=None, latch_halt=False, sizing=SizingResult(volume=Decimal('0.02'), stop_floor...etail={'budget_volume': '0.02', 'cost_basis': 'annahme 0.65 bp (Auftrag 0.001 bp verworfen: unter Praemisse 0.05 bp)'}).budget
+E        +  and   Decimal('6.5') = Decimal('6.5')
+
+tests/test_stop_budget_kostenbasis.py:343: AssertionError
+__________________ test_die_praemisse_klammert_nur_nach_unten __________________
+
+    def test_die_praemisse_klammert_nur_nach_unten() -> None:
+        """Gruener Gegenpol: der Kanal bleibt ein Verschaerfer, kein Kaefig.
+    
+        Eine Klammer, die in beide Richtungen zieht, waere keine Sicherung, sondern eine
+        Abschaffung des Kanals: seine Aufgabe ist, die zweite Pruefung im Venue NICHT
+        milder rechnen zu lassen als die erste. Die mitgereiste Zahl ueber der Praemisse
+        zaehlt deshalb unveraendert weiter -- das ist der Regelfall am Live-Bid/Ask, wo
+        gemessen fast immer teurer ist als die schmeichelnde Annahme.
+        """
+        auth = _autorisiere(
+            RiskManager(), meta={MEASURED_COST_BPS_META_KEY: GEMESSEN_BPS}
+        )
+        assert auth.budget is not None
+>       assert auth.budget.lower_bps == Decimal("15.54")
+E       AssertionError: assert Decimal('7.77') == Decimal('15.54')
+E        +  where Decimal('7.77') = StopBudget(lower_bps=Decimal('7.77'), upper_bps=Decimal('333.3333333333333333333333333'), cost_bps=Decimal('1.554'), a..._major', leverage=5, tradeable=True, reason=None, policy_version='stop-budget-v3-measured-cost', cost_is_measured=True).lower_bps
+E        +    where StopBudget(lower_bps=Decimal('7.77'), upper_bps=Decimal('333.3333333333333333333333333'), cost_bps=Decimal('1.554'), a..._major', leverage=5, tradeable=True, reason=None, policy_version='stop-budget-v3-measured-cost', cost_is_measured=True) = RiskAuthorization(approved=True, reason=None, latch_halt=False, sizing=SizingResult(volume=Decimal('0.02'), stop_floor...p-budget-v3-measured-cost', cost_is_measured=True), detail={'budget_volume': '0.02', 'cost_basis': 'auftrag 1.554 bp'}).budget
+E        +  and   Decimal('15.54') = Decimal('15.54')
+
+tests/test_stop_budget_kostenbasis.py:409: AssertionError
+__________ test_stop_auf_der_alten_annahmegrenze_wird_jetzt_gesperrt ___________
+
+    def test_stop_auf_der_alten_annahmegrenze_wird_jetzt_gesperrt() -> None:
+        """ROTER EICHFALL und zugleich das Ergebnis, das nicht weggeredet wird.
+    
+        Ein Stop, der gegen die angenommenen 0,65 bp (Untergrenze 6,5 bp) durchging,
+        reisst gegen die gemessenen 1,554 bp (Untergrenze 15,54 bp) die Zusage
+        ``max_cost_drag``. Die Sperre loest aus; die Zusage wird nicht gesenkt.
+        """
+        ohne_messung = _autorisiere(RiskManager(), stop_loss="1.09850")
+        assert ohne_messung.approved is True  # so lief der scharfe Lauf
+    
+        mit_messung = _autorisiere(
+            RiskManager(), stop_loss="1.09850", measured_cost_bps=GEMESSEN_BPS
+        )
+>       assert mit_messung.approved is False
+E       AssertionError: assert True is False
+E        +  where True = RiskAuthorization(approved=True, reason=None, latch_halt=False, sizing=SizingResult(volume=Decimal('0.15'), stop_floor...-budget-v3-measured-cost', cost_is_measured=True), detail={'budget_volume': '0.15', 'cost_basis': 'gemessen 1.554 bp'}).approved
+
+tests/test_stop_budget_kostenbasis.py:477: AssertionError
+___________ test_runner_setzt_den_stop_auf_die_gemessene_untergrenze ___________
+
+    def test_runner_setzt_den_stop_auf_die_gemessene_untergrenze() -> None:
+        """ROTER EICHFALL: alt stand hier ``15.0bps -> stop=1.09835`` bei 0,15 Lot.
+    
+        Das synthetische Demo-Terminal stellt EURUSD 1,09990/1,10000 bei 7 USD Kommission
+        je Lot -- gemessen 2,45 bp roundturn, Untergrenze also 24,5 bp. Alt band der
+        Tiefe-Floor (15 bp), weil die angenommenen 0,65 bp nur 6,5 bp verlangten: der Stop
+        lag zu eng und die Position war entsprechend zu gross.
+        """
+        report, _halt = _paper_run().run_paper("EURUSD")
+        assert report.opened, [s for s in report.steps if not s.ok]
+>       assert _schritt(report, "stop-preis").detail == "24.5bps -> stop=1.09730"
+E       AssertionError: assert '15.0bps -> stop=1.09835' == '24.5bps -> stop=1.09730'
+E         
+E         - 24.5bps -> stop=1.09730
+E         ? ^^ ^                ^ ^
+E         + 15.0bps -> stop=1.09835
+E         ? ^^ ^                ^ ^
+
+tests/test_stop_budget_kostenbasis.py:513: AssertionError
+_______ test_der_runner_rechnet_die_spanne_mit_der_politik_des_managers ________
+
+    def test_der_runner_rechnet_die_spanne_mit_der_politik_des_managers() -> None:
+        """ROTER EICHFALL: der Runner rechnete die Untergrenze mit den Vorgabewerten.
+    
+        Dieselbe Rechnung stand an zwei Stellen: ``execution/runner.py`` rief
+        ``stop_budget`` mit den Vorgabewerten der Signatur (``max_cost_drag=0.05``),
+        ``execution/risk_manager.py`` mit den Werten der Politik. Nachgemessen an der
+        Vorfassung: bei gemessenen 2,4545 bp verlangte der Runner 24,5 bp, eine Politik
+        mit ``max_cost_drag=0.02`` unmittelbar danach 61,4 bp -- der Runner setzte den
+        Stop auf seine eigene Zahl, und die Risikoschicht lehnte ihn Zeilen spaeter mit
+        ``stop_budget_below_cost_floor`` ab. Die strengere Politik erzeugte also nicht
+        den weiteren Stop, sondern gar keinen Handel; die Vorfassung endete hier mit
+        ``opened=False``.
+    
+        Zweitens haengt hier die Rundung mit drin: gerechnet sind
+        61.36363636363636363636363638 bp, gesetzt werden konnte auf dem Tick-Raster nur
+        1.09325 -- wirksam ...636 bp, zwei Einheiten in der letzten Stelle ZU WENIG, und
+        die Risikoschicht prueft hart auf ``>=``. Der Stop geht deshalb einen Tick weiter
+        vom Markt weg (1.09324). Ohne diesen Schritt bliebe die Kette auch mit
+        gleichgezogener Politik zu.
+        """
+        modul = _paper_run()
+        rm = RiskManager(RiskPolicy(max_cost_drag=Decimal("0.02")))
+        venue = modul.build_paper_venue(rm)
+        venue.adopt_book()
+        report = run_signal(
+            venue=venue,
+            risk_manager=rm,
+            admission=CriteriaVerdict(passed=True, results=()),
+            symbol="EURUSD",
+            side=Signal.LONG,
+            config=RunnerConfig(
+                cost_gate=CostGate(max_roundturn_cost_fraction=Decimal("0.0005")),
+            ),
+            now=modul._TS,
+            client_order_id="k3-politik",
+        )
+        assert report.opened, report.reject_reason
+>       assert _schritt(report, "stop-budget").detail == (
+            "[61.4, 333.3]bps (Kosten 2.45bp gemessen)"
+        )
+E       AssertionError: assert '[30.7, 333.3...5bp gemessen)' == '[61.4, 333.3...5bp gemessen)'
+E         
+E         - [61.4, 333.3]bps (Kosten 2.45bp gemessen)
+E         ?  ^^ ^
+E         + [30.7, 333.3]bps (Kosten 2.45bp gemessen)
+E         ?  ^^ ^
+
+tests/test_stop_budget_kostenbasis.py:597: AssertionError
+=========================== short test summary info ============================
+SKIPPED [1] tests/test_ausstiegsdeckung.py:281: keine Betriebsjournale im Arbeitsbaum
+SKIPPED [1] tests/test_buchtreue.py:142: keine Betriebsjournale im Arbeitsbaum
+SKIPPED [1] tests/test_buchtreue.py:223: keine Betriebsjournale im Arbeitsbaum
+SKIPPED [1] tests/test_journal_leser.py:409: kein betrieb/-Verzeichnis
+SKIPPED [1] tests/test_laufabschluss.py:83: keine Betriebsjournale im Arbeitsbaum
+SKIPPED [1] tests/test_laufabschluss.py:112: keine Betriebsjournale im Arbeitsbaum
+SKIPPED [1] tests/test_laufabschluss.py:136: keine Betriebsjournale im Arbeitsbaum
+SKIPPED [1] tests/test_laufabschluss.py:165: keine Betriebsjournale im Arbeitsbaum
+SKIPPED [1] tests/test_laufabschluss.py:190: journal-20260817T182951.jsonl fehlt im Arbeitsbaum
+SKIPPED [1] tests/test_laufabschluss.py:217: keine Betriebsjournale im Arbeitsbaum
+SKIPPED [1] tests/test_laufabschluss.py:233: keine Betriebsjournale im Arbeitsbaum
+SKIPPED [1] tests/test_laufabschluss.py:276: keine Betriebsjournale im Arbeitsbaum
+19 failed, 1592 passed, 12 skipped, 1 deselected in 58.65s

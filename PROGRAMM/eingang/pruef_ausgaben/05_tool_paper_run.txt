@@ -1,0 +1,19 @@
+$ python tools/paper_run.py
+=== ABNAHME-CHECKLISTE (Signal -> ... -> Order, Paper) ===
+  [OK  ] zulassung    §9.3-Kriterien bestanden
+  [OK  ] signal       buy
+  [OK  ] daten-tor    ref=1.10000 spread=0.00010
+  [OK  ] hebel        eff_lev=5 (requested)
+  [OK  ] kostentor    cost_fraction=0.0002454545454545454545454545455 (2.45 bp roundturn, gemessen)
+  [OK  ] stop-preis   24.5bps -> stop=1.09730
+  [OK  ] limits       Kill-Switch: NORMAL
+  [OK  ] evaluation   Drossel: ausgewaehlt
+  [OK  ] stop-budget  [24.5, 333.3]bps (Kosten 2.45bp gemessen)
+  [OK  ] sizing       volume=0.09
+  [OK  ] margen-deckel nicht bindend
+  [OK  ] submit       venue_order_id=PAPER-1
+  [OK  ] buchung      record_open_fill (Venue, geteilter Manager)
+
+Ergebnis: EROEFFNET
+Scheduler-Takt: Halt=nein (Frische/Drift geprueft)
+[exit=0, 0s]

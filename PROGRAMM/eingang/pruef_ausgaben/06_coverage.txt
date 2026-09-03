@@ -1,0 +1,70 @@
+$ python -m coverage run --branch --source=mt5_trading_ai --data-file=/root/pruef_ausgaben/.coverage -m pytest -q -p no:cacheprovider
+E         Use -v to get more diff
+
+tests/test_risiko_zustand.py:194: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_risiko_zustand.py::test_localappdata_wird_nur_unter_windows_gefragt
+1 failed, 1611 passed, 12 skipped in 108.62s (0:01:48)
+[exit=1, 109s]
+
+$ python -m coverage report --data-file=/root/pruef_ausgaben/.coverage
+Name                                               Stmts   Miss Branch BrPart  Cover   Missing
+----------------------------------------------------------------------------------------------
+mt5_trading_ai/__init__.py                             2      0      0      0   100%
+mt5_trading_ai/backtest/__init__.py                    0      0      0      0   100%
+mt5_trading_ai/backtest/edge.py                       37      1      2      0    97%   47
+mt5_trading_ai/backtest/engine.py                    270     13     76     13    91%   82, 90, 137, 139, 141, 222->220, 241, 286->292, 329, 336->340, 355->357, 473-478, 493, 575
+mt5_trading_ai/backtest/ereignisstudie.py            165      9     38      9    91%   298, 300, 304, 311, 314, 327, 351, 353, 414
+mt5_trading_ai/backtest/kalender.py                  106      4     46      4    95%   259, 297, 316, 341
+mt5_trading_ai/backtest/llm_compare.py                32      1      8      0    98%   48
+mt5_trading_ai/backtest/provenance.py                 30      2     10      1    92%   45, 110
+mt5_trading_ai/backtest/resolution.py                105      1     48      1    99%   148
+mt5_trading_ai/backtest/splits.py                     42      3     16      4    88%   67, 71, 84, 92->100
+mt5_trading_ai/backtest/strategies.py                 67      3     34      2    95%   38, 74-75
+mt5_trading_ai/betrieb/__init__.py                     0      0      0      0   100%
+mt5_trading_ai/betrieb/dienstguete.py                157      3     58      4    97%   95, 141->133, 292, 294
+mt5_trading_ai/betrieb/journal.py                    241      7     80      9    95%   124-125, 232, 244, 301->300, 303, 308->307, 310, 353->349, 465, 493->488
+mt5_trading_ai/costs/__init__.py                       0      0      0      0   100%
+mt5_trading_ai/costs/broker_costs.py                 169     14     62     12    89%   178, 192, 209, 226, 234, 247-248, 259, 265, 280, 313, 322, 367, 379
+mt5_trading_ai/costs/model.py                         70      3     24      4    93%   92, 146, 148, 207->212
+mt5_trading_ai/costs/volatility.py                   165     12     56      6    92%   128, 245, 280, 312-315, 318, 326-327, 331, 349
+mt5_trading_ai/data/__init__.py                        0      0      0      0   100%
+mt5_trading_ai/data/loader.py                        157      6     50      2    96%   158, 261, 374-375, 402-403
+mt5_trading_ai/data/quality.py                       110      0     48      2    99%   163->172, 167->172
+mt5_trading_ai/execution/__init__.py                   0      0      0      0   100%
+mt5_trading_ai/execution/cost_gate.py                 30      0      6      0   100%
+mt5_trading_ai/execution/freshness.py                 28      0     12      0   100%
+mt5_trading_ai/execution/leverage_preflight.py        27      2      8      2    89%   61, 88
+mt5_trading_ai/execution/private_sync.py              53      1     10      1    97%   58
+mt5_trading_ai/execution/reconcile.py                 62      0     14      0   100%
+mt5_trading_ai/execution/release.py                   42      1     16      0    98%   69
+mt5_trading_ai/execution/risiko_zustand.py           521     22    174     15    95%   336, 543, 784-785, 795-796, 808, 818, 960-961, 969, 973, 1012, 1175, 1179, 1191, 1285, 1290-1292, 1380, 1382, 1418, 1448->1450
+mt5_trading_ai/execution/risk_manager.py             286      0    112      2    99%   478->exit, 901->exit
+mt5_trading_ai/execution/runner.py                   159     23     50     11    80%   140, 161-171, 226-228, 270, 332, 369, 398->401, 406->412, 414, 433-440, 470->473
+mt5_trading_ai/execution/scheduler.py                 45      0      6      0   100%
+mt5_trading_ai/execution/schwebende_auftraege.py     106      7     28      0    93%   97-102, 169
+mt5_trading_ai/gates/__init__.py                       0      0      0      0   100%
+mt5_trading_ai/gates/criteria.py                     112      6     28      4    93%   48, 224, 256-257, 288, 368
+mt5_trading_ai/gates/erkundung.py                     61      1     16      1    97%   212
+mt5_trading_ai/gates/evaluation.py                   101      1     38      1    99%   206
+mt5_trading_ai/gates/herausforderer.py               130      8     42      6    92%   184, 210, 226-227, 236, 237->239, 310, 338-339
+mt5_trading_ai/gates/learning_phase.py               112      3     30      4    95%   146, 180, 191->187, 212
+mt5_trading_ai/gates/trials.py                       142     10     48      3    91%   117-121, 145, 304, 308-310, 317->299
+mt5_trading_ai/risk/__init__.py                        0      0      0      0   100%
+mt5_trading_ai/risk/leverage.py                      107      8     30      5    91%   81, 111, 137, 153, 156, 159, 252-253
+mt5_trading_ai/risk/limits.py                         70      0     16      0   100%
+mt5_trading_ai/risk/sizing.py                         94      3     32      3    95%   112, 114, 171
+mt5_trading_ai/risk/stop_budget.py                    60      1     18      1    97%   250
+mt5_trading_ai/venue/__init__.py                       0      0      0      0   100%
+mt5_trading_ai/venue/catalog.py                      114      5     40      5    94%   74, 137, 165, 205, 232
+mt5_trading_ai/venue/demo_run.py                      79      0     40      0   100%
+mt5_trading_ai/venue/mt5.py                          742     69    270     30    88%   261, 267, 271, 363, 442, 568, 1082->1096, 1371, 1409, 1457, 1501->exit, 1719, 1722-1723, 1752, 1920, 1964, 2092-2096, 2153-2169, 2172-2173, 2249-2251, 2273, 2278, 2282, 2317, 2320-2321, 2324-2327, 2334-2359, 2376, 2395, 2478, 2484-2486, 2511, 2533->2537, 2534->2533, 2571, 2687->2689, 2709, 2720
+mt5_trading_ai/venue/protocol.py                     160      0      2      0   100%
+mt5_trading_ai/venue/smoke.py                        107      5     12      0    96%   161-163, 258-259
+----------------------------------------------------------------------------------------------
+TOTAL                                               5475    258   1754    167    94%
+[exit=0]
+
+$ python -m coverage json --data-file=/root/pruef_ausgaben/.coverage -o /root/pruef_ausgaben/06_coverage.json
+Wrote JSON report to /root/pruef_ausgaben/06_coverage.json
+[exit=0]

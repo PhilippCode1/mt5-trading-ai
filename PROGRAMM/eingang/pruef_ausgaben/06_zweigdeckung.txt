@@ -1,0 +1,23 @@
+$ python tools/zweigdeckung.py --bericht /root/pruef_ausgaben/06_coverage.json
+==========================================================================
+ZWEIGDECKUNG JE DATEI DES GELDPFADS
+==========================================================================
+Schwelle je Datei: 80%
+
+Datei                                      Zeilen   Zweige
+venue/mt5.py                                88.0%    80.7%
+venue/protocol.py                          100.0%   100.0%
+execution/risk_manager.py                   99.5%    98.2%
+execution/schwebende_auftraege.py           93.3%    92.9%
+execution/cost_gate.py                     100.0%   100.0%
+risk/sizing.py                              95.2%    90.6%
+risk/stop_budget.py                         97.4%    94.4%
+risk/limits.py                             100.0%   100.0%
+risk/leverage.py                            90.5%    83.3%
+costs/model.py                              92.6%    83.3%
+gates/erkundung.py                          97.4%    93.8%
+gates/herausforderer.py                     91.9%    85.7%
+
+Paket gesamt: Zeilen 93.6 %, Zweige 88.2 %
+ok — jede Datei des Geldpfads ueber der Schwelle.
+[exit=0]

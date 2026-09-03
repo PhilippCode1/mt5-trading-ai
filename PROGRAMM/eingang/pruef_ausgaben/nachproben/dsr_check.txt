@@ -1,0 +1,45 @@
+1) Acklam-Inverse vs scipy.norm.ppf (max. abs. Fehler):
+   5.014e-09
+   erf-CDF vs scipy: 1.1519648082658485e-19
+
+2) expected_max_sharpe(N, var) vs Literaturformel:
+   N=    2 var=0.01000: repo=0.051976 lit=0.051976 diff=-1.98e-11
+   N=   10 var=1.00000: repo=1.574598 lit=1.574598 diff=+5.09e-10
+   N=   60 var=1.00000: repo=2.345338 lit=2.345338 diff=+4.93e-10
+   N=   60 var=0.00050: repo=0.052456 lit=0.052456 diff=+1.10e-11
+   N= 1000 var=0.00100: repo=0.102936 lit=0.102936 diff=-8.65e-11
+
+3) DSR (Voreinstellung sharpe_variance=denom/(T-1)) vs Literatur mit derselben Varianz:
+   SR=0.0670 T=  500 N=1000: repo=0.039193 lit=0.039193 diff=+2.32e-10
+   SR=1.0636 T=  500 N=1000: repo=1.000000 lit=1.000000 diff=+0.00e+00
+   SR=0.2759 T=   64 N=   8: repo=0.755014 lit=0.755014 diff=+1.56e-10
+   SR=0.0167 T=  123 N=  60: repo=0.015352 lit=0.015352 diff=-1.90e-11
+   SR=0.0894 T= 2000 N=  60: repo=0.949890 lit=0.949890 diff=-5.09e-11
+   SR=0.1268 T= 1000 N=  60: repo=0.950000 lit=0.950000 diff=-5.08e-11
+
+4) ABBRUCH.md-Tabelle (T=1000): sr0 in Standardeinheiten und noetige SR je Beobachtung fuer DSR=0.95
+   N=   1: sr0(unit)=0.0000  SR*=0.05208  x sqrt(252)=0.83
+   N=  10: sr0(unit)=1.5746  SR*=0.10212  x sqrt(252)=1.62
+   N=  30: sr0(unit)=2.0734  SR*=0.11805  x sqrt(252)=1.87
+   N=  60: sr0(unit)=2.3453  SR*=0.12675  x sqrt(252)=2.01
+   N= 100: sr0(unit)=2.5306  SR*=0.13269  x sqrt(252)=2.11
+   N= 200: sr0(unit)=2.7655  SR*=0.14022  x sqrt(252)=2.23
+
+5) Was die Varianz ueber die Versuche tut (Beispiel aus dem Docstring, SR=0.2759, T=64, N=8):
+   var=None: repo=0.7550
+   var=0.25: repo=0.0002
+
+6) Sensitivitaet gegen Schiefe/Kurtosis (Trade-Renditen sind nicht normal):
+   g3=+0.0 g4=3: DSR=0.9499
+   g3=-0.5 g4=3: DSR=0.9404
+   g3=-1.0 g4=5: DSR=0.9293
+   g3=+0.5 g4=5: DSR=0.9579
+   g3=-1.0 g4=8: DSR=0.9278
+
+7) Kleinstes N, bei dem sr0 (Deflation) ueberhaupt >0 ist, und was N=1 bedeutet:
+   N=1 -> sr0 = 0.0  (keine Deflation, PSR pur)
+
+8) annualise_sharpe und percentile_against_random:
+   annualise(0.0167, 123/0.899) = 0.1953390993566984
+   percentile(0.0322, [-2.18]*5) = 1.0 (Anteil 'schlechter', strikt <)
+   percentile(0.5, [0.5,0.5,0.5]) = 0.0 (Gleichstand zaehlt als nicht schlechter)

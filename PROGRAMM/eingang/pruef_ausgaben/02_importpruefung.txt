@@ -1,0 +1,96 @@
+# Importpruefung, 2026-09-02T15:33:49Z, Python 3.11.15, cwd=/root/mt5-trading-ai
+
+## Paketmodule: python -c "import <modul>"
+
+| Modul | Import | Fehlertext |
+|---|---|---|
+| mt5_trading_ai | ok (Exit 0) |  |
+| mt5_trading_ai.backtest | ok (Exit 0) |  |
+| mt5_trading_ai.backtest.edge | ok (Exit 0) |  |
+| mt5_trading_ai.backtest.engine | ok (Exit 0) |  |
+| mt5_trading_ai.backtest.ereignisstudie | ok (Exit 0) |  |
+| mt5_trading_ai.backtest.kalender | ok (Exit 0) |  |
+| mt5_trading_ai.backtest.llm_compare | ok (Exit 0) |  |
+| mt5_trading_ai.backtest.provenance | ok (Exit 0) |  |
+| mt5_trading_ai.backtest.resolution | ok (Exit 0) |  |
+| mt5_trading_ai.backtest.splits | ok (Exit 0) |  |
+| mt5_trading_ai.backtest.strategies | ok (Exit 0) |  |
+| mt5_trading_ai.betrieb | ok (Exit 0) |  |
+| mt5_trading_ai.betrieb.dienstguete | ok (Exit 0) |  |
+| mt5_trading_ai.betrieb.journal | ok (Exit 0) |  |
+| mt5_trading_ai.costs | ok (Exit 0) |  |
+| mt5_trading_ai.costs.broker_costs | ok (Exit 0) |  |
+| mt5_trading_ai.costs.model | ok (Exit 0) |  |
+| mt5_trading_ai.costs.volatility | ok (Exit 0) |  |
+| mt5_trading_ai.data | ok (Exit 0) |  |
+| mt5_trading_ai.data.loader | ok (Exit 0) |  |
+| mt5_trading_ai.data.quality | ok (Exit 0) |  |
+| mt5_trading_ai.execution | ok (Exit 0) |  |
+| mt5_trading_ai.execution.cost_gate | ok (Exit 0) |  |
+| mt5_trading_ai.execution.freshness | ok (Exit 0) |  |
+| mt5_trading_ai.execution.leverage_preflight | ok (Exit 0) |  |
+| mt5_trading_ai.execution.private_sync | ok (Exit 0) |  |
+| mt5_trading_ai.execution.reconcile | ok (Exit 0) |  |
+| mt5_trading_ai.execution.release | ok (Exit 0) |  |
+| mt5_trading_ai.execution.risiko_zustand | ok (Exit 0) |  |
+| mt5_trading_ai.execution.risk_manager | ok (Exit 0) |  |
+| mt5_trading_ai.execution.runner | ok (Exit 0) |  |
+| mt5_trading_ai.execution.scheduler | ok (Exit 0) |  |
+| mt5_trading_ai.execution.schwebende_auftraege | ok (Exit 0) |  |
+| mt5_trading_ai.gates | ok (Exit 0) |  |
+| mt5_trading_ai.gates.criteria | ok (Exit 0) |  |
+| mt5_trading_ai.gates.erkundung | ok (Exit 0) |  |
+| mt5_trading_ai.gates.evaluation | ok (Exit 0) |  |
+| mt5_trading_ai.gates.herausforderer | ok (Exit 0) |  |
+| mt5_trading_ai.gates.learning_phase | ok (Exit 0) |  |
+| mt5_trading_ai.gates.trials | ok (Exit 0) |  |
+| mt5_trading_ai.risk | ok (Exit 0) |  |
+| mt5_trading_ai.risk.leverage | ok (Exit 0) |  |
+| mt5_trading_ai.risk.limits | ok (Exit 0) |  |
+| mt5_trading_ai.risk.sizing | ok (Exit 0) |  |
+| mt5_trading_ai.risk.stop_budget | ok (Exit 0) |  |
+| mt5_trading_ai.venue | ok (Exit 0) |  |
+| mt5_trading_ai.venue.catalog | ok (Exit 0) |  |
+| mt5_trading_ai.venue.demo_run | ok (Exit 0) |  |
+| mt5_trading_ai.venue.mt5 | ok (Exit 0) |  |
+| mt5_trading_ai.venue.protocol | ok (Exit 0) |  |
+| mt5_trading_ai.venue.smoke | ok (Exit 0) |  |
+
+Paketmodule: 51 ok, 0 Fehler, 51 gesamt
+
+## Werkzeuge: python -m py_compile tools/<name>.py  UND  python -c "import tools.<name>"
+
+| Werkzeug | py_compile | Import als tools.<name> | Fehlertext |
+|---|---|---|---|
+| tools/__init__.py | ok (Exit 0) | ok (Exit 0) |  |
+| tools/atr_messung.py | ok (Exit 0) | ok (Exit 0) |  |
+| tools/aufloesung.py | ok (Exit 0) | ok (Exit 0) |  |
+| tools/aufzeichnung_redigieren.py | ok (Exit 0) | ok (Exit 0) |  |
+| tools/auswertung.py | ok (Exit 0) | ok (Exit 0) |  |
+| tools/betrieb_auswerten.py | ok (Exit 0) | ok (Exit 0) |  |
+| tools/betrieb_reihe.py | ok (Exit 0) | ok (Exit 0) |  |
+| tools/check_doc_numbers.py | ok (Exit 0) | ok (Exit 0) |  |
+| tools/check_docs_claims.py | ok (Exit 0) | ok (Exit 0) |  |
+| tools/dienstguete.py | ok (Exit 0) | ok (Exit 0) |  |
+| tools/edge_test.py | ok (Exit 0) | ok (Exit 0) |  |
+| tools/ereignisstudie.py | ok (Exit 0) | ok (Exit 0) |  |
+| tools/fetch_data.py | ok (Exit 0) | ok (Exit 0) |  |
+| tools/geheimnis_scan.py | ok (Exit 0) | ok (Exit 0) |  |
+| tools/gen_docs.py | ok (Exit 0) | ok (Exit 0) |  |
+| tools/journal_sichern.py | ok (Exit 0) | ok (Exit 0) |  |
+| tools/kopien_abgleichen.py | ok (Exit 0) | ok (Exit 0) |  |
+| tools/kostentor.py | ok (Exit 0) | ok (Exit 0) |  |
+| tools/live_betrieb.py | ok (Exit 0) | ok (Exit 0) |  |
+| tools/live_konsole.py | ok (Exit 0) | ok (Exit 0) |  |
+| tools/modelllauf.py | ok (Exit 0) | ok (Exit 0) |  |
+| tools/mt5_smoke.py | ok (Exit 0) | ok (Exit 0) |  |
+| tools/multi_instrument_edge.py | ok (Exit 0) | ok (Exit 0) |  |
+| tools/mutationstor.py | ok (Exit 0) | ok (Exit 0) |  |
+| tools/oberflaeche.py | ok (Exit 0) | ok (Exit 0) |  |
+| tools/paper_run.py | ok (Exit 0) | ok (Exit 0) |  |
+| tools/torerfuellbarkeit.py | ok (Exit 0) | ok (Exit 0) |  |
+| tools/torzaehlung.py | ok (Exit 0) | ok (Exit 0) |  |
+| tools/wiederanlaufprobe.py | ok (Exit 0) | ok (Exit 0) |  |
+| tools/zweigdeckung.py | ok (Exit 0) | ok (Exit 0) |  |
+
+Werkzeuge: py_compile 30 ok / 0 Fehler; Import 30 ok / 0 Fehler; 30 Dateien

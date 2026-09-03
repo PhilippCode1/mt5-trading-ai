@@ -1,0 +1,70 @@
+UP042 Class PrivateEventKind inherits from both `str` and `enum.Enum`
+  --> mt5_trading_ai/execution/private_sync.py:27:7
+   |
+27 | class PrivateEventKind(str, Enum):
+   |       ^^^^^^^^^^^^^^^^
+28 |     FILL = "fill"
+29 |     HEARTBEAT = "heartbeat"
+   |
+help: Inherit from `enum.StrEnum`
+
+UP042 Class Herkunft inherits from both `str` and `enum.Enum`
+  --> mt5_trading_ai/gates/erkundung.py:72:7
+   |
+72 | class Herkunft(str, Enum):
+   |       ^^^^^^^^
+73 |     """Woher eine Auswertungszeile stammt. **Die Herkunftsspalte der Stufe 7.**
+   |
+help: Inherit from `enum.StrEnum`
+
+UP042 Class TradingState inherits from both `str` and `enum.Enum`
+  --> mt5_trading_ai/risk/limits.py:54:7
+   |
+54 | class TradingState(str, Enum):
+   |       ^^^^^^^^^^^^
+55 |     NORMAL = "normal"
+56 |     #: Keine neuen Positionen, bestehende nur reduzieren.
+   |
+help: Inherit from `enum.StrEnum`
+
+UP042 Class AssetClass inherits from both `str` and `enum.Enum`
+  --> mt5_trading_ai/venue/protocol.py:25:7
+   |
+25 | class AssetClass(str, Enum):
+   |       ^^^^^^^^^^
+26 |     """Pflichtfeld je Instrument. Steuert den gesetzlichen Hebeldeckel."""
+   |
+help: Inherit from `enum.StrEnum`
+
+UP042 Class OrderSide inherits from both `str` and `enum.Enum`
+  --> mt5_trading_ai/venue/protocol.py:38:7
+   |
+38 | class OrderSide(str, Enum):
+   |       ^^^^^^^^^
+39 |     BUY = "buy"
+40 |     SELL = "sell"
+   |
+help: Inherit from `enum.StrEnum`
+
+UP042 Class OrderType inherits from both `str` and `enum.Enum`
+  --> mt5_trading_ai/venue/protocol.py:43:7
+   |
+43 | class OrderType(str, Enum):
+   |       ^^^^^^^^^
+44 |     MARKET = "market"
+45 |     LIMIT = "limit"
+   |
+help: Inherit from `enum.StrEnum`
+
+UP042 Class Timeframe inherits from both `str` and `enum.Enum`
+  --> mt5_trading_ai/venue/protocol.py:48:7
+   |
+48 | class Timeframe(str, Enum):
+   |       ^^^^^^^^^
+49 |     M1 = "M1"
+50 |     M5 = "M5"
+   |
+help: Inherit from `enum.StrEnum`
+
+Found 7 errors.
+No fixes available (7 hidden fixes can be enabled with the `--unsafe-fixes` option).

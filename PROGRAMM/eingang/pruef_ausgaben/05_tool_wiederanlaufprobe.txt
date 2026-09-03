@@ -1,0 +1,34 @@
+$ python tools/wiederanlaufprobe.py
+==============================================================================
+WIEDERANLAUFPROBE - uebersteht der Zustand einen harten Abbruch?
+==============================================================================
+Probeordner: /tmp/wiederanlaufprobe-arhq8lmj
+
+  ok   Lauf 1: der Einbruch latcht ueberhaupt einen Halt
+        Grund: risk_drawdown_limit_reached
+  ok   Risikozustand: Datei liegt auf der Platte
+        /tmp/wiederanlaufprobe-arhq8lmj/risikozustand.json
+  ok   Risikozustand: dauerhaft, nicht fluechtig
+        eine fluechtige Schicht verhaelt sich bis zum Neustart genau wie eine dauerhafte -- deshalb wird sie hier gefragt
+  ok   Der Halt WIRKT nach dem Neustart -- bei erholtem Konto
+        Konto wieder bei 10.000, Antwort: approved=False, reason=risk_drawdown_halt_gelatcht
+  ok   Der Grund ueberdauert mit, nicht nur das Ja/Nein
+        'risk_drawdown_halt_gelatcht' -- ohne Grund weiss der Mensch am Morgen nicht, wonach er sehen soll
+  ok   Schwebeakte: dauerhaft, nicht fluechtig
+        /tmp/wiederanlaufprobe-arhq8lmj/schwebende_auftraege.json
+  ok   Schwebeakte: der ungeklaerte Sendeversuch ueberdauert
+        gelesen: ['open-EURUSD-probe']
+  ok   Schwebeakte: der Grund ueberdauert unveraendert
+        der Grund sagt, wonach beim Broker zu sehen ist
+  ok   Das Buch wird NICHT persistiert (Absicht, nicht Luecke)
+        es kommt beim Start vom Handelsplatz (adopt_book); eine gespeicherte Fassung waere eine zweite Wahrheit neben der des Brokers. Liegt: ['risikozustand.json', 'schwebende_auftraege.json']
+  ok   Aufloesung MIT Befund raeumt den Eintrag ab
+        und sie ueberdauert ihrerseits: die Akte ist danach leer
+  ok   Aufloesung OHNE Befund wird abgewiesen
+        wer nichts hinschreibt, hat nichts nachgesehen
+  ok   Erst die menschliche Freigabe loest ihn -- und dann wirklich
+        mit Freigabekennung: approved=True, reason=None
+
+12 von 12 Pruefungen bestanden.
+ok - der Wiederanlauf haelt.
+[exit=0, 0s]

@@ -1,0 +1,26 @@
+$ python tools/live_betrieb.py --dauer 0.001 --takt 1
+Traceback (most recent call last):
+  File "/root/mt5-trading-ai/mt5_trading_ai/venue/mt5.py", line 2154, in initialize
+    mt5: Any = importlib.import_module("MetaTrader5")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.11/importlib/__init__.py", line 126, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1204, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1176, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1140, in _find_and_load_unlocked
+ModuleNotFoundError: No module named 'MetaTrader5'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/root/mt5-trading-ai/tools/live_betrieb.py", line 1042, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/root/mt5-trading-ai/tools/live_betrieb.py", line 829, in main
+    if not terminal.initialize():
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/root/mt5-trading-ai/mt5_trading_ai/venue/mt5.py", line 2156, in initialize
+    raise VenueUnavailableError(
+mt5_trading_ai.venue.protocol.VenueUnavailableError: MetaTrader5 nicht installiert (pip install MetaTrader5)
+[exit=1, 0s]
