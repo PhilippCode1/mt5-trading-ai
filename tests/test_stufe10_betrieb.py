@@ -77,7 +77,6 @@ from mt5_trading_ai.venue.protocol import OrderRejectedError, OrderSide
 from test_mt5_venue import _mt5_position, _order, _venue
 
 ROOT = Path(__file__).resolve().parents[1]
-RUNBOOK = ROOT / "archiv/RUNBOOK.md"
 WIEDERANLAUFPROBE = ROOT / "tools" / "wiederanlaufprobe.py"
 
 
@@ -85,12 +84,6 @@ WIEDERANLAUFPROBE = ROOT / "tools" / "wiederanlaufprobe.py"
 # Abnahmesatz 3: jede Alarmregel hat eine existierende Metrik und eine
 #                existierende Handlungsanweisung
 # =============================================================================
-
-
-def _runbook_abschnitte() -> set[str]:
-    """Die ``## ``-Ueberschriften von ``archiv/RUNBOOK.md``."""
-    text = RUNBOOK.read_text(encoding="utf-8")
-    return {m.strip() for m in re.findall(r"^## (.+)$", text, flags=re.MULTILINE)}
 
 
 def test_jede_alarmregel_hat_eine_existierende_metrik() -> None:
@@ -101,32 +94,20 @@ def test_jede_alarmregel_hat_eine_existierende_metrik() -> None:
     )
 
 
-def test_jede_alarmregel_hat_eine_existierende_handlungsanweisung() -> None:
-    abschnitte = _runbook_abschnitte()
-    fehlend = [
-        (r.name, r.handlungsanweisung)
-        for r in ALARMREGELN
-        if r.handlungsanweisung not in abschnitte
-    ]
-    assert fehlend == [], (
-        f"Alarmregeln ohne Abschnitt in archiv/RUNBOOK.md: {fehlend}. Vorhanden: "
-        f"{sorted(abschnitte)}"
-    )
+def test_jede_alarmregel_traegt_ihre_handlung_selbst() -> None:
+    """E-014: die Handlung steht in der Regel -- zwei bis vier Saetze, imperativ,
+    kein Verweis auf ein Dokument, das im Archiv liegt."""
+    for r in ALARMREGELN:
+        saetze = [x for x in re.split(r"(?<=[.!?])\s+", r.handlungsanweisung) if x]
+        assert 2 <= len(saetze) <= 6, (r.name, len(saetze))
+        assert "RUNBOOK" not in r.handlungsanweisung, r.name
+        assert len(r.handlungsanweisung.split()) >= 20, r.name
 
 
-def test_die_andere_richtung_kein_verwaister_runbook_abschnitt() -> None:
-    """Ein Abschnitt ohne Regel ist ebenfalls rot -- er verspricht eine Aufsicht,
-    die es nicht gibt.
-
-    Ausgenommen ist genau einer: „Wenn die Zustellung selbst scheitert" beschreibt den
-    Kanal, nicht eine Metrik. Die Ausnahme steht hier namentlich, damit sie nicht
-    stillschweigend waechst.
-    """
-    kanalabschnitt = "Wenn die Zustellung selbst scheitert"
-    verwaist = _runbook_abschnitte() - {r.handlungsanweisung for r in ALARMREGELN}
-    assert verwaist == {kanalabschnitt}, (
-        f"Verwaiste RUNBOOK-Abschnitte: {sorted(verwaist - {kanalabschnitt})}"
-    )
+def test_die_andere_richtung_keine_zwei_regeln_mit_derselben_handlung() -> None:
+    """Eine Handlung, die fuer zwei Alarme gilt, unterscheidet sie nicht."""
+    handlungen = [r.handlungsanweisung for r in ALARMREGELN]
+    assert len(set(handlungen)) == len(handlungen)
 
 
 def test_jedes_dienstgueteziel_hat_eine_existierende_metrik() -> None:
@@ -173,7 +154,8 @@ def test_rot_unterschrittene_schwelle_schlaegt_an_und_nennt_die_anweisung() -> N
     assert [a.regel.name for a in alarme] == ["ausstieg_misslingt"]
     zeile = alarme[0].als_zeile()
     assert "26/33" in zeile  # Zaehler und Nenner, nicht nur der Anteil
-    assert "archiv/RUNBOOK.md: Ausstieg misslingt" in zeile
+    assert "Handlung:" in zeile
+    assert "schliessen_fehlgeschlagen" in zeile
 
 
 def test_leerer_nenner_ergibt_keinen_ersatzwert_und_keinen_alarm(
@@ -199,7 +181,8 @@ def test_zustellung_schreibt_die_datei_und_scheitert_laut(tmp_path: Path) -> Non
     ziel = tmp_path / "unterordner" / "ALARME.txt"
     text = stelle_zu([alarm], ziel)
     assert ziel.read_text(encoding="utf-8").strip() == text.strip()
-    assert "Ausstieg misslingt" in text
+    assert "Handlung:" in text  # die Handlung steht in der Zustellung (E-014)
+    assert "schliessen_fehlgeschlagen" in text
 
 
 def test_rot_scheiternde_zustellung_wirft_statt_still_zu_versagen(
@@ -474,7 +457,7 @@ def test_rot_ohne_die_verifizierte_grenze_kommt_die_getarnte_zeile_durch() -> No
 def test_kein_modul_des_pakets_zieht_eine_sprachmodell_bibliothek() -> None:
     """Die strukturelle Haelfte: es gibt keinen Pfad, auf dem Fremdtext zum Modell kaeme.
 
-    Bewusst hier wiederholt und nicht nur in ``test_llm_compare.py``: dort ist es der
+    Bewusst hier wiederholt und nicht nur in ``test_llm_compare.py`` (geloescht, E-009): dort ist es der
     Anker von Paket 5, hier ist es der Abnahmesatz einer Stufe. Faellt einer der beiden,
     soll ablesbar sein, welche Zusicherung gerissen ist.
     """
@@ -703,7 +686,7 @@ def test_v5_der_abbau_geht_trotz_ausfall_durch() -> None:
 
 
 def test_die_wiederanlaufprobe_laeuft_und_haelt() -> None:
-    """Gruener Eichfall: das Werkzeug, das ``archiv/RUNBOOK.md`` nennt, existiert und faellt
+    """Gruener Eichfall: die Wiederanlaufprobe existiert und faellt
     nicht."""
     lauf = subprocess.run(
         [sys.executable, str(WIEDERANLAUFPROBE)],
@@ -741,9 +724,9 @@ def test_rot_ein_fluechtiger_zustand_verliert_den_halt() -> None:
     )
 
 
-def test_das_runbook_nennt_die_wiederanlaufprobe_und_sie_existiert() -> None:
+def test_die_wiederanlaufprobe_existiert_und_nennt_ihren_zweck() -> None:
     assert WIEDERANLAUFPROBE.is_file()
-    assert "tools/wiederanlaufprobe.py" in RUNBOOK.read_text(encoding="utf-8")
+    assert "Wiederanlauf" in WIEDERANLAUFPROBE.read_text(encoding="utf-8")
 
 
 # =============================================================================

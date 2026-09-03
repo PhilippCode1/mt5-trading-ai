@@ -20,8 +20,8 @@ Eine Alarmregel taugt nur, wenn drei Dinge existieren, und alle drei werden gepr
 
 1. **Eine Metrik**, die es wirklich gibt -- eine Funktion in diesem Modul, die sie aus
    dem Journal rechnet. Eine Regel auf eine Zahl, die niemand erhebt, feuert nie.
-2. **Eine Handlungsanweisung**, die es wirklich gibt -- ein Abschnitt in
-``archiv/RUNBOOK.md``.
+2. **Eine Handlungsanweisung**, die es wirklich gibt -- die Regel traegt sie
+selbst (E-014).
    Ein Alarm ohne Anweisung weckt jemanden, der dann nicht weiss, was zu tun ist.
 3. **Eine Schwelle**, die vorher feststeht. Danach wird sie nicht bewegt (V6).
 
@@ -102,8 +102,8 @@ class Alarmregel:
 
     name: str
     metrik: str
-    #: Ueberschrift des zugehoerigen Abschnitts in ``archiv/RUNBOOK.md``. Exakt, nicht
-    #: sinngemaess.
+    #: Die Handlung selbst -- imperativ, zwei bis vier Saetze (E-014). Frueher der
+    #: Titel eines RUNBOOK-Abschnitts; das Runbook liegt im Archiv.
     handlungsanweisung: str
     schwelle: float
     #: Was der Alarm bedeutet -- steht in der Zustellung, damit sie ohne Nachschlagen
@@ -122,7 +122,7 @@ class Alarm:
             f"ALARM {self.regel.name}: {anteil} "
             f"({self.wert.gelungen}/{self.wert.gesamt} {self.wert.bezug}), "
             f"Schwelle {self.regel.schwelle:.1%}. {self.regel.bedeutet} "
-            f"-> archiv/RUNBOOK.md: {self.regel.handlungsanweisung}"
+            f"-> Handlung: {self.regel.handlungsanweisung}"
         )
 
 
@@ -447,39 +447,66 @@ ZIELE: tuple[Dienstgueteziel, ...] = (
 )
 
 
-#: Die Alarmregeln. Jede nennt ihre Metrik und den EXAKTEN Abschnittstitel in
-#: ``archiv/RUNBOOK.md``; beides wird geprueft.
+#: Die Alarmregeln. Jede nennt ihre Metrik und ihre Handlung (E-014); beides wird
+#: geprueft (tests/test_stufe10_betrieb.py).
 ALARMREGELN: tuple[Alarmregel, ...] = (
     Alarmregel(
         "buchtreue_unter_ziel",
         "buchtreue",
-        "Buchtreue unter Ziel",
+        (
+            "Zuerst pruefen, ob der Halt ueberhaupt gesperrt hat: ein Reconcile-Halt, "
+            "der "
+            "im selben Takt halt_erklaert mit weiter_gesperrt=false traegt, hat nichts "
+            "blockiert (der Broker hat zwischen zwei Takten geschlossen). Nur Takte "
+            "ohne "
+            "solche Aufloesung zaehlen. Dann mit tools/dienstguete.py nach Codestand "
+            "aufschluesseln und die Ursache im lebenden Code suchen, nicht in alten "
+            "Laeufen."
+        ),
         0.99,
         "Das Buch und die Meldung des Handelsplatzes gehen zu oft auseinander.",
     ),
     Alarmregel(
         "ausstieg_misslingt",
         "ausstiegsverlaesslichkeit",
-        "Ausstieg misslingt",
+        (
+            "Im Journal die Saetze schliessen_fehlgeschlagen lesen; das Feld fehler "
+            "traegt den Wortlaut des Handelsplatzes. Offene Positionen im Terminal "
+            "gegen "
+            "das Buch halten. Bei 'Trade disabled' oder 'AutoTrading disabled by "
+            "client' "
+            "den Schreibpfad im Terminal freigeben und bis dahin von Hand schliessen, "
+            "nicht warten. Bei 'Unsupported filling mode' die Fuellart je Symbol "
+            "pruefen."
+        ),
         0.95,
         "Schliessversuche scheitern -- moeglicherweise steht Geld am Markt.",
     ),
     Alarmregel(
         "position_offen_geblieben",
         "ausstiegsdeckung",
-        "Position offen geblieben",
+        (
+            "Sofort im Terminal nachsehen, welche Positionen offen sind (das Journal "
+            "sagt, was der Lauf wusste; der Broker sagt, was ist), und entscheiden: "
+            "von "
+            "Hand schliessen oder bewusst stehen lassen. Erst danach die Ursache: der "
+            "ende-Satz fuehrt die Symbole unter offen_geblieben, die "
+            "schliessen_fehlgeschlagen-Saetze davor den Grund."
+        ),
         1.00,
         "Ein Lauf ist beendet worden, waehrend eine Position noch offen stand.",
     ),
     Alarmregel(
         "laeufe_brechen_ab",
         "laufabschluss",
-        # Der EXAKTE Abschnittstitel aus ``archiv/RUNBOOK.md``, Umlaut inklusive -- eine
-        # Handlungsanweisung wird ueber ihre Ueberschrift gefunden, nicht sinngemaess.
-        # Die ASCII-Fassung stand hier zuerst und lief ins Leere; das Dauertor
-        # ``test_jede_alarmregel_hat_eine_existierende_handlungsanweisung`` hat sie
-        # beim ersten Lauf gefunden.
-        "Läufe brechen ab",
+        (
+            "Kein Sicherheitsalarm: die Kennzahl sagt nicht, ob Geld am Markt blieb "
+            "(Nachtrag Laufabschluss des Altstands). Pruefen, ob der Rechner in den "
+            "Standby ging (Windows-Ereignisprotokoll, Kernel-Power 42) oder der "
+            "Prozess "
+            "hart beendet wurde. Fuer offene Positionen gilt der Alarm 'Position offen "
+            "geblieben'."
+        ),
         0.95,
         "Laeufe enden ohne Endsatz; der Wiederanlauf muss das Buch uebernehmen.",
     ),

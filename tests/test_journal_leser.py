@@ -4,7 +4,7 @@ WARUM DIESE TESTS
 -----------------
 Bis heute parste **kein einziger Test** ein Betriebsjournal, waehrend die CI
 ``mypy --strict`` ueber ``tools/`` faehrt. Beide Leser -- ``betrieb_auswerten.py`` und
-``oberflaeche.py`` -- zaehlten Ereignisse aus rohen Woerterbuechern, ungeprueft. Eine
+``oberflaeche.py`` (geloescht, E-009) -- zaehlten Ereignisse aus rohen Woerterbuechern, ungeprueft. Eine
 Auswertung ohne Test ist eine Zahl, die man nicht zitieren kann.
 
 Geprueft wird vor allem, was in der schmeichelnden Richtung schiefgehen koennte:

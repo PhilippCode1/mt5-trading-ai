@@ -58,3 +58,19 @@ Push abgewiesen, der Verlauf ist aber nicht sauber.
 **Was sich aendert.** Der Commit-Befehl im Arbeitsskript haengt ab jetzt am Rueckgabewert des
 Testlaufs (`[ $rc -eq 0 ] || exit 1` VOR `git commit`), so wie die Tore es tun. F-002 hatte dieselbe
 Klasse fuer die Tore geschlossen, nicht fuer die Tests.
+
+## F-005 — Ein Mutant des Mutationstors blieb im Arbeitsbaum, und mein `ruff --fix` hat ihn zementiert (2026-09-03)
+
+**Was geschah.** Der Pre-Push-Hook fuhr die volle Suite samt Mutationstor. Beim Zurueckschreiben von
+`mt5_trading_ai/execution/risk_manager.py` scheiterte `write_bytes` an einem Zugriffsfehler; der
+Mutant der Sonde `kostenpraemisse` (`assumed_cost_bps`) blieb in der Datei, die Suite meldete 2 rote
+Faelle, der Push wurde abgewiesen -- das Tor hat gehalten. Ich habe die Meldung nicht gelesen,
+sondern weitergearbeitet: `ruff check --fix` entfernte den nun unbenutzten Import, die naechste
+Suite zeigte 126 rote Faelle.
+
+**Was es kostete.** Ein Suitelauf (5 min), eine Diagnose; kein Commit war betroffen.
+
+**Was sich aendert.** (1) `git diff HEAD --stat` auf die Sondendateien nach jedem Mutationslauf, vor
+jedem `ruff --fix`. (2) Das Mutationstor stellt jetzt mit zehn Wiederholungen zurueck und nennt den
+Mutanten laut, wenn es scheitert. (3) Endgueltig: T6 faehrt Mutanten in einer temporaeren Kopie
+(E-006) -- ein Werkzeug, das den Arbeitsbaum anfasst, ist das eigentliche Loch.

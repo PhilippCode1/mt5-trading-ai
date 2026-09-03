@@ -39,9 +39,9 @@ Gemessen, nicht behauptet — gegen den Code geprueft von `tests/test_readme_num
 Aendert sich der Code, ohne dass diese Zahlen nachgezogen werden, wird der Test rot.
 
 <!-- KENNZAHLEN-ANFANG (geprueft von tests/test_readme_numbers.py) -->
-- module_count: 42
-- test_function_count: 1417
-- source_lines: 16988
+- module_count: 39
+- test_function_count: 1311
+- source_lines: 16342
 <!-- KENNZAHLEN-ENDE -->
 
 ## Oberflaeche

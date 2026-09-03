@@ -152,7 +152,7 @@ def main() -> int:
     print()
     print(f"Zugestellt nach: {args.alarmdatei}")
     print(
-        "FEHLGESCHLAGEN — Alarm steht. Handlungsanweisung in archiv/RUNBOOK.md.",
+        "FEHLGESCHLAGEN — Alarm steht. Die Handlung steht in der Alarmzeile.",
         file=sys.stderr,
     )
     return 1

@@ -1,0 +1,8 @@
+# T5 Schritt 3: RUNBOOK-Entkopplung (E-014), 2026-09-03
+$ python PROGRAMM/auftrag-01-fundament/belege/05-runbook-entkoppeln.py
+  gepatcht: mt5_trading_ai/betrieb/dienstguete.py (9 Stellen)
+  gepatcht: tools/dienstguete.py (1 Stellen)
+  gepatcht: tests/test_stufe10_betrieb.py
+  gepatcht: tests/test_ausstiegsdeckung.py (1 Stellen)
+  gepatcht: tests/test_laufabschluss.py
+[exit=0]

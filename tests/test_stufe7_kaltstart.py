@@ -286,32 +286,6 @@ def test_die_aufzeichnung_weist_auch_weggelassene_FELDER_aus() -> None:
     assert kopf["felder_weggelassen"] == ["schritte"]
 
 
-def test_der_trainingslauf_weist_den_anteil_erkundender_beobachtungen_aus(
-    tmp_path: Path,
-) -> None:
-    """Der zweite Abnahmefall, am echten Werkzeug."""
-    lauf = subprocess.run(
-        [
-            sys.executable,
-            "tools/modelllauf.py",
-            "--journal",
-            str(AUFZEICHNUNG),
-            "--ablage",
-            str(tmp_path / "ablage"),
-            "--data-checksum",
-            "a" * 64,
-            "--code-commit",
-            "abc1234",
-        ],
-        cwd=ROOT,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    assert "Erkundende Beobachtungen" in lauf.stdout, lauf.stdout
-    assert "%" in lauf.stdout
-
-
 def test_die_auswertung_laeuft_gegen_die_eingecheckte_aufzeichnung() -> None:
     """Bestaetigt durch Ausfuehrung, nicht durch Zusicherung."""
     lauf = subprocess.run(

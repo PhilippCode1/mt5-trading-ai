@@ -322,8 +322,7 @@ def test_rot_die_neue_regel_schlaegt_auf_den_echten_journalen_an() -> None:
 def test_die_neue_regel_ist_vollstaendig_gebunden() -> None:
     regel = next(r for r in ALARMREGELN if r.name == "position_offen_geblieben")
     assert regel.metrik in METRIKEN
-    runbook = (ROOT / "archiv/RUNBOOK.md").read_text(encoding="utf-8")
-    assert f"\n## {regel.handlungsanweisung}\n" in runbook
+    assert "Terminal" in regel.handlungsanweisung  # die Handlung selbst (E-014)
     ziel = next(z for z in ZIELE if z.metrik == regel.metrik)
     assert regel.schwelle == ziel.ziel
 

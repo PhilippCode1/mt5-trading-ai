@@ -63,7 +63,6 @@ GELDPFAD: tuple[str, ...] = (
     "risk/leverage.py",
     "costs/model.py",
     "gates/erkundung.py",
-    "gates/herausforderer.py",
 )
 
 

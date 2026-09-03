@@ -1,0 +1,23 @@
+# T5 Schritt 2: Loeschungen (E-009), 2026-09-03, Stand 06bb392
+$ python PROGRAMM/auftrag-01-fundament/belege/05-loeschen.py
+  git rm mt5_trading_ai/backtest/llm_compare.py (74 Zeilen)
+  git rm mt5_trading_ai/gates/herausforderer.py (375 Zeilen)
+  git rm mt5_trading_ai/gates/learning_phase.py (230 Zeilen)
+  git rm tools/modelllauf.py (303 Zeilen)
+  git rm tools/oberflaeche.py (1075 Zeilen)
+  git rm tests/test_llm_compare.py (100 Zeilen)
+  git rm tests/test_learning_phase.py (132 Zeilen)
+  git rm tests/test_stufe6_modellpfad.py (409 Zeilen)
+  git rm tests/test_oberflaeche_kacheln.py (908 Zeilen)
+  git rm tests/test_oberflaeche_seite.py (291 Zeilen)
+  tests/test_stufe7_kaltstart.py: 1 Testfall entfernt (fuhr tools/modelllauf.py)
+  tools/mutationstor.py: 3 Sonden entfernt (ueberlappung, mindestmenge, schemahash)
+  tools/zweigdeckung.py: gates/herausforderer.py aus GELDPFAD entfernt (12 -> 11)
+  mt5_trading_ai/betrieb/journal.py: 1 Nennung(en) als geloescht gekennzeichnet
+  mt5_trading_ai/execution/freshness.py: 2 Nennung(en) als geloescht gekennzeichnet
+  mt5_trading_ai/venue/mt5.py: 3 Nennung(en) als geloescht gekennzeichnet
+  tests/test_frische_am_orderpfad.py: 1 Nennung(en) als geloescht gekennzeichnet
+  tests/test_journal_leser.py: 1 Nennung(en) als geloescht gekennzeichnet
+  tests/test_stufe10_betrieb.py: 1 Nennung(en) als geloescht gekennzeichnet
+  PROGRAMM/geloescht.md: Eintraege angehaengt
+[exit=0]

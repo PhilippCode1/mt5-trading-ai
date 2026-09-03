@@ -249,25 +249,14 @@ def test_kein_lauf_ohne_endsatz_hatte_eine_stoppdatei() -> None:
         )
 
 
-def test_das_runbook_behauptet_die_widerlegte_ungenauigkeit_nicht_mehr() -> None:
+def test_die_handlung_behauptet_die_widerlegte_ungenauigkeit_nicht_mehr() -> None:
     """Eine Handlungsanweisung, die auf eine unmoegliche Lage zeigt, ist schlimmer als
-    keine -- sie verbraucht die Aufmerksamkeit, die der echte Fall braucht."""
-    text = (ROOT / "archiv/RUNBOOK.md").read_text(encoding="utf-8")
+    keine -- sie verbraucht die Aufmerksamkeit, die der echte Fall braucht (E-014:
+    die Handlung steht in der Regel selbst)."""
+    regel = next(r for r in ALARMREGELN if r.name == "laeufe_brechen_ab")
+    text = regel.handlungsanweisung
     assert "bekannte Ungenauigkeit der Metrik" not in text
-    abschnitt = text[text.index("## Läufe brechen ab") :]
-    abschnitt = abschnitt[: abschnitt.index("\n---")]
-    # Zeilenumbrueche zusammenziehen: geprueft wird der Inhalt, nicht der Umbruch. Sonst
-    # faellt der Fall, sobald jemand den Absatz neu umbricht -- ein Tor, das auf
-    # Textsatz reagiert, meldet Rauschen und wird abgeschaltet.
-    fliesstext = " ".join(abschnitt.split())
-    assert "Position offen geblieben" in fliesstext, (
-        "Der Abschnitt muss auf die Kennzahl verweisen, die auf das Geld sieht."
-    )
-
-
-# =====================================================================
-# Der Abbruchzeitpunkt ist aus dem Journal ablesbar -- gegen jede spaetere Vermutung
-# =====================================================================
+    assert "Kein Sicherheitsalarm" in text
 
 
 def test_beide_abbrueche_lagen_weit_vor_der_geplanten_dauer() -> None:

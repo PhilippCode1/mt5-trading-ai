@@ -15,7 +15,7 @@ konnte nicht ausloesen, und in 21 Journalen der Betriebslaeufe steht kein einzig
 ``snapshot_stale``.
 
 Das ist die Hausfehlerklasse dieses Repos in Reinform: ein Melder, der per
-Konstruktion nie ausloest. Dieselbe Kachel in ``tools/oberflaeche.py`` und dieselbe
+Konstruktion nie ausloest. Dieselbe Kachel in ``tools/oberflaeche.py`` (geloescht, E-009) und dieselbe
 Zeile in ``tools/live_konsole.py`` hatten den Fehler bereits -- und dort wurde er
 behoben, indem gegen den juengsten **Kursstempel** gemessen wird. Der kommt von der
 anderen Seite der Leitung und ist damit das einzige Lebenszeichen im System, an dem

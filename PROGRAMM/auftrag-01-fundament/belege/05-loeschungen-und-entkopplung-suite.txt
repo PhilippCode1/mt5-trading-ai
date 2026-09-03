@@ -1,0 +1,15 @@
+# T5 Schritte 2+3 (Loeschungen E-009, RUNBOOK-Entkopplung E-014), Suite und Tore, 2026-09-03
+$ PYTHONDONTWRITEBYTECODE=1 python -m pytest -q -p no:cacheprovider   (voller Lauf; danach ein Zustellungstest auf die Handlung umgestellt, Nachlauf der fuenf betroffenen Dateien gruen)
+FAILED tests/test_stufe10_betrieb.py::test_zustellung_schreibt_die_datei_und_scheitert_laut
+1 failed, 1510 passed in 280.47s (0:04:40)
+
+$ python -m pytest -q tests/test_stufe10_betrieb.py tests/test_ausstiegsdeckung.py tests/test_laufabschluss.py tests/test_stufe8_testwirkung.py tests/test_stufe7_kaltstart.py -m 'not slow'
+134 passed, 1 deselected in 11.08s
+
+$ python tools/check_doc_numbers.py
+ok - Code: 39 Module, 1311 Testfunktionen, 16342 Quellzeilen; Doku widerspruchsfrei.
+$ python tools/mutationstor.py --liste
+  12. geschlossene-kerze         mt5_trading_ai/venue/protocol.py
+      Auf der noch offenen Kerze wird gerechnet (Leckage).
+  13. journal-zeitstempel        tools/live_betrieb.py
+      Das Betriebsprotokoll wirft wieder bei eingefrorener Uhr (F-008).

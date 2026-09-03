@@ -3,7 +3,8 @@
 WARUM DIESES MODUL
 ------------------
 Bis hierher las jedes Werkzeug das Journal fuer sich: ``betrieb_auswerten.py`` nahm
-``kandidaten[-1]``, ``oberflaeche.py`` ebenfalls ``dateien[-1]``, und beide bauten ihre
+``kandidaten[-1]``, ``oberflaeche.py`` (geloescht, E-009) ebenfalls ``dateien[-1]``,
+und beide bauten ihre
 Zaehlungen aus rohen Woerterbuechern. Zwei Umsetzungen derselben Rechnung sind zwei
 Fehlerquellen -- dieselbe Lehre wie beim Kostentor in Paket 3a.
 

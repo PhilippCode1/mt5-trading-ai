@@ -105,7 +105,8 @@ theoretischer Fall: es ist im Repo dreimal passiert, zuletzt am Order-Pfad selbs
 Alle vier Aufrufer messen darum den Kursstempel:
 ``Mt5Venue._enforce_account_freshness`` (sperrt die Order),
 ``Mt5Venue._markt_druckt_preise`` (beantwortet, ob der Platz gerade handelt),
-``tools/live_konsole.py`` und ``tools/oberflaeche.py`` (zeigen es an).
+``tools/live_konsole.py`` und ``tools/oberflaeche.py`` (geloescht, E-009) (zeigen es
+an).
 
 ``now`` **muss** die Uhr des messenden Bauteils sein, unmittelbar an der Messung
 gelesen. Das ist keine Feinheit: ein Aufrufer, der seine Gegenwart am Kopf eines
@@ -121,7 +122,8 @@ nicht.** Der Unterschied ist zu kennen, und er ist kein Versehen dieser Datei:
   ``self._clock()`` in derselben Anweisung, in der sie messen. Dort haengt eine Order
   daran, und dort ist die Regel eingehalten.
 * ``tools/live_konsole.py`` (``jetzt`` am Kopf des Taktes) und
-  ``tools/oberflaeche.py`` (``stand["jetzt"]`` als erste Anweisung der Sammlung)
+  ``tools/oberflaeche.py`` (geloescht, E-009) (``stand["jetzt"]`` als erste Anweisung
+  der Sammlung)
   frieren ihre Gegenwart **vor** der Sammlung ein und reichen sie danach hier ein.
   Zwischen Einfrieren und Messung liegen bei der Oberflaeche der Journallauf, ein
   Kontoabruf, die Positionsliste und ein ``get_quote`` je Katalogsymbol; der

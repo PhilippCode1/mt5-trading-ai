@@ -1222,7 +1222,8 @@ class Mt5Venue(TradingVenue):
           Lebenszeichen im System, das nicht im eigenen Prozess entsteht, und damit
           das einzige, an dem sich ein haengendes Terminal ueberhaupt zeigen kann.
 
-        Genau diese Umstellung ist in ``tools/oberflaeche.py`` (Kachel "Kursfrische")
+        Genau diese Umstellung ist in ``tools/oberflaeche.py`` (geloescht, E-009)
+        (Kachel "Kursfrische")
         und ``tools/live_konsole.py`` bereits gefahren und dort begruendet; hier steht
         dieselbe Messung an der Stelle, an der sie eine Order **stoppt**, statt sie
         nur anzuzeigen.
@@ -1259,7 +1260,8 @@ class Mt5Venue(TradingVenue):
         (fail-closed), die Freigabeprozedur ist es nicht mehr. ``tools/`` gehoert
         nicht zu dieser Datei; der Satz steht hier, damit der naechste Eingriff die
         Stelle findet statt eine falsche Zusicherung zu lesen. Zone gesetzt:
-        ``tools/live_betrieb.py``, ``tools/live_konsole.py``, ``tools/oberflaeche.py``.
+        ``tools/live_betrieb.py``, ``tools/live_konsole.py``, ``tools/oberflaeche.py``
+        (geloescht, E-009).
         """
         tick = self._terminal.tick(symbol)
         if tick is None:
@@ -2201,7 +2203,8 @@ class RealMt5Terminal:
         Die getrennt gefuehrte Vertragspflicht -- veraltete Daten -- laesst sich hier
         nicht beantworten: sie braucht einen Kursstempel je Symbol. Sie wird am
         Order-Pfad gestellt (``Mt5Venue._enforce_account_freshness``) und in den
-        Anzeigen (``tools/oberflaeche.py``, ``tools/live_konsole.py``). Sie hier ein
+        Anzeigen (``tools/oberflaeche.py`` (geloescht, E-009),
+        ``tools/live_konsole.py``). Sie hier ein
         zweites Mal zu bauen hiesse, dieselbe Regel an zwei Orten zu fuehren, wo sie
         auseinanderlaufen kann -- und ``is_connected`` laeuft am Kopf fast jeder
         Methode, also je Aufruf einmal pro Symbol ueber die Leitung.

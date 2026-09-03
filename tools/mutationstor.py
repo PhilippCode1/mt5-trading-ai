@@ -61,6 +61,7 @@ import argparse
 import hashlib
 import subprocess
 import sys
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -139,33 +140,6 @@ KATALOG: tuple[Sonde, ...] = (
         neu="        if False:",
         tests=("tests/test_stufe5_ausfuehrung.py",),
         bedeutet="Ein schwebender Auftrag laesst sich ohne Nachsehen abraeumen.",
-    ),
-    Sonde(
-        name="ueberlappung",
-        datei="mt5_trading_ai/gates/herausforderer.py",
-        alt="        gesamt += belegt / mittlere",
-        neu="        gesamt += float(len(eintraege))",
-        tests=("tests/test_stufe6_modellpfad.py",),
-        bedeutet="Fuenfmal dieselbe Marktbewegung zaehlt wieder als fuenf Belege.",
-    ),
-    Sonde(
-        name="mindestmenge",
-        datei="mt5_trading_ai/gates/herausforderer.py",
-        alt="MINDESTBEOBACHTUNGEN_JE_MERKMAL = 30",
-        neu="MINDESTBEOBACHTUNGEN_JE_MERKMAL = 1",
-        tests=("tests/test_stufe6_modellpfad.py",),
-        bedeutet="Acht Parameter lassen sich wieder aus drei Trades schaetzen.",
-    ),
-    Sonde(
-        name="schemahash",
-        datei="mt5_trading_ai/gates/herausforderer.py",
-        alt=(
-            '    beschreibung = ";".join('
-            'f"{f.name}:{f.type}" for f in fields(Herausforderer))'
-        ),
-        neu='    beschreibung = "fest"',
-        tests=("tests/test_stufe6_modellpfad.py",),
-        bedeutet="Ein Artefakt aus einer anderen Feldwelt wird still gedeutet.",
     ),
     Sonde(
         name="erkundung-positivliste",
@@ -267,7 +241,22 @@ def _fahre(sonde: Sonde) -> tuple[bool, str]:
         getoetet = lauf.returncode != 0
         anmerkung = "" if getoetet else "UEBERLEBT -- kein Test hat es bemerkt"
     finally:
-        pfad.write_bytes(original)
+        # Zurueckschreiben mit Wiederholung: am 2026-09-03 blieb ein Mutant im Baum,
+        # weil write_bytes im Pre-Push-Lauf an einem Zugriffsfehler scheiterte (F-005).
+        letzter: OSError | None = None
+        for _versuch in range(10):
+            try:
+                pfad.write_bytes(original)
+                letzter = None
+                break
+            except OSError as exc:
+                letzter = exc
+                time.sleep(0.3)
+        if letzter is not None:
+            raise RuntimeError(
+                f"{sonde.datei}: Rueckstellung nach 10 Versuchen gescheitert -- "
+                f"MUTANT LIEGT IM ARBEITSBAUM ({sonde.name}): {letzter}"
+            ) from letzter
     nachher = _pruefsumme(pfad)
     if nachher != vorher:
         # Darf nicht vorkommen; wenn doch, ist das schlimmer als jede ueberlebende

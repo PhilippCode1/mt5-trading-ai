@@ -75,16 +75,6 @@ Ereigniskalender — wann genau ist das Ereignis, in echtem UTC?
 - `def default_calendar_path`
 - `def load_ereigniskalender`
 
-## `mt5_trading_ai/backtest/llm_compare.py`
-
-Zeilen: 74
-
-Paket 5: das Tor fuer ein LLM im Entscheidungspfad (§8.2-8.4).
-
-- `class LlmGateInputs`
-- `class LlmGateDecision`
-- `def evaluate_llm_gate`
-
 ## `mt5_trading_ai/backtest/provenance.py`
 
 Zeilen: 117
@@ -131,7 +121,7 @@ Einfache, ernsthafte Signallogiken fuer den Edge-Test -- ohne Optimierung.
 
 ## `mt5_trading_ai/betrieb/dienstguete.py`
 
-Zeilen: 568
+Zeilen: 595
 
 Alarmregeln, Dienstgüteziele und Fehlerbudget -- aus dem Betriebsjournal.
 
@@ -150,7 +140,7 @@ Alarmregeln, Dienstgüteziele und Fehlerbudget -- aus dem Betriebsjournal.
 
 ## `mt5_trading_ai/betrieb/journal.py`
 
-Zeilen: 629
+Zeilen: 630
 
 Betriebsjournale lesen -- die eine Stelle, an der aus Zeilen Aussagen werden.
 
@@ -255,7 +245,7 @@ Pre-Trade-Kostentor am Order-Pfad.
 
 ## `mt5_trading_ai/execution/freshness.py`
 
-Zeilen: 244
+Zeilen: 246
 
 Frische-Latch fuer den Kontozustand — S2 aus Paket 0.
 
@@ -409,39 +399,6 @@ Bewerten ist nicht handeln (Phase 8.3).
 - `def select_one`
 - `def trade_rate`
 
-## `mt5_trading_ai/gates/herausforderer.py`
-
-Zeilen: 375
-
-Der Modellpfad, schliessbar gemacht: ein Herausforderer wartet, er regiert nicht.
-
-- `class HerausfordererFehler`
-- `class Herkunft`
-- `class Herausforderer`
-- `def schema_hash`
-- `def mindestbeobachtungen`
-- `def effektive_beobachtungen`
-- `def baue_herausforderer`
-- `class Ablagebefund`
-- `class HerausfordererAblage`
-
-## `mt5_trading_ai/gates/learning_phase.py`
-
-Zeilen: 230
-
-Lernphase: bewerten und ordnen (Phase 9.5).
-
-- `class LearningPhaseError`
-- `class TradeRow`
-- `class EvaluationRow`
-- `class Ranking`
-- `class Weakness`
-- `class Proposal`
-- `class LearningReport`
-- `def rank_strategies`
-- `def find_weaknesses`
-- `def validate_proposal`
-
 ## `mt5_trading_ai/gates/trials.py`
 
 Zeilen: 319
@@ -544,7 +501,7 @@ Paket 5: Registrierung und Fortschritts-Tor des Demo-Betriebs (§8.5).
 
 ## `mt5_trading_ai/venue/mt5.py`
 
-Zeilen: 2721
+Zeilen: 2724
 
 MT5-Anbindung an das ``TradingVenue``-Protokoll.
 
