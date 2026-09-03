@@ -55,6 +55,7 @@ from mt5_trading_ai.execution.schwebende_auftraege import (
     SchwebenderAuftrag,
     standard_schwebedatei,
 )
+from mt5_trading_ai.risk.waehrung import kurs_aus_ticks
 from mt5_trading_ai.venue.catalog import (
     MINUTEN_JE_TAG,
     CatalogEntry,
@@ -131,6 +132,8 @@ class Mt5Symbol:
     stop_level_points: int
     freeze_level_points: int
     visible: bool
+    #: MT5 ``currency_margin``; ``None`` = nicht gemeldet (D3).
+    margin_currency: str | None = None
 
 
 @dataclass(frozen=True)
@@ -613,6 +616,7 @@ class Mt5Venue(TradingVenue):
             volume_max=sym.volume_max,
             base_currency=sym.base_currency,
             quote_currency=sym.quote_currency,
+            margin_currency=sym.margin_currency,
             stop_level_points=sym.stop_level_points,
             freeze_level_points=sym.freeze_level_points,
             fees=entry.fees,
@@ -1374,6 +1378,16 @@ class Mt5Venue(TradingVenue):
                 retryable=False,
             )
 
+    def kurs(self, von: str, nach: str) -> Decimal | None:
+        """Wert einer Einheit ``von`` in ``nach`` aus den Ticks des Terminals (D3).
+
+        Mittelkurs von ``VONNACH``, sonst Kehrwert von ``NACHVON``; gleiche Waehrung
+        = 1; kein Tick = ``None`` -- und ``None`` sperrt beim Aufrufer.
+        """
+        if not von or not nach:
+            return None
+        return kurs_aus_ticks(von, nach, self._terminal.tick)
+
     def _enforce_leverage(self, instrument: Instrument, request: OrderRequest) -> int:
         """Hebelklammer am Order-Pfad. Gibt den effektiven Hebel zurueck (fuer die
         Risikoschicht, die das Stop-Budget je Hebel berechnet)."""
@@ -1389,6 +1403,10 @@ class Mt5Venue(TradingVenue):
             account=self.get_account(),
             price=price,
             requested_leverage=request.meta.get("requested_leverage"),
+            margin_to_account_rate=self.kurs(
+                instrument.margin_currency or instrument.base_currency or "",
+                self.get_account().currency,
+            ),
         )
         if not preflight.approved or preflight.effective_leverage is None:
             raise OrderRejectedError(
@@ -1481,6 +1499,9 @@ class Mt5Venue(TradingVenue):
             spread_bps=spread_bps,
             leverage=leverage,
             now=account.ts,
+            quote_to_account_rate=self.kurs(
+                instrument.quote_currency or "", account.currency
+            ),
         )
         if not auth.approved:
             if auth.latch_halt:
@@ -2314,6 +2335,7 @@ class RealMt5Terminal:
             volume_max=self._d(vol_max_raw) if vol_max_raw else None,
             base_currency=str(info.currency_base) or None,
             quote_currency=str(info.currency_profit) or None,
+            margin_currency=str(getattr(info, "currency_margin", "") or "") or None,
             # Points -> Tick-Schritte: jeder Leser dieses Feldes multipliziert es mit
             # ``tick_size``, MT5 zaehlt es aber in ``point``. Siehe
             # :func:`stop_level_in_tickschritten`.

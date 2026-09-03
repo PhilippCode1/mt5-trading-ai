@@ -74,3 +74,16 @@ Suite zeigte 126 rote Faelle.
 jedem `ruff --fix`. (2) Das Mutationstor stellt jetzt mit zehn Wiederholungen zurueck und nennt den
 Mutanten laut, wenn es scheitert. (3) Endgueltig: T6 faehrt Mutanten in einer temporaeren Kopie
 (E-006) -- ein Werkzeug, das den Arbeitsbaum anfasst, ist das eigentliche Loch.
+
+## F-006 — Neue Quelldatei waehrend eines laufenden Pushs angelegt; der Pre-Push-Lauf wies den Push ab (2026-09-03)
+
+**Was geschah.** Waehrend der Pre-Push-Hook die Suite fuhr, legte ich `mt5_trading_ai/risk/waehrung.py`
+(noch ohne Aufrufer) im Arbeitsbaum an. Die Suite laeuft auf dem Arbeitsbaum, nicht auf dem Commit;
+die Erreichbarkeitstore (`tests/test_stufe8_testwirkung.py`) meldeten das Modul als verwaist, der
+Push wurde abgewiesen. Inhaltlich richtig (Regel 5), zeitlich mein Fehler.
+
+**Was es kostete.** Ein Suitelauf (5 min), ein zweiter Push.
+
+**Was sich aendert.** Waehrend eines Pushs keine Datei im Arbeitsbaum anlegen oder aendern -- auch
+keine neue; Entwuerfe entstehen im Scratchpad oder unter PROGRAMM/, nie unter mt5_trading_ai/, tools/
+oder tests/.

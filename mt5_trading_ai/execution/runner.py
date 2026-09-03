@@ -149,7 +149,12 @@ def _quantise(value: Decimal, tick: Decimal, side: OrderSide) -> Decimal:
 
 
 def _margen_deckel(
-    *, instrument: Instrument, account: AccountState, price: Decimal, plaetze: int
+    *,
+    instrument: Instrument,
+    account: AccountState,
+    price: Decimal,
+    plaetze: int,
+    margin_to_account_rate: Decimal | None,
 ) -> Decimal | None:
     """Groesstes Volumen, das die freie Marge je Position hergibt. ``None`` = unbekannt.
 
@@ -161,7 +166,22 @@ def _margen_deckel(
     if instrument.contract_size <= 0 or plaetze < 1:
         return None
     anteil = account.margin_free / Decimal(plaetze) * _MARGEN_SICHERHEIT
-    je_lot = instrument.contract_size * price / Decimal(account.leverage)
+    # D3: Marge je Lot in Margenwaehrung, dann in Kontowaehrung (kein Kurs = kein
+    # Deckel; die Hebelklammer sperrt dann selbst mit fx_unverifiable).
+    margen_waehrung = instrument.margin_currency or instrument.base_currency
+    if margen_waehrung == instrument.base_currency:
+        je_lot_margen = instrument.contract_size
+    elif margen_waehrung == instrument.quote_currency:
+        je_lot_margen = instrument.contract_size * price
+    else:
+        return None
+    if margen_waehrung == account.currency:
+        kurs = Decimal("1")
+    elif margin_to_account_rate is not None and margin_to_account_rate > 0:
+        kurs = margin_to_account_rate
+    else:
+        return None
+    je_lot = je_lot_margen * kurs / Decimal(account.leverage)
     if je_lot <= 0:
         return None
     roh = anteil / je_lot
@@ -455,6 +475,10 @@ def run_signal(
         account=account,
         price=ref,
         plaetze=config.max_concurrent_positions,
+        margin_to_account_rate=venue.kurs(
+            instrument.margin_currency or instrument.base_currency or "",
+            account.currency,
+        ),
     )
     if deckel is not None and deckel < sized_volume:
         if deckel < instrument.volume_min:

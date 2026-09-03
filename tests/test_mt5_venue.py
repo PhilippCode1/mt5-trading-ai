@@ -1019,6 +1019,7 @@ def test_leverage_preflight_clamps_and_checks_margin() -> None:
         account=venue.get_account(),
         price=Decimal("1.10"),
         requested_leverage=50,
+        margin_to_account_rate=Decimal("1.10"),
     )
     assert pre.approved is True
     assert pre.effective_leverage == 10  # min(50, 10, 30)
@@ -1032,6 +1033,7 @@ def test_leverage_preflight_crypto_clamps_to_class_cap() -> None:
         account=venue.get_account(),
         price=Decimal("60000"),
         requested_leverage=50,
+        margin_to_account_rate=Decimal("1.10"),
     )
     # E2: kein Betriebsminimum — Krypto klammert auf den ESMA-Deckel 2:1.
     assert pre.leverage.leverage == 2
@@ -1047,6 +1049,7 @@ def test_leverage_preflight_insufficient_margin() -> None:
         account=venue.get_account(),
         price=Decimal("1.10"),
         requested_leverage=50,
+        margin_to_account_rate=Decimal("1.10"),
     )
     assert pre.approved is False
     assert pre.reason == "insufficient_margin"

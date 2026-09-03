@@ -33,6 +33,9 @@ def _size(**overrides: object):
         "volume_step": Decimal("0.01"),
         "volume_max": Decimal("50"),
         "leverage": 5,
+        "account_currency": "USD",
+        "quote_currency": "USD",
+        "quote_to_account_rate": None,
     }
     kwargs.update(overrides)
     return size_position(**kwargs)  # type: ignore[arg-type]

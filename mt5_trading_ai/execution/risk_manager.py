@@ -929,6 +929,7 @@ class RiskManager:
         leverage: int,
         now: datetime,
         measured_cost_bps: Decimal | None = None,
+        quote_to_account_rate: Decimal | None = None,
     ) -> RiskAuthorization:
         """Fahre die vier Grenzen in vorgeschriebener Reihenfolge fuer eine Eroeffnung.
 
@@ -1155,6 +1156,9 @@ class RiskManager:
             volume_step=instrument.volume_step,
             volume_max=instrument.volume_max,
             leverage=leverage,
+            account_currency=account.currency,
+            quote_currency=instrument.quote_currency,
+            quote_to_account_rate=quote_to_account_rate,
         )
         if sizing.no_trade:
             first = sizing.reasons[0] if sizing.reasons else "no_trade"

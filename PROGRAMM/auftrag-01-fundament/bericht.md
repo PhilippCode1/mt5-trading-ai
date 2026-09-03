@@ -10,7 +10,7 @@ Die Bewertung vom 2026-09-02 ist ein Prüfauftrag. Jeder Befund wurde mit eigene
 |---|---|---|---|
 | **D1** Erkundungswürfel im Trockenlauf latcht Schwebeakte und Global-Halt; `clear_halt()` löst nicht | ja, ausgeführt | `03-befunde-v1-v9.txt` V1: `halt_reason: sendeversuch_unklar:open-EURUSD-…`, Eintrag in der Schwebeakte, nächste Eröffnung auch nach `clear_halt()` mit `schwebender_auftrag` abgewiesen | keine |
 | **D2** Reduce-only ohne Positionsticket geht als Marktorder raus | ja, ausgeführt | V2: `'position' im Request? False`, `sl = 0.0`, `accepted = True`; V2b: SLTP-Request ohne `symbol`, nur-SL-Aufruf ohne `tp` | keine |
-| **D3** Positionsgröße/Marge ohne Währungsumrechnung | ja, ausgeführt | V3: EURGBP auf USD-Konto, Verlust am Stop 63,15 USD statt 50 USD (+26 %); USDJPY `volume = None (below_volume_min)`; V3c: `required_margin = 30000.00` statt 33 USD | keine |
+| **D3** Positionsgröße/Marge ohne Währungsumrechnung | ja, ausgeführt | V3: EURGBP auf USD-Konto, Verlust am Stop 63,15 USD statt 50 USD (+26 %); USDJPY `volume = None (below_volume_min)`; V3c: `required_margin = 30000.00` statt 200 USD (1.000 USD Nennwert bei Hebelklammer 5; die Bewertung nannte 33 USD und rechnete mit dem Kontohebel 30, den die Klammer nicht durchlässt) | Marge: 200 statt 33 USD, gleiche Fehlerklasse |
 | **D4** `reconcile()` überschreibt fremden Halt-Grund | ja, ausgeführt | V4: `tagesverlust` → `reconcile_drift:notional_drift_exceeds_limit` | keine |
 | **D5** Scheitert das Vermerken (OSError), bleibt `_halted False` | ja, ausgeführt | V7: `venue.is_halted(): False`, Sendeversuch nur im Prozessspeicher | keine |
 | **D6** Defekte Schwebeakte verwirft unlesbare Einträge dauerhaft | ja, ausgeführt | V6: `open-C` nach `vermerken()` weg, `sperrgrund = None` | keine |
@@ -59,7 +59,14 @@ Kein Modul ohne Aufrufer außerhalb der Tests (Kriterium 1 trifft nirgends allei
 
 ## 3 · Behebungen mit Eichfällen (T6)
 
-(folgt)
+Je Befund ein Eichfall in `tests/eichfall_<befund>.py`: erst rot im Worktree `../nachstellung-306bbaa` (Datei hineinkopiert, ausgeführt, entfernt), dann grün gegen HEAD. Ausgaben in `belege/06-<befund>-rot.txt` / `-gruen.txt`; der Umbau selbst ist als Skript `belege/06-<befund>-umbau.py` nachvollziehbar.
+
+| Befund | Eichfall rot (306bbaa) | Eichfall grün (HEAD) | Was sich änderte (Klasse, nicht Stelle) | Commit |
+|---|---|---|---|---|
+| **D2** Schließung ohne Positionsticket | `06-d2-rot.txt`: 4 von 6 rot (Auftrag ohne Ticket konstruierbar; verschwundene Position wird trotzdem gesendet; fremdes Ticket gesendet; SLTP ohne `symbol`, TP gelöscht) | `06-d2-gruen.txt`: 6 von 6 grün | `OrderRequest.position_ticket` im Typ, `reduce_only` ohne Ticket ist `ValueError`; `RealMt5Terminal.order_send` liest die Position per Ticket unmittelbar vor dem Senden und antwortet `position_vanished` statt zu senden; `modify_stops` sendet `symbol` und lässt unberührte Stops stehen; `emergency_flatten`, `live_betrieb._schliesse`, `smoke-close` übergeben das Ticket | 76568d7 |
+| **D3** Größe und Marge ohne Währung | `06-d3-rot.txt`: Sammelfehler (Modul `risk/waehrung.py` und Währungsparameter existieren nicht); Messwerte des Befunds in `03-nachstellung/03-befunde-v1-v9.txt` V3/V3c | `06-d3-gruen.txt`: 7 von 7 grün (EURGBP auf USD-Konto: 0,30 Lot, Verlust ≤ 50 USD, statt 0,39 Lot / 63,15 USD; USDJPY-Marge 200 USD statt 30.000) | neues `risk/waehrung.py` (`Betrag` mit Währung, `kurs_aus_ticks`); `size_position` verlangt Konto- und Notierungswährung und Kurs, fehlender Kurs → `fx_unverifiable`; `Instrument.margin_currency` aus `currency_margin` des Terminals; Marge in Margenwährung, umgerechnet oder gesperrt; `Mt5Venue.kurs()` liefert den Kurs aus dem Tick des Konvertierungspaars; `RiskManager.authorize_opening` und der Margendeckel des Runners reichen den Kurs durch | (Hash in `zustand.md`, Eintrag „D3“) |
+
+Korrektur an mir selbst (Regel 9): meine erste Erwartung für die USDJPY-Marge war 33,33 USD (Kontohebel 30). Die Hebelklammer der Klasse lässt 5 durch, also sind es 200 USD; der Eichfall prüft jetzt beides (`effective_leverage == 5`, Marge = Nennwert / Hebel). Die Bewertung nannte ebenfalls 33 USD.
 
 ## 4 · Ehrliche CI (T7), Persistenz-Eichfall (T8), Smoke-Test (T9)
 

@@ -201,6 +201,10 @@ class Instrument:
     freeze_level_points: int
     fees: FeeSchedule
     sessions: tuple[TradingSession, ...]
+    #: Waehrung, in der der Broker die Marge rechnet (MT5 ``currency_margin``;
+    #: bei Devisen die Basiswaehrung). ``None`` = unbekannt -> Margenpruefung
+    #: sperrt (D3).
+    margin_currency: str | None = None
     #: Rolltermine (Terminkontrakte) und Dividendenereignisse (Aktien), UTC.
     roll_dates: tuple[datetime, ...] = ()
     dividend_dates: tuple[datetime, ...] = ()

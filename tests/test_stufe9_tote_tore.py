@@ -350,6 +350,7 @@ def test_ein_preis_von_null_loest_invalid_price_aus() -> None:
         account=venue.get_account(),
         price=Decimal("0"),
         requested_leverage=5,
+        margin_to_account_rate=Decimal("1"),
     )
     assert preflight.approved is False
     assert preflight.reason == "invalid_price"

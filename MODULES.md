@@ -273,8 +273,8 @@ Frische-Latch fuer den Kontozustand — S2 aus Paket 0.
 
 ## `mt5_trading_ai/execution/leverage_preflight.py`
 
-Zeilen: 106
-Aufrufer: Paket 1 · Werkzeuge 0 · Tests 2
+Zeilen: 134
+Aufrufer: Paket 1 · Werkzeuge 0 · Tests 3
 
 Anschluss der Hebelklammer an den Order-Pfad.
 
@@ -337,7 +337,7 @@ Der Risikozustand, der einen Neustart ueberdauert -- und wie er fail-closed lies
 
 ## `mt5_trading_ai/execution/risk_manager.py`
 
-Zeilen: 1188
+Zeilen: 1192
 Aufrufer: Paket 3 · Werkzeuge 5 · Tests 22
 
 Risikoschicht am Order-Pfad: die vier Grenzen als letzte Verteidigungslinie.
@@ -350,7 +350,7 @@ Risikoschicht am Order-Pfad: die vier Grenzen als letzte Verteidigungslinie.
 
 ## `mt5_trading_ai/execution/runner.py`
 
-Zeilen: 500
+Zeilen: 524
 Aufrufer: Paket 0 · Werkzeuge 3 · Tests 3
 
 Integrierender Paper/Dry-Run-Runner (Paket 7): die eine beweisbare Kette.
@@ -481,8 +481,8 @@ Verlustgrenzen und das **Kriterium** des Kill-Switch (Phase 6.4).
 
 ## `mt5_trading_ai/risk/sizing.py`
 
-Zeilen: 223
-Aufrufer: Paket 2 · Werkzeuge 0 · Tests 1
+Zeilen: 259
+Aufrufer: Paket 2 · Werkzeuge 0 · Tests 2
 
 Risiko je Trade, ausfuehrbarer Stop-Floor und Positionsgroesse (Phase 6.2/6.3).
 
@@ -508,6 +508,18 @@ Stop-Budget je Anlageklasse — hergeleitet, nicht uebertragen (Phase 6.5).
 - `def margin_ceiling_bps`
 - `def stop_budget`
 - `def breakeven_hit_rate`
+
+## `mt5_trading_ai/risk/waehrung.py`
+
+Zeilen: 100
+Aufrufer: Paket 1 · Werkzeuge 0 · Tests 1
+
+Geldbetraege tragen ihre Waehrung; ein Kurs ist ein Messwert oder eine Sperre.
+
+- `class WaehrungsFehler`
+- `class Betrag`
+- `class Kursquelle`
+- `def kurs_aus_ticks`
 
 ## `mt5_trading_ai/venue/catalog.py`
 
@@ -539,7 +551,7 @@ Paket 5: Registrierung und Fortschritts-Tor des Demo-Betriebs (§8.5).
 
 ## `mt5_trading_ai/venue/mt5.py`
 
-Zeilen: 2763
+Zeilen: 2785
 Aufrufer: Paket 3 · Werkzeuge 7 · Tests 34
 
 MT5-Anbindung an das ``TradingVenue``-Protokoll.
@@ -560,8 +572,8 @@ MT5-Anbindung an das ``TradingVenue``-Protokoll.
 
 ## `mt5_trading_ai/venue/protocol.py`
 
-Zeilen: 543
-Aufrufer: Paket 12 · Werkzeuge 8 · Tests 44
+Zeilen: 547
+Aufrufer: Paket 12 · Werkzeuge 8 · Tests 45
 
 Plattformunabhaengiger Handelsplatz-Vertrag.
 

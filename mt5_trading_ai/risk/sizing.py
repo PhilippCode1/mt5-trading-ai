@@ -72,6 +72,9 @@ class SizingResult:
     leverage: int | None
     reasons: tuple[str, ...]
     version: str = RISK_SIZING_VERSION
+    #: Kurs Notierungs- -> Kontowaehrung, mit dem gerechnet wurde (1 bei gleicher
+    #: Waehrung, None bei Ablehnung ohne Kurs). D3.
+    fx_rate: Decimal | None = None
 
     @property
     def no_trade(self) -> bool:
@@ -129,6 +132,19 @@ def _quantise_down(value: Decimal, step: Decimal) -> Decimal:
     return (value / step).to_integral_value(rounding=ROUND_DOWN) * step
 
 
+def _kurs_in_kontowaehrung(
+    account_currency: str, quote_currency: str | None, kurs: Decimal | None
+) -> Decimal | None:
+    """1 bei gleicher Waehrung; sonst der gegebene Kurs; None = nicht messbar."""
+    if not quote_currency:
+        return None
+    if quote_currency == account_currency:
+        return Decimal("1")
+    if kurs is None or kurs <= 0:
+        return None
+    return kurs
+
+
 def size_position(
     *,
     account_equity: Decimal,
@@ -142,8 +158,19 @@ def size_position(
     volume_step: Decimal,
     volume_max: Decimal | None,
     leverage: int | None,
+    account_currency: str,
+    quote_currency: str | None,
+    quote_to_account_rate: Decimal | None,
 ) -> SizingResult:
-    """Positionsgroesse aus Risikoanteil und Stopabstand."""
+    """Positionsgroesse aus Risikoanteil und Stopabstand -- in Kontowaehrung (D3).
+
+    Der Risikobetrag steht in ``account_currency``, der Stopabstand je Lot in
+    ``quote_currency``. ``quote_to_account_rate`` ist der Wert EINER Einheit der
+    Notierungswaehrung in Kontowaehrung; bei gleicher Waehrung wird er nicht
+    gebraucht, bei ungleicher ist ``None`` eine Sperre (``fx_unverifiable``),
+    keine stille 1 -- der Verlust am Stop laege sonst neben dem Budget
+    (Bewertung D3: +26 % fuer EURGBP auf einem USD-Konto).
+    """
     reasons: list[str] = []
     fraction = normalise_risk_fraction(risk_fraction)
 
@@ -155,6 +182,11 @@ def size_position(
         reasons.append("contract_size_missing")
     if leverage is None:
         reasons.append("leverage_no_trade")
+    kurs = _kurs_in_kontowaehrung(
+        account_currency, quote_currency, quote_to_account_rate
+    )
+    if kurs is None:
+        reasons.append("fx_unverifiable")
 
     stop_distance = max(stop_floor_bps, requested_stop_bps or Decimal("0"))
 
@@ -183,7 +215,10 @@ def size_position(
         )
 
     stop_distance_price = price * stop_distance / Decimal("10000")
-    raw_volume = risk_currency / (stop_distance_price * contract_size)
+    # Verlust am Stop je Lot, in KONTOWAEHRUNG: Notierungswaehrung * Kurs.
+    assert kurs is not None  # oben als Grund erfasst
+    verlust_je_lot_konto = stop_distance_price * contract_size * kurs
+    raw_volume = risk_currency / verlust_je_lot_konto
     volume = _quantise_down(raw_volume, volume_step)
 
     if volume_max is not None and volume > volume_max:
@@ -206,7 +241,7 @@ def size_position(
             reasons=tuple(dict.fromkeys(reasons)),
         )
 
-    notional = volume * contract_size * price
+    notional = volume * contract_size * price * kurs  # in Kontowaehrung
     margin = notional / Decimal(leverage) if leverage else None
 
     return SizingResult(
@@ -220,4 +255,5 @@ def size_position(
         margin_required=margin,
         leverage=leverage,
         reasons=tuple(dict.fromkeys(reasons)),
+        fx_rate=kurs,
     )

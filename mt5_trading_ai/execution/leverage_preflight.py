@@ -45,6 +45,7 @@ def evaluate_leverage_preflight(
     price: Decimal,
     requested_leverage: Any = None,
     policy: LeveragePolicy | None = None,
+    margin_to_account_rate: Decimal | None = None,
 ) -> LeveragePreflight:
     """Klammere den Hebel und pruefe die Marge fuer eine eroeffnende Order.
 
@@ -87,8 +88,35 @@ def evaluate_leverage_preflight(
     if account.leverage is not None and account.leverage > 0:
         wirksam = min(wirksam, account.leverage)
 
-    notional = request.volume * instrument.contract_size * price
-    required_margin = notional / Decimal(wirksam)
+    # D3: die Marge entsteht in der MARGENWAEHRUNG des Instruments (bei Devisen die
+    # Basiswaehrung: Lots * Kontraktgroesse; sonst Lots * Kontraktgroesse * Kurs)
+    # und wird mit einem gegebenen Kurs in Kontowaehrung gebracht. Kein Kurs bei
+    # ungleicher Waehrung = keine Marge messbar = keine Order (fx_unverifiable).
+    margen_waehrung = instrument.margin_currency or instrument.base_currency
+    if margen_waehrung == instrument.base_currency:
+        margen_notional = request.volume * instrument.contract_size
+    elif margen_waehrung == instrument.quote_currency:
+        margen_notional = request.volume * instrument.contract_size * price
+    else:
+        margen_waehrung = None
+        margen_notional = Decimal("0")
+    if margen_waehrung is None:
+        kurs: Decimal | None = None
+    elif margen_waehrung == account.currency:
+        kurs = Decimal("1")
+    elif margin_to_account_rate is not None and margin_to_account_rate > 0:
+        kurs = margin_to_account_rate
+    else:
+        kurs = None
+    if kurs is None:
+        return LeveragePreflight(
+            approved=False,
+            effective_leverage=wirksam,
+            required_margin=None,
+            reason="fx_unverifiable",
+            leverage=decision,
+        )
+    required_margin = margen_notional * kurs / Decimal(wirksam)
     if required_margin > account.margin_free:
         return LeveragePreflight(
             approved=False,

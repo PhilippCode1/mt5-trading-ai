@@ -247,3 +247,26 @@ und `config/instrument_catalog.json`, weil `tests/test_kostentor_ausgabe.py` die
 zeilengenau gegen den eingefrorenen Beleg `archiv/ABSCHLUSS-3a/07-AUSGABEN/kostentor.txt` hält
 (Messung: Zeile 110 und 414 wichen ab). Ein Beleg, der bei einer Pfadumbenennung rot wird, bewacht
 den Wortlaut, und der Wortlaut nennt das Dokument mit seinem damaligen Namen.
+
+## E-017 — Geldbeträge tragen ihre Währung; ein fehlender Kurs ist eine Sperre, keine 1 (2026-09-03)
+
+**Kriterium.** Der Befund D3 (Bewertung 3.3) ist keine Stelle, sondern eine Klasse: sechs Stellen multiplizierten
+`contract_size * price` und teilten einen Betrag in Kontowährung durch einen Abstand in Notierungswährung. Eine
+Behebung, die nur diese sechs Stellen umrechnet, lässt die siebte zu. Darum muss der Typ die Klasse sperren.
+
+**Wahl.** Neues Modul `mt5_trading_ai/risk/waehrung.py`: `Betrag(wert, waehrung)` rechnet nur in gleicher Währung,
+`umgerechnet(nach, kurs)` verlangt einen gegebenen Kurs, `kurs=None` bei ungleicher Währung ist `WaehrungsFehler`.
+Die Kursquelle ist das Terminal (`kurs_aus_ticks`: Mittelkurs von VONNACH, sonst Kehrwert von NACHVON, sonst
+`None`); `Mt5Venue.kurs(von, nach)` stellt sie dem Orderpfad bereit. `size_position` bekommt Kontowährung,
+Notierungswährung und Kurs als Pflichtparameter — kein Kurs, keine Größe (`fx_unverifiable`, Regel 7).
+Die Marge entsteht in der Margenwährung des Instruments (`Instrument.margin_currency` aus `currency_margin`
+des Terminals; Basiswährung → Volumen × Kontraktgröße, Notierungswährung → zusätzlich × Preis) und wird in
+die Kontowährung umgerechnet oder gesperrt.
+
+**Verworfen.** (a) Kurs per Vorgabe 1, wenn keiner vorliegt — genau der Fehler, den D3 beschreibt. (b) Eine
+Umrechnungstabelle in `config/` — Kurse sind Messwerte des Terminals, keine Konfiguration. (c) Umrechnung
+nur in `sizing.py` — der Margendeckel im Runner und der Preflight rechnen dieselbe Klasse.
+
+**Eigener Fehler dabei.** Die Marge für 0,01 Lot USDJPY erwartete ich mit 33,33 USD (Kontohebel 30); die
+Hebelklammer der Klasse ist 5, richtig sind 200 USD. Der Eichfall pinnt jetzt Hebel und Rechnung, nicht
+nur die Zahl. Die Bewertung nannte ebenfalls 33 USD.

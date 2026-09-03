@@ -1,0 +1,15 @@
+# Eichfall D3, ROT gegen 306bbaa (Worktree, 2026-09-03): tests/eichfall_d3.py dort ausgefuehrt.
+# Bei 306bbaa gibt es weder risk/waehrung.py noch die Waehrungsparameter von size_position und
+# evaluate_leverage_preflight: die Datei scheitert schon beim Import (Sammelfehler = rot).
+# Die Messwerte des Befunds selbst stehen in 03-nachstellung/03-befunde-v1-v9.txt (V3: 0,39 Lot, 63,15 USD
+# statt 50 USD; V3c: required_margin 30000 statt 200 USD -- Hebelklammer 5 auf 1.000 USD Nennwert;
+# die Zahl 33 USD in der Bewertung und in 03-befunde-v1-v9.txt rechnet mit dem Kontohebel 30).
+$ python -m pytest -q -p no:cacheprovider tests/eichfall_d3.py
+=================================== ERRORS ====================================
+____________________ ERROR collecting tests/eichfall_d3.py ____________________
+ImportError while importing test module 'C:\Users\Acer\nachstellung-306bbaa\tests\eichfall_d3.py'.
+E   ModuleNotFoundError: No module named 'mt5_trading_ai.risk.waehrung'
+ERROR tests/eichfall_d3.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+1 error in 2.06s
+[exit=2]
