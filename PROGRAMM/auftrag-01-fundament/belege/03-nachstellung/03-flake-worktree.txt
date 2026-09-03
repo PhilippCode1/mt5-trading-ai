@@ -1,0 +1,5 @@
+# Flake-Messung im Worktree 306bbaa: 100 x python -m pytest -q -p no:cacheprovider tests/test_live_betrieb.py (2026-09-03)
+Lauf 72: 1 failed, 28 passed in 0.87s
+Lauf 80: 1 failed, 28 passed in 0.77s
+Lauf 98: 1 failed, 28 passed in 0.77s
+Laeufe mit Fehlschlag: 3 von 100

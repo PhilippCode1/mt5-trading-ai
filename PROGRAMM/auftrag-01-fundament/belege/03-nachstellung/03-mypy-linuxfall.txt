@@ -1,0 +1,11 @@
+# T (c): mypy-Fehler der Linux-CI lokal nachgestellt (HEAD, 2026-09-03) -- Interpreter Python 3.13 ohne MetaTrader5, FRISCHER Cache.
+# Erster Versuch im Worktree (03-grundmessung-statisch-worktree.txt) meldete 'Success', weil der mypy-Cache des
+# vorangegangenen 3.11-Laufs wiederverwendet wurde -- Messfehler, hier korrigiert.
+$ python -m mypy --strict --cache-dir <frisch> --python-executable <Python313> mt5_trading_ai tools
+tools\live_betrieb.py:893: error: Cannot find implementation or library stub for module named "MetaTrader5"  [import-not-found]
+tools\live_betrieb.py:893: note: Error code "import-not-found" not covered by "type: ignore" comment
+tools\live_betrieb.py:893: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+Found 2 errors in 1 file (checked 82 source files)
+[exit=1]
+$ <Python313> -c "import importlib.util; print(importlib.util.find_spec('MetaTrader5'))"
+None

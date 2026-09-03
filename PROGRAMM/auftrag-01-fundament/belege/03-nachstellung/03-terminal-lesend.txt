@@ -1,0 +1,28 @@
+# Grundmessung am laufenden Terminal (nur lesend), HEAD, 2026-09-03. Das Terminal wurde von MetaTrader5.initialize() beim
+# Werkzeuglauf im Worktree automatisch gestartet (vorher lief kein terminal64-Prozess). Kontonummer redigiert.
+
+$ python tools/mt5_smoke.py   (ohne --allow-write: schreibt nichts)
+OK connect: mt5
+OK healthy: 
+OK account: <konto> equity=49975.75
+OK demo_guard: Demokonto bestaetigt
+!! error: Katalogsymbole, die dieses Terminal nicht aufloest: BTCUSD. Der Katalog ist die belegte Quelle des Universums -- ein Eintrag, den der Adapter nicht findet, ist ein Defekt der Datenlage (Broker-Suffix? MarketWatch?), kein Grund, das Symbol still wegzulassen.
+OK disconnect: 
+SMOKE FEHLGESCHLAGEN
+[exit=1]
+
+$ python - (account_info/terminal_info/Serverzeitversatz, lesend)
+initialize(): True | last_error: (1, 'Success')
+terminal: connected=True trade_allowed=True build=6116 company=MetaQuotes Ltd.
+account: login=<konto> trade_mode=0 (0=demo,1=contest,2=real) currency=EUR leverage=1 server=MetaQuotes-Demo balance=49975.75 equity=49975.75
+symbols_get(): 12455 Symbole
+  EURUSD  trade_mode=4 currency_profit=USD currency_margin=EUR
+  GBPUSD  trade_mode=4 currency_profit=USD currency_margin=GBP
+  XAUUSD  trade_mode=4 currency_profit=USD currency_margin=USD
+  EURGBP  trade_mode=4 currency_profit=GBP currency_margin=EUR
+  USDJPY  trade_mode=4 currency_profit=JPY currency_margin=USD
+  US500   trade_mode=0 currency_profit=USD currency_margin=USD
+  BTCUSD  fehlt
+Serverzeitversatz EURUSD-Tick: tick.time=1788471464 (UTC 2026-09-03T21:37:44) lokal_utc=1788460668 -> Versatz +10796 s (Serverzeit ist Broker-Serverzone, nicht UTC)
+  Erklaerung: MetaTrader5 liefert Tick-Zeiten in Serverzeit als naive Epoche; ein Versatz von ~+7200 s = Serverzone UTC+2, +10800 s = UTC+3.
+[exit=0]

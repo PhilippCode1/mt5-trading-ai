@@ -1,0 +1,100 @@
+# Grundmessung im Worktree 306bbaa (Windows, Python 3.11.7, 2026-09-03), statische Tore und Werkzeuge
+
+$ python -m ruff check .
+All checks passed!
+[exit=0]
+
+$ python -m ruff format --check .
+Would reformat: tools\zweigdeckung.py
+112 files would be reformatted, 59 files already formatted
+[exit=1]
+
+$ python -m mypy --strict mt5_trading_ai tools
+Success: no issues found in 81 source files
+[exit=0]
+
+$ python -m mypy --strict --python-executable <Python 3.13 ohne MetaTrader5> mt5_trading_ai tools   # wie die Linux-CI
+Success: no issues found in 81 source files
+[exit=0]
+
+## --help je Werkzeug
+atr_messung.py: exit=0
+aufloesung.py: exit=0
+aufzeichnung_redigieren.py: exit=0
+auswertung.py: exit=0
+betrieb_auswerten.py: exit=1 -- 
+betrieb_reihe.py: exit=0
+check_doc_numbers.py: exit=0
+check_docs_claims.py: exit=0
+dienstguete.py: exit=0
+edge_test.py: exit=1 -- ValueError: unsupported format character 'v' (0x76) at index 53
+ereignisstudie.py: exit=0
+fetch_data.py: exit=0
+geheimnis_scan.py: exit=0
+gen_docs.py: exit=0
+journal_sichern.py: exit=0
+kopien_abgleichen.py: exit=0
+kostentor.py: exit=0
+live_betrieb.py: exit=0
+live_konsole.py: exit=0
+modelllauf.py: exit=0
+mt5_smoke.py: exit=0
+multi_instrument_edge.py: exit=0
+mutationstor.py: exit=0
+oberflaeche.py: exit=0
+paper_run.py: exit=0
+torerfuellbarkeit.py: exit=0
+torzaehlung.py: exit=0
+wiederanlaufprobe.py: exit=0
+zweigdeckung.py: exit=0
+
+## Werkzeuge ohne Terminal, MetaTrader5 installiert, Terminal nicht gestartet (Windows-Fall)
+$ python tools/mt5_smoke.py
+!! error: Katalogsymbole, die dieses Terminal nicht aufloest: BTCUSD. Der Katalog ist die belegte Quelle des Universums -- ein Eintrag, den der Adapter nicht findet, ist ein Defekt der Datenlage (Broker-Suffix? MarketWatch?), kein Grund, das Symbol still wegzulassen.
+OK disconnect: 
+SMOKE FEHLGESCHLAGEN
+[exit=1]
+$ python tools/atr_messung.py
+
+Gemessen: 6 von 7 Pruefinstrumenten.
+Geschrieben: config/atr_measurements.json
+[exit=0]
+$ python tools/live_betrieb.py --dauer 0.001 --takt 1
+Beendet nach 4 Takten. Equity 49975.75 -> 49975.75 EUR
+Journal: C:\Users\Acer\nachstellung-306bbaa\betrieb\journal-20260903T182915.jsonl
+Auswertung: python tools/betrieb_auswerten.py journal-20260903T182915.jsonl
+[exit=0]
+$ python tools/live_konsole.py --takte 1
+  [HALT] zulassung    nicht erfuellt: unbekannt (Erkundung: nicht gezogen)
+  -> keine Eroeffnung: strategy_not_admitted
+
+[exit=0]
+
+## Dieselben Werkzeuge mit unsichtbarem MetaTrader5 (Shim wirft ImportError, wie Linux)
+$ PYTHONPATH=<shim> python tools/mt5_smoke.py
+!! connect: MetaTrader5 nicht installiert (pip install MetaTrader5)
+SMOKE FEHLGESCHLAGEN
+[exit=1]
+$ PYTHONPATH=<shim> python tools/live_betrieb.py --dauer 0.001 --takt 1
+  File "C:\Users\Acer\nachstellung-306bbaa\mt5_trading_ai\venue\mt5.py", line 2156, in initialize
+    raise VenueUnavailableError(
+mt5_trading_ai.venue.protocol.VenueUnavailableError: MetaTrader5 nicht installiert (pip install MetaTrader5)
+[exit=1]
+$ PYTHONPATH=<shim> python tools/live_konsole.py --takte 1
+  File "C:\Users\Acer\nachstellung-306bbaa\mt5_trading_ai\venue\mt5.py", line 2156, in initialize
+    raise VenueUnavailableError(
+mt5_trading_ai.venue.protocol.VenueUnavailableError: MetaTrader5 nicht installiert (pip install MetaTrader5)
+[exit=1]
+
+## Geheimnis-Scan (detect-secrets 1.5.0 installiert)
+$ time python tools/geheimnis_scan.py
+Dauer: 241 s
+Gepruefte Objekte : 365 von Git verfolgte Dateien
+Funde             : 40
+Gepruefte Objekte : 1284 Blobs aus 127 Commits
+Funde (roh)       : 76
+Funde (bereinigt) : 39  [Vorlagen wie .env.example abgezogen]
+Gepruefte Objekte : 365 Dateien
+Funde             : 13
+ERGEBNIS: 129 Funde bei 365 verfolgten Dateien und 1284 Blobs im Verlauf.
+[exit=0]
