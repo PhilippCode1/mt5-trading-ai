@@ -18,9 +18,10 @@ sie zitieren Zusicherungen als Befund -- sondern per Manifest auf Unveraenderthe
 gesichert. Keine Ausnahmeliste: was nicht in der Menge ist, ist es, weil die Menge
 positiv definiert ist.
 
-Drei Pruefungen: (1) die Wurzel traegt genau ``README.md``, ``MODULES.md``,
+Vier Pruefungen: (1) die Wurzel traegt genau ``README.md``, ``MODULES.md``,
 ``CLAUDE.md``; (2) hoechstens ``MAX_MARKDOWN_FILES`` lebende Dokumente; (3) keine
-gesperrte Phrase ohne Beleg in einem lebenden Dokument.
+gesperrte Phrase ohne Beleg in einem lebenden Dokument; (4) keine verfolgte
+Markdown-Datei, die weder lebend noch per Manifest gesichert ist.
 
 Aufruf:  python tools/check_docs_claims.py
 Exit 1 bei Verstoss.
@@ -116,6 +117,11 @@ def main() -> int:
     files = tracked_markdown()
     zaehlend = counted(files)
     failures: list[str] = list(doku_menge.wurzel_befunde(REPO))
+    failures += [
+        f"unbeaufsichtigt: {rel} ist weder lebend noch per Manifest gesichert -- "
+        "archivieren, nach PROGRAMM/ verschieben oder loeschen"
+        for rel in doku_menge.unbeaufsichtigt(REPO)
+    ]
 
     if len(zaehlend) > MAX_MARKDOWN_FILES:
         failures.append(

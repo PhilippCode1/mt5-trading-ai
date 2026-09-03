@@ -110,3 +110,21 @@ def test_zahlen_tor_prueft_die_wurzel_und_nicht_das_messprotokoll() -> None:
     assert not check_doc_numbers.ist_zahlen_gegenstand("PROGRAMM/zustand.md")
     assert not check_doc_numbers.ist_zahlen_gegenstand("archiv/PROGRESS.md")
     assert not check_doc_numbers.ist_zahlen_gegenstand("PROGRAMM/eingang/BEWERTUNG.md")
+
+
+# --- keine Luecke zwischen lebend und gesichert ----------------------------------
+
+
+def test_keine_verfolgte_markdown_ist_unbeaufsichtigt() -> None:
+    """Gruener Eichfall am Bestand: jede .md ist lebend oder per Manifest gesichert."""
+    assert doku_menge.unbeaufsichtigt() == []
+
+
+def test_eine_markdown_unter_tests_ist_rot(monkeypatch: pytest.MonkeyPatch) -> None:
+    """ROTER EICHFALL: eine .md an einem Ort, den kein Tor sieht, wird gemeldet."""
+    monkeypatch.setattr(
+        doku_menge,
+        "verfolgte_markdown",
+        lambda repo=None: ["README.md", "tests/NOTIZEN.md", "archiv/x.md"],
+    )
+    assert doku_menge.unbeaufsichtigt() == ["tests/NOTIZEN.md"]

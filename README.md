@@ -37,7 +37,7 @@ Erzeugt von `tools/gen_docs.py`, geprüft von `tools/check_doc_numbers.py` und `
 
 <!-- KENNZAHLEN-ANFANG (erzeugt von tools/gen_docs.py, geprueft von tests/test_readme_numbers.py) -->
 - module_count: 39
-- test_function_count: 1311
+- test_function_count: 1313
 - source_lines: 16342
 <!-- KENNZAHLEN-ENDE -->
 

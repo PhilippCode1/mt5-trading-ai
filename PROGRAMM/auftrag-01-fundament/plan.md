@@ -113,7 +113,7 @@ A1 GitHub-Lauf grün + Container-Log · A2 `pytest -rs` 0 Skips, Skip-Gate im Ei
 | T2 Katalog + Wächter | erledigt 2026-09-03, ein Punkt offen | a3c623d | 02-hook-waechter-selbsttest.txt (11/11, stdin Exit 2), 02-pre-commit-erster-lauf.txt (8 Tore, 2,3 s), 02-eichfall-pre-commit.txt (Klon: 3 Abweisungen, 1 Annahme, Hash rot/grün), 02-eichfall-live-arbeitsrepo.txt (Pre-Commit-Abweisung live). **Offen:** Live-Abweisung durch den Claude-Code-Hook — Hooks laden beim Sitzungsstart; Wiederholung zu Beginn der nächsten Sitzung. |
 | T3 Nachstellung + Grundmessung | erledigt 2026-09-03 (direkte Zweigdeckungsmessung läuft nach) | c444fb8, ea955f5 | `belege/03-nachstellung/`: V1–V9, K, G (identisch), weitere Befunde, Suite im Worktree (1612/12 Skips), Flake 3/100, statische Tore, mypy-Linuxfall, Mutation 16/16, Bytecode-Mechanik deterministisch, Terminal lesend; `bericht.md §1` |
 | T4 Bestandszählung, Wahl je Modul | erledigt 2026-09-03 | (dieser Commit) | `belege/04-bestand.txt` (42 Module, Aufrufer, Sonden, Zweigdeckung der Bewertung), `bericht.md §2` (Kriterium vor der Wahl, Wahl je Modul) |
-| T5 Archiv und Löschungen | offen | | |
+| T5 Archiv und Löschungen | erledigt 2026-09-03 (Gegenlese läuft) | 102f68d, 06bb392, b0a4c5b, 5f9a98c | `belege/05-*`: Archivierung (160 Dateien, Manifest), Mengenregel (`tools/doku_menge.py`, 13/32 lebende Dokumente, Wurzel = 3), Löschungen (5 Module/Werkzeuge, 105 Tests, `geloescht.md`), RUNBOOK-Entkopplung (E-014), README 46 Zeilen, MODULES.md mit Aufrufern; Suite 1511 grün |
 | T6 Behebungen mit Eichfällen | offen | | |
 | T7 Ehrliche CI | offen | | |
 | T8 kill-Eichfall | offen | | |

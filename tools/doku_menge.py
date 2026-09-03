@@ -86,3 +86,23 @@ def wurzel_befunde(repo: Path = REPO) -> list[str]:
         for n in sorted(ist - soll)
     ]
     return befunde
+
+
+def ist_gesichert(rel: str) -> bool:
+    """Ob ein Pfad in einem per Manifest gesicherten Ordner liegt."""
+    rel = rel.replace(chr(92), "/")
+    return any(rel.startswith(o + "/") for o in PRUEFSUMMEN_GESICHERT)
+
+
+def unbeaufsichtigt(repo: Path = REPO) -> list[str]:
+    """Verfolgte Markdown-Dateien, die weder lebend noch gesichert sind.
+
+    Die Menge ist positiv definiert; damit sie keine Luecke laesst, muss jede
+    verfolgte Datei in genau eine der beiden Klassen fallen. Eine .md unter
+    tests/ oder tools/ waere sonst weder gescannt noch eingefroren.
+    """
+    return sorted(
+        rel
+        for rel in verfolgte_markdown(repo)
+        if not ist_lebend(rel) and not ist_gesichert(rel)
+    )

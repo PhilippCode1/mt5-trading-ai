@@ -1,6 +1,6 @@
 # Bericht Auftrag 1 — Fundament
 
-**Stand: in Arbeit (T3 läuft).** Jede Zahl nennt ihre Bezugsgröße und ihre Belegdatei unter `belege/`. „ausgeführt" heißt: Ausgabe liegt bei; „gelesen" heißt: aus dem Quelltext, nicht gemessen. Referenzstand für alle roten Eichfälle: 306bbaa im Worktree `../nachstellung-306bbaa` (ohne `betrieb/`, ohne `daten/`, also wie ein frischer Klon; Windows, Python 3.11.7).
+**Stand: in Arbeit (T0–T5 erledigt, Gegenlese zu T5 läuft, T6 folgt).** Jede Zahl nennt ihre Bezugsgröße und ihre Belegdatei unter `belege/`. „ausgeführt" heißt: Ausgabe liegt bei; „gelesen" heißt: aus dem Quelltext, nicht gemessen. Referenzstand für alle roten Eichfälle: 306bbaa im Worktree `../nachstellung-306bbaa` (ohne `betrieb/`, ohne `daten/`, also wie ein frischer Klon; Windows, Python 3.11.7).
 
 ## 1 · Nachstellung der Befunde der Bewertung (T3)
 
@@ -79,3 +79,11 @@ Kein Modul ohne Aufrufer außerhalb der Tests (Kriterium 1 trifft nirgends allei
 ## 7 · Eigene Fehler
 
 Siehe `PROGRAMM/fehler.md`: F-001 und F-003 (Doku-Tore vor `git add` gefahren, zweimal), F-002 (Commit trotz roter Tore, Rückgabewerte verschluckt). Alle drei Klassen sind seit T2 im Pre-Commit-Hook abgefangen.
+
+## 2a · Archiv, Löschungen, Dokumentation (T5)
+
+- **Archiv.** 4 Ordner und 12 Wurzeldokumente des Altstands liegen unter `archiv/` (160 Dateien, `archiv/MANIFEST.sha256`, `archiv/HERKUNFT.txt`); `python tools/archiv_manifest.py --pruefen` grün (`belege/05-archivieren.txt`, `05-archiv-und-mengenregel.txt`). 147 Verweise in Code, Tests, Konfiguration und CI nachgezogen; zwei Stellen bewusst nicht (Nachtrag E-015: der Wortlaut der Kostentor-Ausgabe und die Herkunftsangaben in `config/*.json`, weil `tests/test_kostentor_ausgabe.py` die Ausgabe zeilengenau an den eingefrorenen Beleg bindet).
+- **Lebende Dokumente.** An der Wurzel genau `README.md` (46 Zeilen statt 200, keine Stand-Abschnitte), `MODULES.md` (erzeugt: je Modul Zeilen, API, Aufrufer aus Paket / Werkzeuge / Tests — kein Modul mit 0 Aufrufern außerhalb der Tests, `belege/05-readme-modules.txt`) und `CLAUDE.md`; 13 von 32 lebenden Markdown-Dateien insgesamt. Doku-Tore beziehen ihre Menge aus `tools/doku_menge.py` (positiv definiert, keine Ausnahmeliste; `tests/test_doku_menge.py`: vierte Wurzeldatei rot, eigene PROGRAMM-Datei scharf, Eingänge und Archiv per Manifest grün). Der README-Kennzahlenblock wird von `tools/gen_docs.py` erzeugt und von `--check` gehalten.
+- **Löschungen (E-009).** `backtest/llm_compare.py`, `gates/herausforderer.py`, `gates/learning_phase.py`, `tools/modelllauf.py`, `tools/oberflaeche.py` samt fünf Testdateien (105 Testfunktionen) und einem Testfall; Mutationskatalog 16 → 13 Sonden, Geldpfad-Liste 12 → 11 Dateien; jeder Eintrag in `PROGRAMM/geloescht.md` mit Zeilenzahl und Commit (`belege/05-loeschen.txt`). Kennzahlen danach: 39 Module, 16.342 Quellzeilen, 1.311 Testfunktionen; Suite 1511 grün (`05-loeschungen-und-entkopplung-suite.txt`).
+- **RUNBOOK-Entkopplung (E-014).** Die vier Alarmregeln in `betrieb/dienstguete.py` tragen ihre Handlung selbst (zwei bis vier Sätze), die Alarmzeile druckt sie; vier Tests prüfen die Handlung statt Abschnitte einer archivierten Datei (`05-runbook-entkoppeln.txt`).
+- **Eigene Fehler in T5.** F-004 (Commit trotz rotem Test), F-005 (Mutant des Mutationstors im Baum nach dem Pre-Push-Lauf, durch `ruff --fix` zementiert; Werkzeug stellt jetzt mit zehn Wiederholungen zurück, endgültig behoben durch die Kopie in T6). Die Push-Sperre hat beide Male gehalten.
