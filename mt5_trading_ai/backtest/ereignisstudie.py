@@ -357,8 +357,11 @@ def studie(
     werte = [
         w
         for e in ereignisse
-        if (w := messe_ereignis(
-            kerzen, stempel, e, fenster_stunden=fenster_stunden, balkenstunden=bs))
+        if (
+            w := messe_ereignis(
+                kerzen, stempel, e, fenster_stunden=fenster_stunden, balkenstunden=bs
+            )
+        )
         is not None
     ]
     if len(werte) < 30:
@@ -460,9 +463,15 @@ def bestaetige(
         proben = [
             w.bereinigt_bps
             for e in verschoben
-            if (w := messe_ereignis(
-                kerzen, stempel, e, fenster_stunden=fenster_stunden,
-                balkenstunden=bs))
+            if (
+                w := messe_ereignis(
+                    kerzen,
+                    stempel,
+                    e,
+                    fenster_stunden=fenster_stunden,
+                    balkenstunden=bs,
+                )
+            )
             is not None
         ]
         if len(proben) >= 30 and statistics.median(proben) >= gemessener_median:

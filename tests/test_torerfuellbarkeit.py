@@ -78,7 +78,9 @@ def test_bewegung_auf_einer_reihe_mit_bekannter_antwort() -> None:
     assert s == pytest.approx(99.5, abs=0.6)
 
 
-def test_streuung_ist_die_der_vorzeichenbehafteten_bewegung_nicht_der_betraege() -> None:
+def test_streuung_ist_die_der_vorzeichenbehafteten_bewegung_nicht_der_betraege() -> (
+    None
+):
     """Der Fall, der die Verwechslung aus der ersten Fassung faengt.
 
     Bei einer Reihe mit wechselndem Vorzeichen und stark schwankendem BETRAG fallen die
@@ -90,7 +92,8 @@ def test_streuung_ist_die_der_vorzeichenbehafteten_bewegung_nicht_der_betraege()
     m, s, _ = bewegung_bp(closes, horizont=1)
 
     vorzeichen = [
-        (closes[i + 1] - closes[i]) / closes[i] * 10_000.0 for i in range(len(closes) - 1)
+        (closes[i + 1] - closes[i]) / closes[i] * 10_000.0
+        for i in range(len(closes) - 1)
     ]
     betrags_streuung = statistics.pstdev([abs(x) for x in vorzeichen])
 
@@ -148,7 +151,9 @@ def test_hellseher_faengt_jede_bewegung_und_zahlt_jedes_mal_die_kosten() -> None
     zahlt je Trade K.
     """
     closes = [100.0, 110.0] * 8
-    sharpe, mittel, streuung, trades = hellseher_sharpe(closes, horizont=1, kosten_bp=5.0)
+    sharpe, mittel, streuung, trades = hellseher_sharpe(
+        closes, horizont=1, kosten_bp=5.0
+    )
 
     # 16 Bars, Horizont 1, nicht ueberlappend: range(0, 15, 1) -> genau 15 Trades.
     assert trades == 15

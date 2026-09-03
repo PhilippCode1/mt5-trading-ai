@@ -111,9 +111,10 @@ def test_noetige_sharpe_erreicht_die_schwelle_genau() -> None:
     from mt5_trading_ai.gates.criteria import deflated_sharpe_ratio
 
     s = required_sharpe(500, 8)
-    assert deflated_sharpe_ratio(
-        observed_sharpe=s, observations=500, trials=8
-    ) >= DEFAULT_DSR_THRESHOLD
+    assert (
+        deflated_sharpe_ratio(observed_sharpe=s, observations=500, trials=8)
+        >= DEFAULT_DSR_THRESHOLD
+    )
     knapp_darunter = deflated_sharpe_ratio(
         observed_sharpe=s * 0.99, observations=500, trials=8
     )
@@ -220,7 +221,9 @@ def test_groessere_streuung_macht_es_nie_besser() -> None:
     assert weit.ratio > eng.ratio
 
 
-def test_hoehere_kosten_verlangen_einen_groesseren_effekt_und_helfen_der_aufloesung() -> None:
+def test_hoehere_kosten_verlangen_einen_groesseren_effekt_und_helfen_der_aufloesung() -> (
+    None
+):
     """Hoehere Kosten heben die wirtschaftliche Schwelle — das erleichtert den Nachweis.
 
     Das klingt verkehrt herum und ist es nicht: die Studie muss nur zeigen, dass der
@@ -246,9 +249,7 @@ def test_hoehere_kosten_verlangen_einen_groesseren_effekt_und_helfen_der_aufloes
     ],
 )
 def test_nicht_positive_eingaben_sind_fehler(feld: str, wert: float) -> None:
-    basis = dict(
-        events=100, trials=8, dispersion=50.0, cost_bps=1.0, oos_share=1.0
-    )
+    basis = dict(events=100, trials=8, dispersion=50.0, cost_bps=1.0, oos_share=1.0)
     basis[feld] = wert  # type: ignore[assignment]
     with pytest.raises(ResolutionError):
         assess(**basis)  # type: ignore[arg-type]
@@ -270,13 +271,16 @@ def test_mindestereigniszahl_liegt_an_der_kippstelle() -> None:
 
 def test_mindestereigniszahl_ist_none_wenn_es_nie_reicht() -> None:
     """Eine Streuung, die auch bei einer Million Ereignissen nicht reicht."""
-    assert min_events_for_resolution(
-        trials=8,
-        dispersion=100_000.0,
-        cost_bps=0.01,
-        oos_share=1.0,
-        ceiling=10_000,
-    ) is None
+    assert (
+        min_events_for_resolution(
+            trials=8,
+            dispersion=100_000.0,
+            cost_bps=0.01,
+            oos_share=1.0,
+            ceiling=10_000,
+        )
+        is None
+    )
 
 
 def test_mindestereigniszahl_wirft_nicht_an_ihrem_eigenen_rand() -> None:
@@ -324,12 +328,18 @@ def test_mindestereigniszahl_ist_none_wenn_die_obergrenze_zu_klein_ist() -> None
     Nicht ein Fehler und nicht eine geschmeichelte Zahl -- ``None`` heisst hier genau
     das, was der Docstring zusagt: „so viele Ereignisse gibt es in diesem Rahmen nicht".
     """
-    assert min_events_for_resolution(
-        trials=8, dispersion=1.0, cost_bps=1.0, oos_share=OOS_ANTEIL, ceiling=40
-    ) is None
-    assert min_events_for_resolution(
-        trials=8, dispersion=1.0, cost_bps=1.0, oos_share=1.0, ceiling=10
-    ) is None
+    assert (
+        min_events_for_resolution(
+            trials=8, dispersion=1.0, cost_bps=1.0, oos_share=OOS_ANTEIL, ceiling=40
+        )
+        is None
+    )
+    assert (
+        min_events_for_resolution(
+            trials=8, dispersion=1.0, cost_bps=1.0, oos_share=1.0, ceiling=10
+        )
+        is None
+    )
 
 
 def test_mindestereigniszahl_zaehlt_ereignisse_nicht_beobachtungen() -> None:
@@ -492,13 +502,16 @@ def test_die_untergrenzen_sind_die_der_bestaetigung(tmp_path: Path) -> None:
                 register_pfad=register,
             )
             assert bestaetigung.dsr_n == MIN_DEFLATIONSBEOBACHTUNGEN
-            assert assess(
-                events=ergebnis.n_gemessen,
-                trials=12,
-                dispersion=50.0,
-                cost_bps=1.0,
-                oos_share=OOS_ANTEIL,
-            ).deflation_events == MIN_DEFLATIONSBEOBACHTUNGEN
+            assert (
+                assess(
+                    events=ergebnis.n_gemessen,
+                    trials=12,
+                    dispersion=50.0,
+                    cost_bps=1.0,
+                    oos_share=OOS_ANTEIL,
+                ).deflation_events
+                == MIN_DEFLATIONSBEOBACHTUNGEN
+            )
         else:
             with pytest.raises(StudienError, match="Out-of-Sample-Drittel zu klein"):
                 bestaetige(
@@ -537,9 +550,12 @@ def test_aufloesbar_ohne_bestaetigungsfaehige_stichprobe_gibt_es_nicht() -> None
     # Zehntel im Verhaeltnis.
     with pytest.raises(ResolutionError, match="verlangt 20"):
         assess(events=57, trials=12, dispersion=3.0, cost_bps=1.0, oos_share=OOS_ANTEIL)
-    assert assess(
-        events=58, trials=12, dispersion=3.0, cost_bps=1.0, oos_share=OOS_ANTEIL
-    ).deflation_events == MIN_DEFLATIONSBEOBACHTUNGEN
+    assert (
+        assess(
+            events=58, trials=12, dispersion=3.0, cost_bps=1.0, oos_share=OOS_ANTEIL
+        ).deflation_events
+        == MIN_DEFLATIONSBEOBACHTUNGEN
+    )
 
 
 def test_k3_gbpjpy_war_gegen_die_deflationsstichprobe_nie_aufloesbar() -> None:
@@ -582,7 +598,9 @@ def test_k3_gbpjpy_war_gegen_die_deflationsstichprobe_nie_aufloesbar() -> None:
         cost_bps=K3_KOSTEN,
         oos_share=OOS_ANTEIL,
     )
-    assert gemessen.deflation_events == 64, "die Zahl aus 07-AUSGABEN/ereignisstudie.txt"
+    assert gemessen.deflation_events == 64, (
+        "die Zahl aus 07-AUSGABEN/ereignisstudie.txt"
+    )
     assert gemessen.ratio == pytest.approx(1.1217, abs=1e-3)
     assert not gemessen.resolvable
 
@@ -612,9 +630,7 @@ def test_der_oos_anteil_hat_keinen_vorgabewert() -> None:
 def test_zu_kleine_deflationsstichprobe_ist_ein_fehler_kein_ergebnis() -> None:
     """Fail-closed: aus drei Ereignissen wird bei einem Drittel keine Stichprobe."""
     with pytest.raises(ResolutionError, match="Deflation"):
-        assess(
-            events=3, trials=12, dispersion=50.0, cost_bps=1.0, oos_share=OOS_ANTEIL
-        )
+        assess(events=3, trials=12, dispersion=50.0, cost_bps=1.0, oos_share=OOS_ANTEIL)
 
 
 def test_deflationsstichprobe_schneidet_ab_statt_zu_runden() -> None:
@@ -680,7 +696,7 @@ def test_die_echte_aufloesungsdatei_ist_in_sich_stimmig() -> None:
         assert VORBEHALT_MARKE in bericht, (
             "config/aufloesung.json ist nicht gegen die Deflationsstichprobe "
             "gerechnet, aber 01-AUFLOESUNG.md fuehrt den Vorbehalt "
-            f"„{VORBEHALT_MARKE}\" nicht mehr"
+            f'„{VORBEHALT_MARKE}" nicht mehr'
         )
 
 

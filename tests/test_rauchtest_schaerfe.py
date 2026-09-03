@@ -72,8 +72,13 @@ def test_der_gesunde_lauf_bleibt_gruen() -> None:
     Dauerbremse. Ein sauberes Demokonto am offenen Markt faehrt durch."""
     report = run_smoke(_venue(FakeMt5Terminal(is_demo=True)), symbol="EURUSD", now=TS)
     assert report.ok is True
-    for name in ("account", "get_instrument", "get_bars", "is_trading_open",
-                 "adopt_book"):
+    for name in (
+        "account",
+        "get_instrument",
+        "get_bars",
+        "is_trading_open",
+        "adopt_book",
+    ):
         assert _schritt(report, name).ok is True  # type: ignore[attr-defined]
 
 
@@ -112,10 +117,15 @@ class _UnsichtbaresSymbol(FakeMt5Terminal):
         if roh is None or name != "EURUSD":
             return roh
         return Mt5Symbol(
-            name=roh.name, digits=roh.digits, tick_size=roh.tick_size,
-            pip_size=roh.pip_size, contract_size=roh.contract_size,
-            volume_min=roh.volume_min, volume_step=roh.volume_step,
-            volume_max=roh.volume_max, base_currency=roh.base_currency,
+            name=roh.name,
+            digits=roh.digits,
+            tick_size=roh.tick_size,
+            pip_size=roh.pip_size,
+            contract_size=roh.contract_size,
+            volume_min=roh.volume_min,
+            volume_step=roh.volume_step,
+            volume_max=roh.volume_max,
+            base_currency=roh.base_currency,
             quote_currency=roh.quote_currency,
             stop_level_points=roh.stop_level_points,
             freeze_level_points=roh.freeze_level_points,
@@ -126,8 +136,9 @@ class _UnsichtbaresSymbol(FakeMt5Terminal):
 def test_ein_symbol_ausserhalb_des_marketwatch_faellt_auf() -> None:
     """Ein Symbol, das der Broker nicht sichtbar fuehrt, ist nicht handelbar -- und
     genau darauf soll der Rauchtest die Schreibfreigabe stuetzen."""
-    report = run_smoke(_venue(_UnsichtbaresSymbol(is_demo=True)), symbol="EURUSD",
-                       now=TS)
+    report = run_smoke(
+        _venue(_UnsichtbaresSymbol(is_demo=True)), symbol="EURUSD", now=TS
+    )
     assert _schritt(report, "get_instrument").ok is False  # type: ignore[attr-defined]
     assert report.ok is False
 
@@ -163,8 +174,9 @@ def test_ein_lauf_am_geschlossenen_platz_ist_nicht_gruen() -> None:
     Die Uhr des Venues bleibt bei TS, der Kursstempel ist also frisch: rot wird der
     Schritt allein am Sitzungsfenster, nicht an der Frische.
     """
-    report = run_smoke(_venue(FakeMt5Terminal(is_demo=True)), symbol="EURUSD",
-                       now=SAMSTAG)
+    report = run_smoke(
+        _venue(FakeMt5Terminal(is_demo=True)), symbol="EURUSD", now=SAMSTAG
+    )
     offen = _schritt(report, "is_trading_open")
     assert offen.ok is False  # type: ignore[attr-defined]
     assert offen.detail == "False"  # type: ignore[attr-defined]
@@ -189,7 +201,8 @@ def test_eine_gegenlaeufige_paarung_verschwindet_nicht_still_aus_dem_buch() -> N
     )
     report = run_smoke(
         _venue(FakeMt5Terminal(is_demo=True, positions=positionen)),
-        symbol="EURUSD", now=TS,
+        symbol="EURUSD",
+        now=TS,
     )
     buch = _schritt(report, "adopt_book")
     assert buch.ok is False  # type: ignore[attr-defined]
@@ -204,7 +217,8 @@ def test_eine_einseitige_position_landet_sehr_wohl_im_buch() -> None:
     )
     report = run_smoke(
         _venue(FakeMt5Terminal(is_demo=True, positions=positionen)),
-        symbol="EURUSD", now=TS,
+        symbol="EURUSD",
+        now=TS,
     )
     assert _schritt(report, "adopt_book").ok is True  # type: ignore[attr-defined]
 
@@ -249,7 +263,8 @@ def test_der_rauchtest_meldet_den_fehlenden_katalogeintrag() -> None:
     """Und derselbe Befund kommt im Bericht an, statt in einer stillen Zahl."""
     report = run_smoke(
         _venue(FakeMt5Terminal(is_demo=True), catalog=_katalog_mit_fremdsymbol()),
-        symbol="EURUSD", now=TS,
+        symbol="EURUSD",
+        now=TS,
     )
     assert report.ok is False
     fehler = _schritt(report, "error")
@@ -312,7 +327,8 @@ def test_ohne_schreibfreigabe_wird_der_bestand_nicht_geprueft() -> None:
     )
     report = run_smoke(
         _venue(FakeMt5Terminal(is_demo=True, positions=positionen)),
-        symbol="EURUSD", now=TS,
+        symbol="EURUSD",
+        now=TS,
     )
     probe = _schritt(report, "write_probe")
     assert probe.ok is True  # type: ignore[attr-defined]

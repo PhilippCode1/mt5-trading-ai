@@ -82,16 +82,16 @@ def test_mean_reversion_short_on_spike() -> None:
 def test_mean_reversion_holds_then_exits() -> None:
     strat = mean_reversion_zscore(20, 2.0, 0.5)
     pos = _positions(strat, [1.10] * 19 + [1.05, 1.08, 1.10])
-    assert pos[19] is Signal.LONG   # tiefer Ausschlag -> Einstieg
-    assert pos[20] is Signal.LONG   # z noch jenseits exit_z -> gehalten
-    assert pos[21] is Signal.FLAT   # zurueck am Mittel -> Ausstieg
+    assert pos[19] is Signal.LONG  # tiefer Ausschlag -> Einstieg
+    assert pos[20] is Signal.LONG  # z noch jenseits exit_z -> gehalten
+    assert pos[21] is Signal.FLAT  # zurueck am Mittel -> Ausstieg
 
 
 def test_mean_reversion_rejects_bad_params() -> None:
     with pytest.raises(ValueError):
-        mean_reversion_zscore(1, 2.0, 0.5)    # lookback < 2
+        mean_reversion_zscore(1, 2.0, 0.5)  # lookback < 2
     with pytest.raises(ValueError):
-        mean_reversion_zscore(20, 0.5, 2.0)   # entry_z <= exit_z
+        mean_reversion_zscore(20, 0.5, 2.0)  # entry_z <= exit_z
 
 
 # --- Volatilitaets-Ausbruch (Donchian) ------------------------------------
@@ -115,9 +115,9 @@ def test_breakout_short_on_new_low() -> None:
 def test_breakout_holds_between_breakouts() -> None:
     strat = volatility_breakout(10)
     pos = _positions(strat, [1.10] * 11 + [1.12, 1.11, 1.08])
-    assert pos[11] is Signal.LONG    # neues Hoch -> LONG
-    assert pos[12] is Signal.LONG    # innerhalb der Spanne -> gehalten
-    assert pos[13] is Signal.SHORT   # neues Tief -> SHORT
+    assert pos[11] is Signal.LONG  # neues Hoch -> LONG
+    assert pos[12] is Signal.LONG  # innerhalb der Spanne -> gehalten
+    assert pos[13] is Signal.SHORT  # neues Tief -> SHORT
 
 
 def test_breakout_rejects_bad_params() -> None:
@@ -130,9 +130,13 @@ def test_breakout_rejects_bad_params() -> None:
 
 def _all_pass() -> dict[str, Any]:
     return {
-        "oos_sharpe": 1.2, "deflated_sharpe": 0.99, "trades": 2500,
-        "fold_returns": [0.1, 0.2, 0.3, 0.1], "net_over_hurdle": 0.3,
-        "leakage_test_green": True, "random_reference_negative": True,
+        "oos_sharpe": 1.2,
+        "deflated_sharpe": 0.99,
+        "trades": 2500,
+        "fold_returns": [0.1, 0.2, 0.3, 0.1],
+        "net_over_hurdle": 0.3,
+        "leakage_test_green": True,
+        "random_reference_negative": True,
     }
 
 
@@ -144,12 +148,12 @@ def test_edge_all_conditions_met_passes() -> None:
 
 def test_edge_single_failure_fails_whole() -> None:
     breaks = [
-        {"oos_sharpe": 0.8},                       # Sharpe unter 1.0
-        {"deflated_sharpe": 0.5},                  # deflationierte Schwelle verfehlt
-        {"trades": 1999},                          # unter 2000 Trades
-        {"fold_returns": [0.1, -0.1, 0.1, 0.1]},   # nur 2 Fenster am Stueck positiv
-        {"net_over_hurdle": -0.1},                 # Kosten nicht gedeckt
-        {"random_reference_negative": False},      # Referenz nicht negativ
+        {"oos_sharpe": 0.8},  # Sharpe unter 1.0
+        {"deflated_sharpe": 0.5},  # deflationierte Schwelle verfehlt
+        {"trades": 1999},  # unter 2000 Trades
+        {"fold_returns": [0.1, -0.1, 0.1, 0.1]},  # nur 2 Fenster am Stueck positiv
+        {"net_over_hurdle": -0.1},  # Kosten nicht gedeckt
+        {"random_reference_negative": False},  # Referenz nicht negativ
     ]
     for override in breaks:
         kwargs = _all_pass()

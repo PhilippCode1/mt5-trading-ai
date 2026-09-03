@@ -167,7 +167,9 @@ class Journal:
     def schreib(self, art: str, **felder: Any) -> None:
         zeile = {
             "ts": datetime.now(UTC).isoformat(timespec="seconds"),
-            "art": art, "lauf": self.lauf, "version": self.version,
+            "art": art,
+            "lauf": self.lauf,
+            "version": self.version,
         }
         zeile.update({k: _jsonfaehig(v) for k, v in felder.items()})
         with self.pfad.open("a", encoding="utf-8") as fh:
@@ -253,13 +255,19 @@ def _signal(venue: Mt5Venue, symbol: str, jetzt: datetime) -> Signallage:
     """
     try:
         bars = venue.get_bars(
-            symbol, Timeframe.H1,
-            start=jetzt - timedelta(hours=KERZEN_STUNDEN), end=jetzt,
+            symbol,
+            Timeframe.H1,
+            start=jetzt - timedelta(hours=KERZEN_STUNDEN),
+            end=jetzt,
         )
     except VenueError as exc:
         return Signallage(
-            signal=Signal.FLAT, detail=f"keine Kerzen: {exc}", kerze_ts=None,
-            kerzen_abgeschlossen=0, kerzen_verwendet=0, kerzen_laufend=0,
+            signal=Signal.FLAT,
+            detail=f"keine Kerzen: {exc}",
+            kerze_ts=None,
+            kerzen_abgeschlossen=0,
+            kerzen_verwendet=0,
+            kerzen_laufend=0,
         )
     fertig = [b for b in bars if b.is_closed]
     laufend = len(bars) - len(fertig)
@@ -267,12 +275,20 @@ def _signal(venue: Mt5Venue, symbol: str, jetzt: datetime) -> Signallage:
         return Signallage(
             signal=Signal.FLAT,
             detail=f"nur {len(fertig)} abgeschlossene von {len(bars)} Kerzen",
-            kerze_ts=None, kerzen_abgeschlossen=len(fertig), kerzen_verwendet=0,
+            kerze_ts=None,
+            kerzen_abgeschlossen=len(fertig),
+            kerzen_verwendet=0,
             kerzen_laufend=laufend,
         )
     reihe = [
-        BarRow(ts=b.ts, open=float(b.open), high=float(b.high), low=float(b.low),
-               close=float(b.close), volume=None)
+        BarRow(
+            ts=b.ts,
+            open=float(b.open),
+            high=float(b.high),
+            low=float(b.low),
+            close=float(b.close),
+            volume=None,
+        )
         for b in fertig
     ]
     sig = moving_average_crossover(SCHNELL, LANGSAM)(MarketView(reihe, len(reihe) - 1))
@@ -310,11 +326,15 @@ def _signal_mit_protokoll(
     """
     lage = _signal(venue, symbol, jetzt)
     journal.schreib(
-        "signalbasis", symbol=symbol, zweck=zweck, signal=lage.signal.name,
+        "signalbasis",
+        symbol=symbol,
+        zweck=zweck,
+        signal=lage.signal.name,
         kerze_ts=lage.kerze_ts,
         kerzen_abgeschlossen=lage.kerzen_abgeschlossen,
         kerzen_verwendet=lage.kerzen_verwendet,
-        kerzen_laufend_verworfen=lage.kerzen_laufend, detail=lage.detail,
+        kerzen_laufend_verworfen=lage.kerzen_laufend,
+        detail=lage.detail,
     )
     return lage
 
@@ -334,8 +354,10 @@ def _lage_lesen(venue: Mt5Venue) -> dict[str, Lage]:
     aus: dict[str, Lage] = {}
     for p in venue.get_positions():
         aus[p.symbol] = Lage(
-            symbol=p.symbol, ist_kauf=p.side is OrderSide.BUY,
-            volumen=p.volume, seit=p.opened_at,
+            symbol=p.symbol,
+            ist_kauf=p.side is OrderSide.BUY,
+            volumen=p.volume,
+            seit=p.opened_at,
             position_id=p.venue_position_id,
             einstiegspreis=p.entry_price,
             unrealisiert=p.unrealised_pnl,
@@ -345,8 +367,14 @@ def _lage_lesen(venue: Mt5Venue) -> dict[str, Lage]:
 
 
 def _schliesse(
-    venue: Mt5Venue, manager: RiskManager, lage: Lage, jetzt: datetime, grund: str,
-    journal: Journal, *, waehrung: str,
+    venue: Mt5Venue,
+    manager: RiskManager,
+    lage: Lage,
+    jetzt: datetime,
+    grund: str,
+    journal: Journal,
+    *,
+    waehrung: str,
 ) -> bool:
     """Glattstellen ueber ``reduce_only``. Gibt True bei Erfolg."""
     anfrage = OrderRequest(
@@ -362,8 +390,12 @@ def _schliesse(
     try:
         ergebnis = venue.submit_order(anfrage)
     except VenueError as exc:
-        journal.schreib("schliessen_fehlgeschlagen", symbol=lage.symbol,
-                        grund=grund, fehler=str(exc))
+        journal.schreib(
+            "schliessen_fehlgeschlagen",
+            symbol=lage.symbol,
+            grund=grund,
+            fehler=str(exc),
+        )
         return False
     manager.record_close(lage.symbol)
     # Preis, Volumen und Positions-ID gehoeren ins Protokoll. Ohne sie laesst sich
@@ -382,34 +414,49 @@ def _schliesse(
     # deshalb ueber ``journal.geldbilanz`` und damit ueber ALLE Geldergebnisse; haengte
     # sie am Topf "nur Geld", waere dieses Feld hier wirkungslos und der blinde Fleck
     # bliebe bestehen.
-    journal.schreib("geschlossen", symbol=lage.symbol, grund=grund,
-                    volumen=lage.volumen, war_kauf=lage.ist_kauf,
-                    order_id=ergebnis.venue_order_id,
-                    client_order_id=anfrage.client_order_id,
-                    position_id=lage.position_id,
-                    ausstiegspreis=ergebnis.average_price,
-                    gefuellt=ergebnis.filled_volume,
-                    einstiegspreis=lage.einstiegspreis,
-                    seit=lage.seit,
-                    ergebnis_geld=lage.unrealisiert,
-                    ergebnis_geld_waehrung=waehrung,
-                    ergebnis_geld_quelle="zuletzt_beobachtet",
-                    zuletzt_swap=lage.swap)
+    journal.schreib(
+        "geschlossen",
+        symbol=lage.symbol,
+        grund=grund,
+        volumen=lage.volumen,
+        war_kauf=lage.ist_kauf,
+        order_id=ergebnis.venue_order_id,
+        client_order_id=anfrage.client_order_id,
+        position_id=lage.position_id,
+        ausstiegspreis=ergebnis.average_price,
+        gefuellt=ergebnis.filled_volume,
+        einstiegspreis=lage.einstiegspreis,
+        seit=lage.seit,
+        ergebnis_geld=lage.unrealisiert,
+        ergebnis_geld_waehrung=waehrung,
+        ergebnis_geld_quelle="zuletzt_beobachtet",
+        zuletzt_swap=lage.swap,
+    )
     print(f"  ZU   {lage.symbol} {lage.volumen} ({grund})")
     return True
 
 
 def _eroeffne(
-    venue: Mt5Venue, manager: RiskManager, symbol: str, sig: Signal,
-    jetzt: datetime, zulassung: CriteriaVerdict, journal: Journal,
+    venue: Mt5Venue,
+    manager: RiskManager,
+    symbol: str,
+    sig: Signal,
+    jetzt: datetime,
+    zulassung: CriteriaVerdict,
+    journal: Journal,
 ) -> None:
     config = RunnerConfig(
         cost_gate=CostGate(max_roundturn_cost_fraction=Decimal("0.0005")),
     )
     try:
         bericht = run_signal(
-            venue=venue, risk_manager=manager, admission=zulassung, symbol=symbol,
-            side=sig, config=config, now=jetzt,
+            venue=venue,
+            risk_manager=manager,
+            admission=zulassung,
+            symbol=symbol,
+            side=sig,
+            config=config,
+            now=jetzt,
             client_order_id=f"open-{symbol}-{uuid.uuid4().hex[:10]}",
         )
     except VenueError as exc:
@@ -421,12 +468,17 @@ def _eroeffne(
     # Anfang jedes Trades, und ein Ergebnis laesst sich nicht rechnen.
     erg = bericht.submitted
     journal.schreib(
-        "eroeffnungsversuch", symbol=symbol, signal=sig.name,
-        eroeffnet=bericht.opened, grund=bericht.reject_reason, schritte=schritte,
+        "eroeffnungsversuch",
+        symbol=symbol,
+        signal=sig.name,
+        eroeffnet=bericht.opened,
+        grund=bericht.reject_reason,
+        schritte=schritte,
         # Stufe 7/9: die Herkunftsspalte. Ohne diese beiden Felder sieht eine
         # erkundete Zeile in jeder spaeteren Auswertung aus wie eine regulaere, und
         # der gewichtete Mittelwert rechnet sie falsch.
-        erkundet=bericht.erkundet, erkundung_p=bericht.erkundung_p,
+        erkundet=bericht.erkundet,
+        erkundung_p=bericht.erkundung_p,
         client_order_id=None if erg is None else erg.client_order_id,
         order_id=None if erg is None else erg.venue_order_id,
         einstiegspreis=None if erg is None else erg.average_price,
@@ -438,9 +490,13 @@ def _eroeffne(
         offen = _lage_lesen(venue).get(symbol)
         if offen is not None:
             journal.schreib(
-                "eroeffnet", symbol=symbol, signal=sig.name,
-                position_id=offen.position_id, volumen=offen.volumen,
-                einstiegspreis=offen.einstiegspreis, seit=offen.seit,
+                "eroeffnet",
+                symbol=symbol,
+                signal=sig.name,
+                position_id=offen.position_id,
+                volumen=offen.volumen,
+                einstiegspreis=offen.einstiegspreis,
+                seit=offen.seit,
                 client_order_id=None if erg is None else erg.client_order_id,
             )
     if bericht.opened:
@@ -497,8 +553,13 @@ def _verbindung_sichern(
 
 
 def _buch_abgleichen(
-    venue: Mt5Venue, manager: RiskManager, bekannt: dict[str, Lage],
-    lage: dict[str, Lage], journal: Journal, *, waehrung: str,
+    venue: Mt5Venue,
+    manager: RiskManager,
+    bekannt: dict[str, Lage],
+    lage: dict[str, Lage],
+    journal: Journal,
+    *,
+    waehrung: str,
 ) -> bool:
     """Was der Broker geschlossen hat, muss Manager UND Buch erfahren.
 
@@ -542,32 +603,44 @@ def _buch_abgleichen(
         # steht als ``kurs``-Satz desselben Takts bereits im Journal (Schritt 1b), und
         # er ist ohnehin der Preis der Erkennung, nicht der des Schlusses.
         journal.schreib(
-            "vom_broker_geschlossen", symbol=symbol, volumen=weg.volumen,
-            war_kauf=weg.ist_kauf, position_id=weg.position_id,
-            einstiegspreis=weg.einstiegspreis, seit=weg.seit,
+            "vom_broker_geschlossen",
+            symbol=symbol,
+            volumen=weg.volumen,
+            war_kauf=weg.ist_kauf,
+            position_id=weg.position_id,
+            einstiegspreis=weg.einstiegspreis,
+            seit=weg.seit,
             zuletzt_unrealisiert=weg.unrealisiert,
             zuletzt_swap=weg.swap,
             ergebnis_geld=weg.unrealisiert,
             ergebnis_geld_waehrung=waehrung,
             ergebnis_geld_quelle="zuletzt_beobachtet",
-            hinweis=("Zeitpunkt ist der Takt, in dem das Verschwinden auffiel -- "
-                     "bis zu einen Takt spaeter als der wirkliche Schluss. "
-                     "ergebnis_geld ist der zuletzt beobachtete Buchwert VOR dem "
-                     "Verschwinden, brutto ohne Swap und Kommission: eine "
-                     "Schaetzung des Betrags, keine Messung -- und kein Preis. "
-                     "Ein Ausstiegspreis wird bewusst NICHT rekonstruiert."),
+            hinweis=(
+                "Zeitpunkt ist der Takt, in dem das Verschwinden auffiel -- "
+                "bis zu einen Takt spaeter als der wirkliche Schluss. "
+                "ergebnis_geld ist der zuletzt beobachtete Buchwert VOR dem "
+                "Verschwinden, brutto ohne Swap und Kommission: eine "
+                "Schaetzung des Betrags, keine Messung -- und kein Preis. "
+                "Ein Ausstiegspreis wird bewusst NICHT rekonstruiert."
+            ),
         )
         print(f"  WEG  {symbol} (Broker hat geschlossen, vermutlich Stop)")
     nachher = venue.adopt_book()
-    journal.schreib("buch_uebernommen", nachher=nachher,
-                    ausgeloest_durch=verschwunden)
+    journal.schreib("buch_uebernommen", nachher=nachher, ausgeloest_durch=verschwunden)
     return True
 
 
 def _notbremse(
-    venue: Mt5Venue, manager: RiskManager, journal: Journal, *,
-    equity_jetzt: Decimal, equity_start: Decimal, grenze: Decimal,
-    lage: dict[str, Lage], jetzt: datetime, waehrung: str,
+    venue: Mt5Venue,
+    manager: RiskManager,
+    journal: Journal,
+    *,
+    equity_jetzt: Decimal,
+    equity_start: Decimal,
+    grenze: Decimal,
+    lage: dict[str, Lage],
+    jetzt: datetime,
+    waehrung: str,
 ) -> bool:
     """Tagesverlustgrenze -- und zwar mit Glattstellung. Gibt True, wenn sie greift.
 
@@ -584,22 +657,38 @@ def _notbremse(
     verlust = (equity_start - equity_jetzt) / equity_start
     if verlust < grenze:
         return False
-    print(f"  !!   NOTBREMSE: {verlust * 100:.2f} % Verlust seit Start "
-          f"(Grenze {grenze * 100:.1f} %). Alles glattstellen.")
-    journal.schreib("notbremse", verlust_anteil=verlust, grenze=grenze,
-                    equity_start=equity_start, equity=equity_jetzt)
+    print(
+        f"  !!   NOTBREMSE: {verlust * 100:.2f} % Verlust seit Start "
+        f"(Grenze {grenze * 100:.1f} %). Alles glattstellen."
+    )
+    journal.schreib(
+        "notbremse",
+        verlust_anteil=verlust,
+        grenze=grenze,
+        equity_start=equity_start,
+        equity=equity_jetzt,
+    )
     for offen in lage.values():
-        _schliesse(venue, manager, offen, jetzt, "notbremse", journal,
-                   waehrung=waehrung)
+        _schliesse(
+            venue, manager, offen, jetzt, "notbremse", journal, waehrung=waehrung
+        )
     venue.latch_halt(reason="tagesverlust")
     return True
 
 
 def takt(
-    venue: Mt5Venue, manager: RiskManager, scheduler: SyncScheduler,
-    symbole: list[str], zulassung: CriteriaVerdict, journal: Journal,
-    *, nr: int, max_haltedauer: timedelta, bekannt: dict[str, Lage],
-    equity_start: Decimal, verlustgrenze: Decimal,
+    venue: Mt5Venue,
+    manager: RiskManager,
+    scheduler: SyncScheduler,
+    symbole: list[str],
+    zulassung: CriteriaVerdict,
+    journal: Journal,
+    *,
+    nr: int,
+    max_haltedauer: timedelta,
+    bekannt: dict[str, Lage],
+    equity_start: Decimal,
+    verlustgrenze: Decimal,
 ) -> tuple[dict[str, Lage], bool]:
     jetzt = datetime.now(UTC)
 
@@ -609,23 +698,37 @@ def takt(
     tick = scheduler.tick(jetzt)
     konto = venue.get_account()
     lage = _lage_lesen(venue)
-    print(f"[{jetzt.strftime('%H:%M:%S')}] Takt {nr} | Equity {konto.equity} "
-          f"{konto.currency} | Halt: {'JA' if tick.halted else 'nein'}")
+    print(
+        f"[{jetzt.strftime('%H:%M:%S')}] Takt {nr} | Equity {konto.equity} "
+        f"{konto.currency} | Halt: {'JA' if tick.halted else 'nein'}"
+    )
     # Der Takt traegt alles, was den Kontozustand ausmacht -- nicht nur die Equity.
     # Ohne ``balance`` laesst sich eine Equity-Bewegung nicht in realisiertes Ergebnis
     # und offene Bewertung zerlegen: man saehe die Kurve zappeln und wuesste nicht, ob
     # ein Trade zuging oder eine Position nur schwankt. Die Positionsliste steht hier
     # ohnehin schon im Speicher; sie kostet keine zusaetzliche Abfrage.
     journal.schreib(
-        "takt", nr=nr, equity=konto.equity, balance=konto.balance,
-        marge_belegt=konto.margin_used, marge_frei=konto.margin_free,
+        "takt",
+        nr=nr,
+        equity=konto.equity,
+        balance=konto.balance,
+        marge_belegt=konto.margin_used,
+        marge_frei=konto.margin_free,
         unrealisiert=sum((p.unrealisiert for p in lage.values()), Decimal("0")),
-        halt=tick.halted, halt_grund=tick.halt_reason, demo=konto.is_demo,
+        halt=tick.halted,
+        halt_grund=tick.halt_reason,
+        demo=konto.is_demo,
         positionen=[
-            {"symbol": p.symbol, "ist_kauf": p.ist_kauf, "volumen": p.volumen,
-             "seit": p.seit, "position_id": p.position_id,
-             "einstiegspreis": p.einstiegspreis, "unrealisiert": p.unrealisiert,
-             "swap": p.swap}
+            {
+                "symbol": p.symbol,
+                "ist_kauf": p.ist_kauf,
+                "volumen": p.volumen,
+                "seit": p.seit,
+                "position_id": p.position_id,
+                "einstiegspreis": p.einstiegspreis,
+                "unrealisiert": p.unrealisiert,
+                "swap": p.swap,
+            }
             for p in lage.values()
         ],
     )
@@ -643,8 +746,9 @@ def takt(
         journal.schreib("kurs", symbol=symbol, bid=q.bid, ask=q.ask, ts_kurs=q.ts)
 
     # 2) Buchfuehrung gleichziehen -- Manager UND Positionsbuch.
-    erklaert = _buch_abgleichen(venue, manager, bekannt, lage, journal,
-                                waehrung=konto.currency)
+    erklaert = _buch_abgleichen(
+        venue, manager, bekannt, lage, journal, waehrung=konto.currency
+    )
 
     # Der Scheduler laeuft VOR diesem Abgleich und sieht die vom Broker geschlossene
     # Position noch im Buch -- bei max_notional_drift=0 latcht das den Global-Halt.
@@ -655,12 +759,16 @@ def takt(
     # Aufgeloest wird NUR dieser eine Fall: ein Reconcile-Halt, fuer den in DEMSELBEN
     # Takt eine erkannte Schliessung vorliegt. Jeder andere Halt -- Drawdown, Desync,
     # Notbremse -- bleibt stehen. Eine Sperre, die sich selbst aufhebt, waere keine.
-    if erklaert and tick.halted and str(venue.halt_reason or "").startswith(
-        "reconcile_drift"
+    if (
+        erklaert
+        and tick.halted
+        and str(venue.halt_reason or "").startswith("reconcile_drift")
     ):
         grund_vorher = venue.halt_reason
-        print(f"  ..   Halt aufgeloest: {grund_vorher} "
-              f"war eine erkannte Broker-Schliessung")
+        print(
+            f"  ..   Halt aufgeloest: {grund_vorher} "
+            f"war eine erkannte Broker-Schliessung"
+        )
         venue.clear_halt()
         tick = scheduler.tick(jetzt)
         # ``weiter_gesperrt`` ist der Zustand, der die Eintritte unter 4) WIRKLICH
@@ -673,13 +781,25 @@ def takt(
         # tatsaechlich gesperrt hat. ``buchtreue`` zaehlte ihn als gesperrt, obwohl im
         # langen Lauf vom 2026-08-17 in JEDEM dieser Takte vier Eroeffnungsversuche
         # normal durchliefen -- einer davon fuehrte zu einer Eroeffnung.
-        journal.schreib("halt_erklaert", grund=grund_vorher,
-                        durch="broker_schliessung", weiter_gesperrt=tick.halted)
+        journal.schreib(
+            "halt_erklaert",
+            grund=grund_vorher,
+            durch="broker_schliessung",
+            weiter_gesperrt=tick.halted,
+        )
 
     # 2b) Notbremse. Vor allem anderen, und sie stellt wirklich glatt.
-    if _notbremse(venue, manager, journal, equity_jetzt=konto.equity,
-                  equity_start=equity_start, grenze=verlustgrenze,
-                  lage=lage, jetzt=jetzt, waehrung=konto.currency):
+    if _notbremse(
+        venue,
+        manager,
+        journal,
+        equity_jetzt=konto.equity,
+        equity_start=equity_start,
+        grenze=verlustgrenze,
+        lage=lage,
+        jetzt=jetzt,
+        waehrung=konto.currency,
+    ):
         return _lage_lesen(venue), True
 
     # 3) Ausstiege. Laufen AUCH bei Halt -- Schliessen muss immer moeglich bleiben.
@@ -691,12 +811,25 @@ def takt(
             not offen.ist_kauf and sig is Signal.LONG
         )
         if gegen:
-            _schliesse(venue, manager, offen, jetzt, "signalwechsel", journal,
-                       waehrung=konto.currency)
+            _schliesse(
+                venue,
+                manager,
+                offen,
+                jetzt,
+                "signalwechsel",
+                journal,
+                waehrung=konto.currency,
+            )
         elif alter >= max_haltedauer:
-            _schliesse(venue, manager, offen, jetzt,
-                       f"haltedauer_{alter.total_seconds() / 3600:.1f}h", journal,
-                       waehrung=konto.currency)
+            _schliesse(
+                venue,
+                manager,
+                offen,
+                jetzt,
+                f"haltedauer_{alter.total_seconds() / 3600:.1f}h",
+                journal,
+                waehrung=konto.currency,
+            )
 
     # 4) Eintritte. Nur wenn kein Halt und noch keine Position im Symbol.
     lage = _lage_lesen(venue)
@@ -711,8 +844,13 @@ def takt(
             )
             if basis.signal is Signal.FLAT:
                 continue
-            journal.schreib("signal", symbol=symbol, signal=basis.signal.name,
-                            detail=basis.detail, kerze_ts=basis.kerze_ts)
+            journal.schreib(
+                "signal",
+                symbol=symbol,
+                signal=basis.signal.name,
+                detail=basis.detail,
+                kerze_ts=basis.kerze_ts,
+            )
             _eroeffne(venue, manager, symbol, basis.signal, jetzt, zulassung, journal)
     return _lage_lesen(venue), False
 
@@ -726,12 +864,18 @@ def _codestand() -> str:
     """
     try:
         stand = subprocess.run(
-            ["git", "rev-parse", "--short", "HEAD"], cwd=REPO,
-            capture_output=True, text=True, check=True,
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=REPO,
+            capture_output=True,
+            text=True,
+            check=True,
         ).stdout.strip()
         schmutzig = subprocess.run(
-            ["git", "status", "--porcelain"], cwd=REPO,
-            capture_output=True, text=True, check=True,
+            ["git", "status", "--porcelain"],
+            cwd=REPO,
+            capture_output=True,
+            text=True,
+            check=True,
         ).stdout.strip()
     except (OSError, subprocess.CalledProcessError):
         return "unbekannt"
@@ -809,23 +953,37 @@ def main() -> int:
     ap.add_argument("--dauer", type=float, default=24.0, help="Laufzeit in Stunden")
     ap.add_argument("--takt", type=float, default=60.0, help="Sekunden je Takt")
     ap.add_argument("--symbol", action="append", default=None)
-    ap.add_argument("--max-haltedauer", type=float, default=4.0,
-                    help="Hoechste Haltedauer je Position in Stunden")
-    ap.add_argument("--scharf", default=None, metavar="BEGRUENDUNG",
-                    help="Die §9.3-Zulassung uebergehen und WIRKLICH handeln. "
-                         "Begruendung ist Pflicht und geht ins Journal.")
-    ap.add_argument("--verlustgrenze", type=float, default=2.0, metavar="PROZENT",
-                    help="Bei diesem Verlust seit Laufbeginn wird glattgestellt "
-                         "und der Lauf beendet (Vorgabe 2 %%)")
-    ap.add_argument("--am-ende-offen-lassen", action="store_true",
-                    help="Positionen am Ende NICHT glattstellen (Vorgabe: schliessen)")
+    ap.add_argument(
+        "--max-haltedauer",
+        type=float,
+        default=4.0,
+        help="Hoechste Haltedauer je Position in Stunden",
+    )
+    ap.add_argument(
+        "--scharf",
+        default=None,
+        metavar="BEGRUENDUNG",
+        help="Die §9.3-Zulassung uebergehen und WIRKLICH handeln. "
+        "Begruendung ist Pflicht und geht ins Journal.",
+    )
+    ap.add_argument(
+        "--verlustgrenze",
+        type=float,
+        default=2.0,
+        metavar="PROZENT",
+        help="Bei diesem Verlust seit Laufbeginn wird glattgestellt "
+        "und der Lauf beendet (Vorgabe 2 %%)",
+    )
+    ap.add_argument(
+        "--am-ende-offen-lassen",
+        action="store_true",
+        help="Positionen am Ende NICHT glattstellen (Vorgabe: schliessen)",
+    )
     args = ap.parse_args()
 
     # server_tz: das Terminal dreht seine Zeitstempel selbst in echtes UTC.
     # Ohne das rechnet jede Haltedauer und jede Uhrzeit 2-3 Stunden daneben.
-    terminal = RealMt5Terminal(
-        allow_write=bool(args.scharf), server_tz=SERVER_TZ_NAME
-    )
+    terminal = RealMt5Terminal(allow_write=bool(args.scharf), server_tz=SERVER_TZ_NAME)
     if not terminal.initialize():
         print("FEHLGESCHLAGEN — MT5-Terminal nicht erreichbar.", file=sys.stderr)
         return 2
@@ -836,14 +994,18 @@ def main() -> int:
     # saehe die volle Position als Drift, und bei ``max_notional_drift=0`` latcht das
     # den Global-Halt. Der Lauf haette genau einen Takt lang gehandelt.
     venue = Mt5Venue(
-        name="mt5-betrieb", terminal=terminal, catalog=load_instrument_catalog(),
+        name="mt5-betrieb",
+        terminal=terminal,
+        catalog=load_instrument_catalog(),
         risk_manager=manager,
     )
     venue.connect()
     konto = venue.get_account()
     if not konto.is_demo:
-        print("ABBRUCH — kein Demokonto. Dieses Werkzeug laeuft nur auf Demo.",
-              file=sys.stderr)
+        print(
+            "ABBRUCH — kein Demokonto. Dieses Werkzeug laeuft nur auf Demo.",
+            file=sys.stderr,
+        )
         terminal.shutdown()
         return 2
     # Der Ausstiegsriegel steht VOR ``adopt_book()``: uebernommen wird nur, was dieser
@@ -872,13 +1034,20 @@ def main() -> int:
     if args.scharf and not _autotrading_an():
         print("=" * 78, file=sys.stderr)
         print("ABBRUCH — AutoTrading ist im Terminal ausgeschaltet.", file=sys.stderr)
-        print("Die Kette liefe gruen durch und jede Order fiele beim Senden aus.",
-              file=sys.stderr)
+        print(
+            "Die Kette liefe gruen durch und jede Order fiele beim Senden aus.",
+            file=sys.stderr,
+        )
         print("", file=sys.stderr)
-        print("Im MetaTrader 5: Knopf 'Algo Trading' in der Werkzeugleiste "
-              "einschalten", file=sys.stderr)
-        print("(oder Extras -> Optionen -> Expert Advisors -> "
-              "'Algorithmischen Handel erlauben').", file=sys.stderr)
+        print(
+            "Im MetaTrader 5: Knopf 'Algo Trading' in der Werkzeugleiste einschalten",
+            file=sys.stderr,
+        )
+        print(
+            "(oder Extras -> Optionen -> Expert Advisors -> "
+            "'Algorithmischen Handel erlauben').",
+            file=sys.stderr,
+        )
         print("=" * 78, file=sys.stderr)
         terminal.shutdown()
         return 3
@@ -887,7 +1056,8 @@ def main() -> int:
     lauf = uuid.uuid4().hex
     journal = Journal(
         JOURNALE / f"journal-{start.strftime('%Y%m%dT%H%M%S')}.jsonl",
-        lauf=lauf, version=_codestand(),
+        lauf=lauf,
+        version=_codestand(),
     )
     # Nur Symbole, die dieser Broker wirklich fuehrt. Der Katalog ist breiter als
     # das Angebot eines einzelnen Brokers; ein unbekanntes Symbol wuerde sonst in
@@ -924,30 +1094,42 @@ def main() -> int:
     zulassung = CriteriaVerdict(passed=bool(args.scharf), results=())
 
     journal.schreib(
-        "start", lauf=lauf, konto=konto.account_id,
-        equity=konto.equity, demo=konto.is_demo,
-        symbole=symbole, uebersprungen=fehlend,
-        dauer_stunden=args.dauer, takt_sekunden=args.takt,
+        "start",
+        lauf=lauf,
+        konto=konto.account_id,
+        equity=konto.equity,
+        demo=konto.is_demo,
+        symbole=symbole,
+        uebersprungen=fehlend,
+        dauer_stunden=args.dauer,
+        takt_sekunden=args.takt,
         max_haltedauer_stunden=args.max_haltedauer,
         verlustgrenze_prozent=args.verlustgrenze,
-        scharf=bool(args.scharf), zulassung_uebergangen=args.scharf,
-        hinweis=("Zum Zeitpunkt dieses Laufs war KEINE Strategie nach §9.3 "
-                 "zugelassen. Siehe ABSCHLUSS-3a/05-URTEIL.md."),
+        scharf=bool(args.scharf),
+        zulassung_uebergangen=args.scharf,
+        hinweis=(
+            "Zum Zeitpunkt dieses Laufs war KEINE Strategie nach §9.3 "
+            "zugelassen. Siehe ABSCHLUSS-3a/05-URTEIL.md."
+        ),
         strategie=f"moving_average_crossover({SCHNELL},{LANGSAM})",
     )
     print(f"Journal: {journal.pfad}")
     # Eine Stoppdatei aus einem frueheren Lauf wuerde diesen sofort beenden.
     STOPPDATEI.unlink(missing_ok=True)
     print(f"Geordnet beenden: diese Datei anlegen -> {STOPPDATEI}")
-    print(f"Laufzeit {args.dauer} h, Takt {args.takt:g} s, {len(symbole)} Instrumente, "
-          f"Hoechsthaltedauer {args.max_haltedauer} h, "
-          f"Notbremse bei {args.verlustgrenze} % Verlust.\n")
+    print(
+        f"Laufzeit {args.dauer} h, Takt {args.takt:g} s, {len(symbole)} Instrumente, "
+        f"Hoechsthaltedauer {args.max_haltedauer} h, "
+        f"Notbremse bei {args.verlustgrenze} % Verlust.\n"
+    )
 
     # risk_manager MUSS hier hinein: ohne ihn ist ``observe_equity`` im Scheduler
     # toter Code, der Fenster-Hoechststand bleibt bei der Anfangs-Equity stehen und
     # die Drawdown-Grenze feuert nie.
     scheduler = SyncScheduler(
-        venue, max_silence=timedelta(minutes=5), started_at=start,
+        venue,
+        max_silence=timedelta(minutes=5),
+        started_at=start,
         risk_manager=manager,
     )
     ende = start + timedelta(hours=args.dauer)
@@ -979,9 +1161,17 @@ def main() -> int:
                 break
             try:
                 bekannt, gestoppt = takt(
-                    venue, manager, scheduler, symbole, zulassung, journal,
-                    nr=nr, max_haltedauer=max_halt, bekannt=bekannt,
-                    equity_start=konto.equity, verlustgrenze=verlustgrenze,
+                    venue,
+                    manager,
+                    scheduler,
+                    symbole,
+                    zulassung,
+                    journal,
+                    nr=nr,
+                    max_haltedauer=max_halt,
+                    bekannt=bekannt,
+                    equity_start=konto.equity,
+                    verlustgrenze=verlustgrenze,
                 )
             except VenueError as exc:
                 # Ein Defekt am Handelsplatz beendet den Lauf NICHT -- er wird
@@ -1002,9 +1192,15 @@ def main() -> int:
             if not args.am_ende_offen_lassen:
                 jetzt = datetime.now(UTC)
                 for offen in _lage_lesen(venue).values():
-                    if not _schliesse(venue, manager, offen, jetzt,
-                                      "lauf_beendet", journal,
-                                      waehrung=konto.currency):
+                    if not _schliesse(
+                        venue,
+                        manager,
+                        offen,
+                        jetzt,
+                        "lauf_beendet",
+                        journal,
+                        waehrung=konto.currency,
+                    ):
                         offen_geblieben.append(offen.symbol)
                 offen_geblieben += list(_lage_lesen(venue))
         except VenueError as exc:
@@ -1014,20 +1210,31 @@ def main() -> int:
         try:
             konto_ende = venue.get_account()
             journal.schreib(
-                "ende", takte=nr, equity=konto_ende.equity,
+                "ende",
+                takte=nr,
+                equity=konto_ende.equity,
                 equity_start=konto.equity,
                 veraenderung=konto_ende.equity - konto.equity,
                 offen_geblieben=sorted(set(offen_geblieben)),
             )
-            print(f"\nBeendet nach {nr} Takten. Equity {konto.equity} -> "
-                  f"{konto_ende.equity} {konto_ende.currency}")
+            print(
+                f"\nBeendet nach {nr} Takten. Equity {konto.equity} -> "
+                f"{konto_ende.equity} {konto_ende.currency}"
+            )
         except VenueError as exc:
-            journal.schreib("ende_ohne_kontostand", fehler=str(exc), takte=nr,
-                            offen_geblieben=sorted(set(offen_geblieben)))
+            journal.schreib(
+                "ende_ohne_kontostand",
+                fehler=str(exc),
+                takte=nr,
+                offen_geblieben=sorted(set(offen_geblieben)),
+            )
             print(f"\nBeendet nach {nr} Takten, Kontostand nicht lesbar: {exc}")
         if offen_geblieben:
-            print(f"!! ACHTUNG: Positionen koennen offen geblieben sein: "
-                  f"{sorted(set(offen_geblieben))}", file=sys.stderr)
+            print(
+                f"!! ACHTUNG: Positionen koennen offen geblieben sein: "
+                f"{sorted(set(offen_geblieben))}",
+                file=sys.stderr,
+            )
         print(f"Journal: {journal.pfad}")
         print(f"Auswertung: python tools/betrieb_auswerten.py {journal.pfad.name}")
         try:

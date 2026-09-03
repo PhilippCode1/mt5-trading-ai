@@ -69,15 +69,21 @@ def test_registrierung_ohne_edge_wird_abgelehnt() -> None:
     # Kern von Paket 5: ohne bestandenen Edge-Test kein Demo-Betrieb.
     with pytest.raises(DemoGateError):
         register_for_demo(
-            strategy_id="x", version="v1", edge_verdict=_verdict(False),
-            account=KONTO, clock=_uhr(START),
+            strategy_id="x",
+            version="v1",
+            edge_verdict=_verdict(False),
+            account=KONTO,
+            clock=_uhr(START),
         )
 
 
 def test_registrierung_mit_edge_wird_angenommen() -> None:
     reg = register_for_demo(
-        strategy_id="x", version="v1", edge_verdict=_verdict(True),
-        account=KONTO, clock=_uhr(START),
+        strategy_id="x",
+        version="v1",
+        edge_verdict=_verdict(True),
+        account=KONTO,
+        clock=_uhr(START),
     )
     assert reg.strategy_id == "x"
     assert reg.account == KONTO
@@ -86,8 +92,11 @@ def test_registrierung_mit_edge_wird_angenommen() -> None:
 def test_registrierungsdatum_kommt_aus_der_uhr() -> None:
     """Kein Rueckdatieren: das Datum ist ein Uhrenwert, kein Argument."""
     reg = register_for_demo(
-        strategy_id="x", version="v1", edge_verdict=_verdict(True),
-        account=KONTO, clock=_uhr(date(2026, 3, 5)),
+        strategy_id="x",
+        version="v1",
+        edge_verdict=_verdict(True),
+        account=KONTO,
+        clock=_uhr(date(2026, 3, 5)),
     )
     assert reg.registered_on == date(2026, 3, 5)
 
@@ -95,8 +104,11 @@ def test_registrierungsdatum_kommt_aus_der_uhr() -> None:
 def test_registrierung_verlangt_ids() -> None:
     with pytest.raises(DemoGateError):
         register_for_demo(
-            strategy_id="  ", version="v1", edge_verdict=_verdict(True),
-            account=KONTO, clock=_uhr(START),
+            strategy_id="  ",
+            version="v1",
+            edge_verdict=_verdict(True),
+            account=KONTO,
+            clock=_uhr(START),
         )
 
 
@@ -104,7 +116,9 @@ def test_registrierung_auf_echtgeldkonto_wird_abgelehnt() -> None:
     # Ein Demo-Betrieb, der auf einem Echtgeldkonto beginnt, ist ein Widerspruch.
     with pytest.raises(DemoGateError):
         register_for_demo(
-            strategy_id="x", version="v1", edge_verdict=_verdict(True),
+            strategy_id="x",
+            version="v1",
+            edge_verdict=_verdict(True),
             account=DemoAccount("4711", "Demo-Broker", is_demo=False),
             clock=_uhr(START),
         )
@@ -120,8 +134,11 @@ def test_registrierung_auf_echtgeldkonto_wird_abgelehnt() -> None:
 def test_registrierung_verlangt_kontonummer_und_broker(konto: DemoAccount) -> None:
     with pytest.raises(DemoGateError):
         register_for_demo(
-            strategy_id="x", version="v1", edge_verdict=_verdict(True),
-            account=konto, clock=_uhr(START),
+            strategy_id="x",
+            version="v1",
+            edge_verdict=_verdict(True),
+            account=konto,
+            clock=_uhr(START),
         )
 
 
@@ -129,8 +146,11 @@ def test_registrierung_mit_naiver_uhr_wird_abgelehnt() -> None:
     # Naiv kann Ortszeit oder UTC heissen -- ein nicht belegbares Datum ist ein Nein.
     with pytest.raises(DemoGateError):
         register_for_demo(
-            strategy_id="x", version="v1", edge_verdict=_verdict(True),
-            account=KONTO, clock=lambda: datetime(2026, 1, 1, 12),
+            strategy_id="x",
+            version="v1",
+            edge_verdict=_verdict(True),
+            account=KONTO,
+            clock=lambda: datetime(2026, 1, 1, 12),
         )
 
 

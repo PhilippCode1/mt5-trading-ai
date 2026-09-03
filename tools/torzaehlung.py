@@ -126,8 +126,7 @@ def gruende_im_code() -> tuple[dict[str, list[str]], dict[str, list[str]]]:
                 continue
             zweites = knoten.args[1]
             if not (
-                isinstance(zweites, ast.Constant)
-                and isinstance(zweites.value, str)
+                isinstance(zweites, ast.Constant) and isinstance(zweites.value, str)
             ):
                 continue
             f = knoten.func
@@ -181,15 +180,18 @@ def main() -> int:
             strom.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser(description="Tore ohne Ausloesung melden")
     ap.add_argument(
-        "--journal", type=Path,
+        "--journal",
+        type=Path,
         default=ROOT / "aufzeichnungen" / "demo-2026-08-17.jsonl",
     )
     args = ap.parse_args()
 
     im_code, zusammengesetzt = gruende_im_code()
     if not im_code:
-        print("FEHLGESCHLAGEN — kein einziger Ablehnungsgrund im Paket gefunden.",
-              file=sys.stderr)
+        print(
+            "FEHLGESCHLAGEN — kein einziger Ablehnungsgrund im Paket gefunden.",
+            file=sys.stderr,
+        )
         return 1
     in_tests = gruende_in_tests()
     im_betrieb = gruende_im_betrieb(args.journal)
@@ -200,8 +202,10 @@ def main() -> int:
     print(f"Journal: {args.journal}")
     print(f"Ablehnungsgruende im Code: {len(im_code)}")
     if zusammengesetzt:
-        print(f"Zur Laufzeit zusammengesetzt (nicht aufzaehlbar): "
-              f"{len(zusammengesetzt)} Stellen")
+        print(
+            f"Zur Laufzeit zusammengesetzt (nicht aufzaehlbar): "
+            f"{len(zusammengesetzt)} Stellen"
+        )
         print("  Sie entstehen aus fremdem Text. Kein Test")
         print("  kann sie gezielt ausloesen, und keine Auswertung sie vorher kennen.")
     print()
@@ -235,10 +239,14 @@ def main() -> int:
     if ohne_test:
         print()
         for grund in ohne_test:
-            print(f"FEHLGESCHLAGEN — kein Test loest '{grund}' aus "
-                  f"({im_code[grund][0]}).", file=sys.stderr)
-        print("Ein Tor ohne Test, der es ausloest, ist eine Behauptung.",
-              file=sys.stderr)
+            print(
+                f"FEHLGESCHLAGEN — kein Test loest '{grund}' aus "
+                f"({im_code[grund][0]}).",
+                file=sys.stderr,
+            )
+        print(
+            "Ein Tor ohne Test, der es ausloest, ist eine Behauptung.", file=sys.stderr
+        )
         return 1
     print()
     print("ok — jedes Tor hat einen Test, der es ausloest.")

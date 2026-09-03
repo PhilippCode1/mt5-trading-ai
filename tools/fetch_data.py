@@ -160,9 +160,7 @@ def counter_check_bps(
         diffs.append(abs(b.close - ref) / mid * 10000)
     if not diffs:
         return (0.0, 0.0, 0.0, 0)
-    return (
-        sum(diffs) / len(diffs), statistics.median(diffs), max(diffs), len(diffs)
-    )
+    return (sum(diffs) / len(diffs), statistics.median(diffs), max(diffs), len(diffs))
 
 
 def main() -> int:
@@ -177,7 +175,9 @@ def main() -> int:
     ap.add_argument("--timeframe", default="D1", choices=("D1", "H1"))
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument(
-        "--cache", type=Path, default=None,
+        "--cache",
+        type=Path,
+        default=None,
         help="Verzeichnis fuer die rohen .bi5-Dateien (spart Abrufe beim Wiederanlauf)",
     )
     args = ap.parse_args()
@@ -204,9 +204,7 @@ def main() -> int:
             year_bars = []
             for month in range(1, 13):
                 name = f"{args.instrument}_{year}_{month:02d}.bi5"
-                zwischen = (
-                    args.cache is not None and (args.cache / name).is_file()
-                )
+                zwischen = args.cache is not None and (args.cache / name).is_file()
                 if not erster and not zwischen:
                     time.sleep(3)
                 erster = False
@@ -269,7 +267,8 @@ def main() -> int:
     try:
         yahoo_raw = fetch_yahoo_daily(args.instrument, bars[0].ts, bars[-1].ts)
         yahoo = [
-            b for b in yahoo_raw
+            b
+            for b in yahoo_raw
             if b.low <= b.open <= b.high and b.low <= b.close <= b.high
         ]
         dropped = len(yahoo_raw) - len(yahoo)

@@ -44,7 +44,9 @@ OB = _modul()
 def _leer(**zusatz: Any) -> dict[str, Any]:
     stand: dict[str, Any] = {
         "jetzt": datetime(2026, 8, 17, 12, 0, tzinfo=UTC),
-        "fehler": None, "lauf": None, "alle_laeufe": [],
+        "fehler": None,
+        "lauf": None,
+        "alle_laeufe": [],
     }
     stand.update(zusatz)
     return stand
@@ -84,6 +86,7 @@ def test_es_gibt_kein_meta_refresh_mehr() -> None:
 def test_das_alter_des_schnappschusses_steht_auf_der_seite() -> None:
     """Eine Anzeige, die stillschweigend einfriert, ist gefaehrlicher als eine leere."""
     from datetime import timedelta
+
     stand = _leer()
     stand["gebaut"] = stand["jetzt"] - timedelta(seconds=45)
     stand["dauer_ms"] = 12.0
@@ -153,10 +156,14 @@ def test_eine_flache_reihe_stuerzt_nicht_ab() -> None:
 
 
 def test_eine_fallende_reihe_wird_anders_gefaerbt_als_eine_steigende() -> None:
-    hoch = [(datetime(2026, 8, 17, 12, 0, tzinfo=UTC), Decimal("1")),
-            (datetime(2026, 8, 17, 13, 0, tzinfo=UTC), Decimal("2"))]
-    runter = [(datetime(2026, 8, 17, 12, 0, tzinfo=UTC), Decimal("2")),
-              (datetime(2026, 8, 17, 13, 0, tzinfo=UTC), Decimal("1"))]
+    hoch = [
+        (datetime(2026, 8, 17, 12, 0, tzinfo=UTC), Decimal("1")),
+        (datetime(2026, 8, 17, 13, 0, tzinfo=UTC), Decimal("2")),
+    ]
+    runter = [
+        (datetime(2026, 8, 17, 12, 0, tzinfo=UTC), Decimal("2")),
+        (datetime(2026, 8, 17, 13, 0, tzinfo=UTC), Decimal("1")),
+    ]
     assert "var(--gut)" in OB._linienzug(hoch, titel="x")
     assert "var(--krit)" in OB._linienzug(runter, titel="x")
 
@@ -178,16 +185,29 @@ def _lauf(name: str, *, beendet: bool) -> Any:
     from datetime import timedelta
 
     from mt5_trading_ai.betrieb.journal import Lauf, Satz
+
     t0 = datetime(2026, 8, 17, 12, 0, tzinfo=UTC)
     saetze = [
         Satz(ts=t0, art="start", lauf=name, version="abc", felder={"scharf": True}),
         Satz(ts=t0, art="takt", lauf=name, version="abc", felder={"equity": "100"}),
-        Satz(ts=t0 + timedelta(minutes=1), art="takt", lauf=name, version="abc",
-             felder={"equity": "110"}),
+        Satz(
+            ts=t0 + timedelta(minutes=1),
+            art="takt",
+            lauf=name,
+            version="abc",
+            felder={"equity": "110"},
+        ),
     ]
     if beendet:
-        saetze.append(Satz(ts=t0 + timedelta(minutes=2), art="ende", lauf=name,
-                           version="abc", felder={}))
+        saetze.append(
+            Satz(
+                ts=t0 + timedelta(minutes=2),
+                art="ende",
+                lauf=name,
+                version="abc",
+                felder={},
+            )
+        )
     return Lauf(pfad=Path(f"betrieb/{name}.jsonl"), saetze=saetze)
 
 
@@ -254,6 +274,7 @@ def test_der_knopf_zielt_nur_auf_die_stoppdatei() -> None:
     Formulars und dass keine Handelsbegriffe darin vorkommen.
     """
     import re
+
     aus = OB._stopp_knopf("t", True)
     assert "betrieb/STOP" in aus
     ziele = re.findall(r'action="([^"]+)"', aus)

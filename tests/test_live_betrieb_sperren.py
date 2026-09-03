@@ -71,8 +71,14 @@ T0 = datetime(2026, 8, 17, 0, 0, tzinfo=UTC)
 def _bar(nr: int, close: float) -> Bar:
     preis = Decimal(str(close))
     return Bar(
-        symbol="XAUUSD", timeframe=Timeframe.H1, ts=T0 + timedelta(hours=nr),
-        open=preis, high=preis, low=preis, close=preis, tick_volume=1,
+        symbol="XAUUSD",
+        timeframe=Timeframe.H1,
+        ts=T0 + timedelta(hours=nr),
+        open=preis,
+        high=preis,
+        low=preis,
+        close=preis,
+        tick_volume=1,
         is_closed=True,
     )
 
@@ -106,9 +112,14 @@ class HaltVenue:
 
     def get_account(self) -> AccountState:
         return AccountState(
-            account_id="DEMO-1", currency="EUR", balance=Decimal("50000"),
-            equity=self.equity, margin_used=Decimal("0"),
-            margin_free=self.equity, is_demo=True, ts=T0,
+            account_id="DEMO-1",
+            currency="EUR",
+            balance=Decimal("50000"),
+            equity=self.equity,
+            margin_used=Decimal("0"),
+            margin_free=self.equity,
+            is_demo=True,
+            ts=T0,
         )
 
     def get_positions(self) -> tuple[Position, ...]:
@@ -117,8 +128,7 @@ class HaltVenue:
     def get_quote(self, symbol: str) -> Quote:
         if symbol in self.kurs_fehler:
             raise VenueUnavailableError(f"kein Tick fuer {symbol}")
-        return Quote(symbol=symbol, ts=T0, bid=Decimal("1.1000"),
-                     ask=Decimal("1.1002"))
+        return Quote(symbol=symbol, ts=T0, bid=Decimal("1.1000"), ask=Decimal("1.1002"))
 
     def get_bars(
         self, symbol: str, timeframe: Timeframe, *, start: datetime, end: datetime
@@ -156,9 +166,13 @@ class SpiegelScheduler:
 
     def tick(self, jetzt: datetime) -> TickResult:
         return TickResult(
-            now=jetzt, halted=self.venue.halt_reason is not None,
-            halt_reason=self.venue.halt_reason, sync_healthy=True,
-            stream_never_started=True, reconcile=None, events_applied=0,
+            now=jetzt,
+            halted=self.venue.halt_reason is not None,
+            halt_reason=self.venue.halt_reason,
+            sync_healthy=True,
+            stream_never_started=True,
+            reconcile=None,
+            events_applied=0,
         )
 
 
@@ -223,18 +237,28 @@ def _saetze(journal: Journal) -> list[dict[str, Any]]:
 
 def _position(symbol: str = "XAUUSD", *, seit: datetime | None = None) -> Position:
     return Position(
-        venue_position_id="10060725485", symbol=symbol, side=OrderSide.BUY,
-        volume=Decimal("0.01"), entry_price=Decimal("4415.18"), stop_loss=None,
-        take_profit=None, opened_at=seit or T0, unrealised_pnl=Decimal("-2.68"),
+        venue_position_id="10060725485",
+        symbol=symbol,
+        side=OrderSide.BUY,
+        volume=Decimal("0.01"),
+        entry_price=Decimal("4415.18"),
+        stop_loss=None,
+        take_profit=None,
+        opened_at=seit or T0,
+        unrealised_pnl=Decimal("-2.68"),
         swap_accrued=Decimal("-0.11"),
     )
 
 
 def _lage(seit: datetime | None = None) -> Lage:
     return Lage(
-        symbol="XAUUSD", ist_kauf=True, volumen=Decimal("0.01"),
-        seit=seit or T0, position_id="10060725485",
-        einstiegspreis=Decimal("4415.18"), unrealisiert=Decimal("-2.68"),
+        symbol="XAUUSD",
+        ist_kauf=True,
+        volumen=Decimal("0.01"),
+        seit=seit or T0,
+        position_id="10060725485",
+        einstiegspreis=Decimal("4415.18"),
+        unrealisiert=Decimal("-2.68"),
         swap=Decimal("-0.11"),
     )
 
@@ -325,7 +349,9 @@ def test_nach_erfolglosen_versuchen_meldet_der_lauf_offene_positionen(
     assert _verbindung_sichern(venue, terminal, j, versuche=3) is False
     saetze = _saetze(j)
     assert [s["pause"] for s in saetze if s["art"] == "reconnect_versuch"] == [
-        5.0, 10.0, 15.0
+        5.0,
+        10.0,
+        15.0,
     ]
     assert not [s for s in saetze if s["art"] == "reconnect_ok"]
     assert saetze[-1]["art"] == "verbindung_verloren"
@@ -366,11 +392,20 @@ def test_die_notbremse_greift_genau_auf_der_grenze(tmp_path: Path) -> None:
     """
     venue = HaltVenue()
     j = _journal(tmp_path)
-    assert _notbremse(
-        venue, RiskManager(), j, equity_jetzt=Decimal("49000"),
-        equity_start=Decimal("50000"), grenze=Decimal("0.02"),
-        lage={}, jetzt=T0, waehrung="EUR",
-    ) is True
+    assert (
+        _notbremse(
+            venue,
+            RiskManager(),
+            j,
+            equity_jetzt=Decimal("49000"),
+            equity_start=Decimal("50000"),
+            grenze=Decimal("0.02"),
+            lage={},
+            jetzt=T0,
+            waehrung="EUR",
+        )
+        is True
+    )
     satz = next(s for s in _saetze(j) if s["art"] == "notbremse")
     assert satz["verlust_anteil"] == "0.02"
     assert satz["grenze"] == "0.02"
@@ -385,11 +420,20 @@ def test_knapp_unter_der_grenze_greift_die_notbremse_nicht(tmp_path: Path) -> No
     """
     venue = HaltVenue()
     j = _journal(tmp_path)
-    assert _notbremse(
-        venue, RiskManager(), j, equity_jetzt=Decimal("49000.50"),
-        equity_start=Decimal("50000"), grenze=Decimal("0.02"),
-        lage={"XAUUSD": _lage()}, jetzt=T0, waehrung="EUR",
-    ) is False
+    assert (
+        _notbremse(
+            venue,
+            RiskManager(),
+            j,
+            equity_jetzt=Decimal("49000.50"),
+            equity_start=Decimal("50000"),
+            grenze=Decimal("0.02"),
+            lage={"XAUUSD": _lage()},
+            jetzt=T0,
+            waehrung="EUR",
+        )
+        is False
+    )
     assert venue.halt_reason is None
     assert venue.gesendet == []
     assert _saetze(j) == []
@@ -404,11 +448,20 @@ def test_die_notbremse_stellt_wirklich_glatt(tmp_path: Path) -> None:
     """
     venue = HaltVenue()
     j = _journal(tmp_path)
-    assert _notbremse(
-        venue, RiskManager(), j, equity_jetzt=Decimal("48000"),
-        equity_start=Decimal("50000"), grenze=Decimal("0.02"),
-        lage={"XAUUSD": _lage()}, jetzt=T0, waehrung="EUR",
-    ) is True
+    assert (
+        _notbremse(
+            venue,
+            RiskManager(),
+            j,
+            equity_jetzt=Decimal("48000"),
+            equity_start=Decimal("50000"),
+            grenze=Decimal("0.02"),
+            lage={"XAUUSD": _lage()},
+            jetzt=T0,
+            waehrung="EUR",
+        )
+        is True
+    )
     assert len(venue.gesendet) == 1
     zu = next(s for s in _saetze(j) if s["art"] == "geschlossen")
     assert zu["grund"] == "notbremse"
@@ -427,25 +480,44 @@ def test_ohne_startequity_rechnet_die_notbremse_nicht(tmp_path: Path) -> None:
     keinen Bezug zur Wirklichkeit, und die Sperre stuende dann ohne Grund.
     """
     j = _journal(tmp_path)
-    assert _notbremse(
-        HaltVenue(), RiskManager(), j, equity_jetzt=Decimal("-10"),
-        equity_start=Decimal("0"), grenze=Decimal("0.02"),
-        lage={}, jetzt=T0, waehrung="EUR",
-    ) is False
+    assert (
+        _notbremse(
+            HaltVenue(),
+            RiskManager(),
+            j,
+            equity_jetzt=Decimal("-10"),
+            equity_start=Decimal("0"),
+            grenze=Decimal("0.02"),
+            lage={},
+            jetzt=T0,
+            waehrung="EUR",
+        )
+        is False
+    )
     assert _saetze(j) == []
 
 
 # --- Der Takt: Halt aufloesen, aber nur diesen einen ----------------------
 def _takt(
-    tmp_path: Path, venue: HaltVenue, *, bekannt: dict[str, Lage] | None = None,
+    tmp_path: Path,
+    venue: HaltVenue,
+    *,
+    bekannt: dict[str, Lage] | None = None,
     max_haltedauer: timedelta = timedelta(hours=4),
 ) -> tuple[Journal, dict[str, Lage], bool]:
     j = _journal(tmp_path)
     lage, gestoppt = takt(
-        venue, RiskManager(), SpiegelScheduler(venue), ["EURUSD", "XAUUSD"],
-        CriteriaVerdict(passed=False, results=()), j,
-        nr=1, max_haltedauer=max_haltedauer, bekannt=bekannt or {},
-        equity_start=Decimal("50000"), verlustgrenze=Decimal("0.02"),
+        venue,
+        RiskManager(),
+        SpiegelScheduler(venue),
+        ["EURUSD", "XAUUSD"],
+        CriteriaVerdict(passed=False, results=()),
+        j,
+        nr=1,
+        max_haltedauer=max_haltedauer,
+        bekannt=bekannt or {},
+        equity_start=Decimal("50000"),
+        verlustgrenze=Decimal("0.02"),
     )
     return j, lage, gestoppt
 
@@ -484,7 +556,8 @@ def test_ein_desync_halt_bleibt_stehen_auch_bei_erkannter_schliessung(
     geweitet -- dann faellt dieser Fall an drei Stellen zugleich.
     """
     venue = HaltVenue(
-        kerzen={"XAUUSD": FALLEND}, halt_reason="stream_desync:sequence_gap",
+        kerzen={"XAUUSD": FALLEND},
+        halt_reason="stream_desync:sequence_gap",
     )
     j, _, _ = _takt(tmp_path, venue, bekannt={"XAUUSD": _lage()})
     saetze = _saetze(j)
@@ -503,7 +576,8 @@ def test_bei_halt_bleibt_der_ausstieg_moeglich(tmp_path: Path) -> None:
     Der Ausstieg laeuft trotzdem.
     """
     venue = HaltVenue(
-        kerzen={"XAUUSD": FALLEND}, positionen=(_position(),),
+        kerzen={"XAUUSD": FALLEND},
+        positionen=(_position(),),
         halt_reason="stream_desync:sequence_gap",
     )
     j, _, _ = _takt(tmp_path, venue)
@@ -528,7 +602,8 @@ def test_ein_offenes_symbol_bekommt_keinen_zweiten_eintritt(tmp_path: Path) -> N
     venue = HaltVenue(kerzen={"XAUUSD": FALLEND}, positionen=(_position(),))
     j, _, _ = _takt(tmp_path, venue)
     eintritte = {
-        s["symbol"] for s in _saetze(j)
+        s["symbol"]
+        for s in _saetze(j)
         if s["art"] == "signalbasis" and s["zweck"] == "eintritt"
     }
     assert eintritte == {"EURUSD"}, (
@@ -549,9 +624,9 @@ def test_die_hoechsthaltedauer_schliesst_eine_alte_position(tmp_path: Path) -> N
     j, _, _ = _takt(tmp_path, venue)
     zu = next(s for s in _saetze(j) if s["art"] == "geschlossen")
     assert zu["grund"].startswith("haltedauer_")
-    assert next(
-        s for s in _saetze(j) if s["art"] == "signalbasis"
-    )["signal"] == "FLAT", "Der Schluss darf nicht aus einem Signalwechsel kommen"
+    assert (
+        next(s for s in _saetze(j) if s["art"] == "signalbasis")["signal"] == "FLAT"
+    ), "Der Schluss darf nicht aus einem Signalwechsel kommen"
 
 
 def test_die_hoechsthaltedauer_greift_genau_auf_der_grenze(
@@ -663,11 +738,18 @@ def test_der_takt_traegt_die_positionen_mit_ihren_zahlen(tmp_path: Path) -> None
     satz = next(s for s in _saetze(j) if s["art"] == "takt")
     assert satz["balance"] == "50000"
     assert satz["unrealisiert"] == "-2.68"
-    assert satz["positionen"] == [{
-        "symbol": "XAUUSD", "ist_kauf": True, "volumen": "0.01",
-        "seit": T0.isoformat(timespec="seconds"), "position_id": "10060725485",
-        "einstiegspreis": "4415.18", "unrealisiert": "-2.68", "swap": "-0.11",
-    }]
+    assert satz["positionen"] == [
+        {
+            "symbol": "XAUUSD",
+            "ist_kauf": True,
+            "volumen": "0.01",
+            "seit": T0.isoformat(timespec="seconds"),
+            "position_id": "10060725485",
+            "einstiegspreis": "4415.18",
+            "unrealisiert": "-2.68",
+            "swap": "-0.11",
+        }
+    ]
 
 
 # --- Der eigene Schluss, wenn er misslingt --------------------------------
@@ -689,9 +771,18 @@ def test_ein_misslungener_schluss_wird_nicht_als_schluss_verbucht(
     manager = RiskManager()
     manager.record_open_fill("XAUUSD", T0)
     j = _journal(tmp_path)
-    assert _schliesse(
-        WerfendesVenue(), manager, _lage(), T0, "signalwechsel", j, waehrung="EUR",
-    ) is False
+    assert (
+        _schliesse(
+            WerfendesVenue(),
+            manager,
+            _lage(),
+            T0,
+            "signalwechsel",
+            j,
+            waehrung="EUR",
+        )
+        is False
+    )
     assert manager.open_position_count == 1, (
         "Ein misslungener Schluss darf die Position nicht aus dem Buch nehmen"
     )
@@ -735,6 +826,7 @@ def test_ein_schmutziger_baum_steht_im_codestand(
     def fake_run(*_a: Any, **_k: Any) -> Any:
         class Ergebnis:
             stdout = next(antworten) + "\n"
+
         return Ergebnis()
 
     monkeypatch.setattr(subprocess, "run", fake_run)
@@ -750,6 +842,7 @@ def test_ein_sauberer_baum_traegt_nur_den_commit(
     def fake_run(*_a: Any, **_k: Any) -> Any:
         class Ergebnis:
             stdout = next(antworten) + "\n"
+
         return Ergebnis()
 
     monkeypatch.setattr(subprocess, "run", fake_run)

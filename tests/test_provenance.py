@@ -19,7 +19,10 @@ from mt5_trading_ai.backtest.provenance import ProvenanceError, code_commit_from
 def _git(cwd: Path, *args: str) -> None:
     subprocess.run(
         ["git", "-c", "user.email=t@t", "-c", "user.name=t", *args],
-        cwd=cwd, check=True, capture_output=True, text=True,
+        cwd=cwd,
+        check=True,
+        capture_output=True,
+        text=True,
     )
 
 
@@ -98,7 +101,9 @@ def test_suppress_bit_outside_cwd_subtree_is_rejected(tmp_path: Path) -> None:
     _git(tmp_path, "add", "-A")
     _git(tmp_path, "commit", "-m", "tree")
     _git(tmp_path, "update-index", "--assume-unchanged", "other/far.py")
-    far.write_text("f = 999  # verdeckt, ausserhalb des cwd-Teilbaums\n", encoding="utf-8")
+    far.write_text(
+        "f = 999  # verdeckt, ausserhalb des cwd-Teilbaums\n", encoding="utf-8"
+    )
     with pytest.raises(ProvenanceError):
         code_commit_from_git(repo=sub)  # cwd = tiefes Unterverzeichnis
 

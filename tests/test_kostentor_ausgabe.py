@@ -79,9 +79,7 @@ def test_das_urteil_steht_woertlich_im_beleg(
     """
     ausgabe = "\n".join(_lauf(capsys))
     assert "M1-AMPEL: GRUEN" in ausgabe
-    assert (
-        "ic_markets_eu allein traegt 3 davon (gefordert: mindestens 3)" in ausgabe
-    )
+    assert "ic_markets_eu allein traegt 3 davon (gefordert: mindestens 3)" in ausgabe
     assert "nicht bewertbar: 1 von 6 ['BTCUSD']" in ausgabe
     assert "M2-URTEIL: 13 von 18 Kostenzeilen reissen die" in ausgabe
     assert "ERGEBNIS: M1 = GRUEN. Bezugsgroesse: 18 rechenbare Kostenzeilen" in ausgabe

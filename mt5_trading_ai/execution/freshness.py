@@ -241,6 +241,4 @@ def evaluate_account_freshness(
             age=age,
             max_age=max_age,
         )
-    return FreshnessVerdict(
-        evaluable=True, reason=None, age=age, max_age=max_age
-    )
+    return FreshnessVerdict(evaluable=True, reason=None, age=age, max_age=max_age)

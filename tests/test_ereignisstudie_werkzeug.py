@@ -232,9 +232,7 @@ def test_der_selbsttest_faengt_eine_verfaelschte_messung(
     def verfaelscht(**kwargs: Any) -> Any:
         if verfaelschung == "immer_zwoelf":
             erg, werte = echte_studie(**kwargs)
-            return dataclasses.replace(
-                erg, brutto_bps=12.0, trefferanteil=1.0
-            ), werte
+            return dataclasses.replace(erg, brutto_bps=12.0, trefferanteil=1.0), werte
         erg, werte = echte_studie(**kwargs)
         if verfaelschung == "vorzeichen":
             return dataclasses.replace(erg, brutto_bps=-erg.brutto_bps), werte
@@ -539,9 +537,7 @@ def test_ein_fehlendes_register_wird_nicht_angelegt(
     monkeypatch.setattr(werkzeug, "studie", _darf_nicht_messen)
 
     with pytest.raises(StudienError) as fehler:
-        werkzeug._lauf(
-            PRUEFKANDIDAT, "SYNTH", _reihe(40), None, register_pfad=fehlt
-        )
+        werkzeug._lauf(PRUEFKANDIDAT, "SYNTH", _reihe(40), None, register_pfad=fehlt)
 
     assert not fehlt.exists(), "ein fehlendes Register wird nie neu angelegt"
     text = str(fehler.value)
@@ -569,9 +565,7 @@ def test_ein_abgebrochener_lauf_verbraucht_trotzdem_einen_versuch(
     ledger = _leeres_register(tmp_path)
     kurz = _reihe(10)
 
-    assert (
-        werkzeug._lauf(PRUEFKANDIDAT, "SYNTH", kurz, None, register_pfad=ledger) == 1
-    )
+    assert werkzeug._lauf(PRUEFKANDIDAT, "SYNTH", kurz, None, register_pfad=ledger) == 1
     assert "ABGEBROCHEN" in capsys.readouterr().out
 
     eintraege = list(register.iter_trials(ledger))
@@ -613,9 +607,7 @@ def test_ein_absturz_wird_als_error_registriert_und_nicht_verschluckt(
     ledger = _leeres_register(tmp_path)
 
     with pytest.raises(register.TrialsLedgerError, match="Register unbrauchbar"):
-        werkzeug._lauf(
-            PRUEFKANDIDAT, "SYNTH", _reihe(40), None, register_pfad=ledger
-        )
+        werkzeug._lauf(PRUEFKANDIDAT, "SYNTH", _reihe(40), None, register_pfad=ledger)
 
     eintraege = list(register.iter_trials(ledger))
     assert len(eintraege) == 1
@@ -640,9 +632,7 @@ def test_ohne_pruefsumme_wird_nicht_gemessen_und_nichts_registriert(
     monkeypatch.setattr(werkzeug, "studie", _darf_nicht_messen)
 
     with pytest.raises(StudienError, match="manifest.json"):
-        werkzeug._lauf(
-            PRUEFKANDIDAT, "SYNTH", _reihe(40), None, register_pfad=ledger
-        )
+        werkzeug._lauf(PRUEFKANDIDAT, "SYNTH", _reihe(40), None, register_pfad=ledger)
 
     assert list(register.iter_trials(ledger)) == []
 
@@ -705,7 +695,9 @@ def test_ein_gelungener_lauf_deflationiert_gegen_dasselbe_register(
 
 
 def test_die_vorregistrierte_schwelle_stammt_aus_dem_kernmodul(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, herkunft: None,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    herkunft: None,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """EICHFALL. Vorher stand ``3*k_bps`` als nackte Zahl im Block
@@ -853,9 +845,7 @@ def test_ein_register_im_repo_heisst_relativ_zum_repo() -> None:
     """
     assert werkzeug._registerkennung(werkzeug.REPO / "TRIALS.jsonl") == "TRIALS.jsonl"
     tief = werkzeug.REPO / "ABSCHLUSS-3a" / "07-AUSGABEN" / "trials.jsonl"
-    assert (
-        werkzeug._registerkennung(tief) == "ABSCHLUSS-3a/07-AUSGABEN/trials.jsonl"
-    )
+    assert werkzeug._registerkennung(tief) == "ABSCHLUSS-3a/07-AUSGABEN/trials.jsonl"
 
 
 def test_ein_register_ausserhalb_des_repos_wird_als_solches_benannt(
@@ -1196,8 +1186,7 @@ def test_der_eingefrorene_abzug_nennt_seinen_werkzeugstand() -> None:
     )
 
     stempel = [
-        z.split(":", 1)[1].strip()
-        for z in koerper.splitlines() if "code_commit" in z
+        z.split(":", 1)[1].strip() for z in koerper.splitlines() if "code_commit" in z
     ]
     assert len(stempel) == 7, f"sieben Messbloecke erwartet, {len(stempel)} gefunden"
     assert set(stempel) == {ABZUG_WERKZEUGSTAND}, (
@@ -1232,7 +1221,8 @@ def test_die_versuchszahl_der_begruendung_stimmt_mit_dem_register() -> None:
     """
     assert kern.kampagne().groesse == 7
     eigene = [
-        t for t in register.iter_trials(ABZUG_REGISTER)
+        t
+        for t in register.iter_trials(ABZUG_REGISTER)
         if t.strategy_id.startswith(kern.KAMPAGNE_PRAEFIX)
     ]
     assert len(eigene) == 7, "sieben verbrauchte Versuche, so steht es im Dokument"

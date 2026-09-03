@@ -57,7 +57,9 @@ NOW = datetime(2026, 8, 6, 12, tzinfo=UTC)
 ECHTE_SUMME = "a" * 64
 
 
-def _spannen(n: int, *, stunden: float = 5.0, versatz: float = 6.0, symbol: str = "EURUSD"):
+def _spannen(
+    n: int, *, stunden: float = 5.0, versatz: float = 6.0, symbol: str = "EURUSD"
+):
     """``n`` Spannen; ``versatz=0`` macht sie deckungsgleich."""
     return [
         (
@@ -171,7 +173,9 @@ def test_deckungsgleiche_trades_zaehlen_als_eine_beobachtung() -> None:
 
 def test_disjunkte_trades_zaehlen_einzeln() -> None:
     """Der gruene Gegenfall: die Gewichtung frisst nicht, was nicht ueberlappt."""
-    assert effektive_beobachtungen(_spannen(5, stunden=5, versatz=6)) == pytest.approx(5.0)
+    assert effektive_beobachtungen(_spannen(5, stunden=5, versatz=6)) == pytest.approx(
+        5.0
+    )
 
 
 def test_zwei_instrumente_laufen_getrennt() -> None:
@@ -198,9 +202,7 @@ def test_eine_spanne_die_vor_ihrem_beginn_endet_ist_ein_fehler() -> None:
 # =====================================================================
 # A5 — Trainingsendpunkte authentifizieren
 # =====================================================================
-@pytest.mark.parametrize(
-    "summe", ["", "egal", "a" * 63, "a" * 65, "z" * 64]
-)
+@pytest.mark.parametrize("summe", ["", "egal", "a" * 63, "a" * 65, "z" * 64])
 def test_eine_pruefsumme_die_jeder_text_sein_darf_authentifiziert_nichts(
     summe: str,
 ) -> None:
@@ -347,13 +349,21 @@ def test_der_trainingslauf_legt_einen_wartenden_kandidaten_an(tmp_path: Path) ->
 
     lauf = subprocess.run(
         [
-            sys.executable, "tools/modelllauf.py",
-            "--journal", str(journal),
-            "--ablage", str(ablage),
-            "--data-checksum", ECHTE_SUMME,
-            "--code-commit", "abc1234",
+            sys.executable,
+            "tools/modelllauf.py",
+            "--journal",
+            str(journal),
+            "--ablage",
+            str(ablage),
+            "--data-checksum",
+            ECHTE_SUMME,
+            "--code-commit",
+            "abc1234",
         ],
-        cwd=ROOT, capture_output=True, text=True, check=False,
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
     )
     assert lauf.returncode == 0, lauf.stderr or lauf.stdout
     assert "HERAUSFORDERER angelegt" in lauf.stdout
@@ -378,13 +388,21 @@ def test_der_trainingslauf_legt_bei_zu_wenig_beobachtungen_nichts_an(
     ablage = tmp_path / "ablage"
     lauf = subprocess.run(
         [
-            sys.executable, "tools/modelllauf.py",
-            "--journal", "aufzeichnungen/demo-2026-08-17.jsonl",
-            "--ablage", str(ablage),
-            "--data-checksum", ECHTE_SUMME,
-            "--code-commit", "abc1234",
+            sys.executable,
+            "tools/modelllauf.py",
+            "--journal",
+            "aufzeichnungen/demo-2026-08-17.jsonl",
+            "--ablage",
+            str(ablage),
+            "--data-checksum",
+            ECHTE_SUMME,
+            "--code-commit",
+            "abc1234",
         ],
-        cwd=ROOT, capture_output=True, text=True, check=False,
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
     )
     assert lauf.returncode == 2, lauf.stdout
     assert "KEIN HERAUSFORDERER" in lauf.stdout

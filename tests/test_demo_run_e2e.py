@@ -51,37 +51,69 @@ KONTO = DemoAccount(account_id="4711", broker="Demo-Broker", is_demo=True)
 def _real_verdict(ledger: Path) -> tuple[EdgeVerdict, int]:
     """Faehre die echte Kette und gib das ENTSTANDENE Urteil (+ OoS-Trades) zurueck."""
     bars, _chk = load_verified_csv(
-        FIXTURE, instrument="EURUSD", timeframe="H1", session_predicate=FxSession(),
+        FIXTURE,
+        instrument="EURUSD",
+        timeframe="H1",
+        session_predicate=FxSession(),
     )
     split = int(len(bars) * 0.70)
     in_sample, oos = bars[:split], bars[split:]
     spec = MarketSpec(
-        symbol="EURUSD", contract_size=Decimal("100000"), pip_size=Decimal("0.0001"),
-        quote_currency="USD", fees=load_cost_fees("EURUSD"), spread_pips=Decimal("0.1"),
-        leverage=Decimal("5"), obs_per_year=6000.0,
+        symbol="EURUSD",
+        contract_size=Decimal("100000"),
+        pip_size=Decimal("0.0001"),
+        quote_currency="USD",
+        fees=load_cost_fees("EURUSD"),
+        spread_pips=Decimal("0.1"),
+        leverage=Decimal("5"),
+        obs_per_year=6000.0,
     )
 
     def factory() -> Strategy:
         return mean_reversion_zscore(48, 2.0, 0.5)
 
     wf = run_walk_forward(
-        in_sample, lambda _train: factory(), spec, 5,
-        purge_ms=3_600_000, embargo_ms=3_600_000,
-        strategy_id=STRATEGY_ID, seed=100, data_checksum="", code_commit=COMMIT,
+        in_sample,
+        lambda _train: factory(),
+        spec,
+        5,
+        purge_ms=3_600_000,
+        embargo_ms=3_600_000,
+        strategy_id=STRATEGY_ID,
+        seed=100,
+        data_checksum="",
+        code_commit=COMMIT,
         ledger_path=str(ledger),
     )
     oos_report = run_registered_backtest(
-        oos, factory(), spec, strategy_id=STRATEGY_ID, version="v1", seed=0,
-        data_checksum="", code_commit=COMMIT, ledger_path=str(ledger),
+        oos,
+        factory(),
+        spec,
+        strategy_id=STRATEGY_ID,
+        version="v1",
+        seed=0,
+        data_checksum="",
+        code_commit=COMMIT,
+        ledger_path=str(ledger),
     )
     dsr = deflated_sharpe_for_report(
-        oos_report, strategy_id=STRATEGY_ID, version="v1", ledger_path=str(ledger),
+        oos_report,
+        strategy_id=STRATEGY_ID,
+        version="v1",
+        ledger_path=str(ledger),
         count_scope="total",
     )
     # Die beiden Booleans kommen aus ECHTEN Kontroll-Laeufen, nicht von Hand gesetzt.
     rnd = [
-        run_backtest(oos, random_signal_strategy(s), spec, strategy_id="rnd", seed=s,
-                     data_checksum="", code_commit="").net_return
+        run_backtest(
+            oos,
+            random_signal_strategy(s),
+            spec,
+            strategy_id="rnd",
+            seed=s,
+            data_checksum="",
+            code_commit="",
+        ).net_return
         for s in range(5)
     ]
     random_negative = (sum(rnd) / len(rnd)) < 0
@@ -92,16 +124,26 @@ def _real_verdict(ledger: Path) -> tuple[EdgeVerdict, int]:
 
     leakage_green = False
     try:
-        run_backtest(oos, _leaky, spec, strategy_id="leak", seed=0,
-                     data_checksum="", code_commit="")
+        run_backtest(
+            oos,
+            _leaky,
+            spec,
+            strategy_id="leak",
+            seed=0,
+            data_checksum="",
+            code_commit="",
+        )
     except LookAheadError:
         leakage_green = True
 
     verdict = evaluate_edge(
-        oos_sharpe=oos_report.trade_sharpe, deflated_sharpe=dsr,
-        trades=oos_report.trades, fold_returns=[f.net_return for f in wf.folds],
+        oos_sharpe=oos_report.trade_sharpe,
+        deflated_sharpe=dsr,
+        trades=oos_report.trades,
+        fold_returns=[f.net_return for f in wf.folds],
         net_over_hurdle=oos_report.net_over_hurdle,
-        leakage_test_green=leakage_green, random_reference_negative=random_negative,
+        leakage_test_green=leakage_green,
+        random_reference_negative=random_negative,
     )
     return verdict, oos_report.trades
 
@@ -117,8 +159,11 @@ def test_real_no_edge_verdict_is_refused_by_demo_gate(tmp_path: Path) -> None:
     # Demo-Betrieb fail-closed -- mit den ECHTEN offenen Bedingungen als Begruendung.
     with pytest.raises(DemoGateError) as excinfo:
         register_for_demo(
-            strategy_id=STRATEGY_ID, version="v1", edge_verdict=verdict,
-            account=KONTO, clock=lambda: datetime(2026, 1, 1, 12, tzinfo=UTC),
+            strategy_id=STRATEGY_ID,
+            version="v1",
+            edge_verdict=verdict,
+            account=KONTO,
+            clock=lambda: datetime(2026, 1, 1, 12, tzinfo=UTC),
         )
     assert verdict.unmet  # es gibt konkrete offene Bedingungen
     assert verdict.unmet[0] in str(excinfo.value)
@@ -131,7 +176,9 @@ def test_real_no_edge_verdict_blocks_live_question(tmp_path: Path) -> None:
     # demselben Konto): ein real durchgefallenes Live-Urteil sperrt die Live-Frage.
     # Der Zeitanteil ist erfuellt, die Bedingung nicht.
     readiness = evaluate_demo_progress(
-        registration=reg, observed_account=KONTO, live_verdict=verdict,
+        registration=reg,
+        observed_account=KONTO,
+        live_verdict=verdict,
         clock=lambda: datetime(2027, 2, 5, 12, tzinfo=UTC),
     )
     assert not readiness.ready_for_live_question

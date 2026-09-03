@@ -56,7 +56,9 @@ def test_rot_ist_ueberhaupt_erreichbar() -> None:
         rot=BEWERTBAR,
         bester_broker=("-", []),
     )
-    assert ampel == "ROT", "ROT muss mit einem nicht bewertbaren Instrument erreichbar sein"
+    assert ampel == "ROT", (
+        "ROT muss mit einem nicht bewertbaren Instrument erreichbar sein"
+    )
     assert str(len(BEWERTBAR)) in satz
     # Und der Gegenbeweis zur alten Regel, damit der Unterschied festgeschrieben ist:
     assert len(BEWERTBAR) < len(UNIVERSUM)

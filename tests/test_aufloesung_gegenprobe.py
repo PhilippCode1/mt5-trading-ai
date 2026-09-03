@@ -40,9 +40,7 @@ BASIS = datetime(2026, 1, 5, 0, 0, tzinfo=UTC)
 
 def _rate(ts: datetime, close: float) -> Mt5Rate:
     preis = Decimal(str(close))
-    return Mt5Rate(
-        ts=ts, open=preis, high=preis, low=preis, close=preis, tick_volume=1
-    )
+    return Mt5Rate(ts=ts, open=preis, high=preis, low=preis, close=preis, tick_volume=1)
 
 
 def _csv(tmp_path: Path, name: str, punkte: list[tuple[datetime, float]]) -> Path:
@@ -184,9 +182,9 @@ def test_die_abtastung_findet_einen_stundenversatz(
     """
     kurse = _wechselnd(60)
     punkte = [(BASIS + timedelta(hours=i), k) for i, k in enumerate(kurse)]
-    _setze_reihe(tuple(
-        _rate(BASIS + timedelta(hours=i + 1), k) for i, k in enumerate(kurse)
-    ))
+    _setze_reihe(
+        tuple(_rate(BASIS + timedelta(hours=i + 1), k) for i, k in enumerate(kurse))
+    )
     assert gegenprobe(_csv(tmp_path, "EURUSD_H1.csv", punkte)) == 0
     aus = capsys.readouterr().out
     assert "Serverzeit-Versatz abgetastet" in aus
@@ -205,9 +203,9 @@ def test_ohne_versatz_sagt_die_gegenprobe_null_stunden(
     """
     kurse = _wechselnd(60)
     punkte = [(BASIS + timedelta(hours=i), k) for i, k in enumerate(kurse)]
-    _setze_reihe(tuple(
-        _rate(BASIS + timedelta(hours=i), k) for i, k in enumerate(kurse)
-    ))
+    _setze_reihe(
+        tuple(_rate(BASIS + timedelta(hours=i), k) for i, k in enumerate(kurse))
+    )
     assert gegenprobe(_csv(tmp_path, "EURUSD_H1.csv", punkte)) == 0
     aus = capsys.readouterr().out
     assert "Serverzeit-Versatz gegen UTC: 0 h" in aus
@@ -226,9 +224,9 @@ def test_auf_tageskerzen_wird_nicht_nach_stunden_gesucht(
     """
     kurse = [100.0 * 1.001**i for i in range(40)]
     punkte = [(BASIS + timedelta(days=i), k) for i, k in enumerate(kurse)]
-    _setze_reihe(tuple(
-        _rate(BASIS + timedelta(days=i), k) for i, k in enumerate(kurse)
-    ))
+    _setze_reihe(
+        tuple(_rate(BASIS + timedelta(days=i), k) for i, k in enumerate(kurse))
+    )
     assert gegenprobe(_csv(tmp_path, "EURUSD_D1.csv", punkte)) == 0
     aus = capsys.readouterr().out
     assert "Serverzeit-Versatz abgetastet" not in aus
@@ -253,9 +251,9 @@ def test_ueber_der_schwelle_ist_der_feed_nicht_brauchbar(
     fremd = [100.0 * 1.001**i for i in range(40)]
     eigen = [100.0 * 1.0015**i for i in range(40)]
     punkte = [(BASIS + timedelta(days=i), k) for i, k in enumerate(fremd)]
-    _setze_reihe(tuple(
-        _rate(BASIS + timedelta(days=i), k) for i, k in enumerate(eigen)
-    ))
+    _setze_reihe(
+        tuple(_rate(BASIS + timedelta(days=i), k) for i, k in enumerate(eigen))
+    )
     assert gegenprobe(_csv(tmp_path, "EURUSD_D1.csv", punkte)) == 1
     aus = capsys.readouterr().out
     assert "Median 5.00 bp" in aus
@@ -273,9 +271,9 @@ def test_unter_der_schwelle_ist_der_feed_brauchbar(
     fremd = [100.0 * 1.001**i for i in range(40)]
     eigen = [100.0 * 1.0011**i for i in range(40)]
     punkte = [(BASIS + timedelta(days=i), k) for i, k in enumerate(fremd)]
-    _setze_reihe(tuple(
-        _rate(BASIS + timedelta(days=i), k) for i, k in enumerate(eigen)
-    ))
+    _setze_reihe(
+        tuple(_rate(BASIS + timedelta(days=i), k) for i, k in enumerate(eigen))
+    )
     assert gegenprobe(_csv(tmp_path, "EURUSD_D1.csv", punkte)) == 0
     aus = capsys.readouterr().out
     assert "Median 1.00 bp" in aus
@@ -322,9 +320,9 @@ def test_ohne_gemeinsame_perioden_faellt_die_gegenprobe_rot(
     """
     kurse = _wechselnd(40)
     punkte = [(BASIS + timedelta(days=i), k) for i, k in enumerate(kurse)]
-    _setze_reihe(tuple(
-        _rate(BASIS + timedelta(days=365 + i), k) for i, k in enumerate(kurse)
-    ))
+    _setze_reihe(
+        tuple(_rate(BASIS + timedelta(days=365 + i), k) for i, k in enumerate(kurse))
+    )
     assert gegenprobe(_csv(tmp_path, "EURUSD_D1.csv", punkte)) == 1
     assert "zu wenige gemeinsame Perioden" in capsys.readouterr().err
 
@@ -337,9 +335,9 @@ def test_das_terminal_wird_immer_wieder_geschlossen(
     """
     kurse = _wechselnd(40)
     punkte = [(BASIS + timedelta(days=i), k) for i, k in enumerate(kurse)]
-    _setze_reihe(tuple(
-        _rate(BASIS + timedelta(days=i), k) for i, k in enumerate(kurse)
-    ))
+    _setze_reihe(
+        tuple(_rate(BASIS + timedelta(days=i), k) for i, k in enumerate(kurse))
+    )
     gegenprobe(_csv(tmp_path, "EURUSD_D1.csv", punkte))
     assert stub.letzte is not None
     assert stub.letzte.beendet == 1
@@ -404,8 +402,12 @@ def _stelle_kostenzeilen(
     aufrufe: list[tuple[Any, ...]] = []
 
     def fake_zeile(
-        symbol: str, broker_key: str, zeile: Any, messung: Any,
-        slippage: Any, kurse: Any,
+        symbol: str,
+        broker_key: str,
+        zeile: Any,
+        messung: Any,
+        slippage: Any,
+        kurse: Any,
     ) -> _Zeile:
         aufrufe.append((symbol, broker_key, zeile, messung, slippage, kurse))
         k = werte[broker_key]
@@ -428,9 +430,14 @@ def test_kosten_bps_nimmt_den_guenstigsten_broker(
     hier versehentlich das groesste naehme, machte das Feld enger -- konservativ, aber
     eben nicht die gemessene Groesse. Wer den Mittelwert naehme, erfaende eine dritte.
     """
-    aufrufe = _stelle_kostenzeilen(monkeypatch, {
-        "a": Decimal("3.00"), "b": Decimal("1.75"), "c": Decimal("2.40"),
-    })
+    aufrufe = _stelle_kostenzeilen(
+        monkeypatch,
+        {
+            "a": Decimal("3.00"),
+            "b": Decimal("1.75"),
+            "c": Decimal("2.40"),
+        },
+    )
     kosten = _Kosten({k: _Broker({"TESTFX": object()}) for k in ("a", "b", "c")})
     assert _kosten_bps(kosten, "TESTFX") == pytest.approx(1.75)
     assert [a[1] for a in aufrufe] == ["a", "b", "c"], (

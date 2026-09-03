@@ -41,8 +41,10 @@ print("=" * 78)
 print("MANIPULIERTE SCHLAGZEILEN AN DER AUFNAHMEGRENZE (load_verified_csv)")
 print("=" * 78)
 print(f"Basis: {len(bars)} saubere Mo-Fr-Tagesbars, Pruefsumme {chk[:16]}...")
-print(f"Entscheidungswert vorher: {len(vorher[0])} Signale, "
-      f"Nettoergebnis {vorher[1]}, {vorher[2]} Trades")
+print(
+    f"Entscheidungswert vorher: {len(vorher[0])} Signale, "
+    f"Nettoergebnis {vorher[1]}, {vorher[2]} Trades"
+)
 print()
 
 verschoben = 0
@@ -83,6 +85,8 @@ print("BEFUND: ``from_csv`` ALLEIN haelt die getarnte Zeile nicht")
 print("-" * 78)
 durch = from_csv(sauber + "\n" + getarnt)
 print(f"from_csv nimmt sie an: {len(durch)} Bars statt {len(bars)}")
-print(f"letzter Zeitstempel {durch[-1].ts} < vorletzter {durch[-2].ts}: "
-      f"{durch[-1].ts < durch[-2].ts}")
+print(
+    f"letzter Zeitstempel {durch[-1].ts} < vorletzter {durch[-2].ts}: "
+    f"{durch[-1].ts < durch[-2].ts}"
+)
 print("Deshalb misst die Abnahme an ``load_verified_csv`` und nicht an ``from_csv``.")

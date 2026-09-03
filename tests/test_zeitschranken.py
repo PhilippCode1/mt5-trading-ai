@@ -77,9 +77,17 @@ def test_die_laufende_kerze_faellt_heraus_die_fertige_nicht() -> None:
     letzte = reihe[-1].ts
 
     # 30 Minuten nach Beginn der letzten Kerze: sie laeuft noch.
-    frueh = [b for b in reihe if ist_abgeschlossen(b.ts, Timeframe.H1, letzte + timedelta(minutes=30))]
+    frueh = [
+        b
+        for b in reihe
+        if ist_abgeschlossen(b.ts, Timeframe.H1, letzte + timedelta(minutes=30))
+    ]
     # Genau auf der Grenze: sie ist fertig (``<=``, nicht ``<``).
-    spaet = [b for b in reihe if ist_abgeschlossen(b.ts, Timeframe.H1, letzte + timedelta(hours=1))]
+    spaet = [
+        b
+        for b in reihe
+        if ist_abgeschlossen(b.ts, Timeframe.H1, letzte + timedelta(hours=1))
+    ]
 
     assert len(frueh) == 4
     assert len(spaet) == 5
@@ -159,9 +167,7 @@ def _abgeschlossene_trades(bars: list[BarRow], bis: datetime) -> str:
         code_commit="pruefstand",
     )
     log = [
-        vars(t)
-        for t in bericht.trade_log
-        if datetime.fromisoformat(t.exit_ts) <= bis
+        vars(t) for t in bericht.trade_log if datetime.fromisoformat(t.exit_ts) <= bis
     ]
     return json.dumps(log, sort_keys=True, ensure_ascii=False)
 
@@ -187,10 +193,14 @@ def test_determinismus_tor_derselbe_abschnitt_zweimal_verarbeitet() -> None:
         "Spaetere Zeilen haben frueher abgeschlossene Trades veraendert -- "
         "irgendetwas liest den neuesten Zustand statt des Zustands zum Bar."
     )
-    assert a != "[]", "Das Tor prueft nichts, wenn im Vergleichsfenster kein Trade liegt"
+    assert a != "[]", (
+        "Das Tor prueft nichts, wenn im Vergleichsfenster kein Trade liegt"
+    )
 
 
-def test_roter_eichfall_ohne_zeitschranke_laufen_die_beiden_verarbeitungen_auseinander() -> None:
+def test_roter_eichfall_ohne_zeitschranke_laufen_die_beiden_verarbeitungen_auseinander() -> (
+    None
+):
     """ROTER EICHFALL auf Ebene 2: Schranke entfernt -> das Tor muss scheitern.
 
     „Schranke entfernt" heisst hier konkret: Lauf A bekommt die laufende Kerze mit,
@@ -266,7 +276,9 @@ def test_jeder_direkte_kerzenleser_kennt_die_schranke(pfad: str) -> None:
         isinstance(k, ast.Call)
         and (
             (isinstance(k.func, ast.Name) and k.func.id == "ist_abgeschlossen")
-            or (isinstance(k.func, ast.Attribute) and k.func.attr == "ist_abgeschlossen")
+            or (
+                isinstance(k.func, ast.Attribute) and k.func.attr == "ist_abgeschlossen"
+            )
         )
         for k in ast.walk(baum)
     )

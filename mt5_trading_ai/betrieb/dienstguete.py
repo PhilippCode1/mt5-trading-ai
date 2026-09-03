@@ -190,7 +190,7 @@ def buchtreue(saetze: Sequence[dict[str, Any]]) -> Messwert:
         # Bis zum naechsten Takt: steht dort eine Aufloesung?
         bis = takte[pos + 1] if pos + 1 < len(takte) else len(saetze)
         erklaerung = next(
-            (s for s in saetze[i + 1:bis] if s.get("art") == "halt_erklaert"), None
+            (s for s in saetze[i + 1 : bis] if s.get("art") == "halt_erklaert"), None
         )
         if erklaerung is None:
             gesperrt += 1
@@ -325,8 +325,7 @@ def _buch_am_ende(lauf: Sequence[dict[str, Any]]) -> int | None:
     if letzter is not None:
         return len(letzter["positionen"] or ())
     auf = sum(
-        1 for s in lauf
-        if s.get("art") == "eroeffnungsversuch" and s.get("eroeffnet")
+        1 for s in lauf if s.get("art") == "eroeffnungsversuch" and s.get("eroeffnet")
     )
     zu = sum(
         1 for s in lauf if s.get("art") in ("geschlossen", "vom_broker_geschlossen")
@@ -389,8 +388,11 @@ def ausstiegsdeckung(saetze: Sequence[dict[str, Any]]) -> Messwert:
         else:
             gelungen += 1
     return Messwert(
-        "ausstiegsdeckung", gelungen, gelungen + gescheitert,
-        "Laeufe mit Position", unbeurteilbar=unbeurteilbar,
+        "ausstiegsdeckung",
+        gelungen,
+        gelungen + gescheitert,
+        "Laeufe mit Position",
+        unbeurteilbar=unbeurteilbar,
     )
 
 
@@ -409,22 +411,30 @@ METRIKEN: dict[str, Callable[[Sequence[dict[str, Any]]], Messwert]] = {
 #: Sie zu senken, bis sie passen, waere die Schwellenverschiebung, die V6 verbietet.
 ZIELE: tuple[Dienstgueteziel, ...] = (
     Dienstgueteziel(
-        "Buchtreue", "buchtreue", 0.99,
+        "Buchtreue",
+        "buchtreue",
+        0.99,
         "Ein Halt sperrt jede Eroeffnung. Mehr als ein Prozent gesperrte Takte heisst, "
         "dass der Betrieb ueberwiegend mit dem Aufraeumen beschaeftigt ist.",
     ),
     Dienstgueteziel(
-        "Ausstiegsverlaesslichkeit", "ausstiegsverlaesslichkeit", 0.95,
+        "Ausstiegsverlaesslichkeit",
+        "ausstiegsverlaesslichkeit",
+        0.95,
         "Ein misslungener Ausstieg laesst Geld am Markt, waehrend das System glaubt, "
         "es sei drauszen. Fuenf Prozent sind schon viel; strenger waere vertretbar.",
     ),
     Dienstgueteziel(
-        "Laufabschluss", "laufabschluss", 0.95,
+        "Laufabschluss",
+        "laufabschluss",
+        0.95,
         "Ein Lauf ohne Endsatz zwingt den Wiederanlauf, das Buch vom Broker zu "
         "uebernehmen statt es fortzuschreiben.",
     ),
     Dienstgueteziel(
-        "Ausstiegsdeckung", "ausstiegsdeckung", 1.00,
+        "Ausstiegsdeckung",
+        "ausstiegsdeckung",
+        1.00,
         "Das einzige Ziel ohne Fehlerbudget, und das mit Absicht: ein Lauf, der eine "
         "Position offen zuruecklaesst, laesst Geld am Markt OHNE beaufsichtigenden "
         "Prozess. Dafuer gibt es keinen vertretbaren Anteil -- jeder einzelne Fall ist "
@@ -440,28 +450,36 @@ ZIELE: tuple[Dienstgueteziel, ...] = (
 #: ``RUNBOOK.md``; beides wird geprueft.
 ALARMREGELN: tuple[Alarmregel, ...] = (
     Alarmregel(
-        "buchtreue_unter_ziel", "buchtreue",
-        "Buchtreue unter Ziel", 0.99,
+        "buchtreue_unter_ziel",
+        "buchtreue",
+        "Buchtreue unter Ziel",
+        0.99,
         "Das Buch und die Meldung des Handelsplatzes gehen zu oft auseinander.",
     ),
     Alarmregel(
-        "ausstieg_misslingt", "ausstiegsverlaesslichkeit",
-        "Ausstieg misslingt", 0.95,
+        "ausstieg_misslingt",
+        "ausstiegsverlaesslichkeit",
+        "Ausstieg misslingt",
+        0.95,
         "Schliessversuche scheitern -- moeglicherweise steht Geld am Markt.",
     ),
     Alarmregel(
-        "position_offen_geblieben", "ausstiegsdeckung",
-        "Position offen geblieben", 1.00,
+        "position_offen_geblieben",
+        "ausstiegsdeckung",
+        "Position offen geblieben",
+        1.00,
         "Ein Lauf ist beendet worden, waehrend eine Position noch offen stand.",
     ),
     Alarmregel(
-        "laeufe_brechen_ab", "laufabschluss",
+        "laeufe_brechen_ab",
+        "laufabschluss",
         # Der EXAKTE Abschnittstitel aus ``RUNBOOK.md``, Umlaut inklusive -- eine
         # Handlungsanweisung wird ueber ihre Ueberschrift gefunden, nicht sinngemaess.
         # Die ASCII-Fassung stand hier zuerst und lief ins Leere; das Dauertor
         # ``test_jede_alarmregel_hat_eine_existierende_handlungsanweisung`` hat sie
         # beim ersten Lauf gefunden.
-        "Läufe brechen ab", 0.95,
+        "Läufe brechen ab",
+        0.95,
         "Laeufe enden ohne Endsatz; der Wiederanlauf muss das Buch uebernehmen.",
     ),
 )

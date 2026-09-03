@@ -52,8 +52,9 @@ def test_dokumentierte_erfolgscodes_gelten(code: int) -> None:
 
 def test_der_gemessene_fall_retcode_null_mit_zuteilung() -> None:
     """Der reale Fall vom 2026-08-17: ausgefuehrt, aber retcode 0."""
-    res = _Ergebnis(retcode=0, order=10057432438, deal=9759135343,
-                    volume=0.11, comment="Done")
+    res = _Ergebnis(
+        retcode=0, order=10057432438, deal=9759135343, volume=0.11, comment="Done"
+    )
     assert _send_angenommen(MT5, res), (
         "Eine ausgefuehrte Order mit Order- und Deal-Kennung und Volumen 0,11 muss "
         "als angenommen gelten -- sonst weiss das System nichts von seiner Position."

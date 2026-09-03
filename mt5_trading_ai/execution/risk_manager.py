@@ -833,9 +833,7 @@ class RiskManager:
         # wirklich billiger ist, war so nicht erkennbar; die Schwelle mass ihre eigene
         # Ausgabe (V2). Jetzt entscheidet ein getrennt gepflegter Plausibilitaetsboden,
         # der Unsinn abweist (0 bp) und eine bessere Ausfuehrung durchlaesst.
-        praemisse = (
-            kampagne if kampagne is not None else kostenpraemisse_bps(klasse)
-        )
+        praemisse = kampagne if kampagne is not None else kostenpraemisse_bps(klasse)
         mitgereist = measured_cost_from_meta(request)
         verworfen = ""
         if mitgereist is not None and praemisse is not None and mitgereist < praemisse:
@@ -1091,9 +1089,7 @@ class RiskManager:
         # 3) Stop-Floor gegen Stop-Budget je Klasse/Hebel.
         if price <= 0:
             return RiskAuthorization(approved=False, reason="risk_price_missing")
-        requested_stop_bps = (
-            abs(price - request.stop_loss) / price * Decimal("10000")
-        )
+        requested_stop_bps = abs(price - request.stop_loss) / price * Decimal("10000")
         floor = executable_stop_floor(
             StopFloorInputs(
                 spread_bps=spread_bps,

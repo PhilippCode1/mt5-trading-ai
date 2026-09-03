@@ -245,8 +245,16 @@ def default_measurements_path() -> Path:
     return here.parent / "data" / ATR_MEASUREMENTS_FILENAME
 
 
-_REQUIRED_TOP = ("schema_version", "measurement_id", "measured_on", "timeframe",
-                 "atr_period", "method", "terminal", "instruments")
+_REQUIRED_TOP = (
+    "schema_version",
+    "measurement_id",
+    "measured_on",
+    "timeframe",
+    "atr_period",
+    "method",
+    "terminal",
+    "instruments",
+)
 
 _NUMERIC_FIELDS = (
     "atr_median_price",
@@ -272,9 +280,7 @@ def load_atr_measurements(
     except FileNotFoundError as exc:
         raise AtrMeasurementError(f"Messdatei fehlt: {file_path}") from exc
     except json.JSONDecodeError as exc:
-        raise AtrMeasurementError(
-            f"Messdatei ist kein gueltiges JSON: {exc}"
-        ) from exc
+        raise AtrMeasurementError(f"Messdatei ist kein gueltiges JSON: {exc}") from exc
 
     if not isinstance(raw, dict):
         raise AtrMeasurementError("Messdatei ist kein Objekt")

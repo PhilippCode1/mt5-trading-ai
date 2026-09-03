@@ -654,9 +654,9 @@ def test_die_neue_position_eines_zweiten_laufs_ueberlebt_eine_haengende_schliess
     lauf_b = _lauf(pfad, konto_id=KONTO, waehrung=WAEHRUNG)
     lauf_b.record_close("EURUSD")
     lauf_b.record_open_fill("EURUSD", NOW - timedelta(hours=1))
-    assert [
-        p["eroeffnet_am"] for p in _lies(pfad)["offene_positionen"]
-    ] == [(NOW - timedelta(hours=1)).isoformat()]
+    assert [p["eroeffnet_am"] for p in _lies(pfad)["offene_positionen"]] == [
+        (NOW - timedelta(hours=1)).isoformat()
+    ]
 
     lauf_a.record_open_fill("GBPUSD", NOW)
 

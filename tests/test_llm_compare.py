@@ -10,16 +10,31 @@ from mt5_trading_ai.backtest.llm_compare import LlmGateInputs, evaluate_llm_gate
 
 #: Bekannte LLM-Bibliotheken/-Anbieter -- keine davon darf das Paket statisch importieren.
 _LLM_LIBS = (
-    "openai", "anthropic", "langchain", "transformers", "llama_cpp", "cohere",
-    "litellm", "ollama", "google.generativeai", "mistralai", "groq", "vertexai",
-    "huggingface", "sentence_transformers", "torch", "tensorflow",
+    "openai",
+    "anthropic",
+    "langchain",
+    "transformers",
+    "llama_cpp",
+    "cohere",
+    "litellm",
+    "ollama",
+    "google.generativeai",
+    "mistralai",
+    "groq",
+    "vertexai",
+    "huggingface",
+    "sentence_transformers",
+    "torch",
+    "tensorflow",
 )
 
 
 def _ok() -> LlmGateInputs:
     return LlmGateInputs(
-        baseline_passed=True, baseline_score=1.1,
-        llm_passed=True, llm_score=1.4,
+        baseline_passed=True,
+        baseline_score=1.1,
+        llm_passed=True,
+        llm_score=1.4,
         model_version="claude-x-2026-01",
         model_training_cutoff=date(2024, 1, 1),
         backtest_start=date(2025, 1, 1),
@@ -48,8 +63,11 @@ def test_llm_gate_blocks_when_llm_does_not_beat_baseline() -> None:
 def test_llm_gate_blocks_on_training_data_leakage() -> None:
     # Backtest beginnt vor dem Trainingsstichtag -> Leckage.
     decision = evaluate_llm_gate(
-        replace(_ok(), backtest_start=date(2023, 6, 1),
-                model_training_cutoff=date(2024, 1, 1))
+        replace(
+            _ok(),
+            backtest_start=date(2023, 6, 1),
+            model_training_cutoff=date(2024, 1, 1),
+        )
     )
     assert not decision.allowed
     assert "backtest_overlaps_training_data_leakage" in decision.reasons

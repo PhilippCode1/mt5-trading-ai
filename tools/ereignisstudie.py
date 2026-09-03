@@ -111,8 +111,11 @@ SAAT = 20260817
 def _code_commit() -> str:
     try:
         return subprocess.run(
-            ["git", "rev-parse", "HEAD"], cwd=REPO, capture_output=True,
-            text=True, check=True,
+            ["git", "rev-parse", "HEAD"],
+            cwd=REPO,
+            capture_output=True,
+            text=True,
+            check=True,
         ).stdout.strip()
     except (OSError, subprocess.CalledProcessError) as exc:
         raise StudienError(f"code_commit nicht bestimmbar: {exc}") from exc
@@ -280,24 +283,32 @@ def selbsttest() -> int:
     kerzen, termine = _synthetisch()
     erwartet = 12.0
     erg, werte = studie(
-        kandidat="SELBSTTEST", instrument="SYNTH", kerzen=kerzen,
-        ereignisse=termine, fenster_stunden=1.0, k_bps=1.0,
+        kandidat="SELBSTTEST",
+        instrument="SYNTH",
+        kerzen=kerzen,
+        ereignisse=termine,
+        fenster_stunden=1.0,
+        k_bps=1.0,
     )
-    print(f"Kerzen {len(kerzen)} | Ereignisse {len(termine)} | "
-          f"gemessen {erg.n_gemessen}")
+    print(
+        f"Kerzen {len(kerzen)} | Ereignisse {len(termine)} | gemessen {erg.n_gemessen}"
+    )
     print(f"Erwarteter Effekt      : {erwartet:.2f} bp")
     print(f"Gemessener Bruttoeffekt: {erg.brutto_bps:.2f} bp")
     print(f"Trefferanteil          : {erg.trefferanteil * 100:.1f} %")
     print(f"Netto (K = 1,00 bp)    : {erg.netto_bps:.2f} bp")
     abweichung = abs(erg.brutto_bps - erwartet)
     if abweichung > 0.5:
-        print(f"\nFEHLGESCHLAGEN — {abweichung:.2f} bp neben dem Ziel.",
-              file=sys.stderr)
+        print(
+            f"\nFEHLGESCHLAGEN — {abweichung:.2f} bp neben dem Ziel.", file=sys.stderr
+        )
         return 1
     if erg.trefferanteil < 0.95:
-        print(f"\nFEHLGESCHLAGEN — Trefferanteil {erg.trefferanteil:.2f} zu niedrig; "
-              "bei einem so klaren Effekt muss fast jedes Ereignis treffen.",
-              file=sys.stderr)
+        print(
+            f"\nFEHLGESCHLAGEN — Trefferanteil {erg.trefferanteil:.2f} zu niedrig; "
+            "bei einem so klaren Effekt muss fast jedes Ereignis treffen.",
+            file=sys.stderr,
+        )
         return 1
 
     # Gegenprobe: dieselbe Reihe OHNE Ereignisse an den richtigen Stellen darf nichts
@@ -305,16 +316,25 @@ def selbsttest() -> int:
     # immer 12 bp meldet.
     versetzt = [t + timedelta(hours=3) for t in termine]
     leer, _ = studie(
-        kandidat="SELBSTTEST-PLACEBO", instrument="SYNTH", kerzen=kerzen,
-        ereignisse=versetzt, fenster_stunden=1.0, k_bps=1.0,
+        kandidat="SELBSTTEST-PLACEBO",
+        instrument="SYNTH",
+        kerzen=kerzen,
+        ereignisse=versetzt,
+        fenster_stunden=1.0,
+        k_bps=1.0,
     )
     print(f"Gegenprobe (Fenster 3 h versetzt): {leer.brutto_bps:.2f} bp")
     if abs(leer.brutto_bps) > 2.0:
-        print(f"\nFEHLGESCHLAGEN — die Gegenprobe findet {leer.brutto_bps:.2f} bp, "
-              "wo nichts sein darf.", file=sys.stderr)
+        print(
+            f"\nFEHLGESCHLAGEN — die Gegenprobe findet {leer.brutto_bps:.2f} bp, "
+            "wo nichts sein darf.",
+            file=sys.stderr,
+        )
         return 1
-    print("\nBESTANDEN — Effekt und Vorzeichen richtig, Gegenprobe leer. "
-          "Kein Versuch registriert.")
+    print(
+        "\nBESTANDEN — Effekt und Vorzeichen richtig, Gegenprobe leer. "
+        "Kein Versuch registriert."
+    )
     return 0
 
 
@@ -330,9 +350,7 @@ def _lauf(
     if k_bps is None:
         print(f"{k.schluessel}/{symbol}: keine Kostenzeile — nicht bewertbar")
         return 1
-    termine = list(
-        ereignisse(k, kerzen[0].ts.date(), kerzen[-1].ts.date())
-    )
+    termine = list(ereignisse(k, kerzen[0].ts.date(), kerzen[-1].ts.date()))
     pruefsumme = _data_checksum(symbol)
     commit = _code_commit()
     # Das Register gehoert zu dem, was VOR der Messung feststehen muss — genau wie
@@ -354,13 +372,17 @@ def _lauf(
     # dreht, ueber die andere.
     print("VOR DER MESSUNG festgezurrt:")
     print(f"  Hypothese      : {HYPOTHESE} (Vorzeichen = -sign(Rendite der Vorstunde))")
-    print(f"  Fenster        : {k.fenster_stunden:.0f} h ab dem ersten handelbaren "
-          f"Kerzenanfang")
+    print(
+        f"  Fenster        : {k.fenster_stunden:.0f} h ab dem ersten handelbaren "
+        f"Kerzenanfang"
+    )
     print(f"  Zeitpunkt      : {k.uhrzeit.isoformat(timespec='minutes')} {k.zone_name}")
     print(f"  Zeitraum       : {kerzen[0].ts.date()} .. {kerzen[-1].ts.date()}")
     print(f"  Ereignisse     : {len(termine)}")
-    print(f"  K (guenstigster Broker): {k_bps:.2f} bp | "
-          f"M6.1-Schwelle {kern.M61_FAKTOR * k_bps:.2f} bp")
+    print(
+        f"  K (guenstigster Broker): {k_bps:.2f} bp | "
+        f"M6.1-Schwelle {kern.M61_FAKTOR * k_bps:.2f} bp"
+    )
     print(f"  data_checksum  : {pruefsumme[:16]}...")
     print(f"  code_commit    : {commit[:12]}")
     print(f"  Register       : {_registerkennung(register)}")
@@ -368,12 +390,20 @@ def _lauf(
     ausgang, erg, best = "error", None, None
     try:
         erg, werte = studie(
-            kandidat=k.schluessel, instrument=symbol, kerzen=kerzen,
-            ereignisse=termine, fenster_stunden=k.fenster_stunden, k_bps=k_bps,
+            kandidat=k.schluessel,
+            instrument=symbol,
+            kerzen=kerzen,
+            ereignisse=termine,
+            fenster_stunden=k.fenster_stunden,
+            k_bps=k_bps,
         )
         best = bestaetige(
-            werte, kerzen=kerzen, ereignisse=termine,
-            fenster_stunden=k.fenster_stunden, k_bps=k_bps, saat=SAAT,
+            werte,
+            kerzen=kerzen,
+            ereignisse=termine,
+            fenster_stunden=k.fenster_stunden,
+            k_bps=k_bps,
+            saat=SAAT,
             # Dasselbe Register, gegen das oben geprueft wurde. Ohne diese Angabe
             # deflationierte die Studie gegen ein anderes Register als das, in das sie
             # gleich schreibt — zwei Register fuer eine Reihe sind eines zu viel.
@@ -384,29 +414,32 @@ def _lauf(
         print(f"\n  ABGEBROCHEN: {exc}")
         ausgang = "aborted"
     finally:
-        append(new_trial(
-            strategy_id=f"ereignisstudie/{k.schluessel}",
-            version=STUDY_POLICY_VERSION,
-            instruments=[symbol],
-            period_start=kerzen[0].ts,
-            period_end=kerzen[-1].ts,
-            leverage=1,
-            parameters={
-                "hypothese": HYPOTHESE,
-                "fenster_stunden": k.fenster_stunden,
-                "uhrzeit": k.uhrzeit.isoformat(timespec="minutes"),
-                "zone": k.zone_name,
-                "regel": k.regel,
-                "k_bps": round(k_bps, 4),
-                "ereignisse_geplant": len(termine),
-            },
-            outcome=ausgang,
-            data_checksum=pruefsumme,
-            code_commit=commit,
-            net_expectancy=None if erg is None else round(erg.netto_bps, 4),
-            trades=None if erg is None else erg.n_gemessen,
-            notes=f"Paket 3a A3, {k.name}",
-        ), register)
+        append(
+            new_trial(
+                strategy_id=f"ereignisstudie/{k.schluessel}",
+                version=STUDY_POLICY_VERSION,
+                instruments=[symbol],
+                period_start=kerzen[0].ts,
+                period_end=kerzen[-1].ts,
+                leverage=1,
+                parameters={
+                    "hypothese": HYPOTHESE,
+                    "fenster_stunden": k.fenster_stunden,
+                    "uhrzeit": k.uhrzeit.isoformat(timespec="minutes"),
+                    "zone": k.zone_name,
+                    "regel": k.regel,
+                    "k_bps": round(k_bps, 4),
+                    "ereignisse_geplant": len(termine),
+                },
+                outcome=ausgang,
+                data_checksum=pruefsumme,
+                code_commit=commit,
+                net_expectancy=None if erg is None else round(erg.netto_bps, 4),
+                trades=None if erg is None else erg.n_gemessen,
+                notes=f"Paket 3a A3, {k.name}",
+            ),
+            register,
+        )
     if erg is None or best is None:
         return 1
     _bericht(erg, best)
@@ -421,25 +454,33 @@ def _bericht(e: Ergebnis, b: Bestaetigung) -> None:
     print(f"  Trefferanteil        : {e.trefferanteil * 100:.1f} %")
     print(f"  Kosten K             : {e.k_bps:.2f} bp")
     print(f"  NETTOEFFEKT          : {e.netto_bps:+.2f} bp")
-    print(f"\n  M6.1 (Brutto >= {e.m61_schwelle_bps:.2f} bp): "
-          f"{'BESTANDEN' if e.m61_bestanden else 'GESCHEITERT'}")
+    print(
+        f"\n  M6.1 (Brutto >= {e.m61_schwelle_bps:.2f} bp): "
+        f"{'BESTANDEN' if e.m61_bestanden else 'GESCHEITERT'}"
+    )
     # Die Versuchszahl steht MIT der DSR. Sie ist kein Beiwerk: dieselbe Messung
     # ergibt 0,755 bei acht Versuchen und 0,984 bei einem (siehe
     # ``gates/trials.py::deflation_trials``) -- einmal durchgefallen, einmal
     # bestanden. Eine DSR ohne ihre Versuchszahl ist nicht nachrechenbar, und
     # ``Bestaetigung.dsr_versuche`` gibt es genau dafuer.
-    print(f"  M6.2 Deflation   : DSR {b.dsr_oos:.3f} auf {b.dsr_n} OoS-Ereignissen "
-          f"gegen {b.dsr_versuche} Versuche "
-          f"-> {'ok' if b.dsr_bestanden else 'gescheitert'}")
-    print(f"  M6.2 Stabilitaet : {b.haelfte_frueh_bps:+.2f} / "
-          f"{b.haelfte_spaet_bps:+.2f} bp -> "
-          f"{'ok' if b.stabil_bestanden else 'gescheitert'}")
+    print(
+        f"  M6.2 Deflation   : DSR {b.dsr_oos:.3f} auf {b.dsr_n} OoS-Ereignissen "
+        f"gegen {b.dsr_versuche} Versuche "
+        f"-> {'ok' if b.dsr_bestanden else 'gescheitert'}"
+    )
+    print(
+        f"  M6.2 Stabilitaet : {b.haelfte_frueh_bps:+.2f} / "
+        f"{b.haelfte_spaet_bps:+.2f} bp -> "
+        f"{'ok' if b.stabil_bestanden else 'gescheitert'}"
+    )
     # Die Zahl der Ziehungen wird gelesen, nicht wiederholt: sie stand hier als
     # „1.000" im Text, waehrend ``M62_ZIEHUNGEN`` sie im Kern fuehrt. Der Trennpunkt
     # kommt seitdem aus :func:`_tausender` und nicht mehr aus dem Text.
-    print(f"  M6.2 Zufall      : {b.zufall_anteil * 100:.1f} % der "
-          f"{_tausender(kern.M62_ZIEHUNGEN)} verschobenen Mengen "
-          f"-> {'ok' if b.zufall_bestanden else 'gescheitert'}")
+    print(
+        f"  M6.2 Zufall      : {b.zufall_anteil * 100:.1f} % der "
+        f"{_tausender(kern.M62_ZIEHUNGEN)} verschobenen Mengen "
+        f"-> {'ok' if b.zufall_bestanden else 'gescheitert'}"
+    )
     urteil = "BESTANDEN" if (e.m61_bestanden and b.bestanden) else "GESCHEITERT"
     print(f"\n  URTEIL M6: {urteil}")
 
@@ -467,8 +508,11 @@ def main(argv: list[str] | None = None) -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     p = argparse.ArgumentParser(description="Ereignisstudie (Paket 3a)")
-    p.add_argument("--selbsttest", action="store_true",
-                   help="synthetische Reihe, registriert KEINEN Versuch")
+    p.add_argument(
+        "--selbsttest",
+        action="store_true",
+        help="synthetische Reihe, registriert KEINEN Versuch",
+    )
     p.add_argument("--kandidat", default=None)
     p.add_argument("--instrument", default=None)
     p.add_argument("--alle", action="store_true", help="alle Kandidaten des Feldes")
@@ -496,8 +540,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"FEHLGESCHLAGEN — {exc}", file=sys.stderr)
         return 1
 
-    print(f"Ereignisstudie {STUDY_POLICY_VERSION} — {len(paare)} Studien, "
-          f"jede verbraucht einen Versuch")
+    print(
+        f"Ereignisstudie {STUDY_POLICY_VERSION} — {len(paare)} Studien, "
+        f"jede verbraucht einen Versuch"
+    )
     reihen: dict[str, list[Kerze]] = {}
     schlecht = 0
     for k, symbol in paare:

@@ -160,12 +160,7 @@ def order_roundturn_cost(
 
     # Slippage in Pips, auf beiden Seiten (Eroeffnung + Schliessung).
     slippage = (
-        slippage_pips_per_side
-        * pip_size
-        * contract_size
-        * volume
-        * Decimal("2")
-        * rate
+        slippage_pips_per_side * pip_size * contract_size * volume * Decimal("2") * rate
     )
 
     # Finanzierung: Swap je Nacht (Dreifach-Naechte zaehlen dreifach). Negativer Swap

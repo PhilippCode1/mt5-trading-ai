@@ -134,17 +134,34 @@ def kosten(
     reason: str | None = None,
 ) -> InstrumentCost:
     return InstrumentCost(
-        key="TEST", broker_symbol="TEST", status=status, reason=reason,
-        quote_currency=quote_currency, spread_published=None, spread_unit=None,
-        unit_in_price=None, spread_kind=None, spread_markup_factor=None,
-        spread_price=spread_price, commission_round_turn=commission_round_turn,
+        key="TEST",
+        broker_symbol="TEST",
+        status=status,
+        reason=reason,
+        quote_currency=quote_currency,
+        spread_published=None,
+        spread_unit=None,
+        unit_in_price=None,
+        spread_kind=None,
+        spread_markup_factor=None,
+        spread_price=spread_price,
+        commission_round_turn=commission_round_turn,
         commission_currency=commission_currency,
         commission_bps_round_turn=commission_bps_round_turn,
-        swap_long=None, swap_short=None, swap_unit=None,
-        swap_bps_night_long=swap_bps_night_long, swap_bps_night_short=None,
-        min_lot=None, contract_size=contract_size, tick_size=None,
-        trading_hours=None, rollover=None, source_url="x", retrieved_on="x",
-        quote=None, verification=None,
+        swap_long=None,
+        swap_short=None,
+        swap_unit=None,
+        swap_bps_night_long=swap_bps_night_long,
+        swap_bps_night_short=None,
+        min_lot=None,
+        contract_size=contract_size,
+        tick_size=None,
+        trading_hours=None,
+        rollover=None,
+        source_url="x",
+        retrieved_on="x",
+        quote=None,
+        verification=None,
     )
 
 
@@ -159,23 +176,42 @@ def messung(
     reason: str | None = None,
 ) -> AtrMeasurement:
     return AtrMeasurement(
-        symbol="TEST", status=status, reason=reason, bars=1000,
-        window_start=None, window_end=None, atr_median_price=1.0, atr_p25_price=1.0,
-        atr_median_bps=atr_median_bps, atr_p25_bps=atr_p25_bps,
-        atr_median_price_roh=None, price_median=price_median,
-        spread_median_points=spread_median_points, spread_p75_points=None,
-        point=point, digits=None, contract_size=None, gap_bars=None,
+        symbol="TEST",
+        status=status,
+        reason=reason,
+        bars=1000,
+        window_start=None,
+        window_end=None,
+        atr_median_price=1.0,
+        atr_p25_price=1.0,
+        atr_median_bps=atr_median_bps,
+        atr_p25_bps=atr_p25_bps,
+        atr_median_price_roh=None,
+        price_median=price_median,
+        spread_median_points=spread_median_points,
+        spread_p75_points=None,
+        point=point,
+        digits=None,
+        contract_size=None,
+        gap_bars=None,
     )
 
 
 def zeile(**kwargs: object) -> Zeile:
     """Die Standardzeile: K = 2,0 bp, ATR50 = 20 bp, ATR25 = 10 bp."""
     felder: dict[str, object] = dict(
-        instrument="TEST", broker="broker_a", rechenbar=True, grund=None,
-        spread_bps=Decimal("1.0"), kommission_bps=Decimal("0.5"),
-        slippage_bps=Decimal("0.5"), k_bps=Decimal("2.0"),
-        atr_median_bps=Decimal("20"), atr_p25_bps=Decimal("10"),
-        swap_bps_nacht=None, gemessener_spread_bps=None,
+        instrument="TEST",
+        broker="broker_a",
+        rechenbar=True,
+        grund=None,
+        spread_bps=Decimal("1.0"),
+        kommission_bps=Decimal("0.5"),
+        slippage_bps=Decimal("0.5"),
+        k_bps=Decimal("2.0"),
+        atr_median_bps=Decimal("20"),
+        atr_p25_bps=Decimal("10"),
+        swap_bps_nacht=None,
+        gemessener_spread_bps=None,
     )
     felder.update(kwargs)
     return Zeile(**felder)  # type: ignore[arg-type]
@@ -414,11 +450,11 @@ def test_p_stern_haengt_nur_am_verhaeltnis_von_k_und_s() -> None:
     ("p", "ampel"),
     [
         (Decimal("0.5599"), "GRUEN"),
-        (M1_GRUEN_MAX, "GRUEN"),               # die Schwelle selbst zaehlt als gruen
-        (M1_GRUEN_MAX + SCHRITT, "GELB"),      # ein Hauch darueber: nicht mehr
+        (M1_GRUEN_MAX, "GRUEN"),  # die Schwelle selbst zaehlt als gruen
+        (M1_GRUEN_MAX + SCHRITT, "GELB"),  # ein Hauch darueber: nicht mehr
         (Decimal("0.5601"), "GELB"),
-        (M1_GELB_MAX, "GELB"),                 # und hier ebenso
-        (M1_GELB_MAX + SCHRITT, "ROT"),        # ein Hauch darueber: rot
+        (M1_GELB_MAX, "GELB"),  # und hier ebenso
+        (M1_GELB_MAX + SCHRITT, "ROT"),  # ein Hauch darueber: rot
         (Decimal("0.6201"), "ROT"),
     ],
 )
@@ -454,9 +490,7 @@ def test_lesarten_von_hand() -> None:
       E  ruhige Marktphase                    K = 2,0            S = 10
       F  B + C + D + E                        16,0 + 0,5 + 1,0   = 17,5   S = 10
     """
-    z = zeile(
-        gemessener_spread_bps=Decimal("15.0"), swap_bps_nacht=Decimal("-4.0")
-    )
+    z = zeile(gemessener_spread_bps=Decimal("15.0"), swap_bps_nacht=Decimal("-4.0"))
     v = lesarten(z)
     assert list(v) == ["A", "B", "C", "D", "E", "F"]
     assert v["A"] == (Decimal("2.0"), Decimal("20"))
@@ -505,9 +539,7 @@ def test_lesart_f_ist_wirklich_b_und_c_und_d_und_e() -> None:
     Von Hand: Spreadtausch (+14,0) + Slippage (+0,5) + Swap (+1,0) auf K,
     und der Stop faellt auf das 25. Perzentil.
     """
-    z = zeile(
-        gemessener_spread_bps=Decimal("15.0"), swap_bps_nacht=Decimal("-4.0")
-    )
+    z = zeile(gemessener_spread_bps=Decimal("15.0"), swap_bps_nacht=Decimal("-4.0"))
     v = lesarten(z)
     k_a = v["A"][0]
     aufschlag_b = v["B"][0] - k_a
@@ -650,10 +682,10 @@ def test_m2_urteil_ueberspringt_nicht_rechenbare_zeilen() -> None:
 @pytest.mark.parametrize(
     ("rt", "anteil"),
     [
-        (1, "1"),        # 24 h Haltedauer / 24 h = 100 %
-        (2, "0.5"),      # 12 h / 24 h = 50 %
-        (4, "0.25"),     #  6 h / 24 h = 25 %
-        (8, "0.125"),    #  3 h / 24 h = 12,5 %
+        (1, "1"),  # 24 h Haltedauer / 24 h = 100 %
+        (2, "0.5"),  # 12 h / 24 h = 50 %
+        (4, "0.25"),  #  6 h / 24 h = 25 %
+        (8, "0.125"),  #  3 h / 24 h = 12,5 %
     ],
 )
 def test_kreuzanteil_von_hand(rt: int, anteil: str) -> None:
@@ -835,16 +867,24 @@ def test_gruene_je_broker_zaehlt_nicht_ueber_broker_hinweg() -> None:
     kommt ueber eins.
     """
     zeilen = _lage(
-        ("EURUSD", "a", "2.0"), ("EURUSD", "b", "6.0"), ("EURUSD", "c", "6.0"),
-        ("XAUUSD", "a", "6.0"), ("XAUUSD", "b", "2.0"), ("XAUUSD", "c", "6.0"),
-        ("DE40", "a", "6.0"), ("DE40", "b", "6.0"), ("DE40", "c", "2.0"),
+        ("EURUSD", "a", "2.0"),
+        ("EURUSD", "b", "6.0"),
+        ("EURUSD", "c", "6.0"),
+        ("XAUUSD", "a", "6.0"),
+        ("XAUUSD", "b", "2.0"),
+        ("XAUUSD", "c", "6.0"),
+        ("DE40", "a", "6.0"),
+        ("DE40", "b", "6.0"),
+        ("DE40", "c", "2.0"),
     )
     lage = einteilung(bestes_p_je_instrument(zeilen))
     assert lage.gruen == ["EURUSD", "XAUUSD", "DE40"], "lockere Lesart: drei gruene"
 
     je_broker = gruene_je_broker(zeilen)
     assert {k: sorted(v) for k, v in je_broker.items()} == {
-        "a": ["EURUSD"], "b": ["XAUUSD"], "c": ["DE40"]
+        "a": ["EURUSD"],
+        "b": ["XAUUSD"],
+        "c": ["DE40"],
     }
     assert max(len(v) for v in je_broker.values()) == 1, (
         "kein einzelner Broker traegt mehr als ein gruenes Instrument"
@@ -982,7 +1022,9 @@ def test_ein_nicht_bewertbares_instrument_faellt_in_keinen_topf() -> None:
 # --- GEFUNDENER MANGEL 3 ---------------------------------------------------
 
 
-def test_die_randbedingung_rechnet_auf_der_ersten_statt_der_guenstigsten_zeile() -> None:
+def test_die_randbedingung_rechnet_auf_der_ersten_statt_der_guenstigsten_zeile() -> (
+    None
+):
     """MANGEL, festgeschrieben statt behoben: zwei Grundlagen, eine Ueberschrift.
 
     Tabelle 5 weist die Kostenuntergrenze zweimal aus. Die obere Tabelle nimmt je

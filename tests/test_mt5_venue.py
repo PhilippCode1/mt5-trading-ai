@@ -145,8 +145,11 @@ def _reifer_demo_beleg(*, tage: int = MIN_DEMO_DAYS) -> DemoRegistration:
     """
     stand = TS - timedelta(days=tage)
     return register_for_demo(
-        strategy_id="eurusd", version="v1", edge_verdict=_bestandener_edge(),
-        account=_DEMO_KONTO, clock=lambda: stand,
+        strategy_id="eurusd",
+        version="v1",
+        edge_verdict=_bestandener_edge(),
+        account=_DEMO_KONTO,
+        clock=lambda: stand,
     )
 
 
@@ -297,8 +300,6 @@ def _krypto_risk() -> RiskManager:
     aber nicht das ist, was diese Tests belegen sollen.
     """
     return RiskManager(RiskPolicy(risk_fraction=Decimal("0.005")))
-
-
 
 
 def _venue(
@@ -475,8 +476,11 @@ def test_live_opening_order_blocked_without_release() -> None:
 
 def test_live_opening_order_allowed_with_full_release() -> None:
     venue, terminal = _venue(
-        is_demo=False, settings=_released_settings(), cost_gate=_LENIENT_COST_GATE,
-        risk_manager=_fresh_risk(), demo_registration=_reifer_demo_beleg(),
+        is_demo=False,
+        settings=_released_settings(),
+        cost_gate=_LENIENT_COST_GATE,
+        risk_manager=_fresh_risk(),
+        demo_registration=_reifer_demo_beleg(),
     )
     result = venue.submit_order(_order(volume=Decimal("0.01")))
     assert result.accepted is True
@@ -486,7 +490,9 @@ def test_live_opening_order_allowed_with_full_release() -> None:
 def test_live_opening_rejected_when_cost_gate_unconfigured() -> None:
     # Kein Kostentor auf einem Live-Konto -> fail-closed, keine Order gesendet.
     venue, terminal = _venue(
-        is_demo=False, settings=_released_settings(), demo_registration=_reifer_demo_beleg()
+        is_demo=False,
+        settings=_released_settings(),
+        demo_registration=_reifer_demo_beleg(),
     )
     with pytest.raises(OrderRejectedError) as excinfo:
         venue.submit_order(_order())
@@ -498,7 +504,9 @@ def test_live_opening_rejected_when_cost_exceeds_threshold() -> None:
     # Reale Roundturn-Kosten ~2,45 bp; Schwelle 1 bp -> Ablehnung vor dem Send.
     tight = CostGate(max_roundturn_cost_fraction=Decimal("0.0001"))
     venue, terminal = _venue(
-        is_demo=False, settings=_released_settings(), cost_gate=tight,
+        is_demo=False,
+        settings=_released_settings(),
+        cost_gate=tight,
         demo_registration=_reifer_demo_beleg(),
     )
     with pytest.raises(OrderRejectedError) as excinfo:
@@ -511,8 +519,11 @@ def test_live_opening_allowed_when_cost_within_threshold() -> None:
     # Schwelle 5 bp deckt die realen ~2,45 bp -> Order laeuft durch (Kostenquote ist
     # volumenunabhaengig, 0,01 Lot passt zusaetzlich ins Risikobudget).
     venue, terminal = _venue(
-        is_demo=False, settings=_released_settings(), cost_gate=_LENIENT_COST_GATE,
-        risk_manager=_fresh_risk(), demo_registration=_reifer_demo_beleg(),
+        is_demo=False,
+        settings=_released_settings(),
+        cost_gate=_LENIENT_COST_GATE,
+        risk_manager=_fresh_risk(),
+        demo_registration=_reifer_demo_beleg(),
     )
     result = venue.submit_order(_order(volume=Decimal("0.01")))
     assert result.accepted is True
@@ -619,10 +630,14 @@ def test_reduce_only_close_records_close_at_risk_manager() -> None:
     )
     assert rm.open_position_count == 1
     # Gegenorder (SELL, reduce_only) baut die Long ab -> record_close.
-    venue.submit_order(_order(
-        client_order_id="close-1", side=OrderSide.SELL,
-        reduce_only=True, volume=Decimal("0.01"),
-    ))
+    venue.submit_order(
+        _order(
+            client_order_id="close-1",
+            side=OrderSide.SELL,
+            reduce_only=True,
+            volume=Decimal("0.01"),
+        )
+    )
     assert rm.open_position_count == 0
 
 
@@ -633,28 +648,40 @@ def test_reduce_only_close_records_close_in_sync_mode() -> None:
     # Das Terminal meldet die Long-Position autoritativ (Grundlage der Reduce-Pruefung).
     rm = _fresh_risk()
     sync = PrivateSync()
-    sync.book.apply_fill("EURUSD", OrderSide.BUY, Decimal("0.10"))  # gestreamte Eroeffnung
+    sync.book.apply_fill(
+        "EURUSD", OrderSide.BUY, Decimal("0.10")
+    )  # gestreamte Eroeffnung
     rm.record_open_fill("EURUSD", TS)
     venue, terminal = _venue(
-        is_demo=False, settings=_released_settings(),
-        cost_gate=_LENIENT_COST_GATE, risk_manager=rm, sync=sync,
+        is_demo=False,
+        settings=_released_settings(),
+        cost_gate=_LENIENT_COST_GATE,
+        risk_manager=rm,
+        sync=sync,
         positions=(_mt5_position("EURUSD", is_buy=True, volume=Decimal("0.10")),),
     )
     assert rm.open_position_count == 1
     # 0,10 statt 0,01: erst dieser Fill stellt die gestreamte Long netto glatt. Vorher
     # verdeckte ein festes Fake-Fillvolumen (immer 0,10) den Unterschied.
-    venue.submit_order(_order(
-        client_order_id="close-sync", side=OrderSide.SELL,
-        reduce_only=True, volume=Decimal("0.10"),
-    ))
+    venue.submit_order(
+        _order(
+            client_order_id="close-sync",
+            side=OrderSide.SELL,
+            reduce_only=True,
+            volume=Decimal("0.10"),
+        )
+    )
     assert rm.open_position_count == 0  # record_close feuerte trotz nachlaufendem Buch
 
 
 def test_live_opening_rejected_when_risk_unconfigured() -> None:
     # Live ohne Risiko-Manager -> fail-closed (auch wenn das Kostentor sitzt).
     venue, terminal = _venue(
-        is_demo=False, settings=_released_settings(), cost_gate=_LENIENT_COST_GATE,
-        demo_registration=_reifer_demo_beleg(), ohne_risiko=True,
+        is_demo=False,
+        settings=_released_settings(),
+        cost_gate=_LENIENT_COST_GATE,
+        demo_registration=_reifer_demo_beleg(),
+        ohne_risiko=True,
     )
     with pytest.raises(OrderRejectedError) as ex:
         venue.submit_order(_order(volume=Decimal("0.01")))
@@ -669,7 +696,9 @@ def test_demo_not_ready_blocks_live_opening() -> None:
     # < 180 Tage Demo -> keine Live-Eroeffnung (Demo-Reife-Tor). Die Zahl im Grund
     # ist GERECHNET (Uhr des Venues minus Registrierungsdatum), nicht behauptet.
     venue, terminal = _venue(
-        is_demo=False, settings=_released_settings(), cost_gate=_LENIENT_COST_GATE,
+        is_demo=False,
+        settings=_released_settings(),
+        cost_gate=_LENIENT_COST_GATE,
         risk_manager=_fresh_risk(),
         demo_registration=_reifer_demo_beleg(tage=10),
     )
@@ -685,8 +714,10 @@ def test_ein_tag_vor_der_frist_blockt_die_live_eroeffnung() -> None:
     180 sind ja. Ohne beide Seiten waere das Tor nicht als Melder belegt."""
     for tage, geht in ((MIN_DEMO_DAYS - 1, False), (MIN_DEMO_DAYS, True)):
         venue, terminal = _venue(
-            is_demo=False, settings=_released_settings(),
-            cost_gate=_LENIENT_COST_GATE, risk_manager=_fresh_risk(),
+            is_demo=False,
+            settings=_released_settings(),
+            cost_gate=_LENIENT_COST_GATE,
+            risk_manager=_fresh_risk(),
             demo_registration=_reifer_demo_beleg(tage=tage),
         )
         if geht:
@@ -704,8 +735,11 @@ def test_derselbe_beleg_reift_erst_mit_der_uhr_des_tores() -> None:
     verstrichenen Zeit und nicht des uebergebenen Objekts."""
     beleg = _reifer_demo_beleg(tage=MIN_DEMO_DAYS)  # reif genau bei TS
     frueh, terminal = _venue(
-        is_demo=False, settings=_released_settings(), cost_gate=_LENIENT_COST_GATE,
-        risk_manager=_fresh_risk(), demo_registration=beleg,
+        is_demo=False,
+        settings=_released_settings(),
+        cost_gate=_LENIENT_COST_GATE,
+        risk_manager=_fresh_risk(),
+        demo_registration=beleg,
         jetzt=TS - timedelta(days=1),
     )
     with pytest.raises(OrderRejectedError) as ex:
@@ -715,8 +749,12 @@ def test_derselbe_beleg_reift_erst_mit_der_uhr_des_tores() -> None:
     assert terminal.order_send_calls == 0
 
     spaet, _ = _venue(
-        is_demo=False, settings=_released_settings(), cost_gate=_LENIENT_COST_GATE,
-        risk_manager=_fresh_risk(), demo_registration=beleg, jetzt=TS,
+        is_demo=False,
+        settings=_released_settings(),
+        cost_gate=_LENIENT_COST_GATE,
+        risk_manager=_fresh_risk(),
+        demo_registration=beleg,
+        jetzt=TS,
     )
     assert spaet.submit_order(_order(volume=Decimal("0.01"))).accepted is True
 
@@ -724,7 +762,9 @@ def test_derselbe_beleg_reift_erst_mit_der_uhr_des_tores() -> None:
 def test_demo_beleg_fehlt_blockt_live_opening() -> None:
     # Kein Registrierungsbeleg hinterlegt -> fail-closed.
     venue, terminal = _venue(
-        is_demo=False, settings=_released_settings(), cost_gate=_LENIENT_COST_GATE,
+        is_demo=False,
+        settings=_released_settings(),
+        cost_gate=_LENIENT_COST_GATE,
         risk_manager=_fresh_risk(),
     )
     with pytest.raises(OrderRejectedError) as ex:
@@ -738,7 +778,9 @@ def test_demo_beleg_fehlt_blockt_live_opening() -> None:
 def test_beleg_ohne_edge_im_demo_blockt_trotz_langer_laufzeit() -> None:
     # Frist voll, aber der Edge ist im Demo verloren gegangen -> nein.
     venue, terminal = _venue(
-        is_demo=False, settings=_released_settings(), cost_gate=_LENIENT_COST_GATE,
+        is_demo=False,
+        settings=_released_settings(),
+        cost_gate=_LENIENT_COST_GATE,
         risk_manager=_fresh_risk(),
         demo_registration=_reifer_demo_beleg(tage=400),
         demo_live_verdict=EdgeVerdict(passed=False, checks=(), unmet=("trades",)),
@@ -756,13 +798,18 @@ def test_demo_beleg_darf_nicht_das_livekonto_nennen() -> None:
     machen will. Das Konto kommt frisch aus dem Terminal, nicht aus dem Beleg."""
     stand = TS - timedelta(days=400)
     beleg = register_for_demo(
-        strategy_id="eurusd", version="v1", edge_verdict=_bestandener_edge(),
+        strategy_id="eurusd",
+        version="v1",
+        edge_verdict=_bestandener_edge(),
         account=DemoAccount(account_id="123", broker="Demo-Broker", is_demo=True),
         clock=lambda: stand,
     )
     venue, terminal = _venue(
-        is_demo=False, settings=_released_settings(), cost_gate=_LENIENT_COST_GATE,
-        risk_manager=_fresh_risk(), demo_registration=beleg,
+        is_demo=False,
+        settings=_released_settings(),
+        cost_gate=_LENIENT_COST_GATE,
+        risk_manager=_fresh_risk(),
+        demo_registration=beleg,
     )
     with pytest.raises(OrderRejectedError) as ex:
         venue.submit_order(_order(volume=Decimal("0.01")))
@@ -807,13 +854,19 @@ def test_demo_registration_flow_unblocks_live_opening() -> None:
     """
     stand = TS - timedelta(days=200)
     registration = register_for_demo(
-        strategy_id="eurusd", version="v1", edge_verdict=_bestandener_edge(),
-        account=_DEMO_KONTO, clock=lambda: stand,
+        strategy_id="eurusd",
+        version="v1",
+        edge_verdict=_bestandener_edge(),
+        account=_DEMO_KONTO,
+        clock=lambda: stand,
     )
     assert registration.registered_on == stand.date()  # aus der Uhr, nicht gesetzt
     venue, terminal = _venue(
-        is_demo=False, settings=_released_settings(), cost_gate=_LENIENT_COST_GATE,
-        risk_manager=_fresh_risk(), demo_registration=registration,
+        is_demo=False,
+        settings=_released_settings(),
+        cost_gate=_LENIENT_COST_GATE,
+        risk_manager=_fresh_risk(),
+        demo_registration=registration,
     )
     result = venue.submit_order(_order(volume=Decimal("0.01")))
     assert result.accepted is True
@@ -824,7 +877,8 @@ def test_live_reduce_only_passes_without_release() -> None:
     # Reduce-Only (Risikoabbau) passiert ohne Live-Freigabe -- SOFERN es eine offene
     # Gegenposition abbaut. Die Boerse haelt long; ein SELL schliesst sie.
     venue, terminal = _venue(
-        is_demo=False, settings=None,
+        is_demo=False,
+        settings=None,
         positions=(_mt5_position("EURUSD", is_buy=True, volume=Decimal("0.50")),),
     )
     result = venue.submit_order(
@@ -850,14 +904,19 @@ def test_reduce_only_over_fill_is_gated_as_opening() -> None:
     # §9-Fix-Re-Check: ein reduce_only-Volumen GROESSER als die Gegenposition flippt netto
     # -> der Ueberschuss ist eine Eroeffnung und faellt durch die Live-Freigabe.
     venue, terminal = _venue(
-        is_demo=False, settings=None,  # keine Freigabe
+        is_demo=False,
+        settings=None,  # keine Freigabe
         positions=(_mt5_position("EURUSD", is_buy=True, volume=Decimal("0.50")),),
     )
     with pytest.raises(OrderRejectedError) as ex:
-        venue.submit_order(_order(
-            client_order_id="overfill", side=OrderSide.SELL,
-            reduce_only=True, volume=Decimal("1.00"),
-        ))
+        venue.submit_order(
+            _order(
+                client_order_id="overfill",
+                side=OrderSide.SELL,
+                reduce_only=True,
+                volume=Decimal("1.00"),
+            )
+        )
     assert ex.value.reason == "live_release_incomplete"
     assert terminal.order_send_calls == 0
 
@@ -901,9 +960,10 @@ def test_cancel_and_modify() -> None:
     assert venue.cancel_order("cx") is True
     assert terminal.cancel_calls == ["V-1"]
     assert venue.cancel_order("unbekannt") is False
-    assert venue.modify_position_stops(
-        "P-1", stop_loss=Decimal("1.08"), take_profit=None
-    ) is True
+    assert (
+        venue.modify_position_stops("P-1", stop_loss=Decimal("1.08"), take_profit=None)
+        is True
+    )
     assert terminal.modify_calls == [("P-1", Decimal("1.08"), None)]
 
 
@@ -1118,6 +1178,7 @@ def test_emergency_flatten_closes_all_and_halts() -> None:
         venue.submit_order(_order(client_order_id="after-flatten"))
     assert excinfo.value.reason == "global_halt"
     # ... Reduce-Only (weiterer Abbau) bleibt frei.
-    assert venue.submit_order(
-        _order(client_order_id="ro", reduce_only=True)
-    ).accepted is True
+    assert (
+        venue.submit_order(_order(client_order_id="ro", reduce_only=True)).accepted
+        is True
+    )

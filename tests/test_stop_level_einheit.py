@@ -29,9 +29,9 @@ def test_fx_mit_fuenf_stellen_bleibt_unveraendert() -> None:
     """EURUSD: point = tick_size = 0.00001. Rechnung: 10 * 0.00001 = 0.0001 Preis,
     geteilt durch 0.00001 = 10 Tickschritte. Es aendert sich nichts -- und das ist der
     Fall, in dem die Umstellung nichts kaputt machen darf."""
-    assert stop_level_in_tickschritten(
-        10, point=_d("0.00001"), tick=_d("0.00001")
-    ) == 10
+    assert (
+        stop_level_in_tickschritten(10, point=_d("0.00001"), tick=_d("0.00001")) == 10
+    )
 
 
 def test_grobes_tickraster_wird_nicht_verkleinert() -> None:

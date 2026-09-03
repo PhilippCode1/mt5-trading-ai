@@ -129,8 +129,16 @@ def _lage(venue: Mt5Venue) -> dict[str, Any]:
                 wert = zeile.spread_price / mitte * Decimal("10000")
                 if modell is None or wert < modell:
                     modell = wert
-            preise.append({"symbol": symbol, "bid": q.bid, "ask": q.ask,
-                           "gemessen": gemessen, "modell": modell, "ts": q.ts})
+            preise.append(
+                {
+                    "symbol": symbol,
+                    "bid": q.bid,
+                    "ask": q.ask,
+                    "gemessen": gemessen,
+                    "modell": modell,
+                    "ts": q.ts,
+                }
+            )
         stand["preise"] = preise
     except VenueError as exc:
         stand["fehler"] = str(exc)
@@ -185,7 +193,8 @@ class Sammler:
             self._venue = None
             return False
         self._venue = Mt5Venue(
-            name="oberflaeche", terminal=self._terminal,
+            name="oberflaeche",
+            terminal=self._terminal,
             catalog=load_instrument_catalog(),
         )
         self._venue.connect()
@@ -197,9 +206,12 @@ class Sammler:
             if not self._verbinden():
                 with self._sperre:
                     if self._stand is None:
-                        self._stand = {"jetzt": datetime.now(UTC),
-                                       "fehler": "MT5-Terminal nicht erreichbar.",
-                                       "lauf": None, "alle_laeufe": []}
+                        self._stand = {
+                            "jetzt": datetime.now(UTC),
+                            "fehler": "MT5-Terminal nicht erreichbar.",
+                            "lauf": None,
+                            "alle_laeufe": [],
+                        }
                     else:
                         self._stand["fehler"] = "MT5-Terminal nicht erreichbar."
                 self._aus.wait(self._takt)
@@ -208,8 +220,12 @@ class Sammler:
             try:
                 stand = _lage(self._venue)
             except Exception as exc:  # noqa: BLE001 - der Faden darf nie sterben
-                stand = {"jetzt": datetime.now(UTC), "fehler": str(exc),
-                         "lauf": None, "alle_laeufe": []}
+                stand = {
+                    "jetzt": datetime.now(UTC),
+                    "fehler": str(exc),
+                    "lauf": None,
+                    "alle_laeufe": [],
+                }
             with self._sperre:
                 self._stand = stand
                 self._gebaut = datetime.now(UTC)
@@ -234,8 +250,12 @@ def _zahl(wert: Any, stellen: int = 2) -> str:
 
 
 def _linienzug(
-    punkte: list[tuple[datetime, Decimal]], *, titel: str, einheit: str = "",
-    breite: int = 560, hoehe: int = 150,
+    punkte: list[tuple[datetime, Decimal]],
+    *,
+    titel: str,
+    einheit: str = "",
+    breite: int = 560,
+    hoehe: int = 150,
 ) -> str:
     """Ein Linienzug als Inline-SVG. Ohne JavaScript, ohne Bibliothek.
 
@@ -247,8 +267,10 @@ def _linienzug(
     ohne Zutun stimmt.
     """
     if len(punkte) < 2:
-        return (f"<div class='diagramm'><h3>{_e(titel)}</h3>"
-                f"<p class='leer'>Zu wenige Messpunkte ({len(punkte)}).</p></div>")
+        return (
+            f"<div class='diagramm'><h3>{_e(titel)}</h3>"
+            f"<p class='leer'>Zu wenige Messpunkte ({len(punkte)}).</p></div>"
+        )
     rand_l, rand_r, rand_o, rand_u = 58, 8, 14, 20
     innen_b, innen_h = breite - rand_l - rand_r, hoehe - rand_o - rand_u
     werte = [float(w) for _, w in punkte]
@@ -282,7 +304,7 @@ def _linienzug(
         {werte[0]:,.2f} → {werte[-1]:,.2f} {_e(einheit)}</span></h3>
       <svg viewBox="0 0 {breite} {hoehe}" width="100%" height="{hoehe}"
            role="img" aria-label="{_e(titel)}">
-        {''.join(gitter)}
+        {"".join(gitter)}
         <polyline points="{linie}" fill="none" stroke="{farbe}" stroke-width="1.6"
                   stroke-linejoin="round"/>
         <text x="{rand_l}" y="{hoehe - 5}" font-size="9" fill="var(--matt)">
@@ -315,10 +337,12 @@ def _stopp_knopf(token: str, laeuft: bool) -> str:
     "muss absichtlich passieren".
     """
     if STOPPDATEI.exists():
-        return ("<div class='hinweis krit-rand'><b>Stoppdatei liegt.</b> "
-                "Der Lauf beendet sich im nächsten Takt und stellt glatt.</div>")
+        return (
+            "<div class='hinweis krit-rand'><b>Stoppdatei liegt.</b> "
+            "Der Lauf beendet sich im nächsten Takt und stellt glatt.</div>"
+        )
     if not laeuft:
-        return ("<p class='klein'>Kein laufender Betrieb — nichts zu stoppen.</p>")
+        return "<p class='klein'>Kein laufender Betrieb — nichts zu stoppen.</p>"
     return f"""<form method="post" action="/stopp" class="stoppform"
       onsubmit="return confirm('Den laufenden Betrieb geordnet beenden? Alle
 offenen Positionen werden glattgestellt.');">
@@ -365,28 +389,33 @@ def _abschnitt_laufwahl(stand: dict[str, Any], gewaehlt: Lauf | None) -> str:
             marken.append("<span class='marke gut'>läuft</span>")
         if lauf.scharf:
             marken.append("<span class='marke krit'>scharf</span>")
-        zeilen.append(f"""<tr class="{'gewaehlt' if ist else ''}">
+        zeilen.append(f"""<tr class="{"gewaehlt" if ist else ""}">
           <td><a href="?lauf={_e(lauf.pfad.name)}">{von:%d.%m %H:%M}</a></td>
-          <td class="zahl">{len(lauf.art('takt'))}</td>
+          <td class="zahl">{len(lauf.art("takt"))}</td>
           <td class="zahl">{len(trades)}</td>
-          <td class="zahl {'gut' if delta >= 0 else 'krit'}">{float(delta):+.2f}</td>
-          <td class="klein">{' '.join(marken)}</td>
-          <td class="klein mono">{_e(lauf.version or '—')}</td></tr>""")
+          <td class="zahl {"gut" if delta >= 0 else "krit"}">{float(delta):+.2f}</td>
+          <td class="klein">{" ".join(marken)}</td>
+          <td class="klein mono">{_e(lauf.version or "—")}</td></tr>""")
     hinweis = ""
     laufender = stand.get("lauf")
-    anderer = (gewaehlt is not None and laufender is not None
-               and gewaehlt.pfad != laufender.pfad)
+    anderer = (
+        gewaehlt is not None
+        and laufender is not None
+        and gewaehlt.pfad != laufender.pfad
+    )
     if anderer:
-        hinweis = ("<p class='hinweis krit-rand'>Sie sehen einen <b>anderen</b> Lauf. "
-                   "Konto, Positionen und Kurse oben bleiben live. "
-                   "<a href='?'>Zum laufenden Betrieb</a></p>")
+        hinweis = (
+            "<p class='hinweis krit-rand'>Sie sehen einen <b>anderen</b> Lauf. "
+            "Konto, Positionen und Kurse oben bleiben live. "
+            "<a href='?'>Zum laufenden Betrieb</a></p>"
+        )
     return f"""{hinweis}
-    <details{' open' if hinweis else ''}><summary class="klein">
+    <details{" open" if hinweis else ""}><summary class="klein">
       {len(laeufe)} Läufe — anderen wählen</summary>
       <table><thead><tr><th>Beginn</th><th class="zahl">Takte</th>
         <th class="zahl">Trades</th><th class="zahl">Equity</th><th></th>
         <th>Codestand</th></tr></thead>
-        <tbody>{''.join(zeilen)}</tbody></table></details>"""
+        <tbody>{"".join(zeilen)}</tbody></table></details>"""
 
 
 def _kennzahlen(stand: dict[str, Any]) -> str:
@@ -426,44 +455,68 @@ def _kennzahlen(stand: dict[str, Any]) -> str:
             tiefster = min(tiefster, (wert - spitze) / spitze * Decimal("100"))
     im_halt = sum(1 for t in takte if t["halt"])
     halt_anteil = im_halt / len(takte) * 100 if takte else 0.0
-    treffer = (sum(1 for t in b.beurteilt if t.gewinn) / len(b.beurteilt) * 100
-               if b.beurteilt else None)
+    treffer = (
+        sum(1 for t in b.beurteilt if t.gewinn) / len(b.beurteilt) * 100
+        if b.beurteilt
+        else None
+    )
     schlimmster = min(b.preis) if b.preis else None
 
     def kachel(etikett: str, wert: str, klein: str, klasse: str = "") -> str:
-        return (f'<div class="kachel"><span class="etikett">{etikett}</span>'
-                f'<span class="wert {klasse}">{wert}</span>'
-                f'<span class="klein">{klein}</span></div>')
+        return (
+            f'<div class="kachel"><span class="etikett">{etikett}</span>'
+            f'<span class="wert {klasse}">{wert}</span>'
+            f'<span class="klein">{klein}</span></div>'
+        )
 
-    return "<div class='kacheln'>" + "".join([
-        kachel("Drawdown", f"{float(tiefster):.3f} %",
-               "groesster Ruecksetzer seit Laufbeginn",
-               "krit" if tiefster < -1 else ""),
-        kachel("Zeit im Halt", f"{halt_anteil:.0f} %",
-               f"von {len(takte)} Takten", "krit" if halt_anteil > 0 else "gut"),
-        kachel("Trefferanteil",
-               "—" if treffer is None else f"{treffer:.0f} %",
-               f"aus {len(b.beurteilt)} beurteilbaren Trades, "
-               f"{len(b.nur_geld)} davon ohne Preis"),
-        kachel("Schlechtester Trade",
-               "—" if schlimmster is None else f"{float(schlimmster):+.2f} bp",
-               "Preisdifferenz, ohne Kosten",
-               "krit" if schlimmster is not None and schlimmster < 0 else ""),
-    ]) + "</div>"
+    return (
+        "<div class='kacheln'>"
+        + "".join(
+            [
+                kachel(
+                    "Drawdown",
+                    f"{float(tiefster):.3f} %",
+                    "groesster Ruecksetzer seit Laufbeginn",
+                    "krit" if tiefster < -1 else "",
+                ),
+                kachel(
+                    "Zeit im Halt",
+                    f"{halt_anteil:.0f} %",
+                    f"von {len(takte)} Takten",
+                    "krit" if halt_anteil > 0 else "gut",
+                ),
+                kachel(
+                    "Trefferanteil",
+                    "—" if treffer is None else f"{treffer:.0f} %",
+                    f"aus {len(b.beurteilt)} beurteilbaren Trades, "
+                    f"{len(b.nur_geld)} davon ohne Preis",
+                ),
+                kachel(
+                    "Schlechtester Trade",
+                    "—" if schlimmster is None else f"{float(schlimmster):+.2f} bp",
+                    "Preisdifferenz, ohne Kosten",
+                    "krit" if schlimmster is not None and schlimmster < 0 else "",
+                ),
+            ]
+        )
+        + "</div>"
+    )
 
 
 def _abschnitt_verlauf(stand: dict[str, Any]) -> str:
     lauf: Lauf | None = stand.get("lauf")
     if lauf is None:
         return "<p class='leer'>Kein Journal.</p>"
-    teile = [_linienzug(lauf.equity_reihe(), titel="Equity, dieser Lauf",
-                        einheit="EUR")]
+    teile = [
+        _linienzug(lauf.equity_reihe(), titel="Equity, dieser Lauf", einheit="EUR")
+    ]
     alle = stand.get("alle_laeufe") or []
     if len(alle) > 1:
         ueber = [(ts, wert) for ts, wert, _ in durchgehende_equity(alle)]
         luecken = sum(1 for _, _, lk in durchgehende_equity(alle) if lk)
-        teile.append(_linienzug(
-            ueber, titel=f"Equity, alle {len(alle)} Läufe", einheit="EUR"))
+        teile.append(
+            _linienzug(ueber, titel=f"Equity, alle {len(alle)} Läufe", einheit="EUR")
+        )
         teile.append(
             f"<p class='klein'>{luecken} Lücken zwischen den Läufen. Dort lief die "
             "Schleife nicht — was in der Pause geschah, steht in keinem Journal.</p>"
@@ -491,9 +544,11 @@ def _abschnitt_konto(stand: dict[str, Any]) -> str:
     stempel = [p["ts"] for p in (stand.get("preise") or []) if p.get("ts")]
     juengster = max(stempel) if stempel else None
     frische = evaluate_account_freshness(
-        snapshot_ts=juengster or jetzt - timedelta(days=1), now=jetzt,
+        snapshot_ts=juengster or jetzt - timedelta(days=1),
+        now=jetzt,
         connected=juengster is not None,
-        max_age=MAX_SNAPSHOT_AGE, future_tolerance=timedelta(seconds=1),
+        max_age=MAX_SNAPSHOT_AGE,
+        future_tolerance=timedelta(seconds=1),
     )
     demo = "Demokonto" if konto.is_demo else "LIVE-KONTO"
     klasse = "gut" if konto.is_demo else "krit"
@@ -509,8 +564,8 @@ def _abschnitt_konto(stand: dict[str, Any]) -> str:
         <span class="wert {klasse}">{demo}</span>
         <span class="klein">{_e(konto.account_id)}</span></div>
       <div class="kachel"><span class="etikett">Kursfrische</span>
-        <span class="wert {'gut' if frische.evaluable else 'krit'}">
-          {'ok' if frische.evaluable else _e(frische.reason)}</span>
+        <span class="wert {"gut" if frische.evaluable else "krit"}">
+          {"ok" if frische.evaluable else _e(frische.reason)}</span>
         <span class="klein">{frische.age.total_seconds():.1f} s alt ·
           Grenze {frische.max_age.total_seconds():.0f} s</span></div>
       <div class="kachel"><span class="etikett">Serverzeit</span>
@@ -535,13 +590,13 @@ def _abschnitt_positionen(stand: dict[str, Any]) -> str:
             <td class="zahl mono">{_e(p.entry_price)}</td>
             <td class="zahl mono">{_e(p.stop_loss)}</td>
             <td class="zahl">{alter:.2f} h</td>
-            <td class="zahl {'gut' if pnl >= 0 else 'krit'}">{pnl:+.2f}</td></tr>""")
+            <td class="zahl {"gut" if pnl >= 0 else "krit"}">{pnl:+.2f}</td></tr>""")
     return f"""
     <table><thead><tr><th>Instrument</th><th>Seite</th><th class="zahl">Volumen</th>
       <th class="zahl">Einstieg</th><th class="zahl">Stop</th>
       <th class="zahl">Alter</th>
       <th class="zahl">Ergebnis</th></tr></thead>
-      <tbody>{''.join(zeilen)}</tbody></table>"""
+      <tbody>{"".join(zeilen)}</tbody></table>"""
 
 
 def _abschnitt_lauf(stand: dict[str, Any]) -> str:
@@ -568,27 +623,39 @@ def _abschnitt_lauf(stand: dict[str, Any]) -> str:
         )
         schluessel = f"{letzte} — {v['grund']}"
         gruende[schluessel] = gruende.get(schluessel, 0) + 1
-    grundzeilen = "".join(
-        f"<tr><td class='zahl'>{n}×</td><td class='mono'>{_e(g)}</td></tr>"
-        for g, n in sorted(gruende.items(), key=lambda x: -x[1])
-    ) or "<tr><td colspan='2' class='leer'>keine Ablehnungen</td></tr>"
+    grundzeilen = (
+        "".join(
+            f"<tr><td class='zahl'>{n}×</td><td class='mono'>{_e(g)}</td></tr>"
+            for g, n in sorted(gruende.items(), key=lambda x: -x[1])
+        )
+        or "<tr><td colspan='2' class='leer'>keine Ablehnungen</td></tr>"
+    )
 
     zugruende: dict[str, int] = {}
     for t in zu:
         zugruende[str(t.grund)] = zugruende.get(str(t.grund), 0) + 1
-    zuzeilen = "".join(
-        f"<tr><td class='zahl'>{n}×</td><td class='mono'>{_e(g)}</td></tr>"
-        for g, n in sorted(zugruende.items(), key=lambda x: -x[1])
-    ) or "<tr><td colspan='2' class='leer'>noch keine Schließung</td></tr>"
+    zuzeilen = (
+        "".join(
+            f"<tr><td class='zahl'>{n}×</td><td class='mono'>{_e(g)}</td></tr>"
+            for g, n in sorted(zugruende.items(), key=lambda x: -x[1])
+        )
+        or "<tr><td colspan='2' class='leer'>noch keine Schließung</td></tr>"
+    )
 
     start = lauf.start
-    zustand = ("<span class='marke'>beendet</span>" if lauf.beendet
-               else "<span class='marke gut'>läuft</span>")
-    scharf = ("<span class='marke krit'>scharf</span>" if lauf.scharf
-              else "<span class='marke'>trocken</span>")
+    zustand = (
+        "<span class='marke'>beendet</span>"
+        if lauf.beendet
+        else "<span class='marke gut'>läuft</span>"
+    )
+    scharf = (
+        "<span class='marke krit'>scharf</span>"
+        if lauf.scharf
+        else "<span class='marke'>trocken</span>"
+    )
     return f"""
     <p>{zustand} {scharf}
-      <span class="klein">Strategie {_e(start['strategie'] if start else None)} ·
+      <span class="klein">Strategie {_e(start["strategie"] if start else None)} ·
       Codestand <span class="mono">{_e(lauf.version)}</span> ·
       Journal <span class="mono">{_e(lauf.pfad.name)}</span></span></p>
     <div class="kacheln">
@@ -602,7 +669,7 @@ def _abschnitt_lauf(stand: dict[str, Any]) -> str:
         <span class="klein">{len(b.preis)} mit Preis · {len(b.nur_geld)} nur Geld ·
           {len(b.stumm)} stumm</span></div>
       <div class="kachel"><span class="etikett">Takte im Halt</span>
-        <span class="wert {'krit' if halts else 'gut'}">{len(halts)}</span></div>
+        <span class="wert {"krit" if halts else "gut"}">{len(halts)}</span></div>
     </div>
     <div class="zweispaltig">
       <div><h3>Woran Eröffnungen scheiterten</h3>
@@ -622,15 +689,17 @@ def _abschnitt_trades(trades: list[Any]) -> str:
         if erg is None:
             ergtext = "<span class='klein'>unvollständig</span>"
         else:
-            ergtext = (f"<span class='{'gut' if erg >= 0 else 'krit'}'>"
-                       f"{float(erg):+.2f} bp</span>")
+            ergtext = (
+                f"<span class='{'gut' if erg >= 0 else 'krit'}'>"
+                f"{float(erg):+.2f} bp</span>"
+            )
         dauer = t.dauer_stunden
         zeilen.append(f"""<tr><td class="mono">{_e(t.symbol)}</td>
-          <td>{'BUY' if t.ist_kauf else 'SELL'}</td>
+          <td>{"BUY" if t.ist_kauf else "SELL"}</td>
           <td class="zahl">{_zahl(t.volumen)}</td>
           <td class="zahl mono">{_e(t.einstieg)}</td>
           <td class="zahl mono">{_e(t.ausstieg)}</td>
-          <td class="zahl">{'offen' if dauer is None else f'{dauer:.2f} h'}</td>
+          <td class="zahl">{"offen" if dauer is None else f"{dauer:.2f} h"}</td>
           <td class="klein">{_e(t.grund)}</td>
           <td class="zahl">{ergtext}</td></tr>""")
     return f"""<h3>Die letzten Trades</h3>
@@ -638,7 +707,7 @@ def _abschnitt_trades(trades: list[Any]) -> str:
       <th class="zahl">Einstieg</th><th class="zahl">Ausstieg</th>
       <th class="zahl">Dauer</th><th>Grund</th>
       <th class="zahl">Ergebnis</th></tr></thead>
-      <tbody>{''.join(zeilen)}</tbody></table>
+      <tbody>{"".join(zeilen)}</tbody></table>
     <p class="klein">Das Ergebnis rechnet die Preisdifferenz — <b>ohne</b> Kommission
       und Swap. „Unvollständig“ heißt, dass ein Preis fehlt; es heißt nicht null.</p>"""
 
@@ -649,21 +718,28 @@ def _abschnitt_sperren(stand: dict[str, Any]) -> str:
     if lauf is None:
         return "<p class='leer'>Kein Journal.</p>"
     letzte = next(
-        (s for s in reversed(lauf.saetze)
-         if s.art == "eroeffnungsversuch" and s["schritte"]), None
+        (
+            s
+            for s in reversed(lauf.saetze)
+            if s.art == "eroeffnungsversuch" and s["schritte"]
+        ),
+        None,
     )
     if letzte is None:
         return "<p class='leer'>Noch kein Durchlauf der Orderkette im Journal.</p>"
     schritte = "".join(
-        f"""<tr><td class="marke {'gut' if x['ok'] else 'krit'}">
-              {'OK' if x['ok'] else 'HALT'}</td>
-            <td class="mono">{_e(x['naht'])}</td>
-            <td class="klein">{_e(x.get('detail'))}</td></tr>"""
+        f"""<tr><td class="marke {"gut" if x["ok"] else "krit"}">
+              {"OK" if x["ok"] else "HALT"}</td>
+            <td class="mono">{_e(x["naht"])}</td>
+            <td class="klein">{_e(x.get("detail"))}</td></tr>"""
         for x in letzte["schritte"]
     )
-    ergebnis = ("<span class='marke gut'>eröffnet</span>" if letzte["eroeffnet"]
-                else f"<span class='marke krit'>{_e(letzte['grund'])}</span>")
-    return f"""<p class="klein">{_e(letzte['symbol'])} · {_e(letzte['signal'])} ·
+    ergebnis = (
+        "<span class='marke gut'>eröffnet</span>"
+        if letzte["eroeffnet"]
+        else f"<span class='marke krit'>{_e(letzte['grund'])}</span>"
+    )
+    return f"""<p class="klein">{_e(letzte["symbol"])} · {_e(letzte["signal"])} ·
       {letzte.ts:%H:%M:%S} UTC {ergebnis}</p>
     <table><tbody>{schritte}</tbody></table>"""
 
@@ -675,25 +751,27 @@ def _abschnitt_preise(stand: dict[str, Any]) -> str:
     zeilen = []
     for p in preise:
         if p.get("fehler"):
-            zeilen.append(f"""<tr><td class="mono">{_e(p['symbol'])}</td>
-              <td colspan="4" class="klein">{_e(p['fehler'])}</td></tr>""")
+            zeilen.append(f"""<tr><td class="mono">{_e(p["symbol"])}</td>
+              <td colspan="4" class="klein">{_e(p["fehler"])}</td></tr>""")
             continue
         g, m = p.get("gemessen"), p.get("modell")
         if m is not None and g is not None and m > 0:
             faktor = float(g) / float(m)
-            urteil = (f"<span class='{'gut' if faktor <= 1.2 else 'warn'}'>"
-                      f"{faktor:.1f}× Modell</span>")
+            urteil = (
+                f"<span class='{'gut' if faktor <= 1.2 else 'warn'}'>"
+                f"{faktor:.1f}× Modell</span>"
+            )
         else:
             urteil = "<span class='klein'>keine Kostenzeile</span>"
-        zeilen.append(f"""<tr><td class="mono">{_e(p['symbol'])}</td>
-          <td class="zahl mono">{_e(p['bid'])}</td>
-          <td class="zahl mono">{_e(p['ask'])}</td>
+        zeilen.append(f"""<tr><td class="mono">{_e(p["symbol"])}</td>
+          <td class="zahl mono">{_e(p["bid"])}</td>
+          <td class="zahl mono">{_e(p["ask"])}</td>
           <td class="zahl">{_zahl(g)}</td>
           <td class="zahl">{_zahl(m)}</td><td>{urteil}</td></tr>""")
     return f"""<table><thead><tr><th>Instrument</th><th class="zahl">Bid</th>
       <th class="zahl">Ask</th><th class="zahl">Spread bp</th>
       <th class="zahl">Modell bp</th><th>Bewertung</th></tr></thead>
-      <tbody>{''.join(zeilen)}</tbody></table>"""
+      <tbody>{"".join(zeilen)}</tbody></table>"""
 
 
 STIL = """
@@ -753,7 +831,9 @@ color:var(--matt);font-size:.75rem}
 
 
 def seite(
-    stand: dict[str, Any], *, jetzt: datetime | None = None,
+    stand: dict[str, Any],
+    *,
+    jetzt: datetime | None = None,
     wahl: str | None = None,
 ) -> str:
     """Das Inhaltsfragment. ``jetzt`` ist die RENDERZEIT, nicht die Sammelzeit.
@@ -770,8 +850,10 @@ def seite(
     # schlimmer als eine, die abstuerzt: man sieht ihr nicht an, dass sie luegt.
     stoerungen = [
         (etikett, stand.get(schluessel))
-        for etikett, schluessel in (("Terminal", "fehler"),
-                                    ("Journal", "journalfehler"))
+        for etikett, schluessel in (
+            ("Terminal", "fehler"),
+            ("Journal", "journalfehler"),
+        )
         if stand.get(schluessel)
     ]
     warnung = "".join(
@@ -791,10 +873,12 @@ def seite(
     if stand.get("gebaut") is not None:
         sekunden = ((jetzt or datetime.now(UTC)) - stand["gebaut"]).total_seconds()
         klasse = "krit" if sekunden > 30 else "klein"
-        alter = (f' · Stand <span class="{klasse}">{sekunden:.0f} s alt</span>'
-                 f' (gesammelt in {stand.get("dauer_ms", 0):.0f} ms)')
+        alter = (
+            f' · Stand <span class="{klasse}">{sekunden:.0f} s alt</span>'
+            f" (gesammelt in {stand.get('dauer_ms', 0):.0f} ms)"
+        )
     return f"""
-  <p class="kopfzeile">{stand['jetzt']:%Y-%m-%d %H:%M:%S} UTC{alter} ·
+  <p class="kopfzeile">{stand["jetzt"]:%Y-%m-%d %H:%M:%S} UTC{alter} ·
     <b>nur lesend</b>, diese Seite kann nicht handeln</p>
   {warnung}
   <div class="hinweis">
@@ -878,8 +962,10 @@ class Griff(BaseHTTPRequestHandler):
     def _inhalt(self, wahl: str | None) -> str:
         stand, gebaut, dauer = self.sammler.hole()
         if stand is None:
-            return ("<p class='leer'>Noch kein Schnappschuss — der Sammler "
-                    "verbindet sich gerade.</p>")
+            return (
+                "<p class='leer'>Noch kein Schnappschuss — der Sammler "
+                "verbindet sich gerade.</p>"
+            )
         kopie = dict(stand)
         kopie["gebaut"] = gebaut
         kopie["dauer_ms"] = dauer
@@ -925,8 +1011,10 @@ class Griff(BaseHTTPRequestHandler):
             text = self._inhalt(self._wahl())
             roh = (text if weg == "/inhalt" else huelle(text)).encode("utf-8")
         except Exception as exc:  # noqa: BLE001 - die Seite soll den Fehler zeigen
-            roh = (f"<div class='hinweis krit-rand'>Fehler beim Bauen der Seite: "
-                   f"{html.escape(str(exc))}</div>").encode()
+            roh = (
+                f"<div class='hinweis krit-rand'>Fehler beim Bauen der Seite: "
+                f"{html.escape(str(exc))}</div>"
+            ).encode()
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Cache-Control", "no-store")
@@ -944,8 +1032,12 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Lesende Oberflaeche (nur lokal)")
     ap.add_argument("--port", type=int, default=8765)
     ap.add_argument("--kein-browser", action="store_true")
-    ap.add_argument("--takt", type=float, default=5.0,
-                    help="Sekunden zwischen zwei Sammellaeufen (Vorgabe 5)")
+    ap.add_argument(
+        "--takt",
+        type=float,
+        default=5.0,
+        help="Sekunden zwischen zwei Sammellaeufen (Vorgabe 5)",
+    )
     args = ap.parse_args()
 
     # Der Sammler haelt die Terminalsitzung offen und ist der EINZIGE Faden, der

@@ -63,8 +63,15 @@ AUFTRAGSPFAD = (
 #: **aufgezaehlt**, nicht per Muster erlaubt -- eine neue Stelle faellt auf.
 ANY_AN_DER_GRENZE = frozenset(
     {
-        "_erfolgscodes", "_ohne_fehlercode", "_send_gefuellt", "_send_angenommen",
-        "_fuellart", "_d", "_utc", "_to_symbol", "__init__",
+        "_erfolgscodes",
+        "_ohne_fehlercode",
+        "_send_gefuellt",
+        "_send_angenommen",
+        "_fuellart",
+        "_d",
+        "_utc",
+        "_to_symbol",
+        "__init__",
     }
 )
 
@@ -129,9 +136,7 @@ def test_keine_oeffentliche_funktion_ohne_aufrufer_im_ausfuehrungspfad() -> None
     entfernt, fuenf verdrahtet worden. Dieser Fall haelt fest, dass keine neue
     dazukommt -- die Krankheit, die §0 des Auftrags beim Namen nennt.
     """
-    paket = [
-        p for p in PAKET.rglob("*.py") if "__pycache__" not in p.parts
-    ]
+    paket = [p for p in PAKET.rglob("*.py") if "__pycache__" not in p.parts]
     werkzeuge = sorted((ROOT / "tools").glob("*.py"))
     verwaist = sorted(
         f"{pfad.relative_to(PAKET).as_posix()}::{name}"
@@ -205,9 +210,7 @@ def test_der_kontoschnappschuss_wird_als_object_geprueft_nicht_als_any() -> None
     """Der Fall, der die eine Stelle festhaelt, um die es geht."""
     from mt5_trading_ai.venue.mt5 import konto_maengel
 
-    quelle = ast.parse(
-        (PAKET / "venue" / "mt5.py").read_text(encoding="utf-8")
-    )
+    quelle = ast.parse((PAKET / "venue" / "mt5.py").read_text(encoding="utf-8"))
     for knoten in ast.walk(quelle):
         if isinstance(knoten, ast.FunctionDef) and knoten.name == "konto_maengel":
             annot = knoten.args.args[0].annotation
@@ -225,7 +228,10 @@ def test_die_torzaehlung_laeuft_und_verlangt_je_tor_einen_test() -> None:
     """Bestaetigt durch Ausfuehrung. Der Abnahmesatz des Auftrags."""
     lauf = subprocess.run(
         [sys.executable, "tools/torzaehlung.py"],
-        cwd=ROOT, capture_output=True, text=True, check=False,
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
     )
     assert lauf.returncode == 0, lauf.stdout + lauf.stderr
     assert "jedes Tor hat einen Test" in lauf.stdout
@@ -283,9 +289,7 @@ def test_kein_kurs_loest_no_tick_aus() -> None:
 def test_ein_volumen_ueber_dem_maximum_loest_volume_above_max_aus() -> None:
     venue, terminal = _venue(is_demo=True)
     with pytest.raises(OrderRejectedError) as ex:
-        venue.submit_order(
-            _order(client_order_id="t-max", volume=Decimal("1000"))
-        )
+        venue.submit_order(_order(client_order_id="t-max", volume=Decimal("1000")))
     assert ex.value.reason == "volume_above_max"
 
 
@@ -404,14 +408,21 @@ def test_die_beiden_entfernten_waechter_waren_unerreichbar() -> None:
     venue, _t = _venue(is_demo=True)
     instrument = venue.get_instrument("EURUSD")
     for name, kw in (
-        ("contract_size=0", {"instrument": replace(instrument, contract_size=Decimal("0"))}),
+        (
+            "contract_size=0",
+            {"instrument": replace(instrument, contract_size=Decimal("0"))},
+        ),
         ("volume=0", {"volume": Decimal("0")}),
         ("ask=0", {"bid": Decimal("0"), "ask": Decimal("0")}),
     ):
         basis = dict(
             gate=CostGate(max_roundturn_cost_fraction=Decimal("0.0005")),
-            instrument=instrument, fees=instrument.fees, side=OrderSide.BUY,
-            volume=Decimal("0.01"), bid=Decimal("1.0999"), ask=Decimal("1.1001"),
+            instrument=instrument,
+            fees=instrument.fees,
+            side=OrderSide.BUY,
+            volume=Decimal("0.01"),
+            bid=Decimal("1.0999"),
+            ask=Decimal("1.1001"),
         )
         basis.update(kw)
         entscheidung = evaluate_cost_gate(**basis)  # type: ignore[arg-type]

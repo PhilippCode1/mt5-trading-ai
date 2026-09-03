@@ -239,9 +239,17 @@ def _zeile(
 
     def nein(grund: str) -> Zeile:
         return Zeile(
-            instrument=schluessel, broker=broker_key, rechenbar=False, grund=grund,
-            spread_bps=None, kommission_bps=None, slippage_bps=None, k_bps=None,
-            atr_median_bps=None, atr_p25_bps=None, swap_bps_nacht=None,
+            instrument=schluessel,
+            broker=broker_key,
+            rechenbar=False,
+            grund=grund,
+            spread_bps=None,
+            kommission_bps=None,
+            slippage_bps=None,
+            k_bps=None,
+            atr_median_bps=None,
+            atr_p25_bps=None,
+            swap_bps_nacht=None,
             gemessener_spread_bps=None,
         )
 
@@ -294,13 +302,21 @@ def _zeile(
         return nein("ATR-Kennzahlen unvollstaendig")
 
     return Zeile(
-        instrument=schluessel, broker=broker_key, rechenbar=True, grund=None,
-        spread_bps=spread_bps, kommission_bps=kommission_bps, slippage_bps=slip,
+        instrument=schluessel,
+        broker=broker_key,
+        rechenbar=True,
+        grund=None,
+        spread_bps=spread_bps,
+        kommission_bps=kommission_bps,
+        slippage_bps=slip,
         k_bps=k_bps,
-        atr_median_bps=Decimal(str(atr50)), atr_p25_bps=Decimal(str(atr25)),
+        atr_median_bps=Decimal(str(atr50)),
+        atr_p25_bps=Decimal(str(atr25)),
         swap_bps_nacht=kosten.swap_bps_night_long,
         gemessener_spread_bps=(
-            Decimal(str(messung.spread_median_points)) * Decimal(str(messung.point)) / p
+            Decimal(str(messung.spread_median_points))
+            * Decimal(str(messung.point))
+            / p
             * Decimal("10000")
             if messung.spread_median_points is not None and messung.point is not None
             else None
@@ -429,9 +445,7 @@ def lesarten(z: Zeile) -> dict[str, tuple[Decimal, Decimal]]:
         or z.spread_bps is None
     ):
         raise KostentorError(f"{z.instrument}/{z.broker}: Zeile ist nicht rechenbar")
-    swap = (
-        abs(z.swap_bps_nacht) * Decimal("0.25") if z.swap_bps_nacht else Decimal(0)
-    )
+    swap = abs(z.swap_bps_nacht) * Decimal("0.25") if z.swap_bps_nacht else Decimal(0)
     gemessen = z.gemessener_spread_bps
     k_b = z.k_bps - z.spread_bps + gemessen if gemessen is not None else z.k_bps
     return {
@@ -589,8 +603,10 @@ def main() -> int:
     print("=" * 100)
     print("KOSTENTOR — Paket 2, A1.3/A1.4")
     print("=" * 100)
-    print(f"Kostendatei : {kosten.costs_id} (geprueft {kosten.verified_on}), "
-          f"{len(kosten.brokers)} Broker")
+    print(
+        f"Kostendatei : {kosten.costs_id} (geprueft {kosten.verified_on}), "
+        f"{len(kosten.brokers)} Broker"
+    )
     print(
         "Messdatei   : ATR(14) H1, 12 Monate, gemessen ueber den lesenden MT5-Demo-Pfad"
     )
@@ -602,22 +618,30 @@ def main() -> int:
         for broker_key, broker in kosten.brokers.items():
             zeilen.append(
                 _zeile(
-                    schluessel, broker_key, broker.instruments.get(schluessel),
-                    messungen.get(schluessel), kosten.slippage_bps, kurse,
+                    schluessel,
+                    broker_key,
+                    broker.instruments.get(schluessel),
+                    messungen.get(schluessel),
+                    kosten.slippage_bps,
+                    kurse,
                 )
             )
 
     rechenbar = [z for z in zeilen if z.rechenbar]
-    print(f"Kostenzeilen: {len(rechenbar)} von {len(zeilen)} rechenbar "
-          f"({len(UNIVERSUM)} Instrumente x {len(kosten.brokers)} Broker)")
+    print(
+        f"Kostenzeilen: {len(rechenbar)} von {len(zeilen)} rechenbar "
+        f"({len(UNIVERSUM)} Instrumente x {len(kosten.brokers)} Broker)"
+    )
     print()
 
     # --- Tabelle 1: Round-Turn-Kosten je Zeile -----------------------------
     print("-" * 100)
     print("TABELLE 1 — Round-Turn-Kosten K in Basispunkten des Nominals")
     print("-" * 100)
-    print(f"{'Instrument':<10} {'Broker':<16} {'Spread':>9} {'Komm.':>9} "
-          f"{'Slip.':>7} {'K':>9} {'ATR50':>8} {'ATR25':>8}")
+    print(
+        f"{'Instrument':<10} {'Broker':<16} {'Spread':>9} {'Komm.':>9} "
+        f"{'Slip.':>7} {'K':>9} {'ATR50':>8} {'ATR25':>8}"
+    )
     for z in zeilen:
         if not z.rechenbar:
             print(f"{z.instrument:<10} {z.broker:<16} NICHT RECHENBAR — {z.grund}")
@@ -625,9 +649,11 @@ def main() -> int:
         assert z.spread_bps is not None and z.kommission_bps is not None
         assert z.slippage_bps is not None and z.k_bps is not None
         assert z.atr_median_bps is not None and z.atr_p25_bps is not None
-        print(f"{z.instrument:<10} {z.broker:<16} {_q(z.spread_bps):>9} "
-              f"{_q(z.kommission_bps):>9} {_q(z.slippage_bps):>7} "
-              f"{_q(z.k_bps):>9} {_q(z.atr_median_bps):>8} {_q(z.atr_p25_bps):>8}")
+        print(
+            f"{z.instrument:<10} {z.broker:<16} {_q(z.spread_bps):>9} "
+            f"{_q(z.kommission_bps):>9} {_q(z.slippage_bps):>7} "
+            f"{_q(z.k_bps):>9} {_q(z.atr_median_bps):>8} {_q(z.atr_p25_bps):>8}"
+        )
     print()
 
     # --- Tabelle 2: erforderliche Trefferquote p* --------------------------
@@ -667,8 +693,10 @@ def main() -> int:
     for s, klartext, _, deckel in UNIVERSUM:
         if s in bestes_je_instrument:
             p = bestes_je_instrument[s]
-            print(f"  {s:<8} {klartext:<26} bestes p* = {_q(p * 100, '0.1')} % "
-                  f"-> {_ampel(p):<5} (ESMA-Deckel {deckel}:1)")
+            print(
+                f"  {s:<8} {klartext:<26} bestes p* = {_q(p * 100, '0.1')} % "
+                f"-> {_ampel(p):<5} (ESMA-Deckel {deckel}:1)"
+            )
         else:
             print(f"  {s:<8} {klartext:<26} NICHT BEWERTBAR (siehe Tabelle 1)")
     print()
@@ -676,8 +704,10 @@ def main() -> int:
     print(f"  gelb : {len(gelb)} von {len(UNIVERSUM)} Instrumenten {gelb}")
     print(f"  rot  : {len(rot)} von {len(UNIVERSUM)} Instrumenten {rot}")
     if nicht_bewertbar:
-        print(f"  nicht bewertbar: {len(nicht_bewertbar)} von {len(UNIVERSUM)} "
-              f"{nicht_bewertbar}")
+        print(
+            f"  nicht bewertbar: {len(nicht_bewertbar)} von {len(UNIVERSUM)} "
+            f"{nicht_bewertbar}"
+        )
     print()
     # M1 sagt "bei mindestens einem Broker". Streng gelesen heisst das: EIN Broker muss
     # die geforderten drei gruenen Instrumente tragen -- nicht drei Broker je eines.
@@ -694,9 +724,11 @@ def main() -> int:
     for broker_key in sorted(fehlende):
         print(f"    {broker_key:<16} 0 []")
     bester_broker = max(je_broker.items(), key=lambda kv: len(kv[1]), default=("-", []))
-    print(f"    -> bester einzelner Broker: {bester_broker[0]} mit "
-          f"{len(bester_broker[1])} gruenen Instrumenten "
-          f"(gefordert: mindestens {M1_MIN_INSTRUMENTE_GRUEN})")
+    print(
+        f"    -> bester einzelner Broker: {bester_broker[0]} mit "
+        f"{len(bester_broker[1])} gruenen Instrumenten "
+        f"(gefordert: mindestens {M1_MIN_INSTRUMENTE_GRUEN})"
+    )
     print()
 
     m1, satz = m1_ampel(
@@ -712,23 +744,17 @@ def main() -> int:
         print(
             "  ZUR AMPEL SELBST, ausdruecklich: die erste Fassung von M1 verlangte fuer"
         )
-        print(
-            "  ROT 'bei allen sechs Instrumenten'. Weil BTCUSD dauerhaft nicht"
-        )
+        print("  ROT 'bei allen sechs Instrumenten'. Weil BTCUSD dauerhaft nicht")
         print(f"  bewertbar ist ({nicht_bewertbar}), konnte ROT damit NIE eintreten --")
         print(
             "  fail-open gegen die Kernregel 'nicht bewertbar = nicht erfuellt'. Seit"
         )
-        print(
-            "  der Berichtigung vom 2026-08-17 (ABBRUCH.md, Bedingung 1) laeuft die"
-        )
+        print("  der Berichtigung vom 2026-08-17 (ABBRUCH.md, Bedingung 1) laeuft die")
         print(
             f"  ROT-Schwelle gegen die BEWERTBAREN Instrumente (hier "
             f"{len(gemessene_instrumente)}), und"
         )
-        print(
-            f"  unter {M1_MIN_BEWERTBAR} bewertbaren gilt M1 fail-closed als"
-        )
+        print(f"  unter {M1_MIN_BEWERTBAR} bewertbaren gilt M1 fail-closed als")
         print(
             "  ausgeloest. Das nicht bewertbare Instrument zaehlt weiterhin als NICHT"
         )
@@ -743,9 +769,11 @@ def main() -> int:
         _gegenrechnung(rechenbar)
 
     print("=" * 100)
-    print(f"ERGEBNIS: M1 = {m1}. Bezugsgroesse: {len(rechenbar)} rechenbare "
-          f"Kostenzeilen "
-          f"aus {len(UNIVERSUM)} Instrumenten x {len(kosten.brokers)} Brokern.")
+    print(
+        f"ERGEBNIS: M1 = {m1}. Bezugsgroesse: {len(rechenbar)} rechenbare "
+        f"Kostenzeilen "
+        f"aus {len(UNIVERSUM)} Instrumenten x {len(kosten.brokers)} Brokern."
+    )
     print("=" * 100)
     return 0
 
@@ -790,31 +818,40 @@ def _robustheit(rechenbar: list[Zeile], gruen_basis: list[str]) -> None:
     print()
     print("  Zahl der gruenen Instrumente je Lesart (gefordert: mindestens 3):")
     for name in "ABCDEF":
-        zahl = [inst for inst, werte in bestes.items()
-                if name in werte and werte[name] <= M1_GRUEN_MAX]
+        zahl = [
+            inst
+            for inst, werte in bestes.items()
+            if name in werte and werte[name] <= M1_GRUEN_MAX
+        ]
         ampel = "GRUEN" if len(zahl) >= M1_MIN_INSTRUMENTE_GRUEN else "NICHT GRUEN"
         print(
             f"    {name}: {len(zahl)} von {len(UNIVERSUM)} -> {ampel:<11} "
             f"{sorted(zahl)}"
         )
     print()
-    print(f"  Ausgangslage (Lesart A): {len(gruen_basis)} gruene Instrumente "
-          f"{sorted(gruen_basis)}.")
+    print(
+        f"  Ausgangslage (Lesart A): {len(gruen_basis)} gruene Instrumente "
+        f"{sorted(gruen_basis)}."
+    )
     print()
 
 
 def _jahreslast(rechenbar: list[Zeile]) -> None:
     print("-" * 100)
     print("TABELLE 3 — Jahreskostenlast L = N x H x k auf das Eigenkapital")
-    print(f"            N = Round-Turns/Jahr ({HANDELSTAGE} Handelstage), H = Hebel, "
-          "k = K/10000")
+    print(
+        f"            N = Round-Turns/Jahr ({HANDELSTAGE} Handelstage), H = Hebel, "
+        "k = K/10000"
+    )
     print(
         "            M2: ueber 50 % ist die Betriebsauslegung zu aendern, nicht der "
         "Massstab."
     )
     print("-" * 100)
-    print(f"{'Instrument':<10} {'Broker':<16} {'RT/Tag':>7} {'Hebel':>6} "
-          f"{'L in % des Eigenkapitals':>26}")
+    print(
+        f"{'Instrument':<10} {'Broker':<16} {'RT/Tag':>7} {'Hebel':>6} "
+        f"{'L in % des Eigenkapitals':>26}"
+    )
     verstoesse = 0
     gesamt = 0
     for z in rechenbar:
@@ -828,8 +865,10 @@ def _jahreslast(rechenbar: list[Zeile]) -> None:
                 if last > M2_MAX_JAHRESLAST:
                     verstoesse += 1
                     marke = "  <-- M2 gerissen"
-                print(f"{z.instrument:<10} {z.broker:<16} {rt:>7} {h:>6} "
-                      f"{_q(last * 100, '0.1'):>25} %{marke}")
+                print(
+                    f"{z.instrument:<10} {z.broker:<16} {rt:>7} {h:>6} "
+                    f"{_q(last * 100, '0.1'):>25} %{marke}"
+                )
     print()
     print(
         f"  M2 ueber alle Kombinationen: {verstoesse} von {gesamt} reissen die Grenze."
@@ -837,16 +876,19 @@ def _jahreslast(rechenbar: list[Zeile]) -> None:
     print()
     # M2 ist auf die GEPLANTE Auslegung gemuenzt: 4 Round-Turns je Handelstag, 250 Tage,
     # Hebel 5 (Krypto 2). Die Gesamtzahl oben ist nur Kontext -- das Urteil faellt hier.
-    print("  URTEIL GEGEN M2 — geplante Auslegung: 4 RT/Tag, 250 Tage, Hebel 5 "
-          "(Krypto 2)")
+    print(
+        "  URTEIL GEGEN M2 — geplante Auslegung: 4 RT/Tag, 250 Tage, Hebel 5 (Krypto 2)"
+    )
     gerissen, gehalten = m2_urteil(rechenbar)
     for name, broker_key, last in gerissen + gehalten:
         marke = "REISST" if last > M2_MAX_JAHRESLAST else "haelt "
         print(f"    {marke}  {name:<8} {broker_key:<16} {_q(last * 100, '0.1'):>8} %")
     print()
     betroffen = sorted({name for name, _, _ in gerissen})
-    print(f"  M2-URTEIL: {len(gerissen)} von {len(rechenbar)} Kostenzeilen reissen die "
-          f"50-%-Grenze")
+    print(
+        f"  M2-URTEIL: {len(gerissen)} von {len(rechenbar)} Kostenzeilen reissen die "
+        f"50-%-Grenze"
+    )
     print(f"  bei der geplanten Auslegung. Betroffen: {betroffen}.")
     if gerissen:
         print(
@@ -873,8 +915,10 @@ def _jahreslast(rechenbar: list[Zeile]) -> None:
                 schlimmste = max(lasten.values())
                 reisser = sorted(n for n, v in lasten.items() if v > M2_MAX_JAHRESLAST)
                 zustand = "haelt " if not reisser else "reisst"
-                print(f"    {rt} RT/Tag, Hebel {h}: hoechste Last "
-                      f"{_q(schlimmste * 100, '0.1'):>8} %  -> {zustand} {reisser}")
+                print(
+                    f"    {rt} RT/Tag, Hebel {h}: hoechste Last "
+                    f"{_q(schlimmste * 100, '0.1'):>8} %  -> {zustand} {reisser}"
+                )
     print()
 
 
@@ -893,8 +937,10 @@ def _swaps(rechenbar: list[Zeile], kosten: BrokerCosts) -> None:
     )
     print("  Haltedauer und damit 25 % der Trades.")
     print()
-    print(f"{'Instrument':<10} {'Broker':<16} {'bp/Nacht (long)':>17} "
-          f"{'Kreuzanteil':>12} {'Swap-Last/Jahr in %':>22}")
+    print(
+        f"{'Instrument':<10} {'Broker':<16} {'bp/Nacht (long)':>17} "
+        f"{'Kreuzanteil':>12} {'Swap-Last/Jahr in %':>22}"
+    )
     ohne_bps: list[str] = []
     for z in rechenbar:
         if z.swap_bps_nacht is None:
@@ -903,13 +949,17 @@ def _swaps(rechenbar: list[Zeile], kosten: BrokerCosts) -> None:
         for rt in UMSCHLAEGE:
             anteil = kreuzanteil(rt)
             last = swap_last_jahr(z.swap_bps_nacht, rt_pro_tag=rt)
-            print(f"{z.instrument:<10} {z.broker:<16} "
-                  f"{_q(z.swap_bps_nacht, '0.001'):>17} "
-                  f"{_q(anteil * 100, '0.1'):>11} % {_q(last * 100, '0.1'):>20} %")
+            print(
+                f"{z.instrument:<10} {z.broker:<16} "
+                f"{_q(z.swap_bps_nacht, '0.001'):>17} "
+                f"{_q(anteil * 100, '0.1'):>11} % {_q(last * 100, '0.1'):>20} %"
+            )
     print()
     if ohne_bps:
-        print(f"  Ohne Swap in Basispunkten: {len(ohne_bps)} Zeilen — "
-              "die Quelle veroeffentlicht den Satz in 'Punkten je Lot' und den dafuer")
+        print(
+            f"  Ohne Swap in Basispunkten: {len(ohne_bps)} Zeilen — "
+            "die Quelle veroeffentlicht den Satz in 'Punkten je Lot' und den dafuer"
+        )
         print(
             "  noetigen Pip-Wert NICHT. Ein geratener Pip-Wert waere die stille "
             "Annahme,"
@@ -935,15 +985,19 @@ def _gegenrechnung(rechenbar: list[Zeile]) -> None:
         f"4,17 x K."
     )
     print()
-    print(f"{'Instrument':<10} {'Broker':<16} {'K (bp)':>8} {'S fuer 56 %':>12} "
-          f"{'als xATR50':>11} {'S fuer 62 %':>12} {'als xATR50':>11}")
+    print(
+        f"{'Instrument':<10} {'Broker':<16} {'K (bp)':>8} {'S fuer 56 %':>12} "
+        f"{'als xATR50':>11} {'S fuer 62 %':>12} {'als xATR50':>11}"
+    )
     for z in rechenbar:
         assert z.k_bps is not None and z.atr_median_bps is not None
         s_gruen = stop_fuer_schwelle(z.k_bps, M1_GRUEN_MAX)
         s_gelb = stop_fuer_schwelle(z.k_bps, M1_GELB_MAX)
-        print(f"{z.instrument:<10} {z.broker:<16} {_q(z.k_bps):>8} "
-              f"{_q(s_gruen):>12} {_q(s_gruen / z.atr_median_bps, '0.001'):>11} "
-              f"{_q(s_gelb):>12} {_q(s_gelb / z.atr_median_bps, '0.001'):>11}")
+        print(
+            f"{z.instrument:<10} {z.broker:<16} {_q(z.k_bps):>8} "
+            f"{_q(s_gruen):>12} {_q(s_gruen / z.atr_median_bps, '0.001'):>11} "
+            f"{_q(s_gelb):>12} {_q(s_gelb / z.atr_median_bps, '0.001'):>11}"
+        )
     print()
     print("  Zur Einordnung: ein Stopabstand von n x ATR(14) auf H1 entspricht bei")
     print(
@@ -965,8 +1019,10 @@ def _gegenrechnung(rechenbar: list[Zeile]) -> None:
     )
     print("  sagt. Das ist kein Widerspruch im Maszstab, sondern einer im Vorhaben.")
     print()
-    print(f"{'Instrument':<10} {'K (bp)':>8} {'Kostenfloor':>12} {'ATR50':>9} "
-          f"{'1,0 x ATR zulaessig?':>22}")
+    print(
+        f"{'Instrument':<10} {'K (bp)':>8} {'Kostenfloor':>12} {'ATR50':>9} "
+        f"{'1,0 x ATR zulaessig?':>22}"
+    )
     unzulaessig: list[str] = []
     beste_zeile = guenstigste_zeile_je_instrument(rechenbar)
     for schluessel, _, _, _ in UNIVERSUM:
@@ -978,8 +1034,10 @@ def _gegenrechnung(rechenbar: list[Zeile]) -> None:
         ok = floor <= beste.atr_median_bps
         if not ok:
             unzulaessig.append(schluessel)
-        print(f"{schluessel:<10} {_q(beste.k_bps):>8} {_q(floor):>12} "
-              f"{_q(beste.atr_median_bps):>9} {('ja' if ok else 'NEIN'):>22}")
+        print(
+            f"{schluessel:<10} {_q(beste.k_bps):>8} {_q(floor):>12} "
+            f"{_q(beste.atr_median_bps):>9} {('ja' if ok else 'NEIN'):>22}"
+        )
     print()
     if unzulaessig:
         print(f"  BEFUND: bei {len(unzulaessig)} von {len(beste_zeile)} gerechneten")

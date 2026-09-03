@@ -170,8 +170,11 @@ def assess_bars(
                     outliers.append(row.ts)
 
     expected = expected_bar_count(
-        start=start, end=end, timeframe=timeframe,
-        session_predicate=session_predicate, holidays=holidays,
+        start=start,
+        end=end,
+        timeframe=timeframe,
+        session_predicate=session_predicate,
+        holidays=holidays,
     )
     present = len(seen)
     # Fuer die Lueckenquote nur Bars zaehlen, die auf einem ERWARTETEN Slot liegen (in
@@ -179,7 +182,8 @@ def assess_bars(
     # ``present`` sonst aufblaehen und echte Luecken untertreiben (konservativ, S6).
     present_expected = len(
         {
-            row.ts for row in rows
+            row.ts
+            for row in rows
             if session_predicate is not None
             and session_predicate(row.ts)
             and row.ts.date() not in holidays

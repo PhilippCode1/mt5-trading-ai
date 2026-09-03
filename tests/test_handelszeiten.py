@@ -269,9 +269,7 @@ def test_fremdes_symbol_haelt_den_platz_nicht_offen() -> None:
     Ein frischer EURUSD-Tick sagt nichts ueber einen eingefrorenen US500-Strom -- und
     genau diese beiden teilten sich im Katalog dieselbe Sitzungszeile.
     """
-    venue = _venue(
-        stempel={"EURUSD": DIENSTAG, "US500": DIENSTAG - timedelta(hours=6)}
-    )
+    venue = _venue(stempel={"EURUSD": DIENSTAG, "US500": DIENSTAG - timedelta(hours=6)})
     assert venue.is_trading_open("EURUSD", at=DIENSTAG) is True
     assert venue.is_trading_open("US500", at=DIENSTAG) is False
 
@@ -347,9 +345,7 @@ def test_ein_alter_kurs_bleibt_zu_auch_bei_frischem_at() -> None:
     Uhr des Aufrufers massgeblich, koennte er mit einem alten ``at`` einen alten Kurs
     frisch rechnen -- die Sperre haette einen Ausgang, den der Aufrufer stellt.
     """
-    venue = _venue(
-        stempel={"EURUSD": DIENSTAG - timedelta(minutes=10)}, jetzt=DIENSTAG
-    )
+    venue = _venue(stempel={"EURUSD": DIENSTAG - timedelta(minutes=10)}, jetzt=DIENSTAG)
     assert venue.is_trading_open("EURUSD", at=DIENSTAG) is False
     assert (
         venue.is_trading_open("EURUSD", at=DIENSTAG - timedelta(minutes=10)) is False

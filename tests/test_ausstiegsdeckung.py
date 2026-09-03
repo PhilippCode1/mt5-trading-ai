@@ -79,7 +79,8 @@ def test_rot_der_gemessene_fall_wird_jetzt_abgewiesen() -> None:
     kein Start.
     """
     grund = ausstiegszusage_pruefen(
-        kann_schreiben=False, schliesst_am_ende=True,
+        kann_schreiben=False,
+        schliesst_am_ende=True,
         offene_symbole=["EURUSD", "GBPUSD", "XAUUSD"],
     )
     assert grund is not None
@@ -94,16 +95,22 @@ def test_rot_der_gemessene_fall_wird_jetzt_abgewiesen() -> None:
 
 def test_gruen_ohne_offene_position_startet_der_lauf() -> None:
     """Der haeufigste Fall. Ohne ihn stuende der Riegel jedem Lauf im Weg."""
-    assert ausstiegszusage_pruefen(
-        kann_schreiben=False, schliesst_am_ende=True, offene_symbole=[]
-    ) is None
+    assert (
+        ausstiegszusage_pruefen(
+            kann_schreiben=False, schliesst_am_ende=True, offene_symbole=[]
+        )
+        is None
+    )
 
 
 def test_gruen_mit_schreibrecht_startet_der_lauf() -> None:
     """``--scharf``: der Lauf kann halten, was er zusagt."""
-    assert ausstiegszusage_pruefen(
-        kann_schreiben=True, schliesst_am_ende=True, offene_symbole=["EURUSD"]
-    ) is None
+    assert (
+        ausstiegszusage_pruefen(
+            kann_schreiben=True, schliesst_am_ende=True, offene_symbole=["EURUSD"]
+        )
+        is None
+    )
 
 
 def test_gruen_wer_kein_glattstellen_zusagt_darf_zusehen() -> None:
@@ -113,9 +120,12 @@ def test_gruen_wer_kein_glattstellen_zusagt_darf_zusehen() -> None:
     offenen Positionen bleibt dann ausdruecklich beim Menschen, und er hat es
     hingeschrieben.
     """
-    assert ausstiegszusage_pruefen(
-        kann_schreiben=False, schliesst_am_ende=False, offene_symbole=["EURUSD"]
-    ) is None
+    assert (
+        ausstiegszusage_pruefen(
+            kann_schreiben=False, schliesst_am_ende=False, offene_symbole=["EURUSD"]
+        )
+        is None
+    )
 
 
 def test_der_riegel_haengt_wirklich_im_werkzeug() -> None:
@@ -154,8 +164,11 @@ def _lauf(*saetze: str, hielt: bool = True) -> list[str]:
     """
     kopf = [json.dumps({"art": "start"})]
     if hielt:
-        kopf.append(json.dumps({"art": "eroeffnungsversuch", "eroeffnet": True,
-                                "symbol": "EURUSD"}))
+        kopf.append(
+            json.dumps(
+                {"art": "eroeffnungsversuch", "eroeffnet": True, "symbol": "EURUSD"}
+            )
+        )
     return kopf + list(saetze)
 
 
@@ -200,11 +213,13 @@ def test_ROT_zwanzig_trockenlaeufe_heben_die_quote_NICHT() -> None:
     zwanzig Sekunden -- zusammen sieben Minuten Arbeit -- jede Quote ueber jede
     Schwelle, ohne dass sich am Betrieb das Geringste bessert.
     """
-    echt = _lauf(_ende(["EURUSD"]))                       # ein echter Fehlschlag
+    echt = _lauf(_ende(["EURUSD"]))  # ein echter Fehlschlag
     trocken = [
-        z for _ in range(20)
-        for z in _lauf(json.dumps({"art": "takt", "positionen": []}),
-                       _ende([]), hielt=False)
+        z
+        for _ in range(20)
+        for z in _lauf(
+            json.dumps({"art": "takt", "positionen": []}), _ende([]), hielt=False
+        )
     ]
     vorher = ausstiegsdeckung([json.loads(z) for z in echt])
     nachher = ausstiegsdeckung([json.loads(z) for z in echt + trocken])
@@ -212,8 +227,8 @@ def test_ROT_zwanzig_trockenlaeufe_heben_die_quote_NICHT() -> None:
     assert (nachher.gelungen, nachher.gesamt) == (0, 1), (
         "Trockenlaeufe sind in den Nenner gerutscht -- die Quote ist schoenbar."
     )
-    assert nachher.unbeurteilbar == 0        # sie sind NICHT unbeurteilbar, sondern
-                                             # schlicht nicht anwendbar
+    assert nachher.unbeurteilbar == 0  # sie sind NICHT unbeurteilbar, sondern
+    # schlicht nicht anwendbar
 
 
 def test_ein_hart_gestorbener_lauf_mit_offener_position_wird_GESEHEN() -> None:
@@ -225,11 +240,17 @@ def test_ein_hart_gestorbener_lauf_mit_offener_position_wird_GESEHEN() -> None:
     """
     zeilen = [
         json.dumps({"art": "start"}),
-        json.dumps({"art": "eroeffnungsversuch", "eroeffnet": True, "symbol": "EURUSD"}),
-        json.dumps({"art": "eroeffnungsversuch", "eroeffnet": True, "symbol": "GBPUSD"}),
-        json.dumps({"art": "eroeffnungsversuch", "eroeffnet": True, "symbol": "XAUUSD"}),
+        json.dumps(
+            {"art": "eroeffnungsversuch", "eroeffnet": True, "symbol": "EURUSD"}
+        ),
+        json.dumps(
+            {"art": "eroeffnungsversuch", "eroeffnet": True, "symbol": "GBPUSD"}
+        ),
+        json.dumps(
+            {"art": "eroeffnungsversuch", "eroeffnet": True, "symbol": "XAUUSD"}
+        ),
         json.dumps({"art": "takt", "nr": 6}),
-    ]                                        # kein ende -- der Prozess ist tot
+    ]  # kein ende -- der Prozess ist tot
     wert = ausstiegsdeckung([json.loads(z) for z in zeilen])
     assert (wert.gelungen, wert.gesamt) == (0, 1)
     assert wert.unbeurteilbar == 0
@@ -243,7 +264,9 @@ def test_gruen_ein_hart_gestorbener_lauf_mit_leerem_buch_ist_sauber() -> None:
     """
     zeilen = [
         json.dumps({"art": "start"}),
-        json.dumps({"art": "eroeffnungsversuch", "eroeffnet": True, "symbol": "EURUSD"}),
+        json.dumps(
+            {"art": "eroeffnungsversuch", "eroeffnet": True, "symbol": "EURUSD"}
+        ),
         json.dumps({"art": "geschlossen", "symbol": "EURUSD"}),
         json.dumps({"art": "takt", "nr": 1122, "positionen": []}),
     ]
@@ -260,7 +283,9 @@ def test_die_aussage_des_laufs_schlaegt_die_bilanz() -> None:
     """
     zeilen = [
         json.dumps({"art": "start"}),
-        json.dumps({"art": "eroeffnungsversuch", "eroeffnet": True, "symbol": "EURUSD"}),
+        json.dumps(
+            {"art": "eroeffnungsversuch", "eroeffnet": True, "symbol": "EURUSD"}
+        ),
         json.dumps({"art": "takt", "nr": 1, "positionen": [{"symbol": "EURUSD"}]}),
         _ende([]),
     ]

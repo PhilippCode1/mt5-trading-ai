@@ -70,9 +70,9 @@ def test_append_never_rewrites(tmp_path: Path) -> None:
 def test_module_offers_no_way_to_delete_or_edit() -> None:
     forbidden = {"delete", "remove", "update", "rewrite", "truncate", "clear", "prune"}
     exported = {name.lower() for name in dir(ledger) if not name.startswith("_")}
-    assert not (
-        exported & forbidden
-    ), f"verbotene Operation im Modul: {exported & forbidden}"
+    assert not (exported & forbidden), (
+        f"verbotene Operation im Modul: {exported & forbidden}"
+    )
 
 
 def test_missing_ledger_is_zero_not_an_error(tmp_path: Path) -> None:

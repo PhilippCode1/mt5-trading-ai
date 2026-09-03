@@ -47,7 +47,14 @@ def _clean_weekday_bars(n: int = 10) -> list[BarRow]:
     while len(bars) < n:
         if cursor.weekday() < 5:
             bars.append(
-                BarRow(ts=cursor, open=1.10, high=1.11, low=1.09, close=1.105, volume=1000.0)
+                BarRow(
+                    ts=cursor,
+                    open=1.10,
+                    high=1.11,
+                    low=1.09,
+                    close=1.105,
+                    volume=1000.0,
+                )
             )
         cursor += timedelta(days=1)
     return bars
@@ -58,16 +65,18 @@ def _clean_weekday_bars(n: int = 10) -> list[BarRow]:
 
 def test_decode_dukascopy_maps_ohlc_and_time() -> None:
     # Rohsatz-Reihenfolge ist open, CLOSE, LOW, HIGH.
-    raw = _dukascopy_bytes([
-        (0, 110000, 110050, 109900, 110100, 1000.0),
-        (86400, 110050, 110200, 110000, 110300, 2000.0),
-    ])
+    raw = _dukascopy_bytes(
+        [
+            (0, 110000, 110050, 109900, 110100, 1000.0),
+            (86400, 110050, 110200, 110000, 110300, 2000.0),
+        ]
+    )
     start = datetime(2023, 1, 2, tzinfo=UTC)  # Montag
     bars = decode_dukascopy_candles(raw, period_start=start, price_divisor=100000.0)
     assert len(bars) == 2
     assert bars[0].ts == start
     assert bars[0].open == 1.10 and bars[0].close == 1.1005
-    assert bars[0].high == 1.101 and bars[0].low == 1.099   # High/Low korrekt zugeordnet
+    assert bars[0].high == 1.101 and bars[0].low == 1.099  # High/Low korrekt zugeordnet
     assert bars[1].ts == start + timedelta(days=1)
 
 
@@ -75,7 +84,8 @@ def test_decode_dukascopy_bad_length_is_error() -> None:
     with pytest.raises(DataLoadError):
         decode_dukascopy_candles(
             lzma.compress(b"\x00\x01\x02"),
-            period_start=datetime(2023, 1, 1, tzinfo=UTC), price_divisor=100000.0,
+            period_start=datetime(2023, 1, 1, tzinfo=UTC),
+            price_divisor=100000.0,
         )
 
 
@@ -83,7 +93,8 @@ def test_decode_dukascopy_not_lzma_is_error() -> None:
     with pytest.raises(DataLoadError):
         decode_dukascopy_candles(
             b"kein lzma",
-            period_start=datetime(2023, 1, 1, tzinfo=UTC), price_divisor=100000.0,
+            period_start=datetime(2023, 1, 1, tzinfo=UTC),
+            price_divisor=100000.0,
         )
 
 
@@ -101,20 +112,34 @@ def test_parse_yahoo_rounds_to_midnight_and_skips_none() -> None:
     at_2300 = int(datetime(2023, 6, 1, 23, 0, tzinfo=UTC).timestamp())
     at_0000 = int(datetime(2023, 6, 5, 0, 0, tzinfo=UTC).timestamp())
     payload = {
-        "chart": {"result": [{
-            "timestamp": [at_2300, at_0000, at_0000 + 86400],
-            "indicators": {"quote": [{
-                "open": [1.07, 1.08, None],   # dritte Bar unvollstaendig -> uebersprungen
-                "high": [1.075, 1.085, 1.0],
-                "low": [1.065, 1.075, 1.0],
-                "close": [1.07, 1.08, 1.0],
-            }]},
-        }]}
+        "chart": {
+            "result": [
+                {
+                    "timestamp": [at_2300, at_0000, at_0000 + 86400],
+                    "indicators": {
+                        "quote": [
+                            {
+                                "open": [
+                                    1.07,
+                                    1.08,
+                                    None,
+                                ],  # dritte Bar unvollstaendig -> uebersprungen
+                                "high": [1.075, 1.085, 1.0],
+                                "low": [1.065, 1.075, 1.0],
+                                "close": [1.07, 1.08, 1.0],
+                            }
+                        ]
+                    },
+                }
+            ]
+        }
     }
     bars = parse_yahoo_daily(payload)
     assert len(bars) == 2
-    assert all(b.ts.time() == time(0, 0) for b in bars)   # alle auf Mitternacht gerundet
-    assert bars[0].ts == datetime(2023, 6, 2, tzinfo=UTC)  # 23:00 -> naechste Mitternacht
+    assert all(b.ts.time() == time(0, 0) for b in bars)  # alle auf Mitternacht gerundet
+    assert bars[0].ts == datetime(
+        2023, 6, 2, tzinfo=UTC
+    )  # 23:00 -> naechste Mitternacht
     assert bars[0].volume is None
 
 
@@ -127,7 +152,14 @@ def test_parse_yahoo_broken_payload_is_error() -> None:
 
 
 def test_filter_to_weekdays_drops_weekend() -> None:
-    sat = BarRow(ts=datetime(2023, 6, 3, tzinfo=UTC), open=1.1, high=1.1, low=1.1, close=1.1, volume=0.0)
+    sat = BarRow(
+        ts=datetime(2023, 6, 3, tzinfo=UTC),
+        open=1.1,
+        high=1.1,
+        low=1.1,
+        close=1.1,
+        volume=0.0,
+    )
     bars = _clean_weekday_bars(3) + [sat]
     kept = filter_to_weekdays(bars)
     assert sat not in kept and len(kept) == 3
@@ -135,7 +167,9 @@ def test_filter_to_weekdays_drops_weekend() -> None:
 
 def test_assess_or_raise_passes_clean_series() -> None:
     report = assess_or_raise(
-        _clean_weekday_bars(10), instrument="EURUSD", timeframe="D1",
+        _clean_weekday_bars(10),
+        instrument="EURUSD",
+        timeframe="D1",
         session_predicate=WeekdaySession(),
     )
     assert report.passed
@@ -147,19 +181,40 @@ def test_assess_or_raise_fails_on_gap() -> None:
     bars = _clean_weekday_bars(10)
     del bars[5]
     with pytest.raises(DataLoadError):
-        assess_or_raise(bars, instrument="EURUSD", timeframe="D1", session_predicate=WeekdaySession())
+        assess_or_raise(
+            bars,
+            instrument="EURUSD",
+            timeframe="D1",
+            session_predicate=WeekdaySession(),
+        )
 
 
 def test_assess_or_raise_fails_on_weekend_bar() -> None:
     bars = _clean_weekday_bars(10)
-    bars.append(BarRow(ts=datetime(2023, 6, 17, tzinfo=UTC), open=1.1, high=1.11, low=1.09, close=1.1, volume=1.0))
+    bars.append(
+        BarRow(
+            ts=datetime(2023, 6, 17, tzinfo=UTC),
+            open=1.1,
+            high=1.11,
+            low=1.09,
+            close=1.1,
+            volume=1.0,
+        )
+    )
     with pytest.raises(DataLoadError):  # Samstag -> ausserhalb Session
-        assess_or_raise(bars, instrument="EURUSD", timeframe="D1", session_predicate=WeekdaySession())
+        assess_or_raise(
+            bars,
+            instrument="EURUSD",
+            timeframe="D1",
+            session_predicate=WeekdaySession(),
+        )
 
 
 def test_assess_or_raise_empty_is_error() -> None:
     with pytest.raises(DataLoadError):
-        assess_or_raise([], instrument="EURUSD", timeframe="D1", session_predicate=WeekdaySession())
+        assess_or_raise(
+            [], instrument="EURUSD", timeframe="D1", session_predicate=WeekdaySession()
+        )
 
 
 # --- Reproduzierbare Ablage + Pruefsumme ----------------------------------
@@ -169,7 +224,7 @@ def test_csv_roundtrip_and_checksum_stable() -> None:
     bars = _clean_weekday_bars(10)
     text = to_csv(bars)
     back = from_csv(text)
-    assert back == bars                       # verlustfreier Round-Trip
+    assert back == bars  # verlustfreier Round-Trip
     assert bars_checksum(back) == bars_checksum(bars)
 
 
@@ -193,7 +248,10 @@ def test_block_outage_fails_even_under_1pct_gap() -> None:
     del bars[100:104]  # 4 aufeinanderfolgende Handelstage fehlen: 4/500 = 0.8 % < 1 %
     with pytest.raises(DataLoadError):  # globale Luecke gruen, aber Block-Ausfall ROT
         assess_or_raise(
-            bars, instrument="EURUSD", timeframe="D1", session_predicate=WeekdaySession()
+            bars,
+            instrument="EURUSD",
+            timeframe="D1",
+            session_predicate=WeekdaySession(),
         )
 
 
@@ -211,8 +269,13 @@ def test_short_gap_within_run_limit_passes() -> None:
 
 def _manifest(divisor: float, bars: list[BarRow]) -> dict[str, object]:
     return dataset_manifest(
-        instrument="EURUSD", timeframe="D1", source="dukascopy-bid-day",
-        price_divisor=divisor, session="weekday-utc", bars=bars, quality_reasons=(),
+        instrument="EURUSD",
+        timeframe="D1",
+        source="dukascopy-bid-day",
+        price_divisor=divisor,
+        session="weekday-utc",
+        bars=bars,
+        quality_reasons=(),
     )
 
 
@@ -236,8 +299,11 @@ def test_load_verified_csv_passes_clean(tmp_path: Path) -> None:
     csv = tmp_path / "EURUSD_D1.csv"
     csv.write_text(to_csv(bars), encoding="utf-8")
     loaded, chk = load_verified_csv(
-        csv, instrument="EURUSD", timeframe="D1", session_predicate=WeekdaySession(),
-        expected_checksum=bars_checksum(bars),   # Herkunft belegt
+        csv,
+        instrument="EURUSD",
+        timeframe="D1",
+        session_predicate=WeekdaySession(),
+        expected_checksum=bars_checksum(bars),  # Herkunft belegt
     )
     assert loaded == bars
     assert chk == bars_checksum(bars)
@@ -264,13 +330,17 @@ def test_load_verified_csv_catches_content_edit_against_pinned_checksum(
     csv.write_text(to_csv(bars), encoding="utf-8")
     pinned = bars_checksum(bars)
     edited = list(bars)
-    edited[5] = BarRow(ts=edited[5].ts, open=1.15, high=1.16, low=1.14,
-                       close=1.155, volume=1000.0)   # gueltiges OHLC, anderer Inhalt
+    edited[5] = BarRow(
+        ts=edited[5].ts, open=1.15, high=1.16, low=1.14, close=1.155, volume=1000.0
+    )  # gueltiges OHLC, anderer Inhalt
     csv.write_text(to_csv(edited), encoding="utf-8")
     with pytest.raises(DataLoadError, match="weicht ab"):
         load_verified_csv(
-            csv, instrument="EURUSD", timeframe="D1",
-            session_predicate=WeekdaySession(), expected_checksum=pinned,
+            csv,
+            instrument="EURUSD",
+            timeframe="D1",
+            session_predicate=WeekdaySession(),
+            expected_checksum=pinned,
         )
 
 
@@ -280,8 +350,11 @@ def test_load_verified_csv_rejects_short_checksum(tmp_path: Path) -> None:
     csv.write_text(to_csv(bars), encoding="utf-8")
     with pytest.raises(DataLoadError, match="zu kurz"):
         load_verified_csv(
-            csv, instrument="EURUSD", timeframe="D1",
-            session_predicate=WeekdaySession(), expected_checksum="abcd1234",  # 8 < 16
+            csv,
+            instrument="EURUSD",
+            timeframe="D1",
+            session_predicate=WeekdaySession(),
+            expected_checksum="abcd1234",  # 8 < 16
         )
 
 
@@ -293,7 +366,10 @@ def test_load_verified_csv_rejects_bad_data(tmp_path: Path) -> None:
     csv.write_text(to_csv(bars), encoding="utf-8")
     with pytest.raises(DataLoadError):
         load_verified_csv(
-            csv, instrument="EURUSD", timeframe="D1", session_predicate=WeekdaySession(),
+            csv,
+            instrument="EURUSD",
+            timeframe="D1",
+            session_predicate=WeekdaySession(),
             require_provenance=False,
         )
 
@@ -303,14 +379,20 @@ def test_load_verified_csv_catches_manifest_mismatch(tmp_path: Path) -> None:
     csv = tmp_path / "EURUSD_D1.csv"
     csv.write_text(to_csv(bars), encoding="utf-8")
     manifest = dataset_manifest(
-        instrument="EURUSD", timeframe="D1", source="test", price_divisor=100000.0,
-        session="weekday-utc", bars=bars, quality_reasons=(),
+        instrument="EURUSD",
+        timeframe="D1",
+        source="test",
+        price_divisor=100000.0,
+        session="weekday-utc",
+        bars=bars,
+        quality_reasons=(),
     )
     manifest_path_for(csv).write_text(json.dumps(manifest), encoding="utf-8")
     # CSV nach dem Manifest veraendern -> Manifest deckt die Datei nicht mehr.
     altered = _clean_weekday_bars(20)
-    altered[0] = BarRow(ts=altered[0].ts, open=1.20, high=1.21, low=1.19,
-                        close=1.205, volume=1000.0)
+    altered[0] = BarRow(
+        ts=altered[0].ts, open=1.20, high=1.21, low=1.19, close=1.205, volume=1000.0
+    )
     csv.write_text(to_csv(altered), encoding="utf-8")
     with pytest.raises(DataLoadError, match="Manifest"):
         load_verified_csv(
@@ -324,7 +406,9 @@ def test_load_verified_csv_expected_checksum_mismatch(tmp_path: Path) -> None:
     csv.write_text(to_csv(bars), encoding="utf-8")
     with pytest.raises(DataLoadError, match="weicht ab"):
         load_verified_csv(
-            csv, instrument="EURUSD", timeframe="D1",
+            csv,
+            instrument="EURUSD",
+            timeframe="D1",
             session_predicate=WeekdaySession(),
-            expected_checksum="deadbeefdeadbeef00",   # >= 16 Hex, aber falsch
+            expected_checksum="deadbeefdeadbeef00",  # >= 16 Hex, aber falsch
         )

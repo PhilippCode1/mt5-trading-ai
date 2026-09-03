@@ -38,6 +38,7 @@ KOPF = re.compile(
     re.DOTALL,
 )
 
+
 #: Zeilenenden gehoeren NICHT zum Vergleich. Das ist eine bewusste Entscheidung, keine
 #: Nachlaessigkeit: dieses Repo laeuft mit ``core.autocrlf=true`` und ohne
 #: ``.gitattributes``, git speichert also LF und checkt unter Windows CRLF aus. Ein
@@ -136,8 +137,11 @@ def main() -> int:
         if hasattr(strom, "reconfigure"):
             strom.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--pruefen", action="store_true",
-                    help="nur melden, nichts schreiben (Rueckgabe 1 bei Abweichung)")
+    ap.add_argument(
+        "--pruefen",
+        action="store_true",
+        help="nur melden, nichts schreiben (Rueckgabe 1 bei Abweichung)",
+    )
     args = ap.parse_args()
 
     kopien = finde_kopien()
@@ -150,11 +154,15 @@ def main() -> int:
         for kopie, quelle in schief:
             rel_k = kopie.relative_to(REPO).as_posix()
             rel_q = quelle.relative_to(REPO).as_posix()
-            print(f"FEHLGESCHLAGEN — {rel_k} nennt sich wortgleiche Kopie von "
-                  f"{rel_q}, ist es aber nicht.", file=sys.stderr)
+            print(
+                f"FEHLGESCHLAGEN — {rel_k} nennt sich wortgleiche Kopie von "
+                f"{rel_q}, ist es aber nicht.",
+                file=sys.stderr,
+            )
         if schief:
-            print("\nNachziehen mit: python tools/kopien_abgleichen.py",
-                  file=sys.stderr)
+            print(
+                "\nNachziehen mit: python tools/kopien_abgleichen.py", file=sys.stderr
+            )
             return 1
         print(f"ok — {len(kopien)} Kopie(n) wortgleich mit ihren Originalen.")
         return 0
@@ -169,8 +177,10 @@ def main() -> int:
         # Der Rumpf wird byteweise uebernommen, damit das Werkzeug die Zeilenenden
         # des Originals nicht stillschweigend umschreibt.
         kopie.write_bytes(kopf.encode("utf-8") + quelle.read_bytes())
-        print(f"nachgezogen: {kopie.relative_to(REPO).as_posix()} "
-              f"<- {quelle.relative_to(REPO).as_posix()}")
+        print(
+            f"nachgezogen: {kopie.relative_to(REPO).as_posix()} "
+            f"<- {quelle.relative_to(REPO).as_posix()}"
+        )
     if not schief:
         print(f"ok — {len(kopien)} Kopie(n) waren bereits wortgleich.")
     return 0

@@ -110,7 +110,7 @@ def volatility_breakout(lookback: int) -> Strategy:
         if len(history) < lookback + 1:
             pos = Signal.FLAT
             return pos
-        prior = history[-lookback - 1:-1]  # die lookback Bars VOR dem aktuellen
+        prior = history[-lookback - 1 : -1]  # die lookback Bars VOR dem aktuellen
         upper = max(bar.high for bar in prior)
         lower = min(bar.low for bar in prior)
         close = history[-1].close

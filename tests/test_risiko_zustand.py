@@ -127,9 +127,7 @@ def _autorisiere(
     )
 
 
-def _lauf(
-    pfad: Path, politik: RiskPolicy | None = None, **kw: Any
-) -> RiskManager:
+def _lauf(pfad: Path, politik: RiskPolicy | None = None, **kw: Any) -> RiskManager:
     """Ein „Prozessstart": ein frischer Manager auf derselben Zustandsdatei."""
     return RiskManager(politik, zustand=DateiZustand(pfad), **kw)
 
@@ -222,9 +220,9 @@ def test_relativer_pfad_aus_der_umgebung_wird_abgewiesen() -> None:
             standard_zustandsdatei(umgebung={variable: "betrieb/risikozustand.json"})
     # Gegenprobe: absolut geht durch.
     absolut = str(Path.home() / "risikozustand.json")
-    assert standard_zustandsdatei(
-        umgebung={"MT5_RISIKO_ZUSTAND": absolut}
-    ) == Path(absolut)
+    assert standard_zustandsdatei(umgebung={"MT5_RISIKO_ZUSTAND": absolut}) == Path(
+        absolut
+    )
 
 
 def test_ein_pfad_im_paketbaum_wird_abgewiesen() -> None:
@@ -532,9 +530,7 @@ def test_freigabe_ueberdauert_den_neustart_nicht(tmp_path) -> None:  # type: ign
 
     # Neustart, und der Drawdown reisst erneut: keine ueberdauernde Freigabe.
     lauf3 = _lauf(pfad)
-    auth = _autorisiere(
-        lauf3, account=_konto("9000"), now=NOW + timedelta(minutes=2)
-    )
+    auth = _autorisiere(lauf3, account=_konto("9000"), now=NOW + timedelta(minutes=2))
     assert auth.approved is False
     assert auth.latch_halt is True
 
@@ -659,9 +655,7 @@ def test_schnitt_am_korbende_nicht_am_korbanfang() -> None:
     fenster = fenster_fortschreiben([], alt, Decimal("12000"), fenster_dauer)
     # Genau am Rand: der Korbanfang liegt schon ausserhalb, das Korbende nicht.
     spaeter = korb_start(alt) + fenster_dauer + FENSTER_KORB - timedelta(minutes=1)
-    fenster = fenster_fortschreiben(
-        fenster, spaeter, Decimal("10000"), fenster_dauer
-    )
+    fenster = fenster_fortschreiben(fenster, spaeter, Decimal("10000"), fenster_dauer)
     assert max(eq for _korb, eq in fenster) == Decimal("12000")
 
 
@@ -781,8 +775,15 @@ def test_eine_vorhandene_gebundene_datei_wird_nur_am_fenster_fortgeschrieben(  #
     lauf.observe_equity(NOW + timedelta(hours=1), Decimal("12345"))
 
     nachher = _lies(pfad)
-    for abschnitt in ("schema", "waehrung", "bindung", "halt", "tageszaehler",
-                      "letzter_trade_at", "offene_positionen"):
+    for abschnitt in (
+        "schema",
+        "waehrung",
+        "bindung",
+        "halt",
+        "tageszaehler",
+        "letzter_trade_at",
+        "offene_positionen",
+    ):
         assert nachher[abschnitt] == vorher[abschnitt], abschnitt
     assert nachher["equity"]["tag"] == vorher["equity"]["tag"]
     assert nachher["equity"]["tagesstart"] == vorher["equity"]["tagesstart"]

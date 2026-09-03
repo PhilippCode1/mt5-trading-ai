@@ -125,7 +125,9 @@ def test_abbau_ohne_volumen_wird_abgelehnt() -> None:
     assert terminal.order_send_calls == 0
 
 
-def test_reduce_flag_ohne_gegenposition_ist_eine_eroeffnung_und_geht_durch_alle_tore() -> None:
+def test_reduce_flag_ohne_gegenposition_ist_eine_eroeffnung_und_geht_durch_alle_tore() -> (
+    None
+):
     """Der rote Gegenfall zur Ausnahme selbst.
 
     Ohne die Pruefung ``_reduces_position`` waere ``reduce_only=True`` ein Freifahrt-
@@ -144,9 +146,7 @@ def test_abbau_ueber_die_gegenposition_hinaus_ist_eine_eroeffnung() -> None:
     """Ein Abbau, der die Position reisst, dreht sie -- und Drehen ist Eroeffnen."""
     venue, terminal = _venue(is_demo=True, positions=_WINZIGE_LONG)
     with pytest.raises(OrderRejectedError) as ex:
-        venue.submit_order(
-            _abbau(client_order_id="v5-flip", volume=Decimal("0.01"))
-        )
+        venue.submit_order(_abbau(client_order_id="v5-flip", volume=Decimal("0.01")))
     assert ex.value.reason == "missing_stop_loss"
     assert terminal.order_send_calls == 0
 
@@ -169,9 +169,7 @@ def test_fehlender_kontoschnappschuss_wird_mit_grund_abgelehnt() -> None:
     assert terminal.order_send_calls == 0
 
 
-@pytest.mark.parametrize(
-    "feld", ["account_id", "currency", "is_demo", "ts"]
-)
+@pytest.mark.parametrize("feld", ["account_id", "currency", "is_demo", "ts"])
 def test_jedes_fehlende_pflichtfeld_des_kontos_sperrt(feld: str) -> None:
     """Ueber ALLE Pflichtfelder gemessen, nicht am Vertreter (Belegregel des Auftrags).
 
@@ -189,9 +187,7 @@ def test_jedes_fehlende_pflichtfeld_des_kontos_sperrt(feld: str) -> None:
     assert terminal.order_send_calls == 0
 
 
-@pytest.mark.parametrize(
-    "feld", ["balance", "equity", "margin_used", "margin_free"]
-)
+@pytest.mark.parametrize("feld", ["balance", "equity", "margin_used", "margin_free"])
 def test_jede_nicht_endliche_geldzahl_des_kontos_sperrt(feld: str) -> None:
     """``NaN`` ueberlebt jeden Vergleich klaglos -- und faerbt ihn in die milde Richtung.
 

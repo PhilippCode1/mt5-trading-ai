@@ -188,24 +188,30 @@ def run_smoke(
             if registration is None:
                 try:
                     registration = register_for_demo(
-                        strategy_id=demo.strategy_id, version=demo.version,
-                        edge_verdict=demo.edge_verdict, account=beobachtet,
+                        strategy_id=demo.strategy_id,
+                        version=demo.version,
+                        edge_verdict=demo.edge_verdict,
+                        account=beobachtet,
                         clock=lambda: at,
                     )
                 except DemoGateError as exc:
                     report.add("demo_registration", False, str(exc))
             if registration is not None:
                 report.add(
-                    "demo_registration", True,
+                    "demo_registration",
+                    True,
                     f"{registration.strategy_id} seit {registration.registered_on}",
                 )
                 readiness = evaluate_demo_progress(
-                    registration=registration, observed_account=beobachtet,
-                    live_verdict=demo.live_verdict, clock=lambda: at,
+                    registration=registration,
+                    observed_account=beobachtet,
+                    live_verdict=demo.live_verdict,
+                    clock=lambda: at,
                 )
                 report.demo_readiness = readiness
                 report.add(
-                    "demo_progress", readiness.ready_for_live_question,
+                    "demo_progress",
+                    readiness.ready_for_live_question,
                     ", ".join(readiness.reasons) or "reif fuer Live-Frage",
                 )
 
@@ -294,14 +300,13 @@ def _write_probe(
     weggeklickt.
     """
     bestand = tuple(
-        pos
-        for pos in positionen
-        if pos.symbol == symbol and pos.side is OrderSide.BUY
+        pos for pos in positionen if pos.symbol == symbol and pos.side is OrderSide.BUY
     )
     if bestand:
         tickets = ", ".join(pos.venue_position_id for pos in bestand)
         report.add(
-            "write_probe", False,
+            "write_probe",
+            False,
             f"{symbol} traegt bereits einen Long (Ticket {tickets}) -- die Probe waere "
             "eine zweite gleichgerichtete Position und wird vom Doppelorder-Riegel "
             "abgelehnt. Konto in diesem Symbol glattstellen, dann erneut fahren.",

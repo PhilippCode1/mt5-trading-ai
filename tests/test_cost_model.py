@@ -65,16 +65,16 @@ def _fx_raw(commission: str = "7") -> dict[str, object]:
 
 def test_roundturn_cost_components() -> None:
     c = _cost()
-    assert c.spread == Decimal("1")       # 0.00001 * 100000 * 1
+    assert c.spread == Decimal("1")  # 0.00001 * 100000 * 1
     assert c.commission == Decimal("7")
-    assert c.slippage == Decimal("10")    # 0.5 Pip * 0.0001 * 100000 * 1 * 2 Seiten
-    assert c.financing == Decimal("0")    # 0 Naechte
+    assert c.slippage == Decimal("10")  # 0.5 Pip * 0.0001 * 100000 * 1 * 2 Seiten
+    assert c.financing == Decimal("0")  # 0 Naechte
     assert c.total == Decimal("18")
     assert c.currency == "USD"
 
 
 def test_financing_counts_nights_and_triple() -> None:
-    assert _cost(holding_nights=1).financing == Decimal("8")   # -(-8 * 1 * 1)
+    assert _cost(holding_nights=1).financing == Decimal("8")  # -(-8 * 1 * 1)
     assert _cost(holding_nights=3).financing == Decimal("24")  # -(-8 * 1 * 3)
     # Dreifach-Nacht zaehlt dreifach: Einheiten = 3 + 2*1 = 5 -> 40
     assert _cost(holding_nights=3, triple_swap_nights=1).financing == Decimal("40")
@@ -105,9 +105,9 @@ def test_mismatched_currency_without_rate_is_error() -> None:
 
 def test_mismatched_currency_with_rate_scales_quote_costs() -> None:
     c = _cost(quote_currency="GBP", quote_to_account_rate=Decimal("1.25"))
-    assert c.spread == Decimal("1.25")     # 1 GBP * 1.25 -> USD
-    assert c.slippage == Decimal("12.5")   # 10 GBP * 1.25 -> USD
-    assert c.commission == Decimal("7")    # Kommission ist bereits Kontowaehrung
+    assert c.spread == Decimal("1.25")  # 1 GBP * 1.25 -> USD
+    assert c.slippage == Decimal("12.5")  # 10 GBP * 1.25 -> USD
+    assert c.commission == Decimal("7")  # Kommission ist bereits Kontowaehrung
 
 
 def test_same_currency_ignores_supplied_rate() -> None:

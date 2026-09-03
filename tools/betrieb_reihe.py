@@ -84,15 +84,19 @@ def _geldbericht(trades: list[Trade]) -> None:
     if not b.trades:
         return
     eigene = len(b.trades) - b.vom_broker
-    print(f"  Geldergebnisse       : {len(b.trades)} ({b.vom_broker} vom Broker "
-          f"geschlossen, {eigene} selbst geschlossen)")
+    print(
+        f"  Geldergebnisse       : {len(b.trades)} ({b.vom_broker} vom Broker "
+        f"geschlossen, {eigene} selbst geschlossen)"
+    )
     for herkunft, n in sorted(b.je_herkunft.items()):
         print(f"      {n:>4}x  Herkunft: {herkunft}")
     if b.summe is None:
         print(f"  Keine Summe: {b.hindernis}.")
         return
-    print(f"  Summe der Schaetzungen: {b.summe:+} {b.waehrung} "
-          f"(brutto, ohne Swap und Kommission)")
+    print(
+        f"  Summe der Schaetzungen: {b.summe:+} {b.waehrung} "
+        f"(brutto, ohne Swap und Kommission)"
+    )
 
 
 def auswerten(laeufe: list[Lauf], *, nur_scharf: bool) -> int:
@@ -105,8 +109,10 @@ def auswerten(laeufe: list[Lauf], *, nur_scharf: bool) -> int:
     print("=" * 100)
     print(f"BETRIEBSREIHE — {len(laeufe)} Laeufe")
     print("=" * 100)
-    print(f"{'Beginn':<13}{'Dauer':>10}  {'Art':<8}{'Takte':>6}{'Trades':>10}"
-          f"{'Equity':>13}  Codestand")
+    print(
+        f"{'Beginn':<13}{'Dauer':>10}  {'Art':<8}{'Takte':>6}{'Trades':>10}"
+        f"{'Equity':>13}  Codestand"
+    )
     print("-" * 100)
     for lauf in laeufe:
         print("  " + _kopfzeile(lauf))
@@ -120,8 +126,10 @@ def auswerten(laeufe: list[Lauf], *, nur_scharf: bool) -> int:
         print("-" * 100)
         print("EQUITY UEBER ALLE LAEUFE")
         print("-" * 100)
-        print(f"  {len(punkte)} Messpunkte von {punkte[0][0]:%d.%m %H:%M} "
-              f"bis {punkte[-1][0]:%d.%m %H:%M}")
+        print(
+            f"  {len(punkte)} Messpunkte von {punkte[0][0]:%d.%m %H:%M} "
+            f"bis {punkte[-1][0]:%d.%m %H:%M}"
+        )
         print(f"  {anfang} -> {ende}   ({ende - anfang:+})")
         print(f"  Luecken zwischen Laeufen: {luecken}")
         print("  In den Luecken lief die Schleife nicht. Was dort geschah -- ein")
@@ -169,15 +177,18 @@ def auswerten(laeufe: list[Lauf], *, nur_scharf: bool) -> int:
     print()
 
     if b.preis:
-        print(f"  Median-Preisergebnis : {statistics.median(b.preis):+.2f} bp "
-              f"ueber {len(b.preis)}")
-        print(f"  Spanne               : {min(b.preis):+.2f} .. "
-              f"{max(b.preis):+.2f} bp")
+        print(
+            f"  Median-Preisergebnis : {statistics.median(b.preis):+.2f} bp "
+            f"ueber {len(b.preis)}"
+        )
+        print(f"  Spanne               : {min(b.preis):+.2f} .. {max(b.preis):+.2f} bp")
     if b.beurteilt:
         treffer = sum(1 for t in b.beurteilt if t.gewinn) / len(b.beurteilt)
-        print(f"  Trefferanteil        : {treffer * 100:.1f} % ueber "
-              f"{len(b.beurteilt)} beurteilbare "
-              f"(davon {len(b.nur_geld)} per Geldschaetzung)")
+        print(
+            f"  Trefferanteil        : {treffer * 100:.1f} % ueber "
+            f"{len(b.beurteilt)} beurteilbare "
+            f"(davon {len(b.nur_geld)} per Geldschaetzung)"
+        )
     _geldbericht(b.geschlossen)
     if b.preis or b.beurteilt:
         print()
@@ -197,8 +208,7 @@ def main() -> int:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser(description="Alle Betriebslaeufe hintereinander")
     ap.add_argument("--verzeichnis", type=Path, default=JOURNALE)
-    ap.add_argument("--nur-scharf", action="store_true",
-                    help="Trockenlaeufe auslassen")
+    ap.add_argument("--nur-scharf", action="store_true", help="Trockenlaeufe auslassen")
     args = ap.parse_args()
     return auswerten(lies_alle(args.verzeichnis), nur_scharf=args.nur_scharf)
 

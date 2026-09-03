@@ -1387,9 +1387,7 @@ class Mt5Venue(TradingVenue):
             )
         return preflight.effective_leverage
 
-    def _enforce_cost_gate(
-        self, instrument: Instrument, request: OrderRequest
-    ) -> None:
+    def _enforce_cost_gate(self, instrument: Instrument, request: OrderRequest) -> None:
         """Pre-Trade-Kostentor fuer eine eroeffnende Order (Live-Pflicht, Demo-frei).
 
         Auf Demo entfaellt es (kein Echtgeld) -- wie die Live-Freigabe. Auf Live ohne
@@ -1626,8 +1624,7 @@ class Mt5Venue(TradingVenue):
         kennungen = ", ".join(e.client_order_id for e in befund.eintraege) or "?"
         raise OrderRejectedError(
             "Ungeklaerter Sendeversuch -- beim Broker nachsehen und aufloesen: "
-            f"{kennungen}"
-            + (f" ({befund.sperrgrund})" if befund.sperrgrund else ""),
+            f"{kennungen}" + (f" ({befund.sperrgrund})" if befund.sperrgrund else ""),
             reason="schwebender_auftrag",
             retryable=False,
         )
@@ -2351,9 +2348,7 @@ class RealMt5Terminal:
                     real_volume=self._d(row["real_volume"])
                     if "real_volume" in names
                     else None,
-                    spread_points=self._d(row["spread"])
-                    if "spread" in names
-                    else None,
+                    spread_points=self._d(row["spread"]) if "spread" in names else None,
                 )
             )
         return tuple(out)

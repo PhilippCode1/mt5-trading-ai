@@ -161,7 +161,9 @@ def test_eine_regulaere_zeile_wiegt_eins() -> None:
     assert _zeile(herkunft=Herkunft.ABGELEHNT, ergebnis_bp=None).gewicht == 1.0
 
 
-def test_eine_erkundete_zeile_ohne_wahrscheinlichkeit_laesst_sich_nicht_gewichten() -> None:
+def test_eine_erkundete_zeile_ohne_wahrscheinlichkeit_laesst_sich_nicht_gewichten() -> (
+    None
+):
     """V3: ein fehlender Messwert sperrt, er wird nicht durch 1 ersetzt."""
     with pytest.raises(ValueError, match="Auswahlwahrscheinlichkeit"):
         _ = _zeile(herkunft=Herkunft.ERKUNDET, wahrscheinlichkeit=0.0).gewicht
@@ -183,7 +185,10 @@ def test_die_gewichtung_verschiebt_den_mittelwert_in_die_richtige_richtung() -> 
 
 def test_ohne_zeile_mit_ergebnis_gibt_es_keinen_mittelwert() -> None:
     """Kein Ersatzwert: ein Mittel aus nichts ist keine Null (V3)."""
-    assert gewichteter_mittelwert([_zeile(herkunft=Herkunft.ABGELEHNT, ergebnis_bp=None)]) is None
+    assert (
+        gewichteter_mittelwert([_zeile(herkunft=Herkunft.ABGELEHNT, ergebnis_bp=None)])
+        is None
+    )
 
 
 def test_der_erkundungsanteil_zaehlt_gegen_die_zeilen_mit_ergebnis() -> None:
@@ -244,7 +249,9 @@ def test_der_boden_weist_unsinn_weiterhin_ab() -> None:
 # =====================================================================
 # Abnahme — die Auswertungstabelle traegt gekennzeichnete Absagen
 # =====================================================================
-def test_die_auswertung_enthaelt_gekennzeichnete_zeilen_aus_abgelehnten_signalen() -> None:
+def test_die_auswertung_enthaelt_gekennzeichnete_zeilen_aus_abgelehnten_signalen() -> (
+    None
+):
     """Der Abnahmefall, gegen die eingecheckte Aufzeichnung."""
     from tools.auswertung import tabelle_aus_journal
 
@@ -285,13 +292,21 @@ def test_der_trainingslauf_weist_den_anteil_erkundender_beobachtungen_aus(
     """Der zweite Abnahmefall, am echten Werkzeug."""
     lauf = subprocess.run(
         [
-            sys.executable, "tools/modelllauf.py",
-            "--journal", str(AUFZEICHNUNG),
-            "--ablage", str(tmp_path / "ablage"),
-            "--data-checksum", "a" * 64,
-            "--code-commit", "abc1234",
+            sys.executable,
+            "tools/modelllauf.py",
+            "--journal",
+            str(AUFZEICHNUNG),
+            "--ablage",
+            str(tmp_path / "ablage"),
+            "--data-checksum",
+            "a" * 64,
+            "--code-commit",
+            "abc1234",
         ],
-        cwd=ROOT, capture_output=True, text=True, check=False,
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
     )
     assert "Erkundende Beobachtungen" in lauf.stdout, lauf.stdout
     assert "%" in lauf.stdout
@@ -301,7 +316,10 @@ def test_die_auswertung_laeuft_gegen_die_eingecheckte_aufzeichnung() -> None:
     """Bestaetigt durch Ausfuehrung, nicht durch Zusicherung."""
     lauf = subprocess.run(
         [sys.executable, "tools/auswertung.py", "--journal", str(AUFZEICHNUNG)],
-        cwd=ROOT, capture_output=True, text=True, check=False,
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
     )
     assert lauf.returncode == 0, lauf.stderr or lauf.stdout
     assert "abgelehnt" in lauf.stdout

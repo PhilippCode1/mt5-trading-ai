@@ -171,11 +171,11 @@ class BacktestReport:
     cost_commission: float
     cost_slippage: float
     cost_financing: float  # nur gezahlte Finanzierung (>= 0)
-    carry_income: float    # empfangener Positiv-Swap (>= 0), separater Ertrag
+    carry_income: float  # empfangener Positiv-Swap (>= 0), separater Ertrag
     net_return: float
-    annualised_sharpe: float       # Bar-Level (obs = Bars); fuer Daueranlagen ueblich
-    trade_sharpe: float    # Trade-Level (obs=Trades); ehrlich bei seltenem Handel
-    trade_sharpe_per_obs: float    # nicht annualisiert (je Trade) -- Deflations-Input
+    annualised_sharpe: float  # Bar-Level (obs = Bars); fuer Daueranlagen ueblich
+    trade_sharpe: float  # Trade-Level (obs=Trades); ehrlich bei seltenem Handel
+    trade_sharpe_per_obs: float  # nicht annualisiert (je Trade) -- Deflations-Input
     annualisation: str
     max_drawdown: float
     hit_rate: float
@@ -484,7 +484,10 @@ def run_walk_forward(
     # ausschliessen und das Training leer lassen -- dann waere der Fit-Schritt (S7)
     # wirkungslos.
     folds = purged_walk_forward_indices(
-        _bar_ranges(bars), k, purge_ms=purge_ms, embargo_ms=embargo_ms,
+        _bar_ranges(bars),
+        k,
+        purge_ms=purge_ms,
+        embargo_ms=embargo_ms,
         exclude_prior_test=False,
     )
     reports: list[BacktestReport] = []
@@ -496,9 +499,13 @@ def run_walk_forward(
         train_bars = [bars[j] for j in train_idx]
         window = [bars[j] for j in test_idx]
         report = run_backtest(
-            window, strategy_fitter(train_bars), spec,
-            strategy_id=f"{strategy_id}#fold{fold_index}", seed=seed + fold_index,
-            data_checksum="", code_commit=code_commit,
+            window,
+            strategy_fitter(train_bars),
+            spec,
+            strategy_id=f"{strategy_id}#fold{fold_index}",
+            seed=seed + fold_index,
+            data_checksum="",
+            code_commit=code_commit,
         )
         reports.append(report)
         if ledger_path is not None:
@@ -506,15 +513,20 @@ def run_walk_forward(
             # ``strategy_id`` ins Register, damit die Deflation ihre wahre Zahl kennt.
             trials.append(
                 trials.new_trial(
-                    strategy_id=strategy_id, version=version,
+                    strategy_id=strategy_id,
+                    version=version,
                     instruments=(spec.symbol,),
-                    period_start=window[0].ts, period_end=window[-1].ts,
+                    period_start=window[0].ts,
+                    period_end=window[-1].ts,
                     leverage=int(spec.leverage),
                     parameters={"fold": fold_index, "seed": seed + fold_index},
-                    outcome="completed", sharpe=report.annualised_sharpe,
-                    net_expectancy=report.net_return, trades=report.trades,
+                    outcome="completed",
+                    sharpe=report.annualised_sharpe,
+                    net_expectancy=report.net_return,
+                    trades=report.trades,
                     # Herkunft je Fold (Paket 6): die abgeleitete Fenster-Pruefsumme.
-                    data_checksum=report.data_checksum, code_commit=code_commit,
+                    data_checksum=report.data_checksum,
+                    code_commit=code_commit,
                 ),
                 ledger_path,
             )
@@ -668,20 +680,29 @@ def run_registered_backtest(
     period_end = bars[-1].ts if bars else stamp
     try:
         report = run_backtest(
-            bars, strategy, spec, strategy_id=strategy_id, seed=seed,
-            data_checksum=data_checksum, code_commit=code_commit,
+            bars,
+            strategy,
+            spec,
+            strategy_id=strategy_id,
+            seed=seed,
+            data_checksum=data_checksum,
+            code_commit=code_commit,
         )
     except Exception as exc:  # jeder Lauf zaehlt -- auch unerwartete Fehler
         outcome = "aborted" if isinstance(exc, LookAheadError) else "error"
         # Herkunft auch im Fehlerfall: Pruefsumme aus den Bars ableiten (Paket 6).
         trials.append(
             trials.new_trial(
-                strategy_id=strategy_id, version=version, instruments=(spec.symbol,),
-                period_start=period_start, period_end=period_end,
+                strategy_id=strategy_id,
+                version=version,
+                instruments=(spec.symbol,),
+                period_start=period_start,
+                period_end=period_end,
                 leverage=int(spec.leverage),
                 parameters={"seed": seed, "error": str(exc)},
                 outcome=outcome,
-                data_checksum=bars_checksum(list(bars)), code_commit=code_commit,
+                data_checksum=bars_checksum(list(bars)),
+                code_commit=code_commit,
                 ts=stamp,
             ),
             ledger_path,
@@ -689,13 +710,20 @@ def run_registered_backtest(
         raise
     trials.append(
         trials.new_trial(
-            strategy_id=strategy_id, version=version, instruments=(spec.symbol,),
-            period_start=period_start, period_end=period_end,
-            leverage=int(spec.leverage), parameters={"seed": seed},
-            outcome="completed", sharpe=report.annualised_sharpe,
-            net_expectancy=report.net_return, trades=report.trades,
+            strategy_id=strategy_id,
+            version=version,
+            instruments=(spec.symbol,),
+            period_start=period_start,
+            period_end=period_end,
+            leverage=int(spec.leverage),
+            parameters={"seed": seed},
+            outcome="completed",
+            sharpe=report.annualised_sharpe,
+            net_expectancy=report.net_return,
+            trades=report.trades,
             # Die im Bericht abgeleitete (echte) Pruefsumme, nicht der Erwartungswert.
-            data_checksum=report.data_checksum, code_commit=code_commit,
+            data_checksum=report.data_checksum,
+            code_commit=code_commit,
             ts=stamp,
         ),
         ledger_path,

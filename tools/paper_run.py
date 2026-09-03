@@ -68,16 +68,29 @@ class PaperTerminal:
     def __init__(self) -> None:
         self._connected = False
         self._symbol = Mt5Symbol(
-            name="EURUSD", digits=5, tick_size=Decimal("0.00001"),
-            pip_size=Decimal("0.0001"), contract_size=Decimal("100000"),
-            volume_min=Decimal("0.01"), volume_step=Decimal("0.01"),
-            volume_max=Decimal("100"), base_currency="EUR", quote_currency="USD",
-            stop_level_points=10, freeze_level_points=0, visible=True,
+            name="EURUSD",
+            digits=5,
+            tick_size=Decimal("0.00001"),
+            pip_size=Decimal("0.0001"),
+            contract_size=Decimal("100000"),
+            volume_min=Decimal("0.01"),
+            volume_step=Decimal("0.01"),
+            volume_max=Decimal("100"),
+            base_currency="EUR",
+            quote_currency="USD",
+            stop_level_points=10,
+            freeze_level_points=0,
+            visible=True,
         )
         self._account = Mt5Account(
-            account_id="DEMO-1", currency="USD", balance=Decimal("10000"),
-            equity=Decimal("10000"), margin_used=Decimal("0"),
-            margin_free=Decimal("100000"), is_demo=True, ts=_TS,
+            account_id="DEMO-1",
+            currency="USD",
+            balance=Decimal("10000"),
+            equity=Decimal("10000"),
+            margin_used=Decimal("0"),
+            margin_free=Decimal("100000"),
+            is_demo=True,
+            ts=_TS,
         )
 
     def initialize(self) -> bool:
@@ -105,14 +118,24 @@ class PaperTerminal:
         self, name: str, timeframe: Timeframe, start: datetime, end: datetime
     ) -> tuple[Mt5Rate, ...]:
         return (
-            Mt5Rate(ts=_TS, open=Decimal("1.1"), high=Decimal("1.2"),
-                    low=Decimal("1.0"), close=Decimal("1.15"), tick_volume=100),
+            Mt5Rate(
+                ts=_TS,
+                open=Decimal("1.1"),
+                high=Decimal("1.2"),
+                low=Decimal("1.0"),
+                close=Decimal("1.15"),
+                tick_volume=100,
+            ),
         )
 
     def order_send(self, request: object) -> Mt5SendResult:
         return Mt5SendResult(
-            accepted=True, venue_order_id="PAPER-1", filled_volume=Decimal("0.15"),
-            average_price=Decimal("1.10000"), ts=_TS, reason="done",
+            accepted=True,
+            venue_order_id="PAPER-1",
+            filled_volume=Decimal("0.15"),
+            average_price=Decimal("1.10000"),
+            ts=_TS,
+            reason="done",
         )
 
     def cancel(self, venue_order_id: str) -> bool:
@@ -130,10 +153,12 @@ class PaperTerminal:
 
 def _catalog() -> dict[str, CatalogEntry]:
     fees = FeeSchedule(
-        commission_per_lot_round_turn=Decimal("7"), typical_spread_points=Decimal("6"),
+        commission_per_lot_round_turn=Decimal("7"),
+        typical_spread_points=Decimal("6"),
         swap_long_per_lot_per_night=Decimal("-2"),
         swap_short_per_lot_per_night=Decimal("-1"),
-        triple_swap_weekday=2, currency="USD",
+        triple_swap_weekday=2,
+        currency="USD",
     )
     sessions = tuple(
         TradingSession(weekday=d, open_utc="00:00", close_utc="22:00") for d in range(5)
@@ -141,9 +166,7 @@ def _catalog() -> dict[str, CatalogEntry]:
     return {"EURUSD": CatalogEntry(AssetClass.FX_MAJOR, fees, sessions)}
 
 
-def build_paper_venue(
-    risk_manager: RiskManager, *, now: datetime = _TS
-) -> Mt5Venue:
+def build_paper_venue(risk_manager: RiskManager, *, now: datetime = _TS) -> Mt5Venue:
     """Ein verbundenes Demo-Venue mit verdrahteter Risikoschicht.
 
     Der Manager wird von aussen hereingereicht und ist **derselbe**, den der Runner
@@ -155,9 +178,13 @@ def build_paper_venue(
     synthetische Terminal stempelt einen festen Kontozustand.
     """
     venue = Mt5Venue(
-        name="paper", terminal=PaperTerminal(), catalog=_catalog(),
-        sync=PrivateSync(), max_notional_drift=Decimal("0"),
-        risk_manager=risk_manager, clock=lambda: now,
+        name="paper",
+        terminal=PaperTerminal(),
+        catalog=_catalog(),
+        sync=PrivateSync(),
+        max_notional_drift=Decimal("0"),
+        risk_manager=risk_manager,
+        clock=lambda: now,
     )
     venue.connect()
     return venue
@@ -179,8 +206,13 @@ def run_paper(symbol: str, *, now: datetime | None = None) -> tuple[RunnerReport
         cost_gate=CostGate(max_roundturn_cost_fraction=Decimal("0.0005")),
     )
     report = run_signal(
-        venue=venue, risk_manager=risk_manager, admission=_demo_admission(),
-        symbol=symbol, side=Signal.LONG, config=config, now=at,
+        venue=venue,
+        risk_manager=risk_manager,
+        admission=_demo_admission(),
+        symbol=symbol,
+        side=Signal.LONG,
+        config=config,
+        now=at,
         client_order_id=f"paper-{symbol}-{int(at.timestamp())}",
     )
     # Ein Scheduler-Takt mit einem Startup-Heartbeat: Frische/Drift getaktet geprueft.

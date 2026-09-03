@@ -170,9 +170,9 @@ def test_margin_follows_from_leverage_only() -> None:
     at_five = _size(leverage=5)
     at_ten = _size(leverage=10)
     assert at_five.volume == at_ten.volume, "der Hebel aendert die Groesse nicht"
-    assert (
-        at_five.risk_currency == at_ten.risk_currency
-    ), "der Hebel aendert das Risiko nicht"
+    assert at_five.risk_currency == at_ten.risk_currency, (
+        "der Hebel aendert das Risiko nicht"
+    )
     assert at_five.margin_required is not None and at_ten.margin_required is not None
     assert at_ten.margin_required < at_five.margin_required
 

@@ -164,7 +164,9 @@ def test_kommission_null_ohne_waehrung_ist_zulaessig(tmp_path: Path) -> None:
     _eurusd(roh)["commission_round_turn"] = "0"
     del _eurusd(roh)["commission_currency"]
     kosten = load_broker_costs(_schreibe(tmp_path, roh))
-    assert kosten.brokers["test_broker"].instruments["EURUSD"].commission_round_turn == 0
+    assert (
+        kosten.brokers["test_broker"].instruments["EURUSD"].commission_round_turn == 0
+    )
 
 
 def test_fehlende_kommission_ist_ein_fehler_keine_null(tmp_path: Path) -> None:
@@ -223,8 +225,15 @@ def test_unbekannter_status_faellt_nicht_auf_einen_default(tmp_path: Path) -> No
 # --- Kopfblock und Slippage ----------------------------------------------
 @pytest.mark.parametrize(
     "feld",
-    ["schema_version", "costs_id", "costs_version", "valid_from", "verified_on",
-     "slippage", "brokers"],
+    [
+        "schema_version",
+        "costs_id",
+        "costs_version",
+        "valid_from",
+        "verified_on",
+        "slippage",
+        "brokers",
+    ],
 )
 def test_jedes_kopf_pflichtfeld_einzeln(tmp_path: Path, feld: str) -> None:
     roh = _gueltig()

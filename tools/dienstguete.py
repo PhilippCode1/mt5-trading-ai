@@ -103,8 +103,10 @@ def main() -> int:
             # Muss sichtbar sein (V3): ein Anteil aus 8 Vorgaengen, waehrend 11 weitere
             # gar nicht beurteilbar waren, sagt etwas anderes als ein Anteil aus 19.
             # Sie stillschweigend wegzulassen ist dieselbe Luege wie sie mitzuzaehlen.
-            print(f"    NICHT BEURTEILBAR: {wert.unbeurteilbar} weitere Vorgaenge -- "
-                  f"die Aufzeichnung gibt es nicht her, nicht im Nenner")
+            print(
+                f"    NICHT BEURTEILBAR: {wert.unbeurteilbar} weitere Vorgaenge -- "
+                f"die Aufzeichnung gibt es nicht her, nicht im Nenner"
+            )
         print(f"    Warum diese Schwelle: {ziel.begruendung}")
 
     # --- Diagnose: passiert es noch? -----------------------------------------
@@ -148,8 +150,10 @@ def main() -> int:
     print(text)
     print()
     print(f"Zugestellt nach: {args.alarmdatei}")
-    print("FEHLGESCHLAGEN — Alarm steht. Handlungsanweisung in RUNBOOK.md.",
-          file=sys.stderr)
+    print(
+        "FEHLGESCHLAGEN — Alarm steht. Handlungsanweisung in RUNBOOK.md.",
+        file=sys.stderr,
+    )
     return 1
 
 

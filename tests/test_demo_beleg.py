@@ -76,11 +76,15 @@ def test_einen_tag_vor_der_frist_nicht_reif() -> None:
     [
         (_beleg(strategy_id="   "), "strategie_id_fehlt"),
         (_beleg(version=""), "strategie_version_fehlt"),
-        (_beleg(konto=DemoAccount("  ", "Demo-Broker", True)),
-         "kontonummer_fehlt_im_beleg"),
+        (
+            _beleg(konto=DemoAccount("  ", "Demo-Broker", True)),
+            "kontonummer_fehlt_im_beleg",
+        ),
         (_beleg(konto=DemoAccount("demo-9001", "", True)), "broker_fehlt_im_beleg"),
-        (_beleg(konto=DemoAccount("demo-9001", "Demo-Broker", False)),
-         "registrierung_nicht_auf_demokonto"),
+        (
+            _beleg(konto=DemoAccount("demo-9001", "Demo-Broker", False)),
+            "registrierung_nicht_auf_demokonto",
+        ),
         (_beleg(tage_alt=-3), "registrierung_in_der_zukunft_3_tage"),
     ],
 )

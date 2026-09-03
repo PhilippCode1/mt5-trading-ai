@@ -200,9 +200,12 @@ def noetige_sharpe_fuer_dsr(*, ziel: float, beobachtungen: int, versuche: int) -
     das ein Befund und kein Ergebnis.
     """
     unten, oben = 0.0, 5.0
-    if deflated_sharpe_ratio(
-        observed_sharpe=oben, observations=beobachtungen, trials=versuche
-    ) <= ziel:
+    if (
+        deflated_sharpe_ratio(
+            observed_sharpe=oben, observations=beobachtungen, trials=versuche
+        )
+        <= ziel
+    ):
         raise TorFehler(
             f"Selbst eine Sharpe je Trade von {oben} erreicht die Deflationsschwelle "
             f"{ziel} bei {beobachtungen} Beobachtungen und {versuche} Versuchen nicht. "
@@ -210,9 +213,12 @@ def noetige_sharpe_fuer_dsr(*, ziel: float, beobachtungen: int, versuche: int) -
         )
     for _ in range(200):
         mitte = (unten + oben) / 2
-        if deflated_sharpe_ratio(
-            observed_sharpe=mitte, observations=beobachtungen, trials=versuche
-        ) > ziel:
+        if (
+            deflated_sharpe_ratio(
+                observed_sharpe=mitte, observations=beobachtungen, trials=versuche
+            )
+            > ziel
+        ):
             oben = mitte
         else:
             unten = mitte
@@ -279,10 +285,12 @@ def main() -> int:
     ap.add_argument("--instrument", default="EURUSD")
     ap.add_argument("--timeframe", default="H1")
     ap.add_argument(
-        "--kampagne", type=int, default=60,
+        "--kampagne",
+        type=int,
+        default=60,
         help="Zahl der vorregistrierten Kampagnenversuche fuer die Deflation "
-             "(ABBRUCH.md §2; dieselbe Zahl, die edge_test als "
-             "--campaign-trials bekommt)",
+        "(ABBRUCH.md §2; dieselbe Zahl, die edge_test als "
+        "--campaign-trials bekommt)",
     )
     args = ap.parse_args()
 
@@ -410,8 +418,10 @@ def main() -> int:
     print(f"Fenster (ueberlappend)  : {n}")
     print(f"Mittel |Bewegung|       m : {m_bp:.4f} bp   (Substanz je Trade)")
     print(f"Streuung vorzeichenbeh. s : {s_bp:.4f} bp   (Nenner der Sharpe)")
-    print(f"Verhaeltnis s/m           : {s_bp / m_bp:.3f}   "
-          f"(Normalverteilung waere 1,253 -- daruber = schwerere Raender)")
+    print(
+        f"Verhaeltnis s/m           : {s_bp / m_bp:.3f}   "
+        f"(Normalverteilung waere 1,253 -- daruber = schwerere Raender)"
+    )
     print()
     print("-" * 78)
     print("5) DIE ANTWORT")
@@ -519,8 +529,10 @@ def main() -> int:
         f"  Dieselbe Rechnung auf dem OoS-Block ergaebe f = {anteil_oos:.4f} "
         f"= {anteil_oos * 100:.1f} % statt {anteil * 100:.1f} %."
     )
-    print(f"  Als Trefferquote waeren das {float(p_oos) * 100:.2f} % statt "
-          f"{float(p_tor) * 100:.2f} %.")
+    print(
+        f"  Als Trefferquote waeren das {float(p_oos) * 100:.2f} % statt "
+        f"{float(p_tor) * 100:.2f} %."
+    )
     print("  Der Block, an dem das Tor tatsaechlich urteilt, ist also der schwerere.")
     print("." * 78)
     return 0

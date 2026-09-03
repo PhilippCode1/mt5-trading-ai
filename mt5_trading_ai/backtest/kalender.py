@@ -315,8 +315,14 @@ def load_ereigniskalender(path: Path | None = None) -> Ereigniskalender:
     if not isinstance(roh, dict):
         raise KalenderError(f"{pfad}: Wurzel ist kein Objekt")
 
-    for feld in ("calendar_id", "calendar_version", "verified_on", "server_tz",
-                 "server_tz_beleg", "kandidaten"):
+    for feld in (
+        "calendar_id",
+        "calendar_version",
+        "verified_on",
+        "server_tz",
+        "server_tz_beleg",
+        "kandidaten",
+    ):
         if feld not in roh:
             raise KalenderError(f"{pfad}: Feld {feld!r} fehlt")
 
@@ -332,8 +338,10 @@ def load_ereigniskalender(path: Path | None = None) -> Ereigniskalender:
             "keinen geaenderten Eintrag."
         )
     if not str(roh["server_tz_beleg"]).strip():
-        raise KalenderError(f"{pfad}: server_tz_beleg ist leer — die Zeitzone ist die "
-                            "empfindlichste Zahl des Pakets und braucht ihren Nachweis")
+        raise KalenderError(
+            f"{pfad}: server_tz_beleg ist leer — die Zeitzone ist die "
+            "empfindlichste Zahl des Pakets und braucht ihren Nachweis"
+        )
 
     datei_schluessel = [k.get("schluessel") for k in roh["kandidaten"]]
     code_schluessel = [k.schluessel for k in KANDIDATEN]

@@ -48,7 +48,8 @@ def _quellen() -> list[Path]:
     if not JOURNALE.is_dir():
         return []
     return sorted(
-        p for p in JOURNALE.iterdir()
+        p
+        for p in JOURNALE.iterdir()
         if p.is_file() and p.suffix in (".jsonl", ".log", ".err")
     )
 
@@ -63,13 +64,16 @@ def sichern(ziel: Path) -> int:
     for q in quellen:
         summe = _summe(q)
         shutil.copy2(q, ziel / q.name)
-        eintraege.append({
-            "datei": q.name,
-            "bytes": q.stat().st_size,
-            "sha256": summe,
-            "geaendert": datetime.fromtimestamp(q.stat().st_mtime, tz=UTC)
-            .isoformat(timespec="seconds"),
-        })
+        eintraege.append(
+            {
+                "datei": q.name,
+                "bytes": q.stat().st_size,
+                "sha256": summe,
+                "geaendert": datetime.fromtimestamp(
+                    q.stat().st_mtime, tz=UTC
+                ).isoformat(timespec="seconds"),
+            }
+        )
         print(f"  {q.name:<40} {q.stat().st_size:>10} B  {summe[:16]}...")
     verzeichnis = {
         "gesichert_am": datetime.now(UTC).isoformat(timespec="seconds"),
@@ -107,11 +111,16 @@ def pruefen(ziel: Path) -> int:
         else:
             print(f"  ok       {eintrag['datei']}")
     if schlecht:
-        print(f"\nFEHLGESCHLAGEN — {schlecht} von {len(verzeichnis['dateien'])} "
-              "Dateien stimmen nicht.", file=sys.stderr)
+        print(
+            f"\nFEHLGESCHLAGEN — {schlecht} von {len(verzeichnis['dateien'])} "
+            "Dateien stimmen nicht.",
+            file=sys.stderr,
+        )
         return 1
-    print(f"\nok — alle {len(verzeichnis['dateien'])} Dateien unveraendert "
-          f"seit {verzeichnis['gesichert_am']}")
+    print(
+        f"\nok — alle {len(verzeichnis['dateien'])} Dateien unveraendert "
+        f"seit {verzeichnis['gesichert_am']}"
+    )
     return 0
 
 
@@ -119,10 +128,17 @@ def main() -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser(description="Betriebsjournale sichern und pruefen")
-    ap.add_argument("--ziel", type=Path, required=True,
-                    help="Verzeichnis der Sicherung, ausserhalb des Repos")
-    ap.add_argument("--pruefen", action="store_true",
-                    help="nur die Pruefsummen einer vorhandenen Sicherung vergleichen")
+    ap.add_argument(
+        "--ziel",
+        type=Path,
+        required=True,
+        help="Verzeichnis der Sicherung, ausserhalb des Repos",
+    )
+    ap.add_argument(
+        "--pruefen",
+        action="store_true",
+        help="nur die Pruefsummen einer vorhandenen Sicherung vergleichen",
+    )
     args = ap.parse_args()
     return pruefen(args.ziel) if args.pruefen else sichern(args.ziel)
 

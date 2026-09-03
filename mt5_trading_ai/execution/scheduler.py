@@ -69,9 +69,7 @@ class SyncScheduler:
         self._started_at = started_at
         self._rm = risk_manager
 
-    def tick(
-        self, now: datetime, *, events: Sequence[PrivateEvent] = ()
-    ) -> TickResult:
+    def tick(self, now: datetime, *, events: Sequence[PrivateEvent] = ()) -> TickResult:
         """Ein Takt. ``events`` sind die seit dem letzten Takt eingetroffenen
         Kontoereignisse (in Sequenzreihenfolge). Setzt den Halt bei jedem Defekt."""
         # 1) Equity-Beobachtung ZUERST -- sonst bleibt der Fenster-Peak ~ aktuelle

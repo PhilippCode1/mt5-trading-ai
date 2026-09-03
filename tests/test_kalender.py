@@ -124,9 +124,7 @@ def test_die_drei_zonen_fallen_im_sommer_auseinander() -> None:
 def test_wochenenden_kommen_nicht_vor() -> None:
     k = kandidat("K1")
     for ts in ereignisse(k, date(2024, 1, 1), date(2024, 12, 31)):
-        assert ts.weekday() < 5 or ts.hour >= 20, (
-            f"{ts} faellt auf ein Wochenende"
-        )
+        assert ts.weekday() < 5 or ts.hour >= 20, f"{ts} faellt auf ein Wochenende"
 
 
 def test_monatsende_liefert_den_letzten_werktag() -> None:
@@ -159,7 +157,9 @@ def test_alle_kandidaten_laufen_im_stundenfenster() -> None:
     assert {k.fenster_stunden for k in KANDIDATEN} == {1.0}
 
 
-def test_jeder_kandidat_nennt_seine_wirtschaftliche_begruendung_und_seinen_beleg() -> None:
+def test_jeder_kandidat_nennt_seine_wirtschaftliche_begruendung_und_seinen_beleg() -> (
+    None
+):
     for k in KANDIDATEN:
         assert len(k.konvention) > 60, f"{k.schluessel}: Begruendung zu duenn"
         assert len(k.beleg) > 40, f"{k.schluessel}: kein Beleg"
@@ -175,8 +175,14 @@ def test_die_echte_datei_laedt() -> None:
 
 @pytest.mark.parametrize(
     "feld",
-    ["calendar_id", "calendar_version", "verified_on", "server_tz",
-     "server_tz_beleg", "kandidaten"],
+    [
+        "calendar_id",
+        "calendar_version",
+        "verified_on",
+        "server_tz",
+        "server_tz_beleg",
+        "kandidaten",
+    ],
 )
 def test_fehlendes_pflichtfeld_laedt_nicht(tmp_path: Path, feld: str) -> None:
     roh = json.loads(ECHTE_DATEI.read_text(encoding="utf-8"))
@@ -237,8 +243,11 @@ def test_die_uhrzeiten_im_code_sind_die_der_datei() -> None:
     roh = json.loads(ECHTE_DATEI.read_text(encoding="utf-8"))
     aus_datei = {e["schluessel"]: e["uhrzeit"] for e in roh["kandidaten"]}
     erwartet = {
-        "K1": time(16, 0), "K2": time(9, 55), "K3": time(16, 0),
-        "K4": time(0, 0), "K5": time(16, 0),
+        "K1": time(16, 0),
+        "K2": time(9, 55),
+        "K3": time(16, 0),
+        "K4": time(0, 0),
+        "K5": time(16, 0),
     }
     for k in KANDIDATEN:
         assert k.uhrzeit == erwartet[k.schluessel]

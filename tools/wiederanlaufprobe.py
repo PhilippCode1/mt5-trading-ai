@@ -72,18 +72,27 @@ WAEHRUNG = "USD"
 
 def _instrument() -> Instrument:
     return Instrument(
-        symbol="EURUSD", venue="mt5", asset_class=AssetClass.FX_MAJOR,
-        contract_size=Decimal("100000"), tick_size=Decimal("0.00001"),
-        pip_size=Decimal("0.0001"), digits=5,
-        volume_min=Decimal("0.01"), volume_step=Decimal("0.01"),
-        volume_max=Decimal("100"), base_currency="EUR", quote_currency="USD",
-        stop_level_points=10, freeze_level_points=0,
+        symbol="EURUSD",
+        venue="mt5",
+        asset_class=AssetClass.FX_MAJOR,
+        contract_size=Decimal("100000"),
+        tick_size=Decimal("0.00001"),
+        pip_size=Decimal("0.0001"),
+        digits=5,
+        volume_min=Decimal("0.01"),
+        volume_step=Decimal("0.01"),
+        volume_max=Decimal("100"),
+        base_currency="EUR",
+        quote_currency="USD",
+        stop_level_points=10,
+        freeze_level_points=0,
         fees=FeeSchedule(
             commission_per_lot_round_turn=Decimal("7"),
             typical_spread_points=Decimal("6"),
             swap_long_per_lot_per_night=Decimal("-2"),
             swap_short_per_lot_per_night=Decimal("-1"),
-            triple_swap_weekday=2, currency="USD",
+            triple_swap_weekday=2,
+            currency="USD",
         ),
         sessions=(),
     )
@@ -91,17 +100,24 @@ def _instrument() -> Instrument:
 
 def _konto(equity: str) -> AccountState:
     return AccountState(
-        account_id=KONTO, currency=WAEHRUNG,
-        balance=Decimal(equity), equity=Decimal(equity),
-        margin_used=Decimal("0"), margin_free=Decimal(equity),
-        is_demo=True, ts=TS,
+        account_id=KONTO,
+        currency=WAEHRUNG,
+        balance=Decimal(equity),
+        equity=Decimal(equity),
+        margin_used=Decimal("0"),
+        margin_free=Decimal(equity),
+        is_demo=True,
+        ts=TS,
     )
 
 
 def _order() -> OrderRequest:
     return OrderRequest(
-        client_order_id="c-probe", symbol="EURUSD", side=OrderSide.BUY,
-        order_type=OrderType.MARKET, volume=Decimal("0.01"),
+        client_order_id="c-probe",
+        symbol="EURUSD",
+        side=OrderSide.BUY,
+        order_type=OrderType.MARKET,
+        volume=Decimal("0.01"),
         stop_loss=Decimal("1.09000"),
     )
 
@@ -110,8 +126,13 @@ def _autorisiere(
     rm: RiskManager, konto: AccountState, now: datetime
 ) -> RiskAuthorization:
     return rm.authorize_opening(
-        instrument=_instrument(), request=_order(), account=konto,
-        price=Decimal("1.10000"), spread_bps=Decimal("0.9"), leverage=5, now=now,
+        instrument=_instrument(),
+        request=_order(),
+        account=konto,
+        price=Decimal("1.10000"),
+        spread_bps=Decimal("0.9"),
+        leverage=5,
+        now=now,
     )
 
 
@@ -134,11 +155,13 @@ def probe(ordner: Path) -> list[tuple[str, bool, str]]:
     erster.record_open_fill("EURUSD", TS)
     # 10.000 -> 8.000 sind 20 % Drawdown gegen eine Grenze von 10 %: latcht den Halt.
     eingebrochen = _autorisiere(erster, _konto("8000"), TS + timedelta(minutes=1))
-    ergebnisse.append((
-        "Lauf 1: der Einbruch latcht ueberhaupt einen Halt",
-        not eingebrochen.approved and eingebrochen.latch_halt,
-        f"Grund: {eingebrochen.reason}",
-    ))
+    ergebnisse.append(
+        (
+            "Lauf 1: der Einbruch latcht ueberhaupt einen Halt",
+            not eingebrochen.approved and eingebrochen.latch_halt,
+            f"Grund: {eingebrochen.reason}",
+        )
+    )
 
     akte = SchwebeAkte(schwebedatei)
     akte.vermerken(
@@ -149,98 +172,123 @@ def probe(ordner: Path) -> list[tuple[str, bool, str]]:
 
     # --- Lauf 2: frisch gebaut, dieselben Dateien, ERHOLTES Konto --------------
     zweiter = _lauf(zustandsdatei)
-    ergebnisse.append((
-        "Risikozustand: Datei liegt auf der Platte",
-        zustandsdatei.is_file(),
-        str(zustandsdatei),
-    ))
-    ergebnisse.append((
-        "Risikozustand: dauerhaft, nicht fluechtig",
-        zweiter.zustand_dauerhaft,
-        "eine fluechtige Schicht verhaelt sich bis zum Neustart genau wie eine "
-        "dauerhafte -- deshalb wird sie hier gefragt",
-    ))
+    ergebnisse.append(
+        (
+            "Risikozustand: Datei liegt auf der Platte",
+            zustandsdatei.is_file(),
+            str(zustandsdatei),
+        )
+    )
+    ergebnisse.append(
+        (
+            "Risikozustand: dauerhaft, nicht fluechtig",
+            zweiter.zustand_dauerhaft,
+            "eine fluechtige Schicht verhaelt sich bis zum Neustart genau wie eine "
+            "dauerhafte -- deshalb wird sie hier gefragt",
+        )
+    )
 
     erholt = _autorisiere(zweiter, _konto("10000"), TS + timedelta(hours=2))
-    ergebnisse.append((
-        "Der Halt WIRKT nach dem Neustart -- bei erholtem Konto",
-        not erholt.approved and erholt.latch_halt,
-        f"Konto wieder bei 10.000, Antwort: approved={erholt.approved}, "
-        f"reason={erholt.reason}",
-    ))
+    ergebnisse.append(
+        (
+            "Der Halt WIRKT nach dem Neustart -- bei erholtem Konto",
+            not erholt.approved and erholt.latch_halt,
+            f"Konto wieder bei 10.000, Antwort: approved={erholt.approved}, "
+            f"reason={erholt.reason}",
+        )
+    )
     # ``reason`` ist ``str | None``. Ein fehlender Grund ist hier ein Durchfall und
     # kein Sonderfall: eine Ablehnung ohne Grund waere nach dem Neustart genau die
     # Auskunft, mit der niemand etwas anfangen kann.
     grund = erholt.reason or ""
-    ergebnisse.append((
-        "Der Grund ueberdauert mit, nicht nur das Ja/Nein",
-        "gelatcht" in grund or "drawdown" in grund,
-        f"'{grund}' -- ohne Grund weiss der Mensch am Morgen nicht, wonach "
-        f"er sehen soll",
-    ))
+    ergebnisse.append(
+        (
+            "Der Grund ueberdauert mit, nicht nur das Ja/Nein",
+            "gelatcht" in grund or "drawdown" in grund,
+            f"'{grund}' -- ohne Grund weiss der Mensch am Morgen nicht, wonach "
+            f"er sehen soll",
+        )
+    )
 
     # --- Die Schwebeakte -------------------------------------------------------
     zweite_akte = SchwebeAkte(schwebedatei)
     befund = zweite_akte.laden()
     kennungen = [e.client_order_id for e in befund.eintraege]
-    ergebnisse.append((
-        "Schwebeakte: dauerhaft, nicht fluechtig",
-        zweite_akte.dauerhaft,
-        str(schwebedatei),
-    ))
-    ergebnisse.append((
-        "Schwebeakte: der ungeklaerte Sendeversuch ueberdauert",
-        kennungen == ["open-EURUSD-probe"],
-        f"gelesen: {kennungen}",
-    ))
-    ergebnisse.append((
-        "Schwebeakte: der Grund ueberdauert unveraendert",
-        bool(befund.eintraege)
-        and befund.eintraege[0].grund == "Zeitablauf beim Senden",
-        "der Grund sagt, wonach beim Broker zu sehen ist",
-    ))
+    ergebnisse.append(
+        (
+            "Schwebeakte: dauerhaft, nicht fluechtig",
+            zweite_akte.dauerhaft,
+            str(schwebedatei),
+        )
+    )
+    ergebnisse.append(
+        (
+            "Schwebeakte: der ungeklaerte Sendeversuch ueberdauert",
+            kennungen == ["open-EURUSD-probe"],
+            f"gelesen: {kennungen}",
+        )
+    )
+    ergebnisse.append(
+        (
+            "Schwebeakte: der Grund ueberdauert unveraendert",
+            bool(befund.eintraege)
+            and befund.eintraege[0].grund == "Zeitablauf beim Senden",
+            "der Grund sagt, wonach beim Broker zu sehen ist",
+        )
+    )
 
     # --- Was ABSICHTLICH nicht ueberdauert -------------------------------------
     liegengeblieben = sorted(p.name for p in ordner.iterdir())
-    ergebnisse.append((
-        "Das Buch wird NICHT persistiert (Absicht, nicht Luecke)",
-        all("buch" not in n for n in liegengeblieben),
-        "es kommt beim Start vom Handelsplatz (adopt_book); eine gespeicherte Fassung "
-        f"waere eine zweite Wahrheit neben der des Brokers. Liegt: {liegengeblieben}",
-    ))
+    ergebnisse.append(
+        (
+            "Das Buch wird NICHT persistiert (Absicht, nicht Luecke)",
+            all("buch" not in n for n in liegengeblieben),
+            "es kommt beim Start vom Handelsplatz (adopt_book); eine gespeicherte "
+            "Fassung waere eine zweite Wahrheit neben der des Brokers. "
+            f"Liegt: {liegengeblieben}",
+        )
+    )
 
     # --- Der einzige Weg heraus ------------------------------------------------
     entfernt = zweite_akte.aufloesen(
         "open-EURUSD-probe", befund="Probe: beim Broker nachgesehen, keine Order"
     )
-    ergebnisse.append((
-        "Aufloesung MIT Befund raeumt den Eintrag ab",
-        entfernt and zweite_akte.laden().eintraege == (),
-        "und sie ueberdauert ihrerseits: die Akte ist danach leer",
-    ))
+    ergebnisse.append(
+        (
+            "Aufloesung MIT Befund raeumt den Eintrag ab",
+            entfernt and zweite_akte.laden().eintraege == (),
+            "und sie ueberdauert ihrerseits: die Akte ist danach leer",
+        )
+    )
     ohne_befund_wirft = False
     try:
         zweite_akte.aufloesen("open-EURUSD-probe", befund="   ")
     except ValueError:
         ohne_befund_wirft = True
-    ergebnisse.append((
-        "Aufloesung OHNE Befund wird abgewiesen",
-        ohne_befund_wirft,
-        "wer nichts hinschreibt, hat nichts nachgesehen",
-    ))
+    ergebnisse.append(
+        (
+            "Aufloesung OHNE Befund wird abgewiesen",
+            ohne_befund_wirft,
+            "wer nichts hinschreibt, hat nichts nachgesehen",
+        )
+    )
 
     # --- Und der Halt bleibt, bis ein Mensch ihn freigibt ----------------------
     dritter = RiskManager(
-        zustand=DateiZustand(zustandsdatei), konto_id=KONTO, waehrung=WAEHRUNG,
+        zustand=DateiZustand(zustandsdatei),
+        konto_id=KONTO,
+        waehrung=WAEHRUNG,
         manual_release_id="probe-freigabe-2026-08-20",
     )
     freigegeben = _autorisiere(dritter, _konto("10000"), TS + timedelta(hours=3))
-    ergebnisse.append((
-        "Erst die menschliche Freigabe loest ihn -- und dann wirklich",
-        freigegeben.approved,
-        f"mit Freigabekennung: approved={freigegeben.approved}, "
-        f"reason={freigegeben.reason!r}",
-    ))
+    ergebnisse.append(
+        (
+            "Erst die menschliche Freigabe loest ihn -- und dann wirklich",
+            freigegeben.approved,
+            f"mit Freigabekennung: approved={freigegeben.approved}, "
+            f"reason={freigegeben.reason!r}",
+        )
+    )
     return ergebnisse
 
 
@@ -249,8 +297,9 @@ def main() -> int:
         if hasattr(strom, "reconfigure"):
             strom.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser(description="Geprobter Wiederanlauf")
-    ap.add_argument("--behalten", action="store_true",
-                    help="den Probeordner nicht loeschen")
+    ap.add_argument(
+        "--behalten", action="store_true", help="den Probeordner nicht loeschen"
+    )
     args = ap.parse_args()
 
     ordner = Path(tempfile.mkdtemp(prefix="wiederanlaufprobe-"))
@@ -273,14 +322,17 @@ def main() -> int:
             gefallen.append(name)
 
     print()
-    print(f"{len(ergebnisse) - len(gefallen)} von {len(ergebnisse)} "
-          f"Pruefungen bestanden.")
+    print(
+        f"{len(ergebnisse) - len(gefallen)} von {len(ergebnisse)} Pruefungen bestanden."
+    )
     if gefallen:
         print()
         for name in gefallen:
             print(f"FEHLGESCHLAGEN - {name}", file=sys.stderr)
-        print("Ein Wiederanlauf, der Zustand verliert, verliert ihn im Ernstfall.",
-              file=sys.stderr)
+        print(
+            "Ein Wiederanlauf, der Zustand verliert, verliert ihn im Ernstfall.",
+            file=sys.stderr,
+        )
         return 1
     print("ok - der Wiederanlauf haelt.")
     return 0

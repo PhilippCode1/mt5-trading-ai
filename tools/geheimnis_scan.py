@@ -14,6 +14,7 @@ Aufruf:  python tools/geheimnis_scan.py
 Voraussetzung: ``pip install detect-secrets`` (Entwicklungswerkzeug, kein
 Laufzeitpaket -- der Kern selbst haengt weiter an nichts ausser der stdlib).
 """
+
 from __future__ import annotations
 
 import json
@@ -26,25 +27,46 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union
 REPO = Path(__file__).resolve().parents[1]
 
 MUSTER: list[tuple[str, re.Pattern[bytes]]] = [
-    ("MT5-Login (Kontonummer als login=/login:)",
-     re.compile(rb"(?i)\blogin\s*[=:]\s*[\"']?\d{6,12}")),
-    ("Kontonummer (account/konto = 6-12 Ziffern)",
-     re.compile(rb"(?i)\b(?:account|konto)(?:_?(?:id|number|nr))?\s*[=:]\s*[\"']?\d{6,12}")),
-    ("Passwort im Klartext",
-     re.compile(rb"(?i)\b(?:password|passwort|passwd|pwd)\s*[=:]\s*[\"'][^\"'\s]{4,}")),
-    ("API-Schluessel / Token",
-     re.compile(rb"(?i)\b(?:api[_-]?key|apikey|secret|token|bearer)\s*[=:]\s*"
-                rb"[\"'][A-Za-z0-9_\-/+]{16,}")),
-    ("Privater Schluessel (PEM)",
-     re.compile(rb"-----BEGIN (?:RSA |EC |OPENSSH |DSA |PGP )?PRIVATE KEY-----")),
-    ("Broker-Serveradresse (MT5-Servername)",
-     re.compile(rb"(?i)\b(?:server)\s*[=:]\s*[\"'][A-Za-z][A-Za-z0-9]*-(?:Demo|Live|Real)"
-                rb"[A-Za-z0-9]*[\"']")),
-    ("IP-Adresse mit Port",
-     re.compile(rb"\b(?:\d{1,3}\.){3}\d{1,3}:\d{2,5}\b")),
+    (
+        "MT5-Login (Kontonummer als login=/login:)",
+        re.compile(rb"(?i)\blogin\s*[=:]\s*[\"']?\d{6,12}"),
+    ),
+    (
+        "Kontonummer (account/konto = 6-12 Ziffern)",
+        re.compile(
+            rb"(?i)\b(?:account|konto)(?:_?(?:id|number|nr))?\s*[=:]\s*[\"']?\d{6,12}"
+        ),
+    ),
+    (
+        "Passwort im Klartext",
+        re.compile(
+            rb"(?i)\b(?:password|passwort|passwd|pwd)\s*[=:]\s*[\"'][^\"'\s]{4,}"
+        ),
+    ),
+    (
+        "API-Schluessel / Token",
+        re.compile(
+            rb"(?i)\b(?:api[_-]?key|apikey|secret|token|bearer)\s*[=:]\s*"
+            rb"[\"'][A-Za-z0-9_\-/+]{16,}"
+        ),
+    ),
+    (
+        "Privater Schluessel (PEM)",
+        re.compile(rb"-----BEGIN (?:RSA |EC |OPENSSH |DSA |PGP )?PRIVATE KEY-----"),
+    ),
+    (
+        "Broker-Serveradresse (MT5-Servername)",
+        re.compile(
+            rb"(?i)\b(?:server)\s*[=:]\s*[\"'][A-Za-z][A-Za-z0-9]*-(?:Demo|Live|Real)"
+            rb"[A-Za-z0-9]*[\"']"
+        ),
+    ),
+    ("IP-Adresse mit Port", re.compile(rb"\b(?:\d{1,3}\.){3}\d{1,3}:\d{2,5}\b")),
     ("AWS-Zugangsschluessel", re.compile(rb"\bAKIA[0-9A-Z]{16}\b")),
-    ("Slack-/GitHub-Token",
-     re.compile(rb"\b(?:xox[baprs]-|ghp_|github_pat_)[A-Za-z0-9_-]{10,}")),
+    (
+        "Slack-/GitHub-Token",
+        re.compile(rb"\b(?:xox[baprs]-|ghp_|github_pat_)[A-Za-z0-9_-]{10,}"),
+    ),
 ]
 
 #: Bekannte, unbedenkliche Fundstellen -- eine Vorlage ist kein Geheimnis.
@@ -101,9 +123,11 @@ def main() -> int:
     print("-" * 90)
     print("2) GESAMTER VERLAUF — jedes Blob-Objekt einzeln")
     print("-" * 90)
-    liste = lauf("git", "rev-list", "--objects", "--all").stdout.decode(
-        "utf-8", "replace"
-    ).splitlines()
+    liste = (
+        lauf("git", "rev-list", "--objects", "--all")
+        .stdout.decode("utf-8", "replace")
+        .splitlines()
+    )
     blobs: list[tuple[str, bytes]] = []
     for zeile in liste:
         teile = zeile.split(" ", 1)
@@ -117,8 +141,11 @@ def main() -> int:
     commits = lauf("git", "rev-list", "--count", "--all").stdout.decode().strip()
     print(f"Gepruefte Objekte : {len(blobs)} Blobs aus {commits} Commits")
     funde_verlauf = regex_runde("VERLAUF", blobs)
-    echte = [f for f in funde_verlauf
-             if not any(u.decode() in f.lower() for u in UNBEDENKLICH)]
+    echte = [
+        f
+        for f in funde_verlauf
+        if not any(u.decode() in f.lower() for u in UNBEDENKLICH)
+    ]
     print(f"Funde (roh)       : {len(funde_verlauf)}")
     print(f"Funde (bereinigt) : {len(echte)}  [Vorlagen wie .env.example abgezogen]")
     for f in funde_verlauf:
@@ -158,13 +185,13 @@ def main() -> int:
     print()
 
     gesamt = (
-        sum(len(v) for v in treffer.values())
-        + len(funde_verlauf)
-        + len(funde_baum)
+        sum(len(v) for v in treffer.values()) + len(funde_verlauf) + len(funde_baum)
     )
     print("=" * 90)
-    print(f"ERGEBNIS: {gesamt} Funde bei {dateien_geprueft} verfolgten Dateien und "
-          f"{len(blobs)} Blobs im Verlauf.")
+    print(
+        f"ERGEBNIS: {gesamt} Funde bei {dateien_geprueft} verfolgten Dateien und "
+        f"{len(blobs)} Blobs im Verlauf."
+    )
     print("=" * 90)
     return 0
 

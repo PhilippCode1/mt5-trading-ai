@@ -103,9 +103,9 @@ KATALOG: tuple[Sonde, ...] = (
         name="kontopruefung",
         datei="mt5_trading_ai/venue/mt5.py",
         alt="        mangel = konto_maengel(acc)\n        if mangel is not None:\n"
-            "            raise OrderRejectedError(",
+        "            raise OrderRejectedError(",
         neu="        mangel = None\n        if mangel is not None:\n"
-            "            raise OrderRejectedError(",
+        "            raise OrderRejectedError(",
         tests=("tests/test_stufe4_risikokern.py",),
         bedeutet="Leere Kontodaten stuerzen wieder ab, statt mit Grund abzulehnen.",
     ),
@@ -193,14 +193,8 @@ KATALOG: tuple[Sonde, ...] = (
     Sonde(
         name="kostenpraemisse",
         datei="mt5_trading_ai/execution/risk_manager.py",
-        alt=(
-            "            kampagne if kampagne is not None "
-            "else kostenpraemisse_bps(klasse)"
-        ),
-        neu=(
-            "            kampagne if kampagne is not None "
-            "else assumed_cost_bps(klasse)"
-        ),
+        alt="kampagne if kampagne is not None else kostenpraemisse_bps(klasse)",
+        neu="kampagne if kampagne is not None else assumed_cost_bps(klasse)",
         tests=("tests/test_stop_budget_kostenbasis.py",),
         bedeutet="Die Kostenschwelle misst wieder ihre eigene Ausgabe (V2).",
     ),
@@ -215,8 +209,8 @@ KATALOG: tuple[Sonde, ...] = (
     Sonde(
         name="margen-obergrenze",
         datei="mt5_trading_ai/risk/stop_budget.py",
-        alt="MARGIN_CLOSE_OUT_FRACTION = Decimal(\"0.5\")",
-        neu="MARGIN_CLOSE_OUT_FRACTION = Decimal(\"0.9\")",
+        alt='MARGIN_CLOSE_OUT_FRACTION = Decimal("0.5")',
+        neu='MARGIN_CLOSE_OUT_FRACTION = Decimal("0.9")',
         tests=("tests/test_stop_budget.py",),
         bedeutet="Der Abstand zum Margin-Close-out schrumpft fast auf null.",
     ),
@@ -264,7 +258,10 @@ def _fahre(sonde: Sonde) -> tuple[bool, str]:
         pfad.write_bytes(text.replace(sonde.alt, sonde.neu, 1).encode("utf-8"))
         lauf = subprocess.run(
             [sys.executable, "-m", "pytest", "-x", "-q", *sonde.tests],
-            cwd=ROOT, capture_output=True, text=True, check=False,
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
         )
         getoetet = lauf.returncode != 0
         anmerkung = "" if getoetet else "UEBERLEBT -- kein Test hat es bemerkt"
@@ -299,9 +296,7 @@ def main() -> int:
             print(f"      {s.bedeutet}")
         return 0
 
-    sonden = (
-        [KATALOG[args.sonde - 1]] if args.sonde is not None else list(KATALOG)
-    )
+    sonden = [KATALOG[args.sonde - 1]] if args.sonde is not None else list(KATALOG)
     print("=" * 78)
     print("MUTATIONSTOR -- faerbt eine Aenderung am Geldpfad den Lauf rot?")
     print("=" * 78)
@@ -324,10 +319,14 @@ def main() -> int:
     print(f"Toetungsrate: {rate:.3f} ({len(sonden) - len(ueberlebt)}/{len(sonden)})")
     if rate < MINDEST_TOETUNGSRATE:
         print()
-        print(f"FEHLGESCHLAGEN — unter der Schwelle {MINDEST_TOETUNGSRATE}.",
-              file=sys.stderr)
-        print("Jede ueberlebende Sonde ist ein Loch: der Defekt ist eingebaut worden,",
-              file=sys.stderr)
+        print(
+            f"FEHLGESCHLAGEN — unter der Schwelle {MINDEST_TOETUNGSRATE}.",
+            file=sys.stderr,
+        )
+        print(
+            "Jede ueberlebende Sonde ist ein Loch: der Defekt ist eingebaut worden,",
+            file=sys.stderr,
+        )
         print("und kein Test hat ihn bemerkt.", file=sys.stderr)
         return 1
     print("ok — jede Sonde wurde gefangen.")

@@ -217,7 +217,8 @@ def run_signal(
         )
         if not entscheidung.erkunden:
             return report._reject(
-                "zulassung", "strategy_not_admitted",
+                "zulassung",
+                "strategy_not_admitted",
                 detail=(
                     f"nicht erfuellt: {', '.join(admission.unmet) or 'unbekannt'}"
                     f" (Erkundung: {entscheidung.verweigert_weil or 'nicht gezogen'})"
@@ -226,7 +227,8 @@ def run_signal(
         report.erkundet = True
         report.erkundung_p = entscheidung.wahrscheinlichkeit
         report.add(
-            "zulassung", True,
+            "zulassung",
+            True,
             f"ERKUNDUNG (p={entscheidung.wahrscheinlichkeit}) trotz: "
             f"{', '.join(admission.unmet) or 'unbekannt'}",
         )
@@ -257,8 +259,10 @@ def run_signal(
     # gebucht wird genau einmal -- siehe Schritt 10.)
     if not account.is_demo:
         return report._reject(
-            "daten-tor", "runner_requires_demo",
-            detail="Paper-Runner laeuft nur auf einem Demokonto")
+            "daten-tor",
+            "runner_requires_demo",
+            detail="Paper-Runner laeuft nur auf einem Demokonto",
+        )
     report.add("daten-tor", True, f"ref={ref} spread={quote.spread}")
 
     # 3) Hebel-Klammer: effektiver Hebel (einzige gueltige Quelle fuer Budget + Sizing).
@@ -277,12 +281,18 @@ def run_signal(
     # feststeht: die Quote ist volumeninvariant -- Spread, Kommission und Slippage sind
     # alle linear im Volumen, das Notional ebenso, das Volumen kuerzt sich heraus.
     cost = evaluate_cost_gate(
-        gate=config.cost_gate, instrument=instrument, fees=instrument.fees,
-        side=side_enum, volume=instrument.volume_min, bid=quote.bid, ask=quote.ask,
+        gate=config.cost_gate,
+        instrument=instrument,
+        fees=instrument.fees,
+        side=side_enum,
+        volume=instrument.volume_min,
+        bid=quote.bid,
+        ask=quote.ask,
     )
     if not cost.approved:
-        return report._reject("kostentor", cost.reason or "cost_gate",
-                              detail=cost.detail or "")
+        return report._reject(
+            "kostentor", cost.reason or "cost_gate", detail=cost.detail or ""
+        )
     if cost.cost_fraction is None:
         # Freigabe ohne Zahl ist ein Widerspruch im Werkzeug selbst, kein Marktzustand.
         # Ein Defekt wirft; er faellt nicht auf die Annahmetabelle zurueck -- sonst
@@ -293,9 +303,12 @@ def run_signal(
             "die Stop-Budget-Untergrenze haette keine gemessene Grundlage"
         )
     gemessene_kosten_bps = cost_bps_from_fraction(cost.cost_fraction)
-    report.add("kostentor", True,
-               f"cost_fraction={cost.cost_fraction} "
-               f"({gemessene_kosten_bps:.2f} bp roundturn, gemessen)")
+    report.add(
+        "kostentor",
+        True,
+        f"cost_fraction={cost.cost_fraction} "
+        f"({gemessene_kosten_bps:.2f} bp roundturn, gemessen)",
+    )
 
     # 5) Stop-Distanz (bps) -> Stop-PREIS. Floor gegen Budget-Spanne je Klasse/Hebel.
     floor = executable_stop_floor(
@@ -304,7 +317,9 @@ def run_signal(
             tick_size_bps=instrument.tick_size / ref * Decimal("10000"),
             volatility_bps=Decimal("0"),  # je Bar nicht da (SPAETER); Floor nimmt max
             broker_stop_level_bps=Decimal(instrument.stop_level_points)
-            * instrument.tick_size / ref * Decimal("10000"),
+            * instrument.tick_size
+            / ref
+            * Decimal("10000"),
             depth_ratio=None,
         )
     )
@@ -330,12 +345,14 @@ def run_signal(
     )
     if not budget.tradeable:
         return report._reject(
-            "stop-preis", f"stop_budget_{budget.reason or 'untradeable'}")
+            "stop-preis", f"stop_budget_{budget.reason or 'untradeable'}"
+        )
     stop_bps = min(max(floor.executable_floor_bps, budget.lower_bps), budget.upper_bps)
     dist = ref * stop_bps / Decimal("10000")
     stop_loss = _quantise(
         ref - dist if side_enum is OrderSide.BUY else ref + dist,
-        instrument.tick_size, side_enum,
+        instrument.tick_size,
+        side_enum,
     )
     # Kein Schutz gegen einen Stop <= 0 mehr (Stufe 9): ``stop_bps`` kommt aus dem
     # Budget und ist durch ``margin_ceiling_bps`` geklammert -- hoechstens 1.666,7 bp
@@ -390,8 +407,13 @@ def run_signal(
 
     # 7) Risikoschicht: Limits -> Evaluation -> Stop-Budget -> Sizing (fusioniert).
     auth = risk_manager.authorize_opening(
-        instrument=instrument, request=request, account=account, price=ref,
-        spread_bps=_spread_bps(quote.bid, quote.ask), leverage=eff_lev, now=now,
+        instrument=instrument,
+        request=request,
+        account=account,
+        price=ref,
+        spread_bps=_spread_bps(quote.bid, quote.ask),
+        leverage=eff_lev,
+        now=now,
         measured_cost_bps=gemessene_kosten_bps,
     )
     if not auth.approved:
@@ -406,9 +428,12 @@ def run_signal(
     if auth.budget is not None:
         # Die Kostenbasis steht in der Checkliste, nicht nur im Kopf des Programms:
         # wer sie liest, sieht, ob die Untergrenze gemessen oder behauptet ist.
-        report.add("stop-budget", True,
-                   f"[{auth.budget.lower_bps:.1f}, {auth.budget.upper_bps:.1f}]bps "
-                   f"(Kosten {auth.budget.cost_bps:.2f}bp {auth.budget.cost_basis})")
+        report.add(
+            "stop-budget",
+            True,
+            f"[{auth.budget.lower_bps:.1f}, {auth.budget.upper_bps:.1f}]bps "
+            f"(Kosten {auth.budget.cost_bps:.2f}bp {auth.budget.cost_basis})",
+        )
     sized_volume = auth.sizing.volume if auth.sizing is not None else None
     if sized_volume is None:
         return report._reject("sizing", "risk_sizing_no_volume")
@@ -426,17 +451,19 @@ def run_signal(
     # Spread noch Platz haben. Kleiner handeln als das Risikobudget erlaubt ist
     # sicher; groesser handeln, als der Broker zulaesst, ist gar kein Handel.
     deckel = _margen_deckel(
-        instrument=instrument, account=account, price=ref,
+        instrument=instrument,
+        account=account,
+        price=ref,
         plaetze=config.max_concurrent_positions,
     )
     if deckel is not None and deckel < sized_volume:
         if deckel < instrument.volume_min:
             return report._reject(
-                "margen-deckel", "margin_below_min_volume",
+                "margen-deckel",
+                "margin_below_min_volume",
                 detail=f"moeglich {deckel}, Mindestvolumen {instrument.volume_min}",
             )
-        report.add("margen-deckel", True,
-                   f"{sized_volume} -> {deckel} (freie Marge)")
+        report.add("margen-deckel", True, f"{sized_volume} -> {deckel} (freie Marge)")
         sized_volume = deckel
     else:
         report.add("margen-deckel", True, "nicht bindend")

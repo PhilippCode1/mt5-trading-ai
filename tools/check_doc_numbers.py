@@ -175,9 +175,7 @@ def check_readme_block(canon: dict[str, int]) -> list[str]:
     block = re.search(r"KENNZAHLEN-ANFANG(.*?)KENNZAHLEN-ENDE", text, re.S)
     if block is None:
         return ["README.md: KENNZAHLEN-Block fehlt"]
-    declared = {
-        k: int(v) for k, v in re.findall(r"-\s*(\w+):\s*(\d+)", block.group(1))
-    }
+    declared = {k: int(v) for k, v in re.findall(r"-\s*(\w+):\s*(\d+)", block.group(1))}
     problems = []
     for key, want in canon.items():
         if declared.get(key) != want:

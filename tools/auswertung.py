@@ -123,9 +123,7 @@ def tabelle_aus_journal(pfad: Path) -> list[Auswertungszeile]:
         # ``erkundet`` traegt das Journal, sobald der Betrieb die Erkundung faehrt;
         # aeltere Journale kennen das Feld nicht und sind dann schlicht ``gefahren``.
         if eroeffnet:
-            herkunft = (
-                Herkunft.ERKUNDET if satz.get("erkundet") else Herkunft.GEFAHREN
-            )
+            herkunft = Herkunft.ERKUNDET if satz.get("erkundet") else Herkunft.GEFAHREN
         else:
             herkunft = Herkunft.ABGELEHNT
         zeilen.append(
@@ -160,8 +158,10 @@ def main() -> int:
         return 1
     zeilen = tabelle_aus_journal(args.journal)
     if not zeilen:
-        print(f"FEHLGESCHLAGEN — kein Eroeffnungsversuch in {args.journal}.",
-              file=sys.stderr)
+        print(
+            f"FEHLGESCHLAGEN — kein Eroeffnungsversuch in {args.journal}.",
+            file=sys.stderr,
+        )
         return 1
 
     je_herkunft = Counter(z.herkunft.value for z in zeilen)
@@ -209,14 +209,29 @@ def main() -> int:
         with args.csv.open("w", encoding="utf-8", newline="") as fh:
             schreiber = csv.writer(fh)
             schreiber.writerow(
-                ["ts", "instrument", "signal", "herkunft", "ergebnis_bp",
-                 "ablehnungsgrund", "wahrscheinlichkeit", "gewicht"]
+                [
+                    "ts",
+                    "instrument",
+                    "signal",
+                    "herkunft",
+                    "ergebnis_bp",
+                    "ablehnungsgrund",
+                    "wahrscheinlichkeit",
+                    "gewicht",
+                ]
             )
             for z in zeilen:
                 schreiber.writerow(
-                    [z.ts, z.instrument, z.signal, z.herkunft.value,
-                     "" if z.ergebnis_bp is None else z.ergebnis_bp,
-                     z.ablehnungsgrund, z.wahrscheinlichkeit, z.gewicht]
+                    [
+                        z.ts,
+                        z.instrument,
+                        z.signal,
+                        z.herkunft.value,
+                        "" if z.ergebnis_bp is None else z.ergebnis_bp,
+                        z.ablehnungsgrund,
+                        z.wahrscheinlichkeit,
+                        z.gewicht,
+                    ]
                 )
         print()
         print(f"geschrieben: {args.csv}")

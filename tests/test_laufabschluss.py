@@ -57,7 +57,8 @@ def _je_journal() -> dict[str, list[dict[str, object]]]:
     return {
         datei.name: [
             json.loads(z)
-            for z in datei.read_text(encoding="utf-8").splitlines() if z.strip()
+            for z in datei.read_text(encoding="utf-8").splitlines()
+            if z.strip()
         ]
         for datei in sorted(JOURNALE.glob("*.jsonl"))
     }
@@ -112,7 +113,8 @@ def test_ROT_neunzehn_trockenlaeufe_heben_laufabschluss_ueber_die_schwelle() -> 
         pytest.skip("keine Betriebsjournale im Arbeitsbaum")
     ist = laufabschluss(saetze)
     trocken = [
-        s for _ in range(19)
+        s
+        for _ in range(19)
         for s in ({"art": "start"}, {"art": "ende", "offen_geblieben": []})
     ]
     geschoent = laufabschluss([*saetze, *trocken])
@@ -136,7 +138,8 @@ def test_GRUEN_dieselben_trockenlaeufe_heben_die_ausstiegsdeckung_NICHT() -> Non
         pytest.skip("keine Betriebsjournale im Arbeitsbaum")
     vorher = ausstiegsdeckung(saetze)
     trocken = [
-        s for _ in range(19)
+        s
+        for _ in range(19)
         for s in (
             {"art": "start"},
             {"art": "takt", "nr": 1, "positionen": []},
@@ -216,7 +219,8 @@ def test_jeder_stoppdatei_lauf_hat_einen_endsatz() -> None:
     if not journale:
         pytest.skip("keine Betriebsjournale im Arbeitsbaum")
     mit_stoppdatei = [
-        name for name, saetze in journale.items()
+        name
+        for name, saetze in journale.items()
         if any(s.get("art") == "stoppdatei" for s in saetze)
     ]
     assert mit_stoppdatei, "kein einziger Stoppdatei-Lauf -- der Fall misst nichts"
@@ -232,7 +236,8 @@ def test_kein_lauf_ohne_endsatz_hatte_eine_stoppdatei() -> None:
     if not journale:
         pytest.skip("keine Betriebsjournale im Arbeitsbaum")
     ohne_ende = [
-        name for name, saetze in journale.items()
+        name
+        for name, saetze in journale.items()
         if any(s.get("art") == "start" for s in saetze)
         and not any(s.get("art") == "ende" for s in saetze)
     ]
@@ -249,7 +254,7 @@ def test_das_runbook_behauptet_die_widerlegte_ungenauigkeit_nicht_mehr() -> None
     keine -- sie verbraucht die Aufmerksamkeit, die der echte Fall braucht."""
     text = (ROOT / "RUNBOOK.md").read_text(encoding="utf-8")
     assert "bekannte Ungenauigkeit der Metrik" not in text
-    abschnitt = text[text.index("## Läufe brechen ab"):]
+    abschnitt = text[text.index("## Läufe brechen ab") :]
     abschnitt = abschnitt[: abschnitt.index("\n---")]
     # Zeilenumbrueche zusammenziehen: geprueft wird der Inhalt, nicht der Umbruch. Sonst
     # faellt der Fall, sobald jemand den Absatz neu umbricht -- ein Tor, das auf

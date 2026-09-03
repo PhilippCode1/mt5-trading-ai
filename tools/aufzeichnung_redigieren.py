@@ -206,8 +206,11 @@ def main() -> int:
         if hasattr(strom, "reconfigure"):
             strom.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--pruefen", action="store_true",
-                    help="nur melden, nichts schreiben (Rueckgabe 1 bei Abweichung)")
+    ap.add_argument(
+        "--pruefen",
+        action="store_true",
+        help="nur melden, nichts schreiben (Rueckgabe 1 bei Abweichung)",
+    )
     args = ap.parse_args()
 
     ziel = ZIEL / "demo-2026-08-17.jsonl"
@@ -215,8 +218,10 @@ def main() -> int:
         # Laut scheitern: ohne Quelle gibt es nichts zu redigieren, und ein leerer
         # Erfolg waere die schlechteste Auskunft.
         if args.pruefen and ziel.is_file():
-            print(f"ok — {ziel.relative_to(ROOT).as_posix()} liegt vor; "
-                  f"Quelle {QUELLE.name}/ fehlt (nichts nachzuziehen).")
+            print(
+                f"ok — {ziel.relative_to(ROOT).as_posix()} liegt vor; "
+                f"Quelle {QUELLE.name}/ fehlt (nichts nachzuziehen)."
+            )
             return 0
         print(f"FEHLGESCHLAGEN — Quelle {QUELLE} fehlt.", file=sys.stderr)
         return 1
@@ -232,9 +237,11 @@ def main() -> int:
             print(f"FEHLGESCHLAGEN — {ziel} fehlt.", file=sys.stderr)
             return 1
         if ziel.read_text(encoding="utf-8") != inhalt:
-            print(f"FEHLGESCHLAGEN — {ziel} weicht von den Journalen ab.\n"
-                  "Nachziehen mit: python tools/aufzeichnung_redigieren.py",
-                  file=sys.stderr)
+            print(
+                f"FEHLGESCHLAGEN — {ziel} weicht von den Journalen ab.\n"
+                "Nachziehen mit: python tools/aufzeichnung_redigieren.py",
+                file=sys.stderr,
+            )
             return 1
         print(f"ok — {len(saetze)} redigierte Saetze, wortgleich mit den Journalen.")
         return 0
@@ -242,10 +249,14 @@ def main() -> int:
     ziel.parent.mkdir(parents=True, exist_ok=True)
     ziel.write_text(inhalt, encoding="utf-8")
     print(f"geschrieben: {ziel.relative_to(ROOT).as_posix()}")
-    print(f"  behalten    : {sum(behalten.values())} Saetze "
-          f"({', '.join(f'{k} {v}' for k, v in sorted(behalten.items()))})")
-    print(f"  weggelassen : {sum(weg.values())} Saetze "
-          f"({', '.join(f'{k} {v}' for k, v in sorted(weg.items()))})")
+    print(
+        f"  behalten    : {sum(behalten.values())} Saetze "
+        f"({', '.join(f'{k} {v}' for k, v in sorted(behalten.items()))})"
+    )
+    print(
+        f"  weggelassen : {sum(weg.values())} Saetze "
+        f"({', '.join(f'{k} {v}' for k, v in sorted(weg.items()))})"
+    )
     return 0
 
 

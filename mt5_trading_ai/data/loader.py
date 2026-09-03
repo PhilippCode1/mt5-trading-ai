@@ -52,9 +52,16 @@ _DUKASCOPY_CANDLE = struct.Struct(">IIIIIf")
 #: Preis-Divisor je Instrument -- Dukascopy skaliert nach Nachkommastellen. Ein fest
 #: verdrahteter Wert wuerde jedes Nicht-5-stellige Paar (JPY) still 100x falsch machen.
 DUKASCOPY_PRICE_DIVISORS: dict[str, float] = {
-    "EURUSD": 100000.0, "GBPUSD": 100000.0, "AUDUSD": 100000.0, "NZDUSD": 100000.0,
-    "EURGBP": 100000.0, "USDCHF": 100000.0, "USDCAD": 100000.0,
-    "USDJPY": 1000.0, "EURJPY": 1000.0, "GBPJPY": 1000.0,
+    "EURUSD": 100000.0,
+    "GBPUSD": 100000.0,
+    "AUDUSD": 100000.0,
+    "NZDUSD": 100000.0,
+    "EURGBP": 100000.0,
+    "USDCHF": 100000.0,
+    "USDCAD": 100000.0,
+    "USDJPY": 1000.0,
+    "EURJPY": 1000.0,
+    "GBPJPY": 1000.0,
 }
 
 #: Mehr als so viele aufeinanderfolgende fehlende Handels-Slots sind ein Block-Ausfall,
@@ -80,7 +87,7 @@ def _fx_holidays(years: range) -> frozenset[date]:
     """Volle FX-Marktschliessungen je Jahr: Neujahr + Weihnachten."""
     days: set[date] = set()
     for year in years:
-        days.add(date(year, 1, 1))    # Neujahr
+        days.add(date(year, 1, 1))  # Neujahr
         days.add(date(year, 12, 25))  # Weihnachten
     return frozenset(days)
 
@@ -124,13 +131,13 @@ class FxSession(SessionPredicate):
     def __call__(self, ts: datetime) -> bool:
         local = ts.astimezone(FX_MARKET_TZ)
         weekday = local.weekday()  # Mo=0 .. So=6 (New Yorker Ortszeit)
-        if weekday == 5:                        # Samstag: nie
+        if weekday == 5:  # Samstag: nie
             return False
-        if weekday == 6:                        # Sonntag: ab 17:00 NY
+        if weekday == 6:  # Sonntag: ab 17:00 NY
             return local.hour >= self._hour
-        if weekday == 4:                        # Freitag: bis 17:00 NY
+        if weekday == 4:  # Freitag: bis 17:00 NY
             return local.hour < self._hour
-        return True                             # Mo-Do durchgehend
+        return True  # Mo-Do durchgehend
 
 
 def decode_dukascopy_candles(
@@ -276,8 +283,12 @@ def assess_or_raise(
             f"{', '.join(report.reasons)}"
         )
     worst = _max_consecutive_gap(
-        bars, session_predicate=session_predicate, seconds=seconds,
-        start=start, end=end, holidays=holidays,
+        bars,
+        session_predicate=session_predicate,
+        seconds=seconds,
+        start=start,
+        end=end,
+        holidays=holidays,
     )
     if worst > MAX_CONSECUTIVE_GAP:
         raise DataLoadError(
@@ -408,8 +419,11 @@ def load_verified_csv(
             )
 
     assess_or_raise(
-        bars, instrument=instrument, timeframe=timeframe,
-        session_predicate=session_predicate, holidays=holidays,
+        bars,
+        instrument=instrument,
+        timeframe=timeframe,
+        session_predicate=session_predicate,
+        holidays=holidays,
     )
     return bars, checksum
 

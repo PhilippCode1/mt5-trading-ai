@@ -127,10 +127,20 @@ def test_das_zahlen_tor_bleibt_fuer_projektdoku_scharf() -> None:
     rueckwirkend zu aendern verbietet E-007. Was scharf bleibt, ist die **lebende**
     Projektdoku: README, MASTERBERICHT, FEHLT, SPAETER, ABBRUCH.
     """
-    for lebend in ("README.md", "MASTERBERICHT.md", "FEHLT.md", "SPAETER.md",
-                   "ABBRUCH.md", "BERICHT_TEIL3.md"):
+    for lebend in (
+        "README.md",
+        "MASTERBERICHT.md",
+        "FEHLT.md",
+        "SPAETER.md",
+        "ABBRUCH.md",
+        "BERICHT_TEIL3.md",
+    ):
         assert not check_doc_numbers.is_historical(lebend), lebend
-    for eingefroren in ("PROGRESS.md", "docs/audit/x.md", "AUFTRAG/zustand.md",
-                        "ABSCHLUSS/06-ABBRUCHKRITERIUM.md",
-                        "ABSCHLUSS-3a/05-URTEIL.md"):
+    for eingefroren in (
+        "PROGRESS.md",
+        "docs/audit/x.md",
+        "AUFTRAG/zustand.md",
+        "ABSCHLUSS/06-ABBRUCHKRITERIUM.md",
+        "ABSCHLUSS-3a/05-URTEIL.md",
+    ):
         assert check_doc_numbers.is_historical(eingefroren), eingefroren

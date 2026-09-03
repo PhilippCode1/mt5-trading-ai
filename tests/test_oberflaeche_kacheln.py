@@ -43,14 +43,18 @@ T0 = datetime(2026, 8, 17, 12, 0, tzinfo=UTC)
 
 
 # --- Journale bauen --------------------------------------------------------
-def _schreib(tmp_path: Path, *saetze: dict[str, Any], name: str = "journal-a.jsonl"
-             ) -> Path:
+def _schreib(
+    tmp_path: Path, *saetze: dict[str, Any], name: str = "journal-a.jsonl"
+) -> Path:
     """Ein echtes Journal aus echten Saetzen. ``ts`` laeuft je Satz eine Minute weiter."""
     ziel = tmp_path / name
     zeilen = []
     for i, satz in enumerate(saetze):
-        zeile = {"ts": (T0 + timedelta(minutes=i)).isoformat(timespec="seconds"),
-                 "lauf": "lauf-t", "version": "abc1234"}
+        zeile = {
+            "ts": (T0 + timedelta(minutes=i)).isoformat(timespec="seconds"),
+            "lauf": "lauf-t",
+            "version": "abc1234",
+        }
         zeile.update(satz)
         zeilen.append(json.dumps(zeile, ensure_ascii=False))
     ziel.write_text("\n".join(zeilen) + "\n", encoding="utf-8")
@@ -64,33 +68,64 @@ def _takt(nr: int, equity: str, *, halt: bool = False) -> dict[str, Any]:
 #: Ein Trade mit ZWEI gemessenen Preisen -- er gewinnt.
 #: Von Hand: (1,10110 - 1,10000) / 1,10000 * 10 000 = +10,00 bp, Kaufrichtung.
 GEWINNER: tuple[dict[str, Any], ...] = (
-    {"art": "eroeffnet", "symbol": "EURUSD", "signal": "LONG", "position_id": "P1",
-     "volumen": "0.10", "einstiegspreis": "1.10000",
-     "seit": T0.isoformat(timespec="seconds")},
-    {"art": "geschlossen", "symbol": "EURUSD", "grund": "signalwechsel",
-     "position_id": "P1", "volumen": "0.10", "war_kauf": True,
-     "einstiegspreis": "1.10000", "ausstiegspreis": "1.10110",
-     "ergebnis_geld": "11.00", "ergebnis_geld_waehrung": "EUR",
-     "ergebnis_geld_quelle": "zuletzt_beobachtet"},
+    {
+        "art": "eroeffnet",
+        "symbol": "EURUSD",
+        "signal": "LONG",
+        "position_id": "P1",
+        "volumen": "0.10",
+        "einstiegspreis": "1.10000",
+        "seit": T0.isoformat(timespec="seconds"),
+    },
+    {
+        "art": "geschlossen",
+        "symbol": "EURUSD",
+        "grund": "signalwechsel",
+        "position_id": "P1",
+        "volumen": "0.10",
+        "war_kauf": True,
+        "einstiegspreis": "1.10000",
+        "ausstiegspreis": "1.10110",
+        "ergebnis_geld": "11.00",
+        "ergebnis_geld_waehrung": "EUR",
+        "ergebnis_geld_quelle": "zuletzt_beobachtet",
+    },
 )
 
 #: Ein Stop-Out. KEIN Fuellpreis -- nur der zuletzt beobachtete Buchwert, und der ist
 #: negativ. Genau dieser Trade fehlte in der Kachel.
 STOP_OUT: tuple[dict[str, Any], ...] = (
-    {"art": "eroeffnet", "symbol": "XAUUSD", "signal": "LONG", "position_id": "P2",
-     "volumen": "0.01", "einstiegspreis": "4415.18",
-     "seit": T0.isoformat(timespec="seconds")},
-    {"art": "vom_broker_geschlossen", "symbol": "XAUUSD", "position_id": "P2",
-     "volumen": "0.01", "war_kauf": True, "einstiegspreis": "4415.18",
-     "ergebnis_geld": "-2.68", "ergebnis_geld_waehrung": "EUR",
-     "ergebnis_geld_quelle": "zuletzt_beobachtet"},
+    {
+        "art": "eroeffnet",
+        "symbol": "XAUUSD",
+        "signal": "LONG",
+        "position_id": "P2",
+        "volumen": "0.01",
+        "einstiegspreis": "4415.18",
+        "seit": T0.isoformat(timespec="seconds"),
+    },
+    {
+        "art": "vom_broker_geschlossen",
+        "symbol": "XAUUSD",
+        "position_id": "P2",
+        "volumen": "0.01",
+        "war_kauf": True,
+        "einstiegspreis": "4415.18",
+        "ergebnis_geld": "-2.68",
+        "ergebnis_geld_waehrung": "EUR",
+        "ergebnis_geld_quelle": "zuletzt_beobachtet",
+    },
 )
 
 
 def _stand(pfad: Path, **zusatz: Any) -> dict[str, Any]:
     lauf = lies_journal(pfad)
-    stand: dict[str, Any] = {"jetzt": T0, "fehler": None, "lauf": lauf,
-                             "alle_laeufe": [lauf]}
+    stand: dict[str, Any] = {
+        "jetzt": T0,
+        "fehler": None,
+        "lauf": lauf,
+        "alle_laeufe": [lauf],
+    }
     stand.update(zusatz)
     return stand
 
@@ -175,7 +210,10 @@ def test_die_zeit_im_halt_wird_ausgezaehlt(tmp_path: Path) -> None:
     eine Zeit lang nicht handeln konnte -- das gehoert nicht in gruen.
     """
     pfad = _schreib(
-        tmp_path, _takt(1, "100"), _takt(2, "100", halt=True), _takt(3, "100"),
+        tmp_path,
+        _takt(1, "100"),
+        _takt(2, "100", halt=True),
+        _takt(3, "100"),
         _takt(4, "100"),
     )
     aus = OB._kennzahlen(_stand(pfad))
@@ -197,14 +235,28 @@ def _mit_preis(nummer: int, symbol: str) -> tuple[dict[str, Any], ...]:
     mehrere davon nebeneinander stehen koennen.
     """
     return (
-        {"art": "eroeffnet", "symbol": symbol, "signal": "LONG",
-         "position_id": f"Q{nummer}", "volumen": "0.10",
-         "einstiegspreis": "1.10000", "seit": T0.isoformat(timespec="seconds")},
-        {"art": "geschlossen", "symbol": symbol, "grund": "signalwechsel",
-         "position_id": f"Q{nummer}", "volumen": "0.10", "war_kauf": True,
-         "einstiegspreis": "1.10000", "ausstiegspreis": "1.10110",
-         "ergebnis_geld": "11.00", "ergebnis_geld_waehrung": "EUR",
-         "ergebnis_geld_quelle": "zuletzt_beobachtet"},
+        {
+            "art": "eroeffnet",
+            "symbol": symbol,
+            "signal": "LONG",
+            "position_id": f"Q{nummer}",
+            "volumen": "0.10",
+            "einstiegspreis": "1.10000",
+            "seit": T0.isoformat(timespec="seconds"),
+        },
+        {
+            "art": "geschlossen",
+            "symbol": symbol,
+            "grund": "signalwechsel",
+            "position_id": f"Q{nummer}",
+            "volumen": "0.10",
+            "war_kauf": True,
+            "einstiegspreis": "1.10000",
+            "ausstiegspreis": "1.10110",
+            "ergebnis_geld": "11.00",
+            "ergebnis_geld_waehrung": "EUR",
+            "ergebnis_geld_quelle": "zuletzt_beobachtet",
+        },
     )
 
 
@@ -215,11 +267,22 @@ def _stummer(nummer: int, symbol: str) -> tuple[dict[str, Any], ...]:
     alten Fassung aus wie ein Stop-Out.
     """
     return (
-        {"art": "eroeffnet", "symbol": symbol, "signal": "SHORT",
-         "position_id": f"S{nummer}", "volumen": "0.1",
-         "seit": T0.isoformat(timespec="seconds")},
-        {"art": "geschlossen", "symbol": symbol, "grund": "lauf_beendet",
-         "position_id": f"S{nummer}", "volumen": "0.1", "war_kauf": False},
+        {
+            "art": "eroeffnet",
+            "symbol": symbol,
+            "signal": "SHORT",
+            "position_id": f"S{nummer}",
+            "volumen": "0.1",
+            "seit": T0.isoformat(timespec="seconds"),
+        },
+        {
+            "art": "geschlossen",
+            "symbol": symbol,
+            "grund": "lauf_beendet",
+            "position_id": f"S{nummer}",
+            "volumen": "0.1",
+            "war_kauf": False,
+        },
     )
 
 
@@ -244,9 +307,12 @@ def test_der_betriebsabschnitt_trennt_die_toepfe(tmp_path: Path) -> None:
     """
     pfad = _schreib(
         tmp_path,
-        *GEWINNER, *_mit_preis(1, "GBPUSD"),
+        *GEWINNER,
+        *_mit_preis(1, "GBPUSD"),
         *STOP_OUT,
-        *_stummer(1, "DE40"), *_stummer(2, "USDJPY"), *_stummer(3, "NAS100"),
+        *_stummer(1, "DE40"),
+        *_stummer(2, "USDJPY"),
+        *_stummer(3, "NAS100"),
         _takt(1, "50000"),
     )
     aus = OB._abschnitt_lauf(_stand(pfad))
@@ -260,10 +326,15 @@ def test_der_betriebsabschnitt_trennt_die_toepfe(tmp_path: Path) -> None:
 
 
 # --- Woran Eroeffnungen scheiterten ---------------------------------------
-def _versuch(symbol: str, schritte: list[dict[str, Any]], grund: str
-             ) -> dict[str, Any]:
-    return {"art": "eroeffnungsversuch", "symbol": symbol, "signal": "LONG",
-            "eroeffnet": False, "grund": grund, "schritte": schritte}
+def _versuch(symbol: str, schritte: list[dict[str, Any]], grund: str) -> dict[str, Any]:
+    return {
+        "art": "eroeffnungsversuch",
+        "symbol": symbol,
+        "signal": "LONG",
+        "eroeffnet": False,
+        "grund": grund,
+        "schritte": schritte,
+    }
 
 
 def test_die_ablehnungen_werden_je_naht_gezaehlt(tmp_path: Path) -> None:
@@ -275,8 +346,10 @@ def test_die_ablehnungen_werden_je_naht_gezaehlt(tmp_path: Path) -> None:
     gedacht)?
     """
     zul = [{"naht": "zulassung", "ok": False, "detail": "nicht erfuellt"}]
-    kost = [{"naht": "daten-tor", "ok": True, "detail": "ref=1.1"},
-            {"naht": "kostentor", "ok": False, "detail": "zu teuer"}]
+    kost = [
+        {"naht": "daten-tor", "ok": True, "detail": "ref=1.1"},
+        {"naht": "kostentor", "ok": False, "detail": "zu teuer"},
+    ]
     pfad = _schreib(
         tmp_path,
         _versuch("EURUSD", zul, "strategy_not_admitted"),
@@ -302,10 +375,11 @@ def test_genannt_wird_die_LETZTE_gerissene_naht(tmp_path: Path) -> None:
     Mutationsprobe: ``reversed(...)`` entfernt -- dann steht ``frueh`` statt
     ``spaet`` da, und dieser Fall faellt.
     """
-    zwei = [{"naht": "frueh", "ok": False, "detail": "a"},
-            {"naht": "spaet", "ok": False, "detail": "b"}]
-    pfad = _schreib(tmp_path, _versuch("EURUSD", zwei, "abgelehnt"),
-                    _takt(1, "50000"))
+    zwei = [
+        {"naht": "frueh", "ok": False, "detail": "a"},
+        {"naht": "spaet", "ok": False, "detail": "b"},
+    ]
+    pfad = _schreib(tmp_path, _versuch("EURUSD", zwei, "abgelehnt"), _takt(1, "50000"))
     aus = OB._abschnitt_lauf(_stand(pfad))
     assert "spaet — abgelehnt" in aus
     assert "frueh — abgelehnt" not in aus
@@ -325,10 +399,14 @@ def test_die_sperrenliste_zeigt_den_JUENGSTEN_durchlauf(tmp_path: Path) -> None:
     Zwei Durchlaeufe, der zweite ist der aktuelle -- gezeigt wird er.
     """
     alt = [{"naht": "zulassung", "ok": False, "detail": "alte-lage"}]
-    neu = [{"naht": "zulassung", "ok": True, "detail": "neue-lage"},
-           {"naht": "kostentor", "ok": False, "detail": "zu teuer"}]
+    neu = [
+        {"naht": "zulassung", "ok": True, "detail": "neue-lage"},
+        {"naht": "kostentor", "ok": False, "detail": "zu teuer"},
+    ]
     pfad = _schreib(
-        tmp_path, _versuch("EURUSD", alt, "a"), _versuch("XAUUSD", neu, "b"),
+        tmp_path,
+        _versuch("EURUSD", alt, "a"),
+        _versuch("XAUUSD", neu, "b"),
         _takt(1, "50000"),
     )
     aus = OB._abschnitt_sperren(_stand(pfad))
@@ -344,10 +422,13 @@ def test_eine_gerissene_naht_heisst_HALT_und_nicht_OK(tmp_path: Path) -> None:
     bestandenen Naht HALT und ueber der gerissenen OK. Die Seite saehe voll aus und
     behauptete das Gegenteil dessen, was passiert ist.
     """
-    schritte = [{"naht": "zulassung", "ok": True, "detail": "bestanden"},
-                {"naht": "kostentor", "ok": False, "detail": "zu teuer"}]
-    pfad = _schreib(tmp_path, _versuch("EURUSD", schritte, "cost_gate"),
-                    _takt(1, "50000"))
+    schritte = [
+        {"naht": "zulassung", "ok": True, "detail": "bestanden"},
+        {"naht": "kostentor", "ok": False, "detail": "zu teuer"},
+    ]
+    pfad = _schreib(
+        tmp_path, _versuch("EURUSD", schritte, "cost_gate"), _takt(1, "50000")
+    )
     aus = OB._abschnitt_sperren(_stand(pfad))
     assert 'class="marke gut">\n              OK' in aus
     assert 'class="marke krit">\n              HALT' in aus
@@ -371,12 +452,25 @@ def test_ein_verkauf_gewinnt_bei_fallendem_kurs(tmp_path: Path) -> None:
     dieser Fall faellt mit ``-10.00 bp``.
     """
     saetze = (
-        {"art": "eroeffnet", "symbol": "EURUSD", "signal": "SHORT",
-         "position_id": "P9", "volumen": "0.10", "einstiegspreis": "1.10000",
-         "seit": T0.isoformat(timespec="seconds")},
-        {"art": "geschlossen", "symbol": "EURUSD", "grund": "signalwechsel",
-         "position_id": "P9", "volumen": "0.10", "war_kauf": False,
-         "einstiegspreis": "1.10000", "ausstiegspreis": "1.09890"},
+        {
+            "art": "eroeffnet",
+            "symbol": "EURUSD",
+            "signal": "SHORT",
+            "position_id": "P9",
+            "volumen": "0.10",
+            "einstiegspreis": "1.10000",
+            "seit": T0.isoformat(timespec="seconds"),
+        },
+        {
+            "art": "geschlossen",
+            "symbol": "EURUSD",
+            "grund": "signalwechsel",
+            "position_id": "P9",
+            "volumen": "0.10",
+            "war_kauf": False,
+            "einstiegspreis": "1.10000",
+            "ausstiegspreis": "1.09890",
+        },
     )
     pfad = _schreib(tmp_path, *saetze)
     aus = OB._abschnitt_trades(lies_journal(pfad).trades())
@@ -400,9 +494,14 @@ def test_ein_trade_ohne_ausstiegspreis_heisst_unvollstaendig_und_nicht_null(
 
 # --- Kurse gegen das Kostenmodell -----------------------------------------
 def _preis(gemessen: str | None, modell: str | None) -> dict[str, Any]:
-    return {"symbol": "EURUSD", "bid": Decimal("1.1000"), "ask": Decimal("1.1002"),
-            "gemessen": None if gemessen is None else Decimal(gemessen),
-            "modell": None if modell is None else Decimal(modell), "ts": T0}
+    return {
+        "symbol": "EURUSD",
+        "bid": Decimal("1.1000"),
+        "ask": Decimal("1.1002"),
+        "gemessen": None if gemessen is None else Decimal(gemessen),
+        "modell": None if modell is None else Decimal(modell),
+        "ts": T0,
+    }
 
 
 def test_ein_spread_auf_der_schwelle_gilt_noch_als_passend() -> None:
@@ -437,17 +536,23 @@ def test_ohne_kostenzeile_wird_kein_urteil_erfunden() -> None:
 
 
 def test_ein_kursfehler_steht_in_der_zeile() -> None:
-    aus = OB._abschnitt_preise({"preise": [{"symbol": "NVDA",
-                                            "fehler": "symbol_unknown"}]})
+    aus = OB._abschnitt_preise(
+        {"preise": [{"symbol": "NVDA", "fehler": "symbol_unknown"}]}
+    )
     assert "symbol_unknown" in aus
 
 
 # --- Konto und Kursfrische -------------------------------------------------
 def _konto(*, demo: bool = True) -> AccountState:
     return AccountState(
-        account_id="DEMO-1", currency="EUR", balance=Decimal("50000"),
-        equity=Decimal("50000"), margin_used=Decimal("0"),
-        margin_free=Decimal("50000"), is_demo=demo, ts=T0,
+        account_id="DEMO-1",
+        currency="EUR",
+        balance=Decimal("50000"),
+        equity=Decimal("50000"),
+        margin_used=Decimal("0"),
+        margin_free=Decimal("50000"),
+        is_demo=demo,
+        ts=T0,
     )
 
 
@@ -461,8 +566,11 @@ def test_die_frischekachel_kann_rot_werden(tmp_path: Path) -> None:
     Von Hand: der juengste Kursstempel ist 60 s alt, die Grenze steht bei 5 s
     (``MAX_SNAPSHOT_AGE``). Also nicht bewertbar, Grund ``snapshot_stale``.
     """
-    stand = {"jetzt": T0, "konto": _konto(),
-             "preise": [{"symbol": "EURUSD", "ts": T0 - timedelta(seconds=60)}]}
+    stand = {
+        "jetzt": T0,
+        "konto": _konto(),
+        "preise": [{"symbol": "EURUSD", "ts": T0 - timedelta(seconds=60)}],
+    }
     aus = OB._abschnitt_konto(stand)
     assert "snapshot_stale" in aus
     assert "60.0 s alt" in aus
@@ -474,8 +582,11 @@ def test_ein_frischer_kurs_faerbt_die_kachel_gruen() -> None:
 
     Von Hand: ein Stempel von vor einer Sekunde liegt unter der Grenze von fuenf.
     """
-    stand = {"jetzt": T0, "konto": _konto(),
-             "preise": [{"symbol": "EURUSD", "ts": T0 - timedelta(seconds=1)}]}
+    stand = {
+        "jetzt": T0,
+        "konto": _konto(),
+        "preise": [{"symbol": "EURUSD", "ts": T0 - timedelta(seconds=1)}],
+    }
     aus = OB._abschnitt_konto(stand)
     assert ">\n          ok</span>" in aus
     assert "1.0 s alt" in aus
@@ -500,8 +611,7 @@ def test_ein_live_konto_wird_rot_gezeigt() -> None:
     gruen. Das ist die Anzeige, an der man sich in genau die falsche Sicherheit
     wiegt.
     """
-    live = OB._abschnitt_konto({"jetzt": T0, "konto": _konto(demo=False),
-                                "preise": []})
+    live = OB._abschnitt_konto({"jetzt": T0, "konto": _konto(demo=False), "preise": []})
     assert 'class="wert krit">LIVE-KONTO' in live
     demo = OB._abschnitt_konto({"jetzt": T0, "konto": _konto(), "preise": []})
     assert 'class="wert gut">Demokonto' in demo
@@ -517,11 +627,16 @@ def test_das_alter_einer_position_wird_in_stunden_gezeigt() -> None:
     genau dieser.
     """
     pos = Position(
-        venue_position_id="1", symbol="XAUUSD", side=OrderSide.BUY,
-        volume=Decimal("0.01"), entry_price=Decimal("4415.18"),
-        stop_loss=Decimal("4400.00"), take_profit=None,
+        venue_position_id="1",
+        symbol="XAUUSD",
+        side=OrderSide.BUY,
+        volume=Decimal("0.01"),
+        entry_price=Decimal("4415.18"),
+        stop_loss=Decimal("4400.00"),
+        take_profit=None,
         opened_at=T0 - timedelta(hours=2, minutes=30),
-        unrealised_pnl=Decimal("-2.68"), swap_accrued=Decimal("-0.11"),
+        unrealised_pnl=Decimal("-2.68"),
+        swap_accrued=Decimal("-0.11"),
     )
     aus = OB._abschnitt_positionen({"jetzt": T0, "positionen": (pos,)})
     assert "2.50 h" in aus
@@ -550,15 +665,35 @@ def test_der_laufende_betrieb_schlaegt_den_zuletzt_begonnenen(
     gerade handelt.
     """
     a = tmp_path / "journal-a.jsonl"
-    a.write_text(json.dumps({"ts": T0.isoformat(), "art": "takt", "lauf": "A",
-                             "equity": "1"}) + "\n", encoding="utf-8")
+    a.write_text(
+        json.dumps({"ts": T0.isoformat(), "art": "takt", "lauf": "A", "equity": "1"})
+        + "\n",
+        encoding="utf-8",
+    )
     b = tmp_path / "journal-b.jsonl"
-    b.write_text("\n".join([
-        json.dumps({"ts": (T0 + timedelta(minutes=1)).isoformat(), "art": "takt",
-                    "lauf": "B", "equity": "1"}),
-        json.dumps({"ts": (T0 + timedelta(minutes=2)).isoformat(), "art": "ende",
-                    "lauf": "B"}),
-    ]) + "\n", encoding="utf-8")
+    b.write_text(
+        "\n".join(
+            [
+                json.dumps(
+                    {
+                        "ts": (T0 + timedelta(minutes=1)).isoformat(),
+                        "art": "takt",
+                        "lauf": "B",
+                        "equity": "1",
+                    }
+                ),
+                json.dumps(
+                    {
+                        "ts": (T0 + timedelta(minutes=2)).isoformat(),
+                        "art": "ende",
+                        "lauf": "B",
+                    }
+                ),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
     monkeypatch.setattr(OB, "JOURNALE", tmp_path)
     lauf = OB._neuester_lauf()
     assert lauf is not None
@@ -638,8 +773,9 @@ class FakeGriff(OB.Griff):
         self.antworten: list[int] = []
         self.kopfzeilen: list[tuple[str, str]] = []
 
-    def send_error(self, code: int, message: str | None = None,
-                   explain: str | None = None) -> None:
+    def send_error(
+        self, code: int, message: str | None = None, explain: str | None = None
+    ) -> None:
         self.fehler.append((code, message))
 
     def send_response(self, code: int, message: str | None = None) -> None:
@@ -759,8 +895,13 @@ def test_ein_alter_schnappschuss_wird_als_alt_ausgezeichnet() -> None:
     dieser Seite ohnehin (der Hinweis zur fehlenden Zulassung traegt es). Geprueft
     wird deshalb die Klasse AN DIESER Zahl.
     """
-    stand: dict[str, Any] = {"jetzt": T0, "fehler": None, "lauf": None,
-                             "alle_laeufe": [], "dauer_ms": 12.0}
+    stand: dict[str, Any] = {
+        "jetzt": T0,
+        "fehler": None,
+        "lauf": None,
+        "alle_laeufe": [],
+        "dauer_ms": 12.0,
+    }
     stand["gebaut"] = T0 - timedelta(seconds=45)
     assert '<span class="krit">45 s alt</span>' in OB.seite(stand, jetzt=T0)
     stand["gebaut"] = T0 - timedelta(seconds=10)

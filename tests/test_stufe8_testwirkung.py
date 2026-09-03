@@ -105,7 +105,10 @@ def test_das_mutationstor_laeuft_und_toetet_jede_sonde() -> None:
     """
     lauf = subprocess.run(
         [sys.executable, "tools/mutationstor.py"],
-        cwd=ROOT, capture_output=True, text=True, check=False,
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
     )
     assert lauf.returncode == 0, lauf.stdout + lauf.stderr
     assert "Toetungsrate: 1.000" in lauf.stdout, lauf.stdout
@@ -145,9 +148,7 @@ def _einstiegspunkte() -> list[Path]:
 
 def _erreichbar() -> set[str]:
     pfad_je_modul = {
-        _modulname(p): p
-        for p in PAKET.rglob("*.py")
-        if "__pycache__" not in p.parts
+        _modulname(p): p for p in PAKET.rglob("*.py") if "__pycache__" not in p.parts
     }
     erreicht: set[str] = set()
     rand = list(_einstiegspunkte())
@@ -166,7 +167,9 @@ def test_es_gibt_ueberhaupt_diensteinstiegspunkte() -> None:
     assert len(_einstiegspunkte()) >= 10
 
 
-def test_jede_datei_des_sicherheitsverzeichnisses_ist_vom_einstiegspunkt_erreichbar() -> None:
+def test_jede_datei_des_sicherheitsverzeichnisses_ist_vom_einstiegspunkt_erreichbar() -> (
+    None
+):
     """„Sonst rot" -- woertlich der Auftrag.
 
     Vor dieser Stufe war ``gates/learning_phase.py`` von keinem Einstiegspunkt aus
@@ -182,16 +185,16 @@ def test_jede_datei_des_sicherheitsverzeichnisses_ist_vom_einstiegspunkt_erreich
         if "__pycache__" not in p.parts and p.name != "__init__.py"
     ]
     assert dateien, "Das Sicherheitsverzeichnis ist leer -- Pruefung ohne Gegenstand."
-    verwaist = sorted(
-        _modulname(p) for p in dateien if _modulname(p) not in erreicht
-    )
+    verwaist = sorted(_modulname(p) for p in dateien if _modulname(p) not in erreicht)
     assert verwaist == [], (
         f"Ohne Importpfad von einem Diensteinstiegspunkt: {verwaist}. "
         "Ein Modul mit gruenen Eigentests belegt nicht, dass es je laeuft."
     )
 
 
-def test_die_erreichbarkeitspruefung_faengt_ein_verwaistes_modul(tmp_path: Path) -> None:
+def test_die_erreichbarkeitspruefung_faengt_ein_verwaistes_modul(
+    tmp_path: Path,
+) -> None:
     """Der gruene Gegenfall zur Pruefung selbst.
 
     Ohne ihn bestuende der Fall oben auch an einer Rechnung, die grundsaetzlich alles
@@ -236,8 +239,14 @@ def test_jeder_pruefer_hat_einen_negativtest(pruefer: str) -> None:
         text = testdatei.read_text(encoding="utf-8")
         if stamm not in text:
             continue
-        for marke in ("returncode == 1", "returncode != 0", "returncode ==  1",
-                      "rc == 1", "pytest.raises", "!= 0"):
+        for marke in (
+            "returncode == 1",
+            "returncode != 0",
+            "returncode ==  1",
+            "rc == 1",
+            "pytest.raises",
+            "!= 0",
+        ):
             if marke in text:
                 treffer.append(testdatei.name)
                 break

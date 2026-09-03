@@ -273,8 +273,10 @@ def messen() -> int:
         print("-" * 96)
         print("A1.1 HISTORIENTIEFE  /  A1.2 HERKUNFT")
         print("-" * 96)
-        print(f"{'Symbol':<8} {'TF':<4} {'Kerzen':>8} {'von':>12} {'bis':>12} "
-              f"{'Jahre':>6}  Pruefsumme")
+        print(
+            f"{'Symbol':<8} {'TF':<4} {'Kerzen':>8} {'von':>12} {'bis':>12} "
+            f"{'Jahre':>6}  Pruefsumme"
+        )
         reihen: dict[tuple[str, str], tuple[Mt5Rate, ...]] = {}
         manifeste: list[dict[str, Any]] = []
         protokolle: list[str] = []
@@ -286,13 +288,17 @@ def messen() -> int:
                 man = _manifest(symbol, tf, reihe)
                 manifeste.append(man)
                 if not reihe:
-                    print(f"{symbol:<8} {tf.value:<4} {0:>8} {'-':>12} {'-':>12} "
-                          f"{0:>6}  LEER NACH ZWEI VERSUCHEN")
+                    print(
+                        f"{symbol:<8} {tf.value:<4} {0:>8} {'-':>12} {'-':>12} "
+                        f"{0:>6}  LEER NACH ZWEI VERSUCHEN"
+                    )
                     continue
                 jahre = (reihe[-1].ts - reihe[0].ts).days / 365.25
-                print(f"{symbol:<8} {tf.value:<4} {len(reihe):>8} "
-                      f"{str(reihe[0].ts.date()):>12} {str(reihe[-1].ts.date()):>12} "
-                      f"{jahre:>6.1f}  {man['checksum'][:16]}...")
+                print(
+                    f"{symbol:<8} {tf.value:<4} {len(reihe):>8} "
+                    f"{str(reihe[0].ts.date()):>12} {str(reihe[-1].ts.date()):>12} "
+                    f"{jahre:>6.1f}  {man['checksum'][:16]}..."
+                )
         print()
     finally:
         terminal.shutdown()
@@ -303,8 +309,10 @@ def messen() -> int:
         ziel.write_text(
             json.dumps(man, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
         )
-    print(f"{len(manifeste)} Manifeste geschrieben nach "
-          f"{MANIFESTE.relative_to(REPO).as_posix()}/")
+    print(
+        f"{len(manifeste)} Manifeste geschrieben nach "
+        f"{MANIFESTE.relative_to(REPO).as_posix()}/"
+    )
     print()
 
     # --- A1.3 ---------------------------------------------------------------
@@ -321,26 +329,33 @@ def messen() -> int:
         f"Out-of-Sample-Anteil von {OOS_ANTEIL:.4f}, nicht auf allen Ereignissen."
     )
     print()
-    print(f"{'Symbol':<8} {'Fenster':<8} {'Streuung':>10} {'Fenster':>9} {'K':>7} "
-          f"{'3xK':>7}   {'Frequenz':<10} {'N':>7} {'N_defl':>7} {'nachweisb.':>11} "
-          f"{'Verh.':>7}  Urteil")
-    print(f"{'':<8} {'':<8} {'(bp)':>10} {'(Anz.)':>9} {'(bp)':>7} {'(bp)':>7}   "
-          f"{'':<10} {'':>7} {'':>7} {'(bp)':>11}")
+    print(
+        f"{'Symbol':<8} {'Fenster':<8} {'Streuung':>10} {'Fenster':>9} {'K':>7} "
+        f"{'3xK':>7}   {'Frequenz':<10} {'N':>7} {'N_defl':>7} {'nachweisb.':>11} "
+        f"{'Verh.':>7}  Urteil"
+    )
+    print(
+        f"{'':<8} {'':<8} {'(bp)':>10} {'(Anz.)':>9} {'(bp)':>7} {'(bp)':>7}   "
+        f"{'':<10} {'':>7} {'':>7} {'(bp)':>11}"
+    )
 
     eintraege: list[dict[str, Any]] = []
     for symbol in INSTRUMENTE:
         k = _kosten_bps(kosten, symbol)
         if k is None:
-            print(f"{symbol:<8} — keine Kostenzeile in broker_costs.json, "
-                  f"nicht bewertbar")
+            print(
+                f"{symbol:<8} — keine Kostenzeile in broker_costs.json, nicht bewertbar"
+            )
             continue
         for fenster_name, fenster_stunden in FENSTER:
             tf, tf_stunden = _bester_zeitrahmen(fenster_stunden)
             reihe = reihen.get((symbol, tf.value), ())
             if len(reihe) < 3:
-                print(f"{symbol:<8} {fenster_name:<8} "
-                      f"— Reihe {tf.value} zu kurz ({len(reihe)} Kerzen), "
-                      f"nicht bewertbar")
+                print(
+                    f"{symbol:<8} {fenster_name:<8} "
+                    f"— Reihe {tf.value} zu kurz ({len(reihe)} Kerzen), "
+                    f"nicht bewertbar"
+                )
                 continue
             balken = max(1, int(round(fenster_stunden / tf_stunden)))
             closes = [float(r.close) for r in reihe]
@@ -377,41 +392,49 @@ def messen() -> int:
                     print(f"{symbol:<8} {fenster_name:<8} {freq_name:<10} — {exc}")
                     continue
                 marke = "AUFLOESBAR" if urteil.resolvable else "blind"
-                print(f"{symbol:<8} {fenster_name:<8} {streu:>10.2f} "
-                      f"{len(renditen):>9} {k:>7.2f} {urteil.needed_bps:>7.2f}   "
-                      f"{freq_name:<10} {ereignisse:>7} {urteil.deflation_events:>7} "
-                      f"{urteil.detectable_bps:>11.2f} {urteil.ratio:>7.2f}  {marke}")
-                eintraege.append({
-                    "instrument": symbol,
-                    "window": fenster_name,
-                    "timeframe": tf.value,
-                    "series_windows": len(renditen),
-                    "series_years": round(jahre, 2),
-                    "frequency": freq_name,
-                    "events_per_year": pro_jahr,
-                    "events": ereignisse,
-                    "oos_share": OOS_ANTEIL,
-                    "deflation_events": urteil.deflation_events,
-                    "dispersion_bps": round(streu, 4),
-                    "cost_bps": round(k, 4),
-                    "required_sharpe": round(urteil.required_sharpe, 6),
-                    "detectable_bps": round(urteil.detectable_bps, 4),
-                    "needed_bps": round(urteil.needed_bps, 4),
-                    "ratio": round(urteil.ratio, 4),
-                    "resolvable": urteil.resolvable,
-                    "min_events_for_resolution": mindest,
-                })
+                print(
+                    f"{symbol:<8} {fenster_name:<8} {streu:>10.2f} "
+                    f"{len(renditen):>9} {k:>7.2f} {urteil.needed_bps:>7.2f}   "
+                    f"{freq_name:<10} {ereignisse:>7} {urteil.deflation_events:>7} "
+                    f"{urteil.detectable_bps:>11.2f} {urteil.ratio:>7.2f}  {marke}"
+                )
+                eintraege.append(
+                    {
+                        "instrument": symbol,
+                        "window": fenster_name,
+                        "timeframe": tf.value,
+                        "series_windows": len(renditen),
+                        "series_years": round(jahre, 2),
+                        "frequency": freq_name,
+                        "events_per_year": pro_jahr,
+                        "events": ereignisse,
+                        "oos_share": OOS_ANTEIL,
+                        "deflation_events": urteil.deflation_events,
+                        "dispersion_bps": round(streu, 4),
+                        "cost_bps": round(k, 4),
+                        "required_sharpe": round(urteil.required_sharpe, 6),
+                        "detectable_bps": round(urteil.detectable_bps, 4),
+                        "needed_bps": round(urteil.needed_bps, 4),
+                        "ratio": round(urteil.ratio, 4),
+                        "resolvable": urteil.resolvable,
+                        "min_events_for_resolution": mindest,
+                    }
+                )
         print()
 
     aufloesbar = [e for e in eintraege if e["resolvable"]]
     print("=" * 96)
-    print(f"ERGEBNIS: {len(aufloesbar)} von {len(eintraege)} Kombinationen aus "
-          f"Instrument und Fensterlaenge sind aufloesbar.")
+    print(
+        f"ERGEBNIS: {len(aufloesbar)} von {len(eintraege)} Kombinationen aus "
+        f"Instrument und Fensterlaenge sind aufloesbar."
+    )
     print("=" * 96)
     for e in aufloesbar:
-        print(f"  {e['instrument']:<8} {e['window']:<4} {e['frequency']:<10} "
-              f"N={e['events']:<6} N_defl={e['deflation_events']:<6} "
-              f"Verhaeltnis {e['ratio']}")
+        print(
+            f"  {e['instrument']:<8} {e['window']:<4} {e['frequency']:<10} "
+            f"N={e['events']:<6} N_defl={e['deflation_events']:<6} "
+            f"Verhaeltnis {e['ratio']}"
+        )
     print()
 
     dokument: dict[str, Any] = {
@@ -520,8 +543,10 @@ def gegenprobe(csv_pfad: Path, *, schwelle: float = 2.0) -> int:
         return 1
     teile = csv_pfad.stem.split("_")
     if len(teile) != 2:
-        print(f"FEHLGESCHLAGEN — {csv_pfad.name} ist nicht SYMBOL_ZEITRAHMEN.csv",
-              file=sys.stderr)
+        print(
+            f"FEHLGESCHLAGEN — {csv_pfad.name} ist nicht SYMBOL_ZEITRAHMEN.csv",
+            file=sys.stderr,
+        )
         return 1
     symbol, tf_name = teile[0], teile[1].upper()
     try:
@@ -563,8 +588,9 @@ def gegenprobe(csv_pfad: Path, *, schwelle: float = 2.0) -> int:
     finally:
         terminal.shutdown()
     eigen = {r.ts: float(r.close) for r in reihe}
-    print(f"Gegenprobe {symbol} {tf_name}: {len(fremd)} Fremd-, "
-          f"{len(eigen)} Eigenkerzen")
+    print(
+        f"Gegenprobe {symbol} {tf_name}: {len(fremd)} Fremd-, {len(eigen)} Eigenkerzen"
+    )
 
     def abweichung(versatz_h: int) -> tuple[float, float, float, int]:
         verschoben = {ts + timedelta(hours=versatz_h): k for ts, k in eigen.items()}
@@ -579,8 +605,12 @@ def gegenprobe(csv_pfad: Path, *, schwelle: float = 2.0) -> int:
         ]
         if len(werte) < 30:
             return (float("inf"), float("inf"), float("inf"), len(werte))
-        return (statistics.median(werte), statistics.fmean(werte),
-                max(werte), len(werte))
+        return (
+            statistics.median(werte),
+            statistics.fmean(werte),
+            max(werte),
+            len(werte),
+        )
 
     versaetze = range(-4, 5) if tf is not Timeframe.D1 else (0,)
     ergebnisse = {v: abweichung(v) for v in versaetze}
@@ -593,8 +623,10 @@ def gegenprobe(csv_pfad: Path, *, schwelle: float = 2.0) -> int:
             zahl = f"{med:8.2f} bp" if med != float("inf") else "  zu wenige"
             print(f"    {v:+d} h: {zahl}{marke}")
         if bester != 0:
-            print(f"  BEFUND: der Terminal-Feed liegt {bester:+d} h gegen UTC. "
-                  "Jede 1h-Fensterstudie auf ungedrehten Zeitstempeln waere falsch.")
+            print(
+                f"  BEFUND: der Terminal-Feed liegt {bester:+d} h gegen UTC. "
+                "Jede 1h-Fensterstudie auf ungedrehten Zeitstempeln waere falsch."
+            )
         else:
             print("  Serverzeit-Versatz gegen UTC: 0 h — Zeitstempel decken sich.")
 
@@ -602,11 +634,15 @@ def gegenprobe(csv_pfad: Path, *, schwelle: float = 2.0) -> int:
     if median == float("inf"):
         print("FEHLGESCHLAGEN — zu wenige gemeinsame Perioden.", file=sys.stderr)
         return 1
-    print(f"  Renditeabweichung bei {bester:+d} h: Median {median:.2f} bp | "
-          f"Mittel {mittel:.2f} bp | max {groesste:.2f} bp  (n={n})")
+    print(
+        f"  Renditeabweichung bei {bester:+d} h: Median {median:.2f} bp | "
+        f"Mittel {mittel:.2f} bp | max {groesste:.2f} bp  (n={n})"
+    )
     if median > schwelle:
-        print(f"  URTEIL: ueber der Schwelle von {schwelle} bp — der Terminal-Feed ist "
-              f"fuer {symbol} auf {tf_name} NICHT brauchbar.")
+        print(
+            f"  URTEIL: ueber der Schwelle von {schwelle} bp — der Terminal-Feed ist "
+            f"fuer {symbol} auf {tf_name} NICHT brauchbar."
+        )
         return 1
     print(f"  URTEIL: unter der Schwelle von {schwelle} bp — brauchbar.")
     return 0
@@ -783,8 +819,10 @@ def pruefen(pfad: Path | None = None) -> int:
         abweichungen.extend(_zeilenfelder(e, nach, anteil=anteil, schema=schema))
 
     if abweichungen:
-        print(f"FEHLGESCHLAGEN — {len(abweichungen)} Zeile(n) rechnen sich nicht nach:",
-              file=sys.stderr)
+        print(
+            f"FEHLGESCHLAGEN — {len(abweichungen)} Zeile(n) rechnen sich nicht nach:",
+            file=sys.stderr,
+        )
         for zeile in abweichungen:
             print(f"  {zeile}", file=sys.stderr)
         return 1
@@ -794,16 +832,22 @@ def pruefen(pfad: Path | None = None) -> int:
             print(zeile, file=sys.stderr)
         for zeile in _korrigiert(eintraege, trials):
             print(f"  {zeile}", file=sys.stderr)
-        print("Abhilfe: `python tools/aufloesung.py` neu messen (braucht MT5).",
-              file=sys.stderr)
+        print(
+            "Abhilfe: `python tools/aufloesung.py` neu messen (braucht MT5).",
+            file=sys.stderr,
+        )
         return 1
 
     aufloesbar = [e for e in eintraege if e.get("resolvable")]
-    print(f"ok — {ziel.name} nachgerechnet: {len(aufloesbar)} von {len(eintraege)} "
-          f"Kombinationen aufloesbar (T = {trials}, Out-of-Sample-Anteil {anteil}).")
+    print(
+        f"ok — {ziel.name} nachgerechnet: {len(aufloesbar)} von {len(eintraege)} "
+        f"Kombinationen aufloesbar (T = {trials}, Out-of-Sample-Anteil {anteil})."
+    )
     for e in aufloesbar:
-        print(f"  {e['instrument']:<8} {e['window']:<4} {e['frequency']:<10} "
-              f"N={e['events']:<6} Verhaeltnis {e['ratio']}")
+        print(
+            f"  {e['instrument']:<8} {e['window']:<4} {e['frequency']:<10} "
+            f"N={e['events']:<6} Verhaeltnis {e['ratio']}"
+        )
     return 0
 
 

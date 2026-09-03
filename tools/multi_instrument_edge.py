@@ -41,7 +41,7 @@ from mt5_trading_ai.data.loader import FxSession, load_verified_csv  # noqa: E40
 VERSION = "v1"
 OOS_FRACTION = 0.30
 LEVERAGE = Decimal("5")  # konservativ, unter jeder ESMA-Klassengrenze
-WALK_FORWARD_FOLDS = 5   # k der Walk-Forward-Fenster je Instrument
+WALK_FORWARD_FOLDS = 5  # k der Walk-Forward-Fenster je Instrument
 #: Registrierte Versuche je Instrument: die WF-Fenster + der eine OoS-Abschluss. Geht in
 #: die deklarierte Kampagnengroesse ein, damit die Deflation NICHT ordnungsabhaengig ist
 #: (jedes Instrument gegen die volle Kampagne, nicht gegen den laufenden Registerstand).
@@ -53,7 +53,11 @@ def _pip_size(symbol: str) -> Decimal:
 
 
 def _run_one(
-    symbol: str, csv_path: Path, ledger: str, checksum: str, commit: str,
+    symbol: str,
+    csv_path: Path,
+    ledger: str,
+    checksum: str,
+    commit: str,
     expected_trials: int,
 ) -> tuple[EdgeVerdict, int, float, float]:
     """Ein Instrument durchs Tor. -> (Urteil, Trades, Netto, DSR).
@@ -64,14 +68,21 @@ def _run_one(
     """
     # Qualitaetstor + Provenienz am Backtest-Rand (Paket 1), fail-closed je Instrument.
     bars, _chk = load_verified_csv(
-        csv_path, instrument=symbol, timeframe="H1", session_predicate=FxSession(),
+        csv_path,
+        instrument=symbol,
+        timeframe="H1",
+        session_predicate=FxSession(),
         expected_checksum=checksum or None,
     )
     span_years = max(1e-9, (bars[-1].ts - bars[0].ts).days / 365.25)
     spec = MarketSpec(
-        symbol=symbol, contract_size=Decimal("100000"), pip_size=_pip_size(symbol),
-        quote_currency=symbol[3:], fees=load_cost_fees(symbol),
-        spread_pips=Decimal("0.1"), leverage=LEVERAGE,
+        symbol=symbol,
+        contract_size=Decimal("100000"),
+        pip_size=_pip_size(symbol),
+        quote_currency=symbol[3:],
+        fees=load_cost_fees(symbol),
+        spread_pips=Decimal("0.1"),
+        leverage=LEVERAGE,
         obs_per_year=len(bars) / span_years,
     )
     strategy_id = f"mean_reversion_{symbol.lower()}_h1"
@@ -82,25 +93,50 @@ def _run_one(
         return mean_reversion_zscore(48, 2.0, 0.5)
 
     wf = run_walk_forward(
-        in_sample, lambda _train: factory(), spec, WALK_FORWARD_FOLDS,  # Fit = No-op
-        purge_ms=3_600_000, embargo_ms=3_600_000,
-        strategy_id=strategy_id, seed=100, version=VERSION,
-        data_checksum="", code_commit=commit, ledger_path=ledger,
+        in_sample,
+        lambda _train: factory(),
+        spec,
+        WALK_FORWARD_FOLDS,  # Fit = No-op
+        purge_ms=3_600_000,
+        embargo_ms=3_600_000,
+        strategy_id=strategy_id,
+        seed=100,
+        version=VERSION,
+        data_checksum="",
+        code_commit=commit,
+        ledger_path=ledger,
     )
     oos_report = run_registered_backtest(
-        oos, mean_reversion_zscore(48, 2.0, 0.5), spec, strategy_id=strategy_id,
-        version=VERSION, seed=0, data_checksum="", code_commit=commit,
+        oos,
+        mean_reversion_zscore(48, 2.0, 0.5),
+        spec,
+        strategy_id=strategy_id,
+        version=VERSION,
+        seed=0,
+        data_checksum="",
+        code_commit=commit,
         ledger_path=ledger,
     )
     dsr = deflated_sharpe_for_report(
-        oos_report, strategy_id=strategy_id, version=VERSION, ledger_path=ledger,
-        count_scope="total", expected_trials=expected_trials,
+        oos_report,
+        strategy_id=strategy_id,
+        version=VERSION,
+        ledger_path=ledger,
+        count_scope="total",
+        expected_trials=expected_trials,
     )
     # Bedingung 6 wird je Instrument GEFAHREN, nicht behauptet: Zufalls-Referenz < 0
     # nach Kosten, und der Leckage-Schutz faengt eine Zukunfts-Strategie.
     rnd = [
-        run_backtest(oos, random_signal_strategy(s), spec, strategy_id="rnd", seed=s,
-                     data_checksum="", code_commit="").net_return
+        run_backtest(
+            oos,
+            random_signal_strategy(s),
+            spec,
+            strategy_id="rnd",
+            seed=s,
+            data_checksum="",
+            code_commit="",
+        ).net_return
         for s in range(5)
     ]
     random_negative = (sum(rnd) / len(rnd)) < 0
@@ -111,16 +147,26 @@ def _run_one(
 
     leakage_green = False
     try:
-        run_backtest(oos, _leaky, spec, strategy_id="leak", seed=0,
-                     data_checksum="", code_commit="")
+        run_backtest(
+            oos,
+            _leaky,
+            spec,
+            strategy_id="leak",
+            seed=0,
+            data_checksum="",
+            code_commit="",
+        )
     except LookAheadError:
         leakage_green = True
 
     verdict = evaluate_edge(
-        oos_sharpe=oos_report.trade_sharpe, deflated_sharpe=dsr,
-        trades=oos_report.trades, fold_returns=[f.net_return for f in wf.folds],
+        oos_sharpe=oos_report.trade_sharpe,
+        deflated_sharpe=dsr,
+        trades=oos_report.trades,
+        fold_returns=[f.net_return for f in wf.folds],
         net_over_hurdle=oos_report.net_over_hurdle,
-        leakage_test_green=leakage_green, random_reference_negative=random_negative,
+        leakage_test_green=leakage_green,
+        random_reference_negative=random_negative,
     )
     return verdict, oos_report.trades, oos_report.net_return, dsr
 
@@ -130,8 +176,12 @@ def main() -> int:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser(description="Multi-Instrument-Edge (Paket 5, §8.1)")
     ap.add_argument(
-        "--instrument", nargs=2, action="append", metavar=("SYMBOL", "CSV"),
-        required=True, help="Symbol und CSV-Pfad; mehrfach fuer mehrere Instrumente",
+        "--instrument",
+        nargs=2,
+        action="append",
+        metavar=("SYMBOL", "CSV"),
+        required=True,
+        help="Symbol und CSV-Pfad; mehrfach fuer mehrere Instrumente",
     )
     ap.add_argument("--ledger", type=Path, required=True)
     ap.add_argument("--data-checksum", default="")
@@ -151,7 +201,11 @@ def main() -> int:
     print("=== MULTI-INSTRUMENT-EDGE (jedes einzeln durchs Sechs-Bedingungen-Tor) ===")
     for symbol, csv in args.instrument:
         verdict, trades, net, dsr = _run_one(
-            symbol.upper(), Path(csv), ledger, args.data_checksum, code_commit,
+            symbol.upper(),
+            Path(csv),
+            ledger,
+            args.data_checksum,
+            code_commit,
             expected_trials,
         )
         mark = "EDGE BELEGT" if verdict.passed else "KEIN EDGE"
@@ -164,8 +218,9 @@ def main() -> int:
     total = len(args.instrument)
     print(f"\nInstrumente mit belegtem Edge: {passed_count} / {total}")
     print(
-        "Ergebnis: AUSBAU MOEGLICH" if passed_count else
-        "Ergebnis: KEIN Instrument besteht -- kein Ausbau (§8.1)"
+        "Ergebnis: AUSBAU MOEGLICH"
+        if passed_count
+        else "Ergebnis: KEIN Instrument besteht -- kein Ausbau (§8.1)"
     )
     return 0
 

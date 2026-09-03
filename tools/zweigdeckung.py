@@ -75,19 +75,34 @@ def messen(ziel: Path) -> int:
     """Fahre die Suite unter ``coverage --branch`` und schreibe den JSON-Bericht."""
     lauf = subprocess.run(
         [
-            sys.executable, "-m", "coverage", "run", "--branch",
-            "--source=mt5_trading_ai", "-m", "pytest", "-q",
+            sys.executable,
+            "-m",
+            "coverage",
+            "run",
+            "--branch",
+            "--source=mt5_trading_ai",
+            "-m",
+            "pytest",
+            "-q",
         ],
-        cwd=ROOT, capture_output=True, text=True, check=False,
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
     )
     if lauf.returncode != 0:
-        print("FEHLGESCHLAGEN — die Suite ist rot; eine Deckung daraus taugt nichts.",
-              file=sys.stderr)
+        print(
+            "FEHLGESCHLAGEN — die Suite ist rot; eine Deckung daraus taugt nichts.",
+            file=sys.stderr,
+        )
         print(lauf.stdout[-2000:], file=sys.stderr)
         return 1
     bericht = subprocess.run(
         [sys.executable, "-m", "coverage", "json", "-o", str(ziel)],
-        cwd=ROOT, capture_output=True, text=True, check=False,
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
     )
     if bericht.returncode != 0:
         print(f"FEHLGESCHLAGEN — coverage json: {bericht.stderr}", file=sys.stderr)
@@ -123,17 +138,17 @@ def urteile(bericht: Path) -> int:
         zweige = s.get("num_branches", 0)
         anteil = s.get("covered_branches", 0) / zweige if zweige else 1.0
         marke = "" if anteil >= MINDEST_ZWEIGDECKUNG else "  <== unter der Schwelle"
-        print(
-            f"{name:<40}{s['percent_covered']:>8.1f}%{anteil * 100:>8.1f}%{marke}"
-        )
+        print(f"{name:<40}{s['percent_covered']:>8.1f}%{anteil * 100:>8.1f}%{marke}")
         if anteil < MINDEST_ZWEIGDECKUNG:
             zu_niedrig.append((name, anteil))
 
     g = daten["totals"]
     gesamt = g.get("covered_branches", 0) / max(1, g.get("num_branches", 1))
     print()
-    print(f"Paket gesamt: Zeilen {g['percent_covered']:.1f} %, "
-          f"Zweige {gesamt * 100:.1f} %")
+    print(
+        f"Paket gesamt: Zeilen {g['percent_covered']:.1f} %, "
+        f"Zweige {gesamt * 100:.1f} %"
+    )
 
     if fehlend or zu_niedrig:
         print()
@@ -160,8 +175,9 @@ def main() -> int:
         if hasattr(strom, "reconfigure"):
             strom.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser(description="Zweigdeckungstor auf dem Geldpfad")
-    ap.add_argument("--messen", action="store_true",
-                    help="erst die Suite unter coverage fahren")
+    ap.add_argument(
+        "--messen", action="store_true", help="erst die Suite unter coverage fahren"
+    )
     ap.add_argument("--bericht", type=Path, default=ROOT / "betrieb" / "coverage.json")
     args = ap.parse_args()
 

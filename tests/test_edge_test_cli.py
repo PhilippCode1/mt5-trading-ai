@@ -30,7 +30,9 @@ CONTROL_IDS = {"rnd", "leak", "stress"}
 
 
 def _load_edge_test() -> object:
-    spec = importlib.util.spec_from_file_location("edge_test_cli", _TOOLS / "edge_test.py")
+    spec = importlib.util.spec_from_file_location(
+        "edge_test_cli", _TOOLS / "edge_test.py"
+    )
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -41,11 +43,16 @@ def _run_main(ledger: Path, monkeypatch: pytest.MonkeyPatch) -> int:
     module = _load_edge_test()
     argv = [
         "edge_test.py",
-        "--csv", str(FIXTURE),
-        "--ledger", str(ledger),
-        "--strategy", "mean_reversion",
-        "--data-checksum", PINNED_CHECKSUM,  # zugleich Drift-Wache der Fixture
-        "--code-commit", COMMIT,             # hermetisch, ohne git im Test
+        "--csv",
+        str(FIXTURE),
+        "--ledger",
+        str(ledger),
+        "--strategy",
+        "mean_reversion",
+        "--data-checksum",
+        PINNED_CHECKSUM,  # zugleich Drift-Wache der Fixture
+        "--code-commit",
+        COMMIT,  # hermetisch, ohne git im Test
     ]
     monkeypatch.setattr(sys, "argv", argv)
     return int(module.main())  # type: ignore[attr-defined]

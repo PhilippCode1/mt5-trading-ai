@@ -149,7 +149,7 @@ def deflation_observations(events: int, *, oos_share: float) -> int:
     if not 0.0 < oos_share <= 1.0:
         raise ResolutionError(
             f"oos_share ausserhalb (0, 1]: {oos_share} -- ein Anteil von 1,0 heisst "
-            "„die Deflation sieht die ganze Stichprobe\", alles darueber ist sinnlos"
+            '„die Deflation sieht die ganze Stichprobe", alles darueber ist sinnlos'
         )
     return events - int(events * (1.0 - oos_share))
 
@@ -177,9 +177,12 @@ def required_sharpe(
         raise ResolutionError(f"threshold ausserhalb (0, 1): {threshold}")
 
     low, high = 0.0, 5.0
-    if deflated_sharpe_ratio(
-        observed_sharpe=high, observations=observations, trials=trials
-    ) < threshold:
+    if (
+        deflated_sharpe_ratio(
+            observed_sharpe=high, observations=observations, trials=trials
+        )
+        < threshold
+    ):
         raise DeflationUnreachableError(
             f"selbst eine Sharpe von {high} erreicht die Schwelle {threshold} nicht "
             f"(N={observations}, T={trials}) — die Deflation ist hier unerfuellbar"

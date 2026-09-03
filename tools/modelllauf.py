@@ -91,9 +91,7 @@ def spannen_aus_journal(pfad: Path) -> list[tuple[str, datetime, datetime]]:
             continue
         symbol, seit, ts = satz.get("symbol"), satz.get("seit"), satz.get("ts")
         if not (
-            isinstance(symbol, str)
-            and isinstance(seit, str)
-            and isinstance(ts, str)
+            isinstance(symbol, str) and isinstance(seit, str) and isinstance(ts, str)
         ):
             continue
         try:
@@ -152,9 +150,11 @@ def main() -> int:
     # Haltedauer als Hoechsthaltedauer vorschlagen. Ein Parameter -- mehr traegt die
     # Beobachtungsmenge dieses Journals ohnehin nicht.
     if spannen:
-        stunden = sum(
-            (bis - von).total_seconds() for _s, von, bis in spannen
-        ) / len(spannen) / 3600.0
+        stunden = (
+            sum((bis - von).total_seconds() for _s, von, bis in spannen)
+            / len(spannen)
+            / 3600.0
+        )
     else:
         stunden = 0.0
     parameter = {"max_haltedauer_stunden": round(stunden, 2)}
@@ -181,12 +181,15 @@ def main() -> int:
             backtest_start=date(1970, 1, 1),
         )
     )
-    print(f"LLM im Entscheidungspfad: {'ZUGELASSEN' if llm.allowed else 'nein'}"
-          f" ({'; '.join(llm.reasons) if llm.reasons else 'kein Grund'})")
+    print(
+        f"LLM im Entscheidungspfad: {'ZUGELASSEN' if llm.allowed else 'nein'}"
+        f" ({'; '.join(llm.reasons) if llm.reasons else 'kein Grund'})"
+    )
     if llm.allowed:
         # Kann mit diesen Eingaben nicht vorkommen; wenn doch, ist das Tor kaputt.
-        print("FEHLGESCHLAGEN — das LLM-Tor laesst ohne jeden Beleg zu.",
-              file=sys.stderr)
+        print(
+            "FEHLGESCHLAGEN — das LLM-Tor laesst ohne jeden Beleg zu.", file=sys.stderr
+        )
         return 1
 
     # Stufe 7, Abnahme: „ein Trainingslauf weist den Anteil erkundender Beobachtungen
@@ -199,8 +202,10 @@ def main() -> int:
 
     print(f"Journal           : {args.journal}")
     print(f"Geschlossene Trades: {len(spannen)}")
-    print(f"Erkundende Beobachtungen: {anteil * 100:.2f} % "
-          f"(von {sum(1 for z in zeilen if z.ergebnis_bp is not None)} mit Ergebnis)")
+    print(
+        f"Erkundende Beobachtungen: {anteil * 100:.2f} % "
+        f"(von {sum(1 for z in zeilen if z.ergebnis_bp is not None)} mit Ergebnis)"
+    )
     # Vor dem Vorschlag die Rangliste dessen, was tatsaechlich gefahren wurde.
     # ``gates/learning_phase.py`` traegt die vier Grenzen der Lernphase (kein
     # automatisches Freischalten, kein selbstmodifizierender Code, kein Vorschlag ohne
@@ -225,16 +230,20 @@ def main() -> int:
         for symbol, von, bis in spannen
     ]
     rangliste = rank_strategies(trades)
-    print(f"Rangliste (Lernphase): {len(rangliste)} Eintrag/Eintraege, "
-          f"{sum(r.trades for r in rangliste)} geschlossene Zeilen gezaehlt")
+    print(
+        f"Rangliste (Lernphase): {len(rangliste)} Eintrag/Eintraege, "
+        f"{sum(r.trades for r in rangliste)} geschlossene Zeilen gezaehlt"
+    )
     # Wo die Schwaechen liegen, gehoert in denselben Lauf: ein Trainingslauf, der
     # ranglistet und die Schwaechen verschweigt, laesst den unbequemen Teil weg.
     schwaechen = find_weaknesses(trades)
     if schwaechen:
         print(f"Schwaechen (Lernphase): {len(schwaechen)}")
         for s in schwaechen[:3]:
-            print(f"  {s.dimension}={s.key}: {s.trades} Trades, "
-                  f"mittleres Ergebnis {s.mean_r:+.3f} R")
+            print(
+                f"  {s.dimension}={s.key}: {s.trades} Trades, "
+                f"mittleres Ergebnis {s.mean_r:+.3f} R"
+            )
     else:
         print("Schwaechen (Lernphase): keine benennbare")
     # Grenze 2 der Lernphase: ein Vorschlag ist ein PARAMETERSATZ, niemals Quelltext.
@@ -282,8 +291,10 @@ def main() -> int:
     print(f"HERAUSFORDERER angelegt: {ziel}")
     print(f"  zustand              : {herausforderer.zustand}")
     print(f"  beobachtungen        : {herausforderer.beobachtungen}")
-    print(f"  effektiv (Ueberlappung abgezogen): "
-          f"{herausforderer.effektive_beobachtungen:.1f}")
+    print(
+        f"  effektiv (Ueberlappung abgezogen): "
+        f"{herausforderer.effektive_beobachtungen:.1f}"
+    )
     print(f"  wartet auf           : {herausforderer.freigabeteilung}")
     return 0
 

@@ -157,9 +157,7 @@ def test_ein_halt_waehrend_eines_plattenausfalls_ueberlebt_die_erholung(  # noqa
 
     # Die Platte erholt sich, die Equity ebenfalls -- ein Latch loest sich davon nicht.
     pfad.with_name(pfad.name + ".neu").rmdir()
-    danach = _autorisiere(
-        rm, account=_konto("12000"), now=NOW + timedelta(minutes=5)
-    )
+    danach = _autorisiere(rm, account=_konto("12000"), now=NOW + timedelta(minutes=5))
     assert danach.approved is False
     assert danach.latch_halt is True
     assert danach.reason == "risk_drawdown_halt_gelatcht"
@@ -186,9 +184,12 @@ def test_die_schreibmarke_bleibt_die_meldung_ohne_halt(tmp_path) -> None:  # typ
 
     # Und sie faellt weiterhin mit dem naechsten gelungenen Schreibvorgang.
     pfad.with_name(pfad.name + ".neu").rmdir()
-    assert _autorisiere(
-        rm, account=_konto("10000"), now=NOW + timedelta(minutes=1)
-    ).approved is True
+    assert (
+        _autorisiere(
+            rm, account=_konto("10000"), now=NOW + timedelta(minutes=1)
+        ).approved
+        is True
+    )
 
 
 # --- 2) Die Ortsgarantie --------------------------------------------------------
@@ -269,7 +270,7 @@ def test_eine_unsichtbare_kennung_ist_keine_freigabe() -> None:
         assert zeichen.strip() == zeichen
         assert freigabe_gueltig(zeichen) is False
         assert freigabe_gueltig(f"  {zeichen}\t") is False
-    for leer in (None, "", "   ", '\t\n', '\xa0', chr(0x3000)):
+    for leer in (None, "", "   ", "\t\n", "\xa0", chr(0x3000)):
         assert freigabe_gueltig(leer) is False
     for echt in ("ops-2026-08-13", "0", "-", f"ops-1{UNSICHTBAR[0]}"):
         assert freigabe_gueltig(echt) is True

@@ -170,7 +170,8 @@ def _geldergebnis(satz: Satz) -> tuple[Decimal | None, str | None, str | None]:
     """
     _verlange_quelle(
         f"{satz.art} um {satz.ts.isoformat(timespec='seconds')}",
-        satz["ergebnis_geld"], satz["ergebnis_geld_quelle"],
+        satz["ergebnis_geld"],
+        satz["ergebnis_geld_quelle"],
     )
     wert = _dezimal(satz["ergebnis_geld"])
     if wert is not None:
@@ -380,7 +381,8 @@ class Lauf:
                     volumen=_dezimal(s["volumen"]) or Decimal("0"),
                     auf_ts=_zeit(s["seit"]) or s.ts,
                     einstieg=_dezimal(s["einstiegspreis"]),
-                    position_id=None if s["position_id"] is None
+                    position_id=None
+                    if s["position_id"] is None
                     else str(s["position_id"]),
                 )
                 offen.setdefault(schluessel(s), []).append(t)
@@ -392,30 +394,41 @@ class Lauf:
                 if not kandidaten:
                     # Schluss ohne bekannte Eroeffnung: der Lauf hat die Position beim
                     # Start uebernommen (adopt_book journalisiert nicht).
-                    fertig.append(Trade(
-                        symbol=str(s["symbol"]),
-                        ist_kauf=bool(s["war_kauf"]),
-                        volumen=_dezimal(s["volumen"]) or Decimal("0"),
-                        auf_ts=_zeit(s["seit"]) or s.ts,
-                        einstieg=_dezimal(s["einstiegspreis"]),
-                        zu_ts=s.ts, ausstieg=_dezimal(s["ausstiegspreis"]),
-                        grund=str(s["grund"] or "uebernommen"),
-                        vom_broker=s.art == "vom_broker_geschlossen",
-                        ergebnis_geld=geld, ergebnis_geld_waehrung=waehrung,
-                        ergebnis_geld_quelle=quelle,
-                    ))
+                    fertig.append(
+                        Trade(
+                            symbol=str(s["symbol"]),
+                            ist_kauf=bool(s["war_kauf"]),
+                            volumen=_dezimal(s["volumen"]) or Decimal("0"),
+                            auf_ts=_zeit(s["seit"]) or s.ts,
+                            einstieg=_dezimal(s["einstiegspreis"]),
+                            zu_ts=s.ts,
+                            ausstieg=_dezimal(s["ausstiegspreis"]),
+                            grund=str(s["grund"] or "uebernommen"),
+                            vom_broker=s.art == "vom_broker_geschlossen",
+                            ergebnis_geld=geld,
+                            ergebnis_geld_waehrung=waehrung,
+                            ergebnis_geld_quelle=quelle,
+                        )
+                    )
                     continue
                 t = kandidaten.pop(0)
-                fertig.append(Trade(
-                    symbol=t.symbol, ist_kauf=t.ist_kauf, volumen=t.volumen,
-                    auf_ts=t.auf_ts,
-                    einstieg=t.einstieg or _dezimal(s["einstiegspreis"]),
-                    zu_ts=s.ts, ausstieg=_dezimal(s["ausstiegspreis"]),
-                    grund=str(s["grund"] or "?"), position_id=t.position_id,
-                    vom_broker=s.art == "vom_broker_geschlossen",
-                    ergebnis_geld=geld, ergebnis_geld_waehrung=waehrung,
-                    ergebnis_geld_quelle=quelle,
-                ))
+                fertig.append(
+                    Trade(
+                        symbol=t.symbol,
+                        ist_kauf=t.ist_kauf,
+                        volumen=t.volumen,
+                        auf_ts=t.auf_ts,
+                        einstieg=t.einstieg or _dezimal(s["einstiegspreis"]),
+                        zu_ts=s.ts,
+                        ausstieg=_dezimal(s["ausstiegspreis"]),
+                        grund=str(s["grund"] or "?"),
+                        position_id=t.position_id,
+                        vom_broker=s.art == "vom_broker_geschlossen",
+                        ergebnis_geld=geld,
+                        ergebnis_geld_waehrung=waehrung,
+                        ergebnis_geld_quelle=quelle,
+                    )
+                )
         for rest in offen.values():
             fertig.extend(rest)
         return sorted(fertig, key=lambda t: t.auf_ts)
@@ -430,8 +443,9 @@ def lies_journal(pfad: Path) -> Lauf:
     if not pfad.is_file():
         raise JournalError(f"{pfad} gibt es nicht")
     saetze: list[Satz] = []
-    for nr, roh in enumerate(pfad.read_text(encoding="utf-8", errors="replace")
-                             .splitlines(), 1):
+    for nr, roh in enumerate(
+        pfad.read_text(encoding="utf-8", errors="replace").splitlines(), 1
+    ):
         roh = roh.strip()
         if not roh:
             continue
@@ -449,13 +463,19 @@ def lies_journal(pfad: Path) -> Lauf:
         _verlange_quelle(
             f"{pfad.name}:{nr}", d.get("ergebnis_geld"), d.get("ergebnis_geld_quelle")
         )
-        saetze.append(Satz(
-            ts=ts, art=str(d["art"]),
-            lauf=None if d.get("lauf") is None else str(d["lauf"]),
-            version=None if d.get("version") is None else str(d["version"]),
-            felder={k: v for k, v in d.items()
-                    if k not in ("ts", "art", "lauf", "version")},
-        ))
+        saetze.append(
+            Satz(
+                ts=ts,
+                art=str(d["art"]),
+                lauf=None if d.get("lauf") is None else str(d["lauf"]),
+                version=None if d.get("version") is None else str(d["version"]),
+                felder={
+                    k: v
+                    for k, v in d.items()
+                    if k not in ("ts", "art", "lauf", "version")
+                },
+            )
+        )
     return Lauf(pfad=pfad, saetze=saetze)
 
 
@@ -574,23 +594,36 @@ def geldbilanz(trades: Iterable[Trade]) -> Geldbilanz:
     for t in mit_geld:
         _verlange_quelle(
             f"Trade {t.symbol} von {t.auf_ts.isoformat(timespec='seconds')}",
-            t.ergebnis_geld, t.ergebnis_geld_quelle,
+            t.ergebnis_geld,
+            t.ergebnis_geld_quelle,
         )
     je_herkunft = Counter(str(t.ergebnis_geld_quelle) for t in mit_geld)
     vom_broker = sum(1 for t in mit_geld if t.vom_broker)
     waehrungen = {t.ergebnis_geld_waehrung for t in mit_geld}
     if None in waehrungen:
         return Geldbilanz(
-            mit_geld, dict(je_herkunft), vom_broker, None, None,
+            mit_geld,
+            dict(je_herkunft),
+            vom_broker,
+            None,
+            None,
             "mindestens ein Betrag kommt ohne Waehrungsangabe (Altjournal)",
         )
     if len(waehrungen) != 1:
         return Geldbilanz(
-            mit_geld, dict(je_herkunft), vom_broker, None, None,
+            mit_geld,
+            dict(je_herkunft),
+            vom_broker,
+            None,
+            None,
             f"verschiedene Waehrungen {sorted(str(w) for w in waehrungen)}",
         )
     betraege = [t.ergebnis_geld for t in mit_geld if t.ergebnis_geld is not None]
     return Geldbilanz(
-        mit_geld, dict(je_herkunft), vom_broker,
-        sum(betraege, Decimal("0")), str(waehrungen.pop()), None,
+        mit_geld,
+        dict(je_herkunft),
+        vom_broker,
+        sum(betraege, Decimal("0")),
+        str(waehrungen.pop()),
+        None,
     )

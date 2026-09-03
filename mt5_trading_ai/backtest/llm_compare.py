@@ -29,13 +29,13 @@ LLM_GATE_VERSION = "llm-gate-v1"
 class LlmGateInputs:
     """Die Belege, die ein LLM in den Entscheidungspfad lassen -- oder eben nicht."""
 
-    baseline_passed: bool    # Nicht-LLM-Variante: alle sechs Bedingungen erfuellt?
-    baseline_score: float    # OoS-Sharpe nach Kosten (ohne LLM)
-    llm_passed: bool               # LLM-Variante: alle sechs Bedingungen erfuellt?
-    llm_score: float               # OoS-Sharpe nach Kosten (mit LLM)
-    model_version: str             # exakte Modellversion (Drift, §8.4)
-    model_training_cutoff: date    # Wissensstichtag des Modells
-    backtest_start: date           # muss strikt NACH dem Cutoff liegen (Leckage, §8.3)
+    baseline_passed: bool  # Nicht-LLM-Variante: alle sechs Bedingungen erfuellt?
+    baseline_score: float  # OoS-Sharpe nach Kosten (ohne LLM)
+    llm_passed: bool  # LLM-Variante: alle sechs Bedingungen erfuellt?
+    llm_score: float  # OoS-Sharpe nach Kosten (mit LLM)
+    model_version: str  # exakte Modellversion (Drift, §8.4)
+    model_training_cutoff: date  # Wissensstichtag des Modells
+    backtest_start: date  # muss strikt NACH dem Cutoff liegen (Leckage, §8.3)
 
 
 @dataclass(frozen=True)
@@ -45,8 +45,11 @@ class LlmGateDecision:
     version: str = LLM_GATE_VERSION
 
     def as_dict(self) -> dict[str, Any]:
-        return {"allowed": self.allowed, "reasons": list(self.reasons),
-                "version": self.version}
+        return {
+            "allowed": self.allowed,
+            "reasons": list(self.reasons),
+            "version": self.version,
+        }
 
 
 def evaluate_llm_gate(inputs: LlmGateInputs) -> LlmGateDecision:

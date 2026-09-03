@@ -51,7 +51,9 @@ def test_no_leakage_after_the_fix(n: int, k: int) -> None:
     ):
         assert not (set(train) & set(test)), "Train und Test ueberschneiden sich"
         if train:
-            assert max(train) < min(test), "Training liegt nicht vollstaendig vor dem Test"
+            assert max(train) < min(test), (
+                "Training liegt nicht vollstaendig vor dem Test"
+            )
 
 
 def test_purge_excludes_train_range_in_the_pre_test_band() -> None:

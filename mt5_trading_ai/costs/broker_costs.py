@@ -311,8 +311,7 @@ def _parse_instrument(scope: str, key: str, entry: Any) -> InstrumentCost:
     spread_kind = str(entry.get("spread_kind", ""))
     if spread_kind not in _SPREAD_KINDS:
         raise BrokerCostsError(
-            f"{scope}: unbekannte spread_kind {spread_kind!r}, "
-            f"erlaubt: {_SPREAD_KINDS}"
+            f"{scope}: unbekannte spread_kind {spread_kind!r}, erlaubt: {_SPREAD_KINDS}"
         )
 
     published = _optional_decimal(

@@ -56,7 +56,9 @@ def _wirft(_request: Any) -> Any:
 
 
 def _venue_mit_akte(tmp_path: Path, **kw: Any):
-    return _venue(is_demo=True, schwebeakte=SchwebeAkte(tmp_path / "schwebe.json"), **kw)
+    return _venue(
+        is_demo=True, schwebeakte=SchwebeAkte(tmp_path / "schwebe.json"), **kw
+    )
 
 
 # =====================================================================
@@ -339,6 +341,9 @@ def test_das_redigierwerkzeug_laeuft_und_bestaetigt_die_aufzeichnung() -> None:
     """
     lauf = subprocess.run(
         [sys.executable, "tools/aufzeichnung_redigieren.py", "--pruefen"],
-        cwd=ROOT, capture_output=True, text=True, check=False,
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
     )
     assert lauf.returncode == 0, lauf.stderr or lauf.stdout

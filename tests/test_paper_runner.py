@@ -102,9 +102,14 @@ class FakeTerminal:
         self._connected = False
         self._symbols = {"EURUSD": _sym("EURUSD"), "BTCUSD": _sym("BTCUSD")}
         self._account = Mt5Account(
-            account_id="123", currency="USD", balance=equity, equity=equity,
-            margin_used=Decimal("0"), margin_free=Decimal("100000"),
-            is_demo=is_demo, ts=TS,
+            account_id="123",
+            currency="USD",
+            balance=equity,
+            equity=equity,
+            margin_used=Decimal("0"),
+            margin_free=Decimal("100000"),
+            is_demo=is_demo,
+            ts=TS,
         )
         self._positions = positions
         self._accept = accept
@@ -137,16 +142,24 @@ class FakeTerminal:
         self, name: str, timeframe: Timeframe, start: datetime, end: datetime
     ) -> tuple[Mt5Rate, ...]:
         return (
-            Mt5Rate(ts=TS, open=Decimal("1.1"), high=Decimal("1.2"),
-                    low=Decimal("1.0"), close=Decimal("1.15"), tick_volume=100),
+            Mt5Rate(
+                ts=TS,
+                open=Decimal("1.1"),
+                high=Decimal("1.2"),
+                low=Decimal("1.0"),
+                close=Decimal("1.15"),
+                tick_volume=100,
+            ),
         )
 
     def order_send(self, request: object) -> Mt5SendResult:
         self.order_send_calls += 1
         return Mt5SendResult(
-            accepted=self._accept, venue_order_id="V-1" if self._accept else None,
+            accepted=self._accept,
+            venue_order_id="V-1" if self._accept else None,
             filled_volume=Decimal("0.15") if self._accept else Decimal("0"),
-            average_price=Decimal("1.10000"), ts=TS,
+            average_price=Decimal("1.10000"),
+            ts=TS,
             reason="done" if self._accept else "rejected",
         )
 
@@ -177,8 +190,11 @@ def _venue(
         is_demo=is_demo, equity=equity, positions=positions, accept=accept
     )
     venue = Mt5Venue(
-        name="mt5-demo", terminal=terminal, catalog=_catalog(),
-        sync=sync, max_notional_drift=max_notional_drift,
+        name="mt5-demo",
+        terminal=terminal,
+        catalog=_catalog(),
+        sync=sync,
+        max_notional_drift=max_notional_drift,
         # Seit A3 auf jedem Konto Pflicht; feste Uhr passend zum Fake-Kontostand.
         risk_manager=risk_manager if risk_manager is not None else RiskManager(),
         clock=lambda: TS,
@@ -221,8 +237,18 @@ def _run(**overrides: object):
 # --- Runner: die volle Kette ---------------------------------------------
 
 _SEAMS = {
-    "zulassung", "signal", "daten-tor", "hebel", "stop-preis",
-    "kostentor", "limits", "evaluation", "stop-budget", "sizing", "submit", "buchung",
+    "zulassung",
+    "signal",
+    "daten-tor",
+    "hebel",
+    "stop-preis",
+    "kostentor",
+    "limits",
+    "evaluation",
+    "stop-budget",
+    "sizing",
+    "submit",
+    "buchung",
 }
 
 
@@ -242,7 +268,9 @@ def test_records_fill_so_frequency_state_advances() -> None:
 
 
 def test_not_admitted_strategy_does_not_trade() -> None:
-    report = _run(admission=CriteriaVerdict(passed=False, results=(), unmet=("deflated_sharpe",)))
+    report = _run(
+        admission=CriteriaVerdict(passed=False, results=(), unmet=("deflated_sharpe",))
+    )
     assert not report.opened
     assert report.reject_reason == "strategy_not_admitted"
     assert report.steps[0].name == "zulassung" and not report.steps[0].ok
@@ -265,7 +293,11 @@ def test_flat_signal_opens_nothing() -> None:
 
 
 def test_cost_gate_rejects_when_over_threshold() -> None:
-    report = _run(config=_config(cost_gate=CostGate(max_roundturn_cost_fraction=Decimal("0.00001"))))
+    report = _run(
+        config=_config(
+            cost_gate=CostGate(max_roundturn_cost_fraction=Decimal("0.00001"))
+        )
+    )
     assert not report.opened
     assert report.reject_reason == "cost_gate"
 
@@ -314,8 +346,8 @@ def test_scheduler_silence_after_first_event_halts() -> None:
     venue = _venue(sync=PrivateSync())
     venue.adopt_book()
     sched = SyncScheduler(venue, max_silence=MAX_SILENCE, started_at=TS)
-    sched.tick(TS, events=[_fill(1, TS)])           # Strom lebt
-    result = sched.tick(TS + 2 * MAX_SILENCE)       # danach still
+    sched.tick(TS, events=[_fill(1, TS)])  # Strom lebt
+    result = sched.tick(TS + 2 * MAX_SILENCE)  # danach still
     assert result.halted
     assert not result.sync_healthy
 
@@ -324,9 +356,16 @@ def test_scheduler_position_drift_latches_halt() -> None:
     # Simulierte Drift: das Buch ist leer, die Boerse meldet eine Position -> reconcile
     # setzt den Halt automatisch (Abnahmekriterium).
     drift_pos = Mt5Position(
-        ticket="T-1", symbol="EURUSD", is_buy=True, volume=Decimal("0.10"),
-        entry_price=Decimal("1.10000"), stop_loss=None, take_profit=None,
-        opened_at=TS, unrealised_pnl=Decimal("0"), swap=Decimal("0"),
+        ticket="T-1",
+        symbol="EURUSD",
+        is_buy=True,
+        volume=Decimal("0.10"),
+        entry_price=Decimal("1.10000"),
+        stop_loss=None,
+        take_profit=None,
+        opened_at=TS,
+        unrealised_pnl=Decimal("0"),
+        swap=Decimal("0"),
     )
     venue = _venue(sync=PrivateSync(), positions=(drift_pos,))
     # Buch bewusst NICHT adoptiert -> leer, weicht von der gemeldeten Position ab.
@@ -372,7 +411,9 @@ def test_idempotent_replay_is_not_rebooked() -> None:
 
 def _load_paper_run() -> object:
     tools = Path(__file__).resolve().parents[1] / "tools"
-    spec = importlib.util.spec_from_file_location("paper_run_cli", tools / "paper_run.py")
+    spec = importlib.util.spec_from_file_location(
+        "paper_run_cli", tools / "paper_run.py"
+    )
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

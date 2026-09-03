@@ -34,7 +34,9 @@ ECHTE_DATEI = REPO / "config" / "atr_measurements.json"
 T0 = datetime(2026, 8, 11, 0, 0, tzinfo=UTC)
 
 
-def _kerzen(werte: list[tuple[float, float, float]], *, stunden: int = 1) -> list[Candle]:
+def _kerzen(
+    werte: list[tuple[float, float, float]], *, stunden: int = 1
+) -> list[Candle]:
     return [
         Candle(ts=T0 + timedelta(hours=i * stunden), high=h, low=lo, close=c)
         for i, (h, lo, c) in enumerate(werte)

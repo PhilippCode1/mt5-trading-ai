@@ -81,8 +81,9 @@ def _instrument() -> Instrument:
     )
 
 
-def _account(equity: str = "10000", *, waehrung: str = "USD",
-             konto: str = KONTO) -> AccountState:
+def _account(
+    equity: str = "10000", *, waehrung: str = "USD", konto: str = KONTO
+) -> AccountState:
     return AccountState(
         account_id=konto,
         currency=waehrung,
@@ -151,9 +152,7 @@ def test_eichfall_drawdown_halt_ueberdauert_den_neustart(monkeypatch, tmp_path) 
 
     # --- Neustart: neuer Prozess, gleiche Zustandsdatei, erholte Equity ---
     lauf2 = RiskManager()
-    a2 = _autorisiere(
-        lauf2, account=_account("12000"), now=NOW + timedelta(minutes=5)
-    )
+    a2 = _autorisiere(lauf2, account=_account("12000"), now=NOW + timedelta(minutes=5))
     assert a2.approved is False
     assert a2.latch_halt is True
     assert a2.reason == "risk_drawdown_halt_gelatcht"
@@ -174,9 +173,7 @@ def test_eichfall_freigabe_hebt_den_ueberdauernden_halt(monkeypatch, tmp_path) -
 
     lauf2 = RiskManager()
     lauf2.release_drawdown("ops-2026-08-13")
-    a2 = _autorisiere(
-        lauf2, account=_account("12000"), now=NOW + timedelta(minutes=5)
-    )
+    a2 = _autorisiere(lauf2, account=_account("12000"), now=NOW + timedelta(minutes=5))
     assert a2.approved is True
 
     # Und die Freigabe steht nicht in der Datei: ein dritter Lauf ohne Freigabe
@@ -198,9 +195,7 @@ def test_eichfall_freigabe_hebt_den_ueberdauernden_halt(monkeypatch, tmp_path) -
 def test_eichfall_tageskappe_ueberdauert_den_neustart(monkeypatch, tmp_path) -> None:  # type: ignore[no-untyped-def]
     """ROT gegen HEAD: dort war ``a2.approved is True``."""
     _dauerhaft(monkeypatch, tmp_path)
-    politik = RiskPolicy(
-        throttle=ThrottlePolicy(max_trades_per_account_per_day=1)
-    )
+    politik = RiskPolicy(throttle=ThrottlePolicy(max_trades_per_account_per_day=1))
 
     lauf1 = RiskManager(politik)
     assert _autorisiere(lauf1, account=_account()).approved is True
@@ -219,7 +214,8 @@ def test_eichfall_tageskappe_ueberdauert_den_neustart(monkeypatch, tmp_path) -> 
 
 
 def test_eichfall_zweiundzwanzig_eroeffnungen_gegen_eine_kappe_von_zehn(  # noqa: E501
-    monkeypatch, tmp_path  # type: ignore[no-untyped-def]
+    monkeypatch,
+    tmp_path,  # type: ignore[no-untyped-def]
 ) -> None:
     """Der gemessene Schaden, nachgestellt. ROT gegen HEAD: dort waren es **24**.
 
@@ -269,9 +265,7 @@ def test_eichfall_halt_latcht_auch_im_selben_prozess(monkeypatch) -> None:  # ty
     assert a1.latch_halt is True
 
     # Equity voll erholt -- der Halt loest sich trotzdem nicht von selbst.
-    a2 = _autorisiere(
-        rm, account=_account("12000"), now=NOW + timedelta(minutes=5)
-    )
+    a2 = _autorisiere(rm, account=_account("12000"), now=NOW + timedelta(minutes=5))
     assert a2.approved is False
     assert a2.latch_halt is True
 
@@ -301,9 +295,7 @@ def test_eichfall_leere_freigabe_loest_den_halt_nicht(monkeypatch, tmp_path) -> 
             lauf2.release_drawdown(keine_freigabe)
 
     # Und der Halt steht danach unveraendert -- auch bei voll erholter Equity.
-    a2 = _autorisiere(
-        lauf2, account=_account("12000"), now=NOW + timedelta(minutes=5)
-    )
+    a2 = _autorisiere(lauf2, account=_account("12000"), now=NOW + timedelta(minutes=5))
     assert a2.approved is False
     assert a2.latch_halt is True
     assert a2.reason == "risk_drawdown_halt_gelatcht"
@@ -384,7 +376,8 @@ def test_eichfall_peak_ueberdauert_neustart_ohne_order(monkeypatch, tmp_path) ->
 
 
 def test_eichfall_unschreibbarer_zustand_sperrt_statt_abzustuerzen(  # noqa: E501
-    monkeypatch, tmp_path  # type: ignore[no-untyped-def]
+    monkeypatch,
+    tmp_path,  # type: ignore[no-untyped-def]
 ) -> None:
     """ROT gegen HEAD (dort ``approved is True``) und gegen den Stand vor der Reparatur
     (dort ``PermissionError`` aus ``record_open_fill``).
@@ -415,7 +408,8 @@ def test_eichfall_unschreibbarer_zustand_sperrt_statt_abzustuerzen(  # noqa: E50
 
 
 def test_eichfall_marke_faellt_mit_dem_naechsten_gelungenen_schreiben(  # noqa: E501
-    monkeypatch, tmp_path  # type: ignore[no-untyped-def]
+    monkeypatch,
+    tmp_path,  # type: ignore[no-untyped-def]
 ) -> None:
     """Die Gegenprobe: die Sperre ist keine Dauerbremse.
 

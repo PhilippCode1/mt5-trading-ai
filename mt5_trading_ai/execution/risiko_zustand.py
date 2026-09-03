@@ -328,7 +328,7 @@ def verbotene_baeume(*, anker: Path | None = None) -> tuple[Path, ...]:
     ``anker`` ist ausschliesslich fuer die Tests da: die Regel muss an einem gebauten
     Verzeichnis pruefbar sein, ohne dass ein Test die eigene Arbeitskopie beschreibt.
     """
-    paket = (Path(__file__).resolve().parents[1] if anker is None else anker.resolve())
+    paket = Path(__file__).resolve().parents[1] if anker is None else anker.resolve()
     umfeld = paket.parent
     if umfeld == umfeld.parent:
         # Das Paket liegt unmittelbar unter der Dateisystemwurzel. Dann waere jeder
@@ -611,9 +611,11 @@ def lage_vereinen(
         and platte.handelstag != eigen.handelstag
     )
     if tage_verschieden:
-        juenger = platte if _spaeterer(
-            platte.handelstag, eigen.handelstag
-        ) == platte.handelstag else eigen
+        juenger = (
+            platte
+            if _spaeterer(platte.handelstag, eigen.handelstag) == platte.handelstag
+            else eigen
+        )
         handelstag = juenger.handelstag
         je_instrument = dict(juenger.trades_je_instrument)
         trades_konto = juenger.trades_konto
@@ -679,9 +681,7 @@ def lage_vereinen(
         letzter_trade_at=letzter,
         equity_tag=equity_tag,
         tagesstart_equity=tagesstart,
-        equity_fenster=fenster_vereinen(
-            platte.equity_fenster, eigen.equity_fenster
-        ),
+        equity_fenster=fenster_vereinen(platte.equity_fenster, eigen.equity_fenster),
         offene_positionen=sorted(positionen.items()),
     )
 
@@ -716,9 +716,7 @@ class _Bindung:
 
 def _abdruck(konto_id: str, salz: bytes, runden: int) -> str:
     """Der Kontoabdruck. Absichtlich teuer -- Begruendung im Modul-Docstring."""
-    return hashlib.pbkdf2_hmac(
-        "sha256", konto_id.encode("utf-8"), salz, runden
-    ).hex()
+    return hashlib.pbkdf2_hmac("sha256", konto_id.encode("utf-8"), salz, runden).hex()
 
 
 @dataclass(frozen=True)
@@ -1136,9 +1134,7 @@ class DateiZustand:
             fenster = cls._fenster_lesen(equity_roh.get("fenster"))
         except _Unlesbar as fehler:
             return cls._defekt(f"zustand_fenster_unlesbar[{fehler}]")
-        return _Gelesen(
-            lage=RisikoLage(equity_fenster=fenster), herkunft="fenster"
-        )
+        return _Gelesen(lage=RisikoLage(equity_fenster=fenster), herkunft="fenster")
 
     def laden(self) -> Zustandsbefund:
         """Lies die Datei und loese jeden kaputten Abschnitt fail-closed auf."""
@@ -1431,9 +1427,7 @@ class DateiZustand:
             if gelesen.herkunft == "unlesbar":
                 # Dort steht ein Halt, und der Beweis gehoert vor seine Ersetzung.
                 return None
-            fenster = fenster_vereinen(
-                gelesen.lage.equity_fenster, lage.equity_fenster
-            )
+            fenster = fenster_vereinen(gelesen.lage.equity_fenster, lage.equity_fenster)
             if fenster == gelesen.lage.equity_fenster:
                 self._fenster_auf_platte = list(fenster)
                 return None
@@ -1522,9 +1516,7 @@ class DateiZustand:
             self._geschlossen.clear()
         return grund
 
-    def _schreibform(
-        self, lage: RisikoLage, bindung: _Bindung
-    ) -> dict[str, Any]:
+    def _schreibform(self, lage: RisikoLage, bindung: _Bindung) -> dict[str, Any]:
         """Die volle Lage als JSON-Objekt (Feldvertrag: ``test_..._geheimnis.py``)."""
         return {
             "schema": RISIKO_ZUSTAND_SCHEMA,
@@ -1550,9 +1542,7 @@ class DateiZustand:
                 symbol: ts.isoformat() for symbol, ts in lage.letzter_trade_at.items()
             },
             "equity": {
-                "tag": None
-                if lage.equity_tag is None
-                else lage.equity_tag.isoformat(),
+                "tag": None if lage.equity_tag is None else lage.equity_tag.isoformat(),
                 "tagesstart": None
                 if lage.tagesstart_equity is None
                 else str(lage.tagesstart_equity),

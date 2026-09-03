@@ -347,9 +347,7 @@ class _VenueTerminal:
     laesst, ob die gewollte Position schon existiert.
     """
 
-    def __init__(
-        self, antwort: Any, positionen: tuple[Mt5Position, ...] = ()
-    ) -> None:
+    def __init__(self, antwort: Any, positionen: tuple[Mt5Position, ...] = ()) -> None:
         self._antwort = antwort
         self._verbunden = False
         self.sendeversuche = 0

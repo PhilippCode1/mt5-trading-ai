@@ -428,9 +428,7 @@ def test_gefuellte_order_gilt_nicht_als_storniert() -> None:
 
 def test_storno_bei_unlesbarem_positionsbestand_ist_kein_beleg() -> None:
     """Dieselbe None-Falle, dieselbe Antwort: nicht messbar heisst nicht belegt."""
-    attrappe = _Mt5Attrappe(
-        antwort=_Ergebnis(retcode=DONE), orders=(), positionen=None
-    )
+    attrappe = _Mt5Attrappe(antwort=_Ergebnis(retcode=DONE), orders=(), positionen=None)
     assert _terminal(attrappe).cancel("555") is False
 
 

@@ -50,9 +50,7 @@ class _TerminalMitFolgeposition(FakeMt5Terminal):
             self.set_positions(())
         else:
             volumen = Decimal(str(request["volume"]))
-            self.set_positions(
-                (_mt5_position("EURUSD", is_buy=True, volume=volumen),)
-            )
+            self.set_positions((_mt5_position("EURUSD", is_buy=True, volume=volumen),))
         return ergebnis
 
 
@@ -94,7 +92,9 @@ def _beleg(*, tage: int, konto: str = "123") -> DemoRegistration:
     kommt aus der Uhr, nicht aus einem Argument."""
     stand = TS - timedelta(days=tage)
     return register_for_demo(
-        strategy_id="eurusd", version="v1", edge_verdict=_edge(True),
+        strategy_id="eurusd",
+        version="v1",
+        edge_verdict=_edge(True),
         account=DemoAccount(account_id=konto, broker=BROKER, is_demo=True),
         clock=lambda: stand,
     )
@@ -105,8 +105,12 @@ def test_smoke_demo_registration_produces_readiness() -> None:
     # ``elapsed_days=200`` gibt es nicht mehr; die 200 Tage stehen jetzt im BELEG und
     # werden gegen ``now=TS`` gerechnet.
     demo = DemoRunInputs(
-        strategy_id="eurusd", version="v1", edge_verdict=_edge(True),
-        live_verdict=_edge(True), broker=BROKER, registration=_beleg(tage=200),
+        strategy_id="eurusd",
+        version="v1",
+        edge_verdict=_edge(True),
+        live_verdict=_edge(True),
+        broker=BROKER,
+        registration=_beleg(tage=200),
     )
     report = run_smoke(_venue(is_demo=True), symbol="EURUSD", now=TS, demo=demo)
     assert "demo_registration" in _names(report)
@@ -122,8 +126,11 @@ def test_smoke_ohne_bestehenden_beleg_ist_null_tage_alt() -> None:
     kein Fehler der Harness.
     """
     demo = DemoRunInputs(
-        strategy_id="eurusd", version="v1", edge_verdict=_edge(True),
-        live_verdict=_edge(True), broker=BROKER,
+        strategy_id="eurusd",
+        version="v1",
+        edge_verdict=_edge(True),
+        live_verdict=_edge(True),
+        broker=BROKER,
     )
     report = run_smoke(_venue(is_demo=True), symbol="EURUSD", now=TS, demo=demo)
     reg = next(s for s in report.steps if s.name == "demo_registration")
@@ -137,23 +144,27 @@ def test_smoke_fremdes_konto_reift_nicht() -> None:
     """Der Beleg eines anderen Demokontos zaehlt hier nicht: das beobachtete Konto
     liest die Harness frisch vom Terminal (``get_account()`` = "123")."""
     demo = DemoRunInputs(
-        strategy_id="eurusd", version="v1", edge_verdict=_edge(True),
-        live_verdict=_edge(True), broker=BROKER,
+        strategy_id="eurusd",
+        version="v1",
+        edge_verdict=_edge(True),
+        live_verdict=_edge(True),
+        broker=BROKER,
         registration=_beleg(tage=200, konto="9999"),
     )
     report = run_smoke(_venue(is_demo=True), symbol="EURUSD", now=TS, demo=demo)
     assert report.demo_readiness is not None
     assert report.demo_readiness.ready_for_live_question is False
-    assert (
-        "kontonummer_weicht_von_registrierung_ab" in report.demo_readiness.reasons
-    )
+    assert "kontonummer_weicht_von_registrierung_ab" in report.demo_readiness.reasons
 
 
 def test_smoke_demo_registration_fail_closed_without_edge() -> None:
     # Ohne bestandenen Edge verweigert register_for_demo den Demo-Betrieb (fail-closed).
     demo = DemoRunInputs(
-        strategy_id="eurusd", version="v1", edge_verdict=_edge(False),
-        live_verdict=_edge(True), broker=BROKER,
+        strategy_id="eurusd",
+        version="v1",
+        edge_verdict=_edge(False),
+        live_verdict=_edge(True),
+        broker=BROKER,
     )
     report = run_smoke(_venue(is_demo=True), symbol="EURUSD", now=TS, demo=demo)
     reg = next(s for s in report.steps if s.name == "demo_registration")

@@ -179,9 +179,7 @@ class FakeTerminal:
         self.tick_calls += 1
         if self._tick_ts is None:
             return None
-        return Mt5Tick(
-            ts=self._tick_ts, bid=Decimal("1.09990"), ask=Decimal("1.10000")
-        )
+        return Mt5Tick(ts=self._tick_ts, bid=Decimal("1.09990"), ask=Decimal("1.10000"))
 
     def rates(
         self, name: str, timeframe: Timeframe, start: datetime, end: datetime
@@ -243,9 +241,7 @@ def _bars(
     start: datetime = datetime(2026, 8, 11, 0, 0, tzinfo=UTC),
     end: datetime = datetime(2026, 8, 11, 12, 0, tzinfo=UTC),
 ) -> tuple[Bar, ...]:
-    return _venue(terminal, uhr=uhr).get_bars(
-        "EURUSD", timeframe, start=start, end=end
-    )
+    return _venue(terminal, uhr=uhr).get_bars("EURUSD", timeframe, start=start, end=end)
 
 
 # --- Roter Eichfall -------------------------------------------------------

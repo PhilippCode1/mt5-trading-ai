@@ -95,7 +95,9 @@ def evaluate_cost_gate(
     # notiert bepreist (rate=1), die Waehrungs-Mischung schluepfte durch (§9-Re-Check).
     if instrument.quote_currency is None:
         return CostGateDecision(
-            False, "cost_unverifiable", None,
+            False,
+            "cost_unverifiable",
+            None,
             detail="Notierungswaehrung des Instruments unbekannt",
         )
     try:

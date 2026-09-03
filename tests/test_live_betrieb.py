@@ -73,8 +73,14 @@ def _bar(nr: int, close: float, *, is_closed: bool) -> Bar:
     """Eine Stundenkerze. ``is_closed`` ist Pflichtfeld -- hier wie im Vertrag."""
     preis = Decimal(str(close))
     return Bar(
-        symbol="EURUSD", timeframe=Timeframe.H1, ts=T0 + timedelta(hours=nr),
-        open=preis, high=preis, low=preis, close=preis, tick_volume=1,
+        symbol="EURUSD",
+        timeframe=Timeframe.H1,
+        ts=T0 + timedelta(hours=nr),
+        open=preis,
+        high=preis,
+        low=preis,
+        close=preis,
+        tick_volume=1,
         is_closed=is_closed,
     )
 
@@ -127,17 +133,21 @@ class TaktVenue:
 
     def get_account(self) -> AccountState:
         return AccountState(
-            account_id="DEMO-1", currency="EUR", balance=Decimal("50000"),
-            equity=Decimal("50000"), margin_used=Decimal("0"),
-            margin_free=Decimal("50000"), is_demo=True, ts=T0,
+            account_id="DEMO-1",
+            currency="EUR",
+            balance=Decimal("50000"),
+            equity=Decimal("50000"),
+            margin_used=Decimal("0"),
+            margin_free=Decimal("50000"),
+            is_demo=True,
+            ts=T0,
         )
 
     def get_positions(self) -> tuple[Position, ...]:
         return self.positionen
 
     def get_quote(self, symbol: str) -> Quote:
-        return Quote(symbol=symbol, ts=T0, bid=Decimal("1.1000"),
-                     ask=Decimal("1.1002"))
+        return Quote(symbol=symbol, ts=T0, bid=Decimal("1.1000"), ask=Decimal("1.1002"))
 
     def get_bars(
         self, symbol: str, timeframe: Timeframe, *, start: datetime, end: datetime
@@ -163,16 +173,27 @@ class FakeScheduler:
 
     def tick(self, jetzt: datetime) -> TickResult:
         return TickResult(
-            now=jetzt, halted=self.halted, halt_reason=None, sync_healthy=True,
-            stream_never_started=True, reconcile=None, events_applied=0,
+            now=jetzt,
+            halted=self.halted,
+            halt_reason=None,
+            sync_healthy=True,
+            stream_never_started=True,
+            reconcile=None,
+            events_applied=0,
         )
 
 
 def _position(symbol: str = "XAUUSD") -> Position:
     return Position(
-        venue_position_id="10060725485", symbol=symbol, side=OrderSide.BUY,
-        volume=Decimal("0.01"), entry_price=Decimal("4415.18"), stop_loss=None,
-        take_profit=None, opened_at=T0, unrealised_pnl=Decimal("-2.68"),
+        venue_position_id="10060725485",
+        symbol=symbol,
+        side=OrderSide.BUY,
+        volume=Decimal("0.01"),
+        entry_price=Decimal("4415.18"),
+        stop_loss=None,
+        take_profit=None,
+        opened_at=T0,
+        unrealised_pnl=Decimal("-2.68"),
         swap_accrued=Decimal("-0.11"),
     )
 
@@ -188,9 +209,13 @@ def _saetze(journal: Journal) -> list[dict[str, Any]]:
 
 def _lage(unrealisiert: str = "-2.68") -> Lage:
     return Lage(
-        symbol="XAUUSD", ist_kauf=True, volumen=Decimal("0.01"),
-        seit=T0 + timedelta(hours=1), position_id="10060725485",
-        einstiegspreis=Decimal("4415.18"), unrealisiert=Decimal(unrealisiert),
+        symbol="XAUUSD",
+        ist_kauf=True,
+        volumen=Decimal("0.01"),
+        seit=T0 + timedelta(hours=1),
+        position_id="10060725485",
+        einstiegspreis=Decimal("4415.18"),
+        unrealisiert=Decimal(unrealisiert),
         swap=Decimal("-0.11"),
     )
 
@@ -255,9 +280,7 @@ def test_ohne_kerzen_gibt_es_kein_signal_und_keinen_absturz() -> None:
     FLAT ist hier kein geratener Vorgabewert: FLAT eroeffnet nichts und schliesst
     nichts. Der Grund steht im Detail und geht ins Journal.
     """
-    lage = _signal(
-        FakeVenue(wirft=VenueUnavailableError("kein Tick")), "EURUSD", T0
-    )
+    lage = _signal(FakeVenue(wirft=VenueUnavailableError("kein Tick")), "EURUSD", T0)
     assert lage.signal is Signal.FLAT
     assert lage.kerze_ts is None
     assert "keine Kerzen" in lage.detail
@@ -322,7 +345,10 @@ def test_auch_ein_flat_wird_protokolliert(tmp_path: Path) -> None:
     """
     j = _journal(tmp_path)
     _signal_mit_protokoll(
-        FakeVenue(wirft=VenueUnavailableError("weg")), "EURUSD", T0, j,
+        FakeVenue(wirft=VenueUnavailableError("weg")),
+        "EURUSD",
+        T0,
+        j,
         zweck="ausstieg",
     )
     satz = _saetze(j)[0]
@@ -335,10 +361,17 @@ def test_auch_ein_flat_wird_protokolliert(tmp_path: Path) -> None:
 def _takt(tmp_path: Path, venue: TaktVenue) -> tuple[Journal, dict[str, Lage], bool]:
     j = _journal(tmp_path)
     lage, gestoppt = takt(
-        venue, RiskManager(), FakeScheduler(), ["EURUSD", "XAUUSD"],
-        CriteriaVerdict(passed=False, results=()), j,
-        nr=1, max_haltedauer=timedelta(hours=4), bekannt={},
-        equity_start=Decimal("50000"), verlustgrenze=Decimal("0.02"),
+        venue,
+        RiskManager(),
+        FakeScheduler(),
+        ["EURUSD", "XAUUSD"],
+        CriteriaVerdict(passed=False, results=()),
+        j,
+        nr=1,
+        max_haltedauer=timedelta(hours=4),
+        bekannt={},
+        equity_start=Decimal("50000"),
+        verlustgrenze=Decimal("0.02"),
     )
     return j, lage, gestoppt
 
@@ -399,11 +432,22 @@ def _broker_schluss(tmp_path: Path, unrealisiert: str = "-2.68") -> Journal:
     """Einen echten ``vom_broker_geschlossen``-Satz schreiben lassen."""
     j = _journal(tmp_path)
     weg = _lage(unrealisiert)
-    j.schreib("eroeffnet", symbol=weg.symbol, signal="LONG", volumen=weg.volumen,
-              position_id=weg.position_id, einstiegspreis=weg.einstiegspreis,
-              seit=weg.seit)
+    j.schreib(
+        "eroeffnet",
+        symbol=weg.symbol,
+        signal="LONG",
+        volumen=weg.volumen,
+        position_id=weg.position_id,
+        einstiegspreis=weg.einstiegspreis,
+        seit=weg.seit,
+    )
     _buch_abgleichen(
-        FakeVenue(), RiskManager(), {weg.symbol: weg}, {}, j, waehrung="EUR",
+        FakeVenue(),
+        RiskManager(),
+        {weg.symbol: weg},
+        {},
+        j,
+        waehrung="EUR",
     )
     return j
 
@@ -422,7 +466,9 @@ def test_broker_schluss_liefert_ein_rechenbares_ergebnis(tmp_path: Path) -> None
     """
     t = lies_journal(_broker_schluss(tmp_path).pfad).trades()[0]
     assert t.vom_broker is True
-    assert t.vollstaendig is False, "Der Fuellpreis des Stops ist nach wie vor unbekannt"
+    assert t.vollstaendig is False, (
+        "Der Fuellpreis des Stops ist nach wie vor unbekannt"
+    )
     assert t.ergebnis_bps is None
     assert t.beurteilbar is True
     assert t.gewinn is False
@@ -447,8 +493,11 @@ def test_kein_ausstiegspreis_wird_erfunden(tmp_path: Path) -> None:
     ihm vier weitere, weil der erfundene Preis den Trade ploetzlich als
     preis-beurteilt ausweist.
     """
-    satz = next(s for s in _saetze(_broker_schluss(tmp_path))
-                if s["art"] == "vom_broker_geschlossen")
+    satz = next(
+        s
+        for s in _saetze(_broker_schluss(tmp_path))
+        if s["art"] == "vom_broker_geschlossen"
+    )
     assert "ausstiegspreis" not in satz
     t = lies_journal(_broker_schluss(tmp_path).pfad).trades()[0]
     assert t.ausstieg is None
@@ -459,8 +508,11 @@ def test_die_herkunft_des_betrags_steht_dabei(tmp_path: Path) -> None:
 
     Gegen die alte Fassung: das Feld gab es nicht.
     """
-    satz = next(s for s in _saetze(_broker_schluss(tmp_path))
-                if s["art"] == "vom_broker_geschlossen")
+    satz = next(
+        s
+        for s in _saetze(_broker_schluss(tmp_path))
+        if s["art"] == "vom_broker_geschlossen"
+    )
     assert satz["ergebnis_geld_quelle"] == "zuletzt_beobachtet"
     assert satz["ergebnis_geld_waehrung"] == "EUR"
     assert satz["zuletzt_swap"] == "-0.11"
@@ -497,8 +549,18 @@ def test_auch_der_eigene_schluss_traegt_ein_geldergebnis(tmp_path: Path) -> None
         def submit_order(self, anfrage: Any) -> Angenommen:
             return Angenommen()
 
-    assert _schliesse(Sendend(), RiskManager(), _lage("+4.82"), T0,
-                      "signalwechsel", j, waehrung="EUR") is True
+    assert (
+        _schliesse(
+            Sendend(),
+            RiskManager(),
+            _lage("+4.82"),
+            T0,
+            "signalwechsel",
+            j,
+            waehrung="EUR",
+        )
+        is True
+    )
     satz = next(s for s in _saetze(j) if s["art"] == "geschlossen")
     assert satz["ergebnis_geld"] == "4.82"
     assert satz["ergebnis_geld_waehrung"] == "EUR"
@@ -515,10 +577,19 @@ def test_beim_eigenen_schluss_schlaegt_der_preis_die_schaetzung(
     er stammt vom Ausstieg, der Buchwert vom Takt davor.
     """
     j = _journal(tmp_path)
-    j.schreib("geschlossen", symbol="EURUSD", war_kauf=True, volumen="0.1",
-              position_id="P1", einstiegspreis="1.10000", ausstiegspreis="1.10110",
-              grund="signalwechsel", ergebnis_geld="-5.00",
-              ergebnis_geld_waehrung="EUR", ergebnis_geld_quelle="zuletzt_beobachtet")
+    j.schreib(
+        "geschlossen",
+        symbol="EURUSD",
+        war_kauf=True,
+        volumen="0.1",
+        position_id="P1",
+        einstiegspreis="1.10000",
+        ausstiegspreis="1.10110",
+        grund="signalwechsel",
+        ergebnis_geld="-5.00",
+        ergebnis_geld_waehrung="EUR",
+        ergebnis_geld_quelle="zuletzt_beobachtet",
+    )
     t = lies_journal(j.pfad).trades()[0]
     assert t.urteilsquelle == "preis"
     assert t.gewinn is True
@@ -536,8 +607,13 @@ def test_ein_alter_satz_ohne_jeden_wert_bleibt_nicht_rechenbar(
     oben, ohne dass es jemand saehe.
     """
     p = tmp_path / "journal-alt.jsonl"
-    p.write_text(json.dumps({"ts": T0.isoformat(), "art": "vom_broker_geschlossen",
-                             "symbol": "XAUUSD"}) + "\n", encoding="utf-8")
+    p.write_text(
+        json.dumps(
+            {"ts": T0.isoformat(), "art": "vom_broker_geschlossen", "symbol": "XAUUSD"}
+        )
+        + "\n",
+        encoding="utf-8",
+    )
     t = lies_journal(p).trades()[0]
     assert t.ergebnis_geld is None
     assert t.gewinn is None
@@ -554,11 +630,22 @@ def test_ein_alter_satz_mit_buchwert_wird_gedeutet_und_sagt_es(tmp_path: Path) -
     sah das Feld gar nicht an, der Trade blieb nicht rechenbar.
     """
     p = tmp_path / "journal-alt.jsonl"
-    p.write_text(json.dumps({
-        "ts": T0.isoformat(), "art": "vom_broker_geschlossen", "symbol": "XAUUSD",
-        "volumen": "0.01", "war_kauf": True, "position_id": "10061561023",
-        "einstiegspreis": "4406.02", "zuletzt_unrealisiert": "-2.43",
-    }) + "\n", encoding="utf-8")
+    p.write_text(
+        json.dumps(
+            {
+                "ts": T0.isoformat(),
+                "art": "vom_broker_geschlossen",
+                "symbol": "XAUUSD",
+                "volumen": "0.01",
+                "war_kauf": True,
+                "position_id": "10061561023",
+                "einstiegspreis": "4406.02",
+                "zuletzt_unrealisiert": "-2.43",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
     t = lies_journal(p).trades()[0]
     assert t.ergebnis_geld == Decimal("-2.43")
     assert t.gewinn is False
@@ -608,9 +695,15 @@ def test_die_auswertung_summiert_keine_gemischten_waehrungen(
     Der zweite Satz kommt ohne Waehrung -- genau der Fall eines Altjournals.
     """
     j = _broker_schluss(tmp_path)
-    j.schreib("vom_broker_geschlossen", symbol="EURUSD", war_kauf=True,
-              volumen="0.1", position_id="P7", einstiegspreis="1.1",
-              zuletzt_unrealisiert="-1.10")
+    j.schreib(
+        "vom_broker_geschlossen",
+        symbol="EURUSD",
+        war_kauf=True,
+        volumen="0.1",
+        position_id="P7",
+        einstiegspreis="1.1",
+        zuletzt_unrealisiert="-1.10",
+    )
     assert auswerten(j.pfad) == 0
     aus = capsys.readouterr().out
     assert "Keine Summe:" in aus
@@ -646,10 +739,19 @@ def test_die_geldsumme_enthaelt_auch_die_selbst_geschlossenen_trades(
     -2,68 und ein eigener Schluss mit +4,82 ergeben +2,14.
     """
     j = _broker_schluss(tmp_path)
-    j.schreib("geschlossen", symbol="EURUSD", war_kauf=True, volumen="0.1",
-              position_id="P8", einstiegspreis="1.10000", ausstiegspreis="1.10110",
-              grund="signalwechsel", ergebnis_geld="4.82",
-              ergebnis_geld_waehrung="EUR", ergebnis_geld_quelle="zuletzt_beobachtet")
+    j.schreib(
+        "geschlossen",
+        symbol="EURUSD",
+        war_kauf=True,
+        volumen="0.1",
+        position_id="P8",
+        einstiegspreis="1.10000",
+        ausstiegspreis="1.10110",
+        grund="signalwechsel",
+        ergebnis_geld="4.82",
+        ergebnis_geld_waehrung="EUR",
+        ergebnis_geld_quelle="zuletzt_beobachtet",
+    )
     assert auswerten(j.pfad) == 0
     aus = capsys.readouterr().out
     assert "Geldergebnisse: 2 (1 vom Broker geschlossen, 1 selbst geschlossen)" in aus
@@ -671,9 +773,15 @@ def test_die_auswertung_nennt_die_herkunft_der_betraege(
     eine gedeutete Zahl von einer geschriebenen nicht zu unterscheiden.
     """
     j = _broker_schluss(tmp_path)
-    j.schreib("vom_broker_geschlossen", symbol="EURUSD", war_kauf=True,
-              volumen="0.1", position_id="P7", einstiegspreis="1.1",
-              zuletzt_unrealisiert="-1.10")
+    j.schreib(
+        "vom_broker_geschlossen",
+        symbol="EURUSD",
+        war_kauf=True,
+        volumen="0.1",
+        position_id="P7",
+        einstiegspreis="1.1",
+        zuletzt_unrealisiert="-1.10",
+    )
     assert auswerten(j.pfad) == 0
     aus = capsys.readouterr().out
     assert "1x  Herkunft: zuletzt_beobachtet" in aus
@@ -686,7 +794,12 @@ def _lauf_mit_geld(tmp_path: Path, name: str, *, waehrung: str, betrag: str) -> 
     weg = _lage(betrag)
     j.schreib("takt", nr=1, equity="50000")
     _buch_abgleichen(
-        FakeVenue(), RiskManager(), {weg.symbol: weg}, {}, j, waehrung=waehrung,
+        FakeVenue(),
+        RiskManager(),
+        {weg.symbol: weg},
+        {},
+        j,
+        waehrung=waehrung,
     )
 
 

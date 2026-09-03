@@ -105,8 +105,12 @@ class _StubTerminal:
 # --- Zeitrahmenwahl -------------------------------------------------------
 @pytest.mark.parametrize(
     "fenster_stunden,erwartet",
-    [(1.0, Timeframe.H1), (3.9, Timeframe.H1), (4.0, Timeframe.H4),
-     (24.0, Timeframe.H4)],
+    [
+        (1.0, Timeframe.H1),
+        (3.9, Timeframe.H1),
+        (4.0, Timeframe.H4),
+        (24.0, Timeframe.H4),
+    ],
 )
 def test_bester_zeitrahmen_waehlt_die_tiefere_reihe(
     fenster_stunden: float, erwartet: Timeframe

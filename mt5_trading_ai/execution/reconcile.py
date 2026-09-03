@@ -37,9 +37,7 @@ class PositionBook:
 
     def adopt(self, net_by_symbol: Mapping[str, Decimal]) -> None:
         """Ersetze das Buch durch die gegebenen Nettopositionen (Neustart-Adoption)."""
-        self._net = {
-            symbol: net for symbol, net in net_by_symbol.items() if net != 0
-        }
+        self._net = {symbol: net for symbol, net in net_by_symbol.items() if net != 0}
 
 
 def positions_to_net(positions: Iterable[Position]) -> dict[str, Decimal]:

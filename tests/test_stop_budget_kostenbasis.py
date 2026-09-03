@@ -402,9 +402,7 @@ def test_die_praemisse_klammert_nur_nach_unten() -> None:
     zaehlt deshalb unveraendert weiter -- das ist der Regelfall am Live-Bid/Ask, wo
     gemessen fast immer teurer ist als die schmeichelnde Annahme.
     """
-    auth = _autorisiere(
-        RiskManager(), meta={MEASURED_COST_BPS_META_KEY: GEMESSEN_BPS}
-    )
+    auth = _autorisiere(RiskManager(), meta={MEASURED_COST_BPS_META_KEY: GEMESSEN_BPS})
     assert auth.budget is not None
     assert auth.budget.lower_bps == Decimal("15.54")
     assert "verworfen" not in auth.detail["cost_basis"]
@@ -605,7 +603,8 @@ def test_der_runner_rechnet_die_spanne_mit_der_politik_des_managers() -> None:
         measured_cost_bps=Decimal("2.454545454545454545454545455"),
     )
     wirksam = (
-        (Decimal("1.10000") - Decimal("1.09324")) / Decimal("1.10000")
+        (Decimal("1.10000") - Decimal("1.09324"))
+        / Decimal("1.10000")
         * Decimal("10000")
     )
     assert budget.allows(wirksam)

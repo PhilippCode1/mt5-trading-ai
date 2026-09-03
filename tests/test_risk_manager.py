@@ -80,8 +80,14 @@ def _request(*, volume: str = "0.01", stop_loss: str = "1.09000") -> OrderReques
     )
 
 
-def _authorize(rm: RiskManager, *, request: OrderRequest, account: AccountState,
-               instrument: Instrument | None = None, now: datetime = NOW):
+def _authorize(
+    rm: RiskManager,
+    *,
+    request: OrderRequest,
+    account: AccountState,
+    instrument: Instrument | None = None,
+    now: datetime = NOW,
+):
     return rm.authorize_opening(
         instrument=instrument or _instrument(),
         request=request,
@@ -158,7 +164,9 @@ def test_throttle_blocks_second_trade_in_cooldown() -> None:
     rm = RiskManager()
     rm.record_open_fill("EURUSD", NOW)
     auth = _authorize(
-        rm, request=_request(volume="0.01"), account=_account(),
+        rm,
+        request=_request(volume="0.01"),
+        account=_account(),
         now=NOW + timedelta(minutes=1),
     )
     assert auth.approved is False
@@ -197,13 +205,22 @@ def test_new_day_resets_day_start_equity() -> None:
     rm.observe_equity(NOW, Decimal("10000"))
     next_day = NOW + timedelta(days=1)
     auth = rm.authorize_opening(
-        instrument=_instrument(), request=_request(volume="0.01"),
+        instrument=_instrument(),
+        request=_request(volume="0.01"),
         account=AccountState(
-            account_id="1", currency="USD", balance=Decimal("9700"),
-            equity=Decimal("9700"), margin_used=Decimal("0"),
-            margin_free=Decimal("9700"), is_demo=False, ts=next_day,
+            account_id="1",
+            currency="USD",
+            balance=Decimal("9700"),
+            equity=Decimal("9700"),
+            margin_used=Decimal("0"),
+            margin_free=Decimal("9700"),
+            is_demo=False,
+            ts=next_day,
         ),
-        price=Decimal("1.10000"), spread_bps=Decimal("0.9"), leverage=5, now=next_day,
+        price=Decimal("1.10000"),
+        spread_bps=Decimal("0.9"),
+        leverage=5,
+        now=next_day,
     )
     # Tagesstart ist neu 9700 -> kein Tagesverlust -> kein daily_loss-Block.
     assert auth.reason != "risk_daily_loss_limit_reached"
@@ -229,15 +246,24 @@ def test_release_rearms_after_recovery_then_new_episode_halts() -> None:
     assert a1.latch_halt is True
     # Betreiber gibt frei -> sofort weiter handelbar (Drawdown noch >= Grenze).
     rm.release_drawdown("ops-1")
-    a2 = _authorize(rm, request=_request(), account=_account("10000"),
-                    now=NOW + timedelta(minutes=1))
+    a2 = _authorize(
+        rm,
+        request=_request(),
+        account=_account("10000"),
+        now=NOW + timedelta(minutes=1),
+    )
     assert a2.latch_halt is False
     # Erholung ueber die Grenze -> Freigabe verbraucht, Kill-Switch wieder scharf.
-    _authorize(rm, request=_request(), account=_account("11900"),
-               now=NOW + timedelta(minutes=2))  # ~0,8 % Drawdown < 10 %
+    _authorize(
+        rm,
+        request=_request(),
+        account=_account("11900"),
+        now=NOW + timedelta(minutes=2),
+    )  # ~0,8 % Drawdown < 10 %
     # Neue, unabhaengige Episode -> HALT feuert erneut.
-    a4 = _authorize(rm, request=_request(), account=_account("9000"),
-                    now=NOW + timedelta(minutes=3))  # 25 % Drawdown
+    a4 = _authorize(
+        rm, request=_request(), account=_account("9000"), now=NOW + timedelta(minutes=3)
+    )  # 25 % Drawdown
     assert a4.latch_halt is True
     assert a4.reason == "risk_drawdown_limit_reached"
 
@@ -248,12 +274,17 @@ def test_release_voided_when_drawdown_deepens() -> None:
     rm.observe_equity(NOW - timedelta(hours=2), Decimal("12000"))
     _authorize(rm, request=_request(), account=_account("10600"))  # ~11,7 % -> HALT
     rm.release_drawdown("ops-1")
-    a2 = _authorize(rm, request=_request(), account=_account("10600"),
-                    now=NOW + timedelta(minutes=1))
+    a2 = _authorize(
+        rm,
+        request=_request(),
+        account=_account("10600"),
+        now=NOW + timedelta(minutes=1),
+    )
     assert a2.latch_halt is False  # Freigabe deckt das aktuelle Niveau
     # Ohne Erholung tiefer (25 %) -> Freigabe ungueltig, HALT erneut.
-    a3 = _authorize(rm, request=_request(), account=_account("9000"),
-                    now=NOW + timedelta(minutes=2))
+    a3 = _authorize(
+        rm, request=_request(), account=_account("9000"), now=NOW + timedelta(minutes=2)
+    )
     assert a3.latch_halt is True
 
 
@@ -270,16 +301,19 @@ def test_rejects_stop_below_cost_floor() -> None:
 
 def test_daily_account_cap_resets_next_day() -> None:
     # §9 #4: die Tageskappe muss am Folgetag zuruecksetzen (Lesepfad-Reset).
-    rm = RiskManager(RiskPolicy(throttle=ThrottlePolicy(
-        max_trades_per_account_per_day=1)))
+    rm = RiskManager(
+        RiskPolicy(throttle=ThrottlePolicy(max_trades_per_account_per_day=1))
+    )
     rm.record_open_fill("EURUSD", NOW)
     # Gleicher Tag: Kappe erreicht -> Drossel.
-    same_day = _authorize(rm, request=_request(), account=_account(),
-                          now=NOW + timedelta(minutes=1))
+    same_day = _authorize(
+        rm, request=_request(), account=_account(), now=NOW + timedelta(minutes=1)
+    )
     assert same_day.approved is False and same_day.reason.startswith("throttle_")
     # Folgetag: Kappe zurueckgesetzt -> keine Konto-Tageskappen-Sperre mehr.
-    next_day = _authorize(rm, request=_request(), account=_account(),
-                          now=NOW + timedelta(days=1))
+    next_day = _authorize(
+        rm, request=_request(), account=_account(), now=NOW + timedelta(days=1)
+    )
     assert next_day.approved is True
 
 

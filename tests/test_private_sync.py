@@ -26,8 +26,12 @@ TS = datetime(2026, 8, 11, 12, 0, tzinfo=UTC)
 
 def _fill(seq: int, symbol: str, side: OrderSide, volume: Decimal) -> PrivateEvent:
     return PrivateEvent(
-        seq=seq, ts=TS, kind=PrivateEventKind.FILL,
-        symbol=symbol, side=side, volume=volume,
+        seq=seq,
+        ts=TS,
+        kind=PrivateEventKind.FILL,
+        symbol=symbol,
+        side=side,
+        volume=volume,
     )
 
 
@@ -60,7 +64,9 @@ def test_sync_sequence_gap_is_desync() -> None:
     sync.apply(_fill(3, "EURUSD", OrderSide.BUY, Decimal("0.10")))  # 2 fehlt
     assert sync.desync is True
     assert sync.desync_reason == "sequence_gap"
-    assert sync.snapshot() == {"EURUSD": Decimal("0.10")}  # keine Buchung nach der Luecke
+    assert sync.snapshot() == {
+        "EURUSD": Decimal("0.10")
+    }  # keine Buchung nach der Luecke
 
 
 def test_sync_malformed_fill_is_desync() -> None:
@@ -78,7 +84,9 @@ def test_sync_clear_desync_rebaselines() -> None:
     sync.clear_desync()
     assert sync.desync is False
     assert sync.last_seq is None
-    sync.apply(_fill(9, "EURUSD", OrderSide.SELL, Decimal("0.10")))  # neue Basis, kein Gap
+    sync.apply(
+        _fill(9, "EURUSD", OrderSide.SELL, Decimal("0.10"))
+    )  # neue Basis, kein Gap
     assert sync.desync is False
     assert sync.last_seq == 9
 
@@ -104,7 +112,8 @@ def _synced_venue(
     venue = Mt5Venue(
         name="mt5",
         terminal=terminal or FakeMt5Terminal(is_demo=True, positions=positions),  # type: ignore[arg-type]
-        catalog=_catalog(), sync=sync,
+        catalog=_catalog(),
+        sync=sync,
         # Seit A3 Pflicht auf jedem Konto: Risikoschicht + Frische-Latch. Die feste
         # Uhr entspricht dem Zeitstempel des Fake-Kontostands.
         risk_manager=RiskManager(),
@@ -155,8 +164,12 @@ def test_synced_venue_gap_halts_and_blocks_opening() -> None:
 def test_check_sync_staleness_halts() -> None:
     venue, _ = _synced_venue()
     venue.apply_private_event(_heartbeat(1))
-    assert venue.check_sync(TS + timedelta(seconds=5), max_silence=timedelta(seconds=30))
+    assert venue.check_sync(
+        TS + timedelta(seconds=5), max_silence=timedelta(seconds=30)
+    )
     assert venue.is_halted() is False
-    healthy = venue.check_sync(TS + timedelta(minutes=5), max_silence=timedelta(seconds=30))
+    healthy = venue.check_sync(
+        TS + timedelta(minutes=5), max_silence=timedelta(seconds=30)
+    )
     assert healthy is False
     assert venue.is_halted() is True

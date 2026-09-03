@@ -54,8 +54,11 @@ def _z(**felder: object) -> str:
 
 
 def _takt(halt: bool = False) -> str:
-    return _z(art="takt", halt=halt,
-              halt_grund="reconcile_drift:notional_drift_exceeds_limit" if halt else None)
+    return _z(
+        art="takt",
+        halt=halt,
+        halt_grund="reconcile_drift:notional_drift_exceeds_limit" if halt else None,
+    )
 
 
 def _erklaert(weiter: bool | None) -> str:
@@ -122,8 +125,9 @@ def test_die_aufloesung_wird_dem_richtigen_takt_zugeordnet() -> None:
     steht. Ohne die Fenstergrenze waeren beide sauber.
     """
     wert = _werte(
-        _takt(halt=True),                       # gesperrt: keine Aufloesung hier
-        _takt(halt=True), _erklaert(weiter=False),   # sauber
+        _takt(halt=True),  # gesperrt: keine Aufloesung hier
+        _takt(halt=True),
+        _erklaert(weiter=False),  # sauber
     )
     assert (wert.gelungen, wert.gesamt) == (1, 2)
 
@@ -146,7 +150,7 @@ def test_die_korrektur_rettet_das_ziel_NICHT() -> None:
         f"Die Buchtreue liegt bei {wert.anteil:.4%} und damit ueber der Schwelle -- "
         "dann waere die Korrektur eine Beschoenigung und gehoert zurueckgenommen."
     )
-    assert wert.anteil > 0.985   # aber besser als die falsche Zaehlung (98,53 %)
+    assert wert.anteil > 0.985  # aber besser als die falsche Zaehlung (98,53 %)
 
 
 # =====================================================================
@@ -169,8 +173,10 @@ def test_das_werkzeug_schreibt_weiter_gesperrt_wirklich() -> None:
     """
     quelle = (ROOT / "tools" / "live_betrieb.py").read_text(encoding="utf-8")
     schreiben = quelle.index('journal.schreib("halt_erklaert"')
-    assert "weiter_gesperrt=tick.halted" in quelle[schreiben:schreiben + 400]
-    neu_befragt = quelle.index("tick = scheduler.tick(jetzt)", quelle.index("clear_halt"))
+    assert "weiter_gesperrt=tick.halted" in quelle[schreiben : schreiben + 400]
+    neu_befragt = quelle.index(
+        "tick = scheduler.tick(jetzt)", quelle.index("clear_halt")
+    )
     assert neu_befragt < schreiben
 
 
@@ -223,7 +229,8 @@ def test_auf_den_echten_journalen_sitzen_die_sperren_im_ueberholten_code() -> No
         pytest.skip("keine Betriebsjournale im Arbeitsbaum")
     staende = nach_codestand(zeilen)
     sauber_gestempelt = {
-        stand: gruppe for stand, gruppe in staende.items()
+        stand: gruppe
+        for stand, gruppe in staende.items()
         if stand != OHNE_STEMPEL and NICHT_REPRODUZIERBAR not in stand
     }
     assert sauber_gestempelt, "kein einziger sauber gestempelter Lauf"

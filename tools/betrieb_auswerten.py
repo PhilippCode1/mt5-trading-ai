@@ -60,15 +60,19 @@ def _geldbericht(trades: list[Trade]) -> None:
     if not b.trades:
         return
     eigene = len(b.trades) - b.vom_broker
-    print(f"    Geldergebnisse: {len(b.trades)} ({b.vom_broker} vom Broker "
-          f"geschlossen, {eigene} selbst geschlossen)")
+    print(
+        f"    Geldergebnisse: {len(b.trades)} ({b.vom_broker} vom Broker "
+        f"geschlossen, {eigene} selbst geschlossen)"
+    )
     for herkunft, n in sorted(b.je_herkunft.items()):
         print(f"      {n:>4}x  Herkunft: {herkunft}")
     if b.summe is None:
         print(f"    Keine Summe: {b.hindernis}.")
         return
-    print(f"    Summe dieser Schaetzungen: {b.summe:+} "
-          f"{b.waehrung} (brutto, ohne Swap und Kommission)")
+    print(
+        f"    Summe dieser Schaetzungen: {b.summe:+} "
+        f"{b.waehrung} (brutto, ohne Swap und Kommission)"
+    )
 
 
 def auswerten(pfad: Path) -> int:
@@ -84,8 +88,10 @@ def auswerten(pfad: Path) -> int:
     print("=" * 78)
     print(f"BETRIEBSLAUF {pfad.name}")
     print("=" * 78)
-    print(f"Konto        : {start['konto'] if start else '—'} "
-          f"(Demo: {start['demo'] if start else '—'})")
+    print(
+        f"Konto        : {start['konto'] if start else '—'} "
+        f"(Demo: {start['demo'] if start else '—'})"
+    )
     print(f"Instrumente  : {', '.join((start['symbole'] if start else []) or [])}")
     print(f"Strategie    : {start['strategie'] if start else '—'}")
     print(f"Codestand    : {lauf.version or '—'}")
@@ -181,13 +187,15 @@ def auswerten(pfad: Path) -> int:
     print(f"    nur mit Geldergebnis         : {len(nur_geld)}")
     print(f"    ohne jedes Ergebnis          : {len(stumm)}")
     if preis:
-        print(f"    Median {statistics.median(preis):+.2f} bp ueber {len(preis)} "
-              f"Trade(s)")
+        print(
+            f"    Median {statistics.median(preis):+.2f} bp ueber {len(preis)} Trade(s)"
+        )
         print("    Preisdifferenz OHNE Kommission und Swap.")
     if beurteilt:
         treffer = sum(1 for t in beurteilt if t.gewinn) / len(beurteilt) * 100
-        print(f"    Treffer {treffer:.0f} % ueber {len(beurteilt)} beurteilbare "
-              f"Trade(s)")
+        print(
+            f"    Treffer {treffer:.0f} % ueber {len(beurteilt)} beurteilbare Trade(s)"
+        )
     if nur_geld:
         print("    Beim broker-seitigen Schluss (Stop-Out) gibt es keinen Fuellpreis.")
         print("    Was es gibt, ist der zuletzt beobachtete Buchwert: sein BETRAG ist")

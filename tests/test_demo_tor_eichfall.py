@@ -187,9 +187,7 @@ def test_ein_unvollstaendiger_beleg_oeffnet_keine_live_order(
     Echtgeldkonto ausgestellt wurde, ist keins. 400 Tage aendern daran nichts -- die
     alte Fassung liess trotzdem oeffnen, weil sie von der Registrierung ueberhaupt
     nichts las."""
-    venue, terminal = _live_venue(
-        **_demo_argumente(_beleg(tage_alt=400, **maengel))
-    )
+    venue, terminal = _live_venue(**_demo_argumente(_beleg(tage_alt=400, **maengel)))
     with pytest.raises(OrderRejectedError) as ex:
         _live_eroeffnung(venue)
     assert ex.value.reason == "demo_not_ready", (

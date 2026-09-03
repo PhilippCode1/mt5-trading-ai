@@ -204,7 +204,9 @@ def test_fehlendes_register_ist_ein_fehler_keine_eins(tmp_path: Path) -> None:
         _bestaetigung(fehlt)
 
 
-def test_ein_verlorenes_register_faellt_nicht_unter_die_kampagne(tmp_path: Path) -> None:
+def test_ein_verlorenes_register_faellt_nicht_unter_die_kampagne(
+    tmp_path: Path,
+) -> None:
     """Der dritte Eichfall -- gegen die Zusicherung, die der Code vorher nicht einloeste.
 
     Frueher stand im Docstring, ``check_integrity`` verhindere, dass jemand durch

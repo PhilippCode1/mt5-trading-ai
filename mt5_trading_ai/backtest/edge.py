@@ -49,8 +49,12 @@ class EdgeVerdict:
             "version": self.version,
             "unmet": list(self.unmet),
             "checks": [
-                {"name": c.name, "met": c.met, "observed": c.observed,
-                 "required": c.required}
+                {
+                    "name": c.name,
+                    "met": c.met,
+                    "observed": c.observed,
+                    "required": c.required,
+                }
                 for c in self.checks
             ],
         }
@@ -81,31 +85,42 @@ def evaluate_edge(
     consecutive = max_consecutive_positive(fold_returns)
     checks = (
         EdgeCheck(
-            "oos_sharpe_after_costs", oos_sharpe >= t.min_oos_sharpe,
-            oos_sharpe, f">= {t.min_oos_sharpe}",
+            "oos_sharpe_after_costs",
+            oos_sharpe >= t.min_oos_sharpe,
+            oos_sharpe,
+            f">= {t.min_oos_sharpe}",
         ),
         EdgeCheck(
-            "deflated_sharpe_beats_threshold", deflated_sharpe > t.min_deflated_sharpe,
-            deflated_sharpe, f"> {t.min_deflated_sharpe}",
+            "deflated_sharpe_beats_threshold",
+            deflated_sharpe > t.min_deflated_sharpe,
+            deflated_sharpe,
+            f"> {t.min_deflated_sharpe}",
         ),
         EdgeCheck(
-            "trade_count", trades >= t.min_trades,
-            trades, f">= {t.min_trades}",
+            "trade_count",
+            trades >= t.min_trades,
+            trades,
+            f">= {t.min_trades}",
         ),
         EdgeCheck(
             "consecutive_positive_folds",
             consecutive >= t.min_consecutive_positive_folds,
-            consecutive, f">= {t.min_consecutive_positive_folds}",
+            consecutive,
+            f">= {t.min_consecutive_positive_folds}",
         ),
         EdgeCheck(
-            "clears_cost_hurdle", net_over_hurdle > 0,
-            net_over_hurdle, "gross_return - hurdle > 0 (Kosten gedeckt)",
+            "clears_cost_hurdle",
+            net_over_hurdle > 0,
+            net_over_hurdle,
+            "gross_return - hurdle > 0 (Kosten gedeckt)",
         ),
         EdgeCheck(
             "leakage_green_and_random_negative",
             bool(leakage_test_green and random_reference_negative),
-            {"leakage_green": leakage_test_green,
-             "random_negative": random_reference_negative},
+            {
+                "leakage_green": leakage_test_green,
+                "random_negative": random_reference_negative,
+            },
             "beide wahr",
         ),
     )

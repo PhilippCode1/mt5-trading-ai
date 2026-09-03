@@ -104,8 +104,10 @@ def _signal(venue: Mt5Venue, symbol: str) -> tuple[Signal, str]:
     ende = datetime.now(UTC)
     try:
         bars = venue.get_bars(
-            symbol, Timeframe.H1,
-            start=ende - timedelta(hours=KERZEN * 3), end=ende,
+            symbol,
+            Timeframe.H1,
+            start=ende - timedelta(hours=KERZEN * 3),
+            end=ende,
         )
     except VenueError as exc:
         return Signal.FLAT, f"keine Kerzen: {exc}"
@@ -120,16 +122,21 @@ def _signal(venue: Mt5Venue, symbol: str) -> tuple[Signal, str]:
     fertig = [b for b in bars if b.is_closed]
     if len(fertig) < LANGSAM:
         return Signal.FLAT, (
-            f"nur {len(fertig)} abgeschlossene von {len(bars)} Kerzen, "
-            f"{LANGSAM} noetig"
+            f"nur {len(fertig)} abgeschlossene von {len(bars)} Kerzen, {LANGSAM} noetig"
         )
     bars = tuple(fertig)
     # ``Bar`` (Handelsplatz) und ``BarRow`` (Backtest) tragen dieselben Felder, sind
     # aber verschiedene Typen. Umgesetzt statt gecastet: die Strategie soll genau das
     # sehen, was sie im Backtest saehe, und nichts darueber hinaus.
     reihe = [
-        BarRow(ts=b.ts, open=float(b.open), high=float(b.high),
-               low=float(b.low), close=float(b.close), volume=None)
+        BarRow(
+            ts=b.ts,
+            open=float(b.open),
+            high=float(b.high),
+            low=float(b.low),
+            close=float(b.close),
+            volume=None,
+        )
         for b in bars
     ]
     view = MarketView(reihe, len(reihe) - 1)
@@ -141,14 +148,18 @@ def _signal(venue: Mt5Venue, symbol: str) -> tuple[Signal, str]:
     # gebaut und dreht selbst. Hier nicht noch einmal drehen.
     stempel = bars[-1].ts.strftime("%H:%M UTC")
     return signal, (
-        f"MA{SCHNELL}={schnell:.5f} MA{LANGSAM}={langsam:.5f} "
-        f"letzte Kerze {stempel}"
+        f"MA{SCHNELL}={schnell:.5f} MA{LANGSAM}={langsam:.5f} letzte Kerze {stempel}"
     )
 
 
 def _kette_trocken(
-    venue: Mt5Venue, manager: RiskManager, symbol: str, signal: Signal,
-    now: datetime, *, vorfuehrung: bool
+    venue: Mt5Venue,
+    manager: RiskManager,
+    symbol: str,
+    signal: Signal,
+    now: datetime,
+    *,
+    vorfuehrung: bool,
 ) -> list[str]:
     """Die volle Kette durchlassen -- der Schreibschritt scheitert absichtlich."""
     config = RunnerConfig(
@@ -162,8 +173,13 @@ def _kette_trocken(
     zulassung = CriteriaVerdict(passed=vorfuehrung, results=())
     try:
         report = run_signal(
-            venue=venue, risk_manager=manager, admission=zulassung,
-            symbol=symbol, side=signal, config=config, now=now,
+            venue=venue,
+            risk_manager=manager,
+            admission=zulassung,
+            symbol=symbol,
+            side=signal,
+            config=config,
+            now=now,
             client_order_id=f"trocken-{symbol}-{int(now.timestamp())}",
         )
     except VenueError as exc:
@@ -178,8 +194,13 @@ def _kette_trocken(
 
 
 def takt(
-    venue: Mt5Venue, manager: RiskManager, symbole: list[str], nr: int,
-    leit: str, *, vorfuehrung: bool
+    venue: Mt5Venue,
+    manager: RiskManager,
+    symbole: list[str],
+    nr: int,
+    leit: str,
+    *,
+    vorfuehrung: bool,
 ) -> None:
     jetzt = datetime.now(UTC)
     print("=" * 78)
@@ -196,15 +217,19 @@ def takt(
     except VenueError:
         juengster = None
     frische = evaluate_account_freshness(
-        snapshot_ts=juengster or jetzt - timedelta(days=1), now=jetzt,
+        snapshot_ts=juengster or jetzt - timedelta(days=1),
+        now=jetzt,
         connected=juengster is not None,
-        max_age=MAX_SNAPSHOT_AGE, future_tolerance=timedelta(seconds=1),
+        max_age=MAX_SNAPSHOT_AGE,
+        future_tolerance=timedelta(seconds=1),
     )
-    print(f"Konto {konto.account_id} | Equity {konto.equity} {konto.currency} | "
-          f"Demo: {'ja' if konto.is_demo else 'NEIN'} | "
-          f"Kursfrische: {'ok' if frische.evaluable else frische.reason} "
-          f"(Alter {frische.age.total_seconds():.1f} s, "
-          f"Grenze {frische.max_age.total_seconds():.0f} s)")
+    print(
+        f"Konto {konto.account_id} | Equity {konto.equity} {konto.currency} | "
+        f"Demo: {'ja' if konto.is_demo else 'NEIN'} | "
+        f"Kursfrische: {'ok' if frische.evaluable else frische.reason} "
+        f"(Alter {frische.age.total_seconds():.1f} s, "
+        f"Grenze {frische.max_age.total_seconds():.0f} s)"
+    )
     print()
 
     kosten = load_broker_costs()
@@ -226,7 +251,8 @@ def takt(
             m_txt = f"{modell:.2f}"
             verh = gemessen / modell if modell > 0 else Decimal("0")
             urteil = (
-                "wie modelliert" if verh <= Decimal("1.2")
+                "wie modelliert"
+                if verh <= Decimal("1.2")
                 else f"{verh:.1f}x ueber Modell"
             )
         print(f"{symbol:<9}{q.bid:>11}{q.ask:>11}{gemessen:>9.2f}{m_txt:>9}   {urteil}")
@@ -235,8 +261,11 @@ def takt(
     signal, warum = _signal(venue, leit)
     print(f"Signal {leit}: {signal.name}   ({warum})")
     print()
-    kopf = "Kette trocken" if not vorfuehrung else (
-        "Kette trocken, MIT PLATZHALTER-ZULASSUNG (Vorfuehrung)")
+    kopf = (
+        "Kette trocken"
+        if not vorfuehrung
+        else ("Kette trocken, MIT PLATZHALTER-ZULASSUNG (Vorfuehrung)")
+    )
     print(f"{kopf} fuer {leit} — nichts wird gesendet:")
     for zeile in _kette_trocken(
         venue, manager, leit, signal, jetzt, vorfuehrung=vorfuehrung
@@ -251,16 +280,24 @@ def main() -> int:
     ap = argparse.ArgumentParser(
         description="Live-Konsole gegen das MT5-Demokonto (nur lesend)"
     )
-    ap.add_argument("--symbol", action="append", default=None,
-                    help="Instrument, mehrfach angebbar (Vorgabe: ganzer Katalog)")
+    ap.add_argument(
+        "--symbol",
+        action="append",
+        default=None,
+        help="Instrument, mehrfach angebbar (Vorgabe: ganzer Katalog)",
+    )
     ap.add_argument("--takt", type=float, default=5.0, help="Sekunden je Takt")
     ap.add_argument("--takte", type=int, default=0, help="Anzahl Takte (0 = endlos)")
-    ap.add_argument("--leit", default=None,
-                    help="Instrument fuer Signal und Kette (Vorgabe: EURUSD)")
     ap.add_argument(
-        "--vorfuehrung", action="store_true",
+        "--leit",
+        default=None,
+        help="Instrument fuer Signal und Kette (Vorgabe: EURUSD)",
+    )
+    ap.add_argument(
+        "--vorfuehrung",
+        action="store_true",
         help="Platzhalter-Zulassung hereinreichen, damit die uebrigen Sperren "
-             "sichtbar arbeiten. AENDERT NICHTS am Schreibschutz.",
+        "sichtbar arbeiten. AENDERT NICHTS am Schreibschutz.",
     )
     args = ap.parse_args()
 
@@ -268,25 +305,31 @@ def main() -> int:
     # versehentlich handeln koennen -- auch nicht auf einem Demokonto.
     terminal = RealMt5Terminal(allow_write=False, server_tz=SERVER_TZ_NAME)
     if not terminal.initialize():
-        print("FEHLGESCHLAGEN — MT5-Terminal nicht erreichbar. Laeuft es, und ist es "
-              "im Demokonto angemeldet?", file=sys.stderr)
+        print(
+            "FEHLGESCHLAGEN — MT5-Terminal nicht erreichbar. Laeuft es, und ist es "
+            "im Demokonto angemeldet?",
+            file=sys.stderr,
+        )
         return 2
     manager = RiskManager()
     venue = Mt5Venue(
-        name="mt5-live-konsole", terminal=terminal,
-        catalog=load_instrument_catalog(), risk_manager=manager,
+        name="mt5-live-konsole",
+        terminal=terminal,
+        catalog=load_instrument_catalog(),
+        risk_manager=manager,
     )
     venue.connect()
     symbole = args.symbol or sorted(load_instrument_catalog())
     leit = args.leit or ("EURUSD" if "EURUSD" in symbole else symbole[0])
-    print(f"Live-Konsole — NUR LESEND. {len(symbole)} Instrumente, Leitsymbol {leit}, "
-          f"Takt {args.takt:g} s. Abbruch mit Strg-C.\n")
+    print(
+        f"Live-Konsole — NUR LESEND. {len(symbole)} Instrumente, Leitsymbol {leit}, "
+        f"Takt {args.takt:g} s. Abbruch mit Strg-C.\n"
+    )
     try:
         nr = 0
         while args.takte == 0 or nr < args.takte:
             nr += 1
-            takt(venue, manager, symbole, nr, leit,
-                 vorfuehrung=args.vorfuehrung)
+            takt(venue, manager, symbole, nr, leit, vorfuehrung=args.vorfuehrung)
             if args.takte == 0 or nr < args.takte:
                 time.sleep(args.takt)
     except KeyboardInterrupt:
