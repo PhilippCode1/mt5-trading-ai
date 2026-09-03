@@ -1,200 +1,46 @@
-# MT5 Trading AI
+# mt5-trading-ai
 
-Ein einzelnes, lokal lauffaehiges Python-Paket. Es enthaelt den herausgeloesten Kern
-eines Handelssystems: die **Risiko- und Sperrschicht** (Hebelklammer, Verlustgrenzen,
-Positionsgroesse, Stop-Budget), die **Freigabe- und Bewertungstore**, die
-**Validierungs-Splits** fuer Zeitreihen, die vorregistrierten **Kriterien** samt
-**Versuchsregister**, und die **Werkzeuge gegen Dokumentationsdrift**. Alles ist additiv
-aus einem groesseren Altbestand uebernommen worden. Der Altbestand ist unter dem Git-Tag
-`archive/pre-extraction` gesichert — **im Vorgaenger-Repository, nicht in diesem**.
-Aus diesem Repo ist der Tag nicht nachpruefbar: `git tag -l` und
-`git ls-remote --tags origin` liefern hier beide nichts (gemessen 2026-08-17,
-Paket 2, A4.4). Wer die Isolation gegenpruefen will, braucht den Namen des
-Vorgaenger-Repositorys; er steht bisher nirgends.
+Kern eines KI-gestützten Handelssystems für MetaTrader 5, im Umbau nach dem Programm NEUAUFBAU (neun Aufträge, Ablage unter `PROGRAMM/`). Stand, Fortschritt und offene Haltepunkte stehen an genau einer Stelle: `PROGRAMM/zustand.md`. Der Rahmen, der in jeder Sitzung gilt, steht in `CLAUDE.md`. Was das Paket im Einzelnen enthält, erzeugt `tools/gen_docs.py` aus dem Code nach `MODULES.md`; dieses README beschreibt nur, wo etwas liegt und wie es startet.
 
-Was das Paket **nicht** ist: kein Dienst, kein Server, kein Container, kein Dashboard,
-keine Datenbank.
+Kein Dienst, kein Server, keine Datenbank, keine Oberfläche. Kein echter Handel: der Live-Pfad ist in allen Aufträgen des Programms technisch geschlossen (`config/live_freigabe.json`, alle Schalter aus, hook-geschützt).
 
-**Abhaengigkeiten, genau gesagt:** der *Import* haengt an nichts ausser der
-Python-Standardbibliothek — jedes Modul laesst sich ohne Fremdpaket laden, und die
-gesamte Testsuite laeuft ohne eines. Wer das MT5-Terminal wirklich anspricht, **lesend
-wie schreibend**, braucht zusaetzlich `MetaTrader5` (`pip install MetaTrader5`) und ein
-laufendes, angemeldetes Terminal. Das Paket wird ausschliesslich **lazy** in
-`RealMt5Terminal.initialize()` geladen; fehlt es, scheitert der Verbindungsaufbau laut,
-nicht der Import. Betroffen sind `tools/mt5_smoke.py` und `tools/atr_messung.py`.
+## Was hier liegt
 
-Die Sperren sind standardmaessig zu; ein Schalter kann nur lockern, nie verschaerfen, und
-nur zusammen mit einer Freigabekennung. Eine nicht bewertbare Bedingung gilt als nicht
-erfuellt.
+- `mt5_trading_ai/` — das Paket: Handelsplatz-Adapter mit Fake- und Echt-Terminal (`venue/`), Orderpfad mit Risikoschicht, Risikozustand und Schwebeakte (`execution/`, `risk/`), Kostenmodell (`costs/`), Datenlader und Datenqualität (`data/`), Kriterien, Register, Erkundung (`gates/`), Backtest-Maschine und Sechs-Bedingungen-Tor (`backtest/`, unverändert bis Auftrag 3), Journal-Leser und Dienstgüte (`betrieb/`).
+- `tools/` — Kommandozeilenwerkzeuge; jedes antwortet auf `--help`.
+- `tests/` — die Testsuite (`python -m pytest -q`).
+- `config/` — Instrumentenkatalog, Kostentabelle, Hebeldeckel je Anlageklasse, Manifeste der Datenreihen, Live-Schalter.
+- `aufzeichnungen/` — die redigierte Aufzeichnung eines echten Demolaufs (2026-08-17).
+- `PROGRAMM/` — das Programm NEUAUFBAU: Masterprompts und Bewertung (Eingang, unveränderlich), eingefrorener Abnahmekatalog, Zustand, Entscheidungen, Haltepunkte, eigene Fehler, Gelöschtes, Plan und Belege je Auftrag, die Hooks.
+- `archiv/` — der Altstand vor dem Programm (Stufenberichte, Abschlussordner, Recherchen, Runbook), unverändert und per Manifest gesichert (`archiv/HERKUNFT.txt`).
 
-Der Aufbau geschieht Paket fuer Paket und wird in `PROGRESS.md` protokolliert — jede Zahl
-gemessen, jede Sperre nach dem Umzug einmal absichtlich beschaedigt, damit belegt ist, dass
-sie rot wird. Was noch fehlt (Anbindung, Marktdaten, Kosten, Universum, Strategie,
-Backtest-Maschine), steht in `FEHLT.md`. Was aus dem Altbestand bewusst zurueckblieb, steht
-in `VERLUST.md`.
+## Start
+
+Python 3.11 und `pip install -r requirements-dev.txt`. Der Import des Pakets braucht kein Fremdpaket; wer das MT5-Terminal anspricht, braucht `pip install MetaTrader5`, ein installiertes Terminal und ein angemeldetes Demokonto (Windows). Hinweis: `MetaTrader5.initialize()` startet ein nicht laufendes Terminal selbst und verbindet sich mit dem gespeicherten Konto.
+
+```
+python -m pytest -q                       # die Suite
+python tools/mt5_smoke.py                 # lesender Smoke-Test am Terminal (sendet ohne --allow-write nichts)
+python tools/live_betrieb.py --help       # Demo-Betrieb; ohne --scharf ein Trockenlauf
+python tools/gen_docs.py                  # MODULES.md und den Kennzahlenblock unten neu erzeugen
+```
+
+## Tore
+
+Jeder Commit fährt über `.githooks/pre-commit` neun Tore (Katalog-Hash, ruff check, ruff format, mypy strict, MODULES.md, Doku-Behauptungen, Doku-Zahlen, Kopien, Manifeste); jeder Push die volle Suite (`.githooks/pre-push`); die CI (`.github/workflows/ci.yml`) läuft auf einem frischen Linux-Klon. Lokal aktivieren: `git config core.hooksPath .githooks`. Weitere Tore mit eigenem Aufruf: `tools/zweigdeckung.py` (Zweigdeckung je Geldpfad-Datei), `tools/mutationstor.py` (Mutationssonden), `tools/geheimnis_scan.py`, `tools/katalog_hash.py --pruefen`, `tools/archiv_manifest.py --pruefen`.
+
+Der Claude-Code-Hook `PROGRAMM/hooks/waechter.py` (`.claude/settings.json`) weist Schreibzugriffe auf den eingefrorenen Abnahmekatalog, die Live-Schalter und vorhandene Vorregistrierungen ab.
 
 ## Kennzahlen
 
-Gemessen, nicht behauptet — gegen den Code geprueft von `tests/test_readme_numbers.py`.
-Aendert sich der Code, ohne dass diese Zahlen nachgezogen werden, wird der Test rot.
+Erzeugt von `tools/gen_docs.py`, geprüft von `tools/check_doc_numbers.py` und `tests/test_readme_numbers.py`; andere Dokumente verweisen hierher.
 
-<!-- KENNZAHLEN-ANFANG (geprueft von tests/test_readme_numbers.py) -->
+<!-- KENNZAHLEN-ANFANG (erzeugt von tools/gen_docs.py, geprueft von tests/test_readme_numbers.py) -->
 - module_count: 39
 - test_function_count: 1311
 - source_lines: 16342
 <!-- KENNZAHLEN-ENDE -->
 
-## Oberflaeche
+## Zustand außerhalb des Arbeitsbaums
 
-Alles auf einer Seite im Browser, **nur lesend**:
-
-```
-python tools/oberflaeche.py
-```
-
-Zeigt Konto und Frische-Latch, offene Positionen mit Stop und Alter, den laufenden
-Betrieb aus dem Journal (Takte, Eroeffnungen, Ablehnungen mit Grund), die Orderkette
-Naht fuer Naht und die gemessenen Spreads gegen das Kostenmodell. Laedt alle 10 s neu,
-laeuft nur auf 127.0.0.1, gebaut aus der Standardbibliothek.
-
-Das Terminal wird dort mit `allow_write=False` geoeffnet — das ist kein Schalter des
-Werkzeugs. Die Seite kann **nicht handeln**.
-
-Sie hat genau **eine** Handlung: einen Knopf, der `betrieb/STOP` anlegt. Das ist ein
-`Path.touch()` — kein Schreibrecht auf Orders, keine Terminalverbindung. Der Lauf sieht
-die Datei im naechsten Takt, stellt glatt und beendet sich. Der Knopf verlangt POST und
-ein beim Start erzeugtes Token, damit ihn keine fremde Seite im selben Browser ausloest.
-
-Ueber die Laufliste laesst sich jeder fruehere Lauf ansehen (`?lauf=<datei>`); Konto,
-Positionen und Kurse bleiben dabei live, und ein Hinweis sagt, dass man in die
-Vergangenheit sieht.
-
-Auswertung eines Laufs und aller Laeufe:
-
-```
-python tools/betrieb_auswerten.py          # ein Journal
-python tools/betrieb_reihe.py              # alle Journale hintereinander
-python tools/journal_sichern.py --ziel D:/sicherung/mt5
-```
-
-Beide Leser benutzen `mt5_trading_ai/betrieb/journal.py` — die eine getestete Stelle,
-an der aus Journalzeilen Aussagen werden.
-
----
-
-## Stand des Vorhabens (2026-08-19) — die Frage ist beantwortet
-
-**Auf EURUSD H1 existiert kein Vorteil nach Kosten.** Drei Hypothesen, gegen eine vor dem
-Lauf eingefrorene Vorregistrierung, auf unabhaengig beschafften Daten (18.715 H1-Bars,
-2022-01-02 bis 2024-12-31, Dukascopy):
-
-| Hypothese | Trades | Netto | Trade-Sharpe | Deflated Sharpe |
-|---|---:|---:|---:|---:|
-| MA-Kreuzung 24/120 | 59 | −18,85 % | −0,792 | 0,0010 |
-| Mittelwertrueckkehr z48 | 123 | +3,22 % | 0,185 | 0,0150 |
-| Ausbruch Donchian 48 | 58 | −30,82 % | −1,202 | 0,0003 |
-
-Verlangt waren Out-of-Sample-Sharpe ≥ 1,0, Deflated Sharpe > 0,95 und ≥ 2.000 Trades.
-**Keine der drei nimmt das Tor, und keine scheitert knapp.** Zwei der drei reproduzieren
-den frueheren Befund aus [BERICHT_TEIL3.md](BERICHT_TEIL3.md) auf die Stelle genau — auf
-neu und unabhaengig beschafften Daten.
-
-Belege: [AUFTRAG/stufen/03-simulator/bericht.md](AUFTRAG/stufen/03-simulator/bericht.md),
-Vorregistrierung in [AUFTRAG/vorregistrierung/](AUFTRAG/vorregistrierung/), was jetzt zu
-entscheiden ist in [AUFTRAG/haltepunkte.md](AUFTRAG/haltepunkte.md) (H-004).
-
-Der Absatz darunter bleibt stehen und wird nicht ueberschrieben.
-
----
-
-## Stand des Vorhabens (2026-08-17)
-
-**Es gibt keine zugelassene Strategie, und es wird kein Echtgeld gehandelt.**
-
-Sieben Ereignisstudien aus Paket 3a haben keine tragfaehige Zwangslage gefunden: groesster
-Bruttoeffekt 1,36 bp gegen eine Kostenschwelle von 5,51 bp, alle sieben Nettoeffekte
-negativ, hoechster Deflated Sharpe 0,686 gegen die Schwelle 0,95. Das Urteil steht in
-[ABSCHLUSS-3a/05-URTEIL.md](ABSCHLUSS-3a/05-URTEIL.md), die Abbruchbedingungen in
-[ABBRUCH.md](ABBRUCH.md).
-
-**Der Live-Pfad ist nicht erreichbar**, und zwar auf drei Ebenen unabhaengig voneinander:
-
-1. `RealMt5Terminal` faehrt mit `allow_write=False` als Vorgabe und `require_demo=True`.
-   Ein Schreibzugriff auf ein Live-Konto wird abgelehnt, bevor er den Handelsplatz
-   erreicht.
-2. Die mehrstufige Live-Freigabe in `execution/release.py` haengt im Orderpfad
-   (`venue/mt5.py:447` ruft sie vor jeder eroeffnenden Order an einem Konto, das kein
-   Demokonto ist). Sie verlangt mehrere gesetzte Schalter **und** eine hinterlegte
-   Freigabekennung; **kein** Modul ausserhalb der Tests setzt auch nur eines davon, und
-   fehlt eines, lehnt sie fail-closed ab. Die Sperre ist also verdrahtet und trotzdem
-   unpassierbar — das ist staerker als „nicht angeschlossen", was hier bis 2026-08-17
-   stand und schlicht falsch war: eine nicht angeschlossene Sperre schuetzt gar nicht.
-3. Der Orderpfad prueft als Erstes die §9.3-Zulassung. Sie ist nicht erteilt, weil kein
-   Kandidat das Bewertungstor bestanden hat.
-
-Was **laeuft**, ist ein Demo-Betrieb zur Pruefung der Maschine
-([tools/live_betrieb.py](tools/live_betrieb.py)) mit einer Platzhalterstrategie. Er
-beantwortet, ob die Kette sauber arbeitet — nicht, ob sie Geld verdient.
-
----
-
-## Abschluss Paket 3a
-
-Ergebnisse des Auftrags „Die Vorfrage, auf das Aufloesbare zugeschnitten". Dieses Paket
-liest nur — kein Broker-Konto, kein Handelsbetrieb. Es kann das Vorhaben beenden.
-
-- [ABSCHLUSS-3a/00-UEBERSICHT.md](ABSCHLUSS-3a/00-UEBERSICHT.md) — je Aufgabe eine Zeile: Ampel, Zahl, Bezugsgroesse
-- [ABSCHLUSS-3a/01-AUFLOESUNG.md](ABSCHLUSS-3a/01-AUFLOESUNG.md) — gemessene Fensterstreuung, Aufloesungstabelle genaehert gegen gemessen
-- [ABSCHLUSS-3a/02-DATENLAGE.md](ABSCHLUSS-3a/02-DATENLAGE.md) — Historientiefe, Pruefsummen, Gegenprobe, Zeitversatz
-- [ABSCHLUSS-3a/03-KALENDER.md](ABSCHLUSS-3a/03-KALENDER.md) — Kandidaten, Ereigniszeitpunkte, Quellen, ausgesonderte mit Grund
-- [ABSCHLUSS-3a/04-EREIGNISSTUDIE.md](ABSCHLUSS-3a/04-EREIGNISSTUDIE.md) — je Kandidat: Effekt, Netto, Bestaetigungstests, Urteil gegen M6
-- [ABSCHLUSS-3a/05-URTEIL.md](ABSCHLUSS-3a/05-URTEIL.md) — Go/No-Go, Zustand aller sechs Abbruchbedingungen, Unterschrift
-- [ABSCHLUSS-3a/08-SPAETER.md](ABSCHLUSS-3a/08-SPAETER.md) — bewusst zurueckgestellte Funde, je einer mit Begruendung
-- [ABSCHLUSS-3a/09-EIGENE-FEHLER.md](ABSCHLUSS-3a/09-EIGENE-FEHLER.md) — was schiefging, ohne Beschoenigung
-
-Rohe Terminalausgaben, eine Datei je Befehl:
-
-- [ABSCHLUSS-3a/07-AUSGABEN/pytest.txt](ABSCHLUSS-3a/07-AUSGABEN/pytest.txt)
-- [ABSCHLUSS-3a/07-AUSGABEN/ruff.txt](ABSCHLUSS-3a/07-AUSGABEN/ruff.txt)
-- [ABSCHLUSS-3a/07-AUSGABEN/mypy.txt](ABSCHLUSS-3a/07-AUSGABEN/mypy.txt)
-- [ABSCHLUSS-3a/07-AUSGABEN/gen_docs.txt](ABSCHLUSS-3a/07-AUSGABEN/gen_docs.txt)
-- [ABSCHLUSS-3a/07-AUSGABEN/check_docs_claims.txt](ABSCHLUSS-3a/07-AUSGABEN/check_docs_claims.txt)
-- [ABSCHLUSS-3a/07-AUSGABEN/check_doc_numbers.txt](ABSCHLUSS-3a/07-AUSGABEN/check_doc_numbers.txt)
-- [ABSCHLUSS-3a/07-AUSGABEN/kostentor.txt](ABSCHLUSS-3a/07-AUSGABEN/kostentor.txt)
-- [ABSCHLUSS-3a/07-AUSGABEN/ereignisstudie_selbsttest.txt](ABSCHLUSS-3a/07-AUSGABEN/ereignisstudie_selbsttest.txt)
-- [ABSCHLUSS-3a/07-AUSGABEN/aufloesung.txt](ABSCHLUSS-3a/07-AUSGABEN/aufloesung.txt)
-- [ABSCHLUSS-3a/07-AUSGABEN/gegenprobe.txt](ABSCHLUSS-3a/07-AUSGABEN/gegenprobe.txt)
-- [ABSCHLUSS-3a/07-AUSGABEN/ereignisstudie.txt](ABSCHLUSS-3a/07-AUSGABEN/ereignisstudie.txt)
-- [ABSCHLUSS-3a/07-AUSGABEN/geheimnis_scan.txt](ABSCHLUSS-3a/07-AUSGABEN/geheimnis_scan.txt)
-
-## Abschluss Paket 2
-
-Ergebnisse des Auftrags „Kostentor, Verdrahtung, Wahrheit". Jede Datei ist einzeln
-verlinkt, damit sie von aussen abrufbar ist — Verzeichnisseiten sind es nicht.
-
-- [ABSCHLUSS/00-UEBERSICHT.md](ABSCHLUSS/00-UEBERSICHT.md) — je Aufgabe eine Zeile: Ampel, Zahl, Bezugsgroesse
-- [ABSCHLUSS/01-KOSTENTOR.md](ABSCHLUSS/01-KOSTENTOR.md) — Kostentabellen, Quellen mit Abrufdatum, Urteil gegen M1 und M2
-- [ABSCHLUSS/02-VERDRAHTUNG.md](ABSCHLUSS/02-VERDRAHTUNG.md) — Eintrittspunkte gezaehlt, Quote vorher/nachher, Eichfaelle
-- [ABSCHLUSS/03-DOKU-WAHRHEIT.md](ABSCHLUSS/03-DOKU-WAHRHEIT.md) — Widersprueche geschlossen, Geheimnispruefung mit Bezugsgroesse
-- [ABSCHLUSS/04-ALPHA.md](ABSCHLUSS/04-ALPHA.md) — Kopie von `ALPHA.md`
-- [ABSCHLUSS/06-ABBRUCHKRITERIUM.md](ABSCHLUSS/06-ABBRUCHKRITERIUM.md) — Kopie von `ABBRUCH.md`
-- [ABSCHLUSS/08-SPAETER.md](ABSCHLUSS/08-SPAETER.md) — bewusst zurueckgestellte Funde, je einer mit Begruendung
-- [ABSCHLUSS/09-EIGENE-FEHLER.md](ABSCHLUSS/09-EIGENE-FEHLER.md) — was schiefging, ohne Beschoenigung
-
-Rohe Terminalausgaben des Pruefstands, eine Datei je Befehl:
-
-- [ABSCHLUSS/07-AUSGABEN/pytest.txt](ABSCHLUSS/07-AUSGABEN/pytest.txt)
-- [ABSCHLUSS/07-AUSGABEN/ruff.txt](ABSCHLUSS/07-AUSGABEN/ruff.txt)
-- [ABSCHLUSS/07-AUSGABEN/mypy.txt](ABSCHLUSS/07-AUSGABEN/mypy.txt)
-- [ABSCHLUSS/07-AUSGABEN/gen_docs.txt](ABSCHLUSS/07-AUSGABEN/gen_docs.txt)
-- [ABSCHLUSS/07-AUSGABEN/check_docs_claims.txt](ABSCHLUSS/07-AUSGABEN/check_docs_claims.txt)
-- [ABSCHLUSS/07-AUSGABEN/check_doc_numbers.txt](ABSCHLUSS/07-AUSGABEN/check_doc_numbers.txt)
-- [ABSCHLUSS/07-AUSGABEN/kostentor.txt](ABSCHLUSS/07-AUSGABEN/kostentor.txt)
-- [ABSCHLUSS/07-AUSGABEN/atr_messung.txt](ABSCHLUSS/07-AUSGABEN/atr_messung.txt)
-- [ABSCHLUSS/07-AUSGABEN/geheimnispruefung.txt](ABSCHLUSS/07-AUSGABEN/geheimnispruefung.txt)
-- [ABSCHLUSS/07-AUSGABEN/eichfaelle.txt](ABSCHLUSS/07-AUSGABEN/eichfaelle.txt)
-
-Wurzeldokumente, die in diesem Auftrag entstehen:
-
-- [ABBRUCH.md](ABBRUCH.md) — beziffertes Abbruchkriterium fuer das Gesamtvorhaben
-- [ALPHA.md](ALPHA.md) — woher der Vorteil kommen soll, auf einer Seite
+Risikozustand und Schwebeakte gehören in den Zustandsordner des Benutzers (Windows: `%LOCALAPPDATA%\mt5_trading_ai\risiko`), nicht ins Repository. Heute geschieht das nur, wenn `MT5_RISIKO_ZUSTAND`, `MT5_RISIKO_ZUSTAND_ORDNER` oder `MT5_SCHWEBENDE_AUFTRAEGE` gesetzt sind (Befund D8 der Bewertung); der Umbau auf Persistenz per Vorgabe ist Teil von Auftrag 1 (`PROGRAMM/auftrag-01-fundament/plan.md`, T6).

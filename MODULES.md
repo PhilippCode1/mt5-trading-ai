@@ -3,6 +3,8 @@
 # MODULES — oeffentliche API je Modul (generiert aus dem Code)
 
 Diese Datei ist die **einzige** Stelle, an der die Zeilenzahl je Modul steht.
+Je Modul stehen die Aufrufer als Importzeilen (Paket / Werkzeuge / Tests);
+0 Aufrufer ausserhalb der Tests heisst: kein nachgewiesener Aufrufpfad.
 Sie wird erzeugt, nicht gepflegt. Andere Dokumente verweisen hierher; das
 Zahlen-Tor (`tools/check_doc_numbers.py`) blockt eine Wiederholung, weil eine
 von Hand gefuehrte Zeilenzahl mit dem naechsten Commit driftet.
@@ -10,6 +12,7 @@ von Hand gefuehrte Zeilenzahl mit dem naechsten Commit driftet.
 ## `mt5_trading_ai/backtest/edge.py`
 
 Zeilen: 128
+Aufrufer: Paket 3 · Werkzeuge 3 · Tests 11
 
 Das Sechs-Bedingungen-Tor des Edge-Tests (Paket 4, §7.2).
 
@@ -22,6 +25,7 @@ Das Sechs-Bedingungen-Tor des Edge-Tests (Paket 4, §7.2).
 ## `mt5_trading_ai/backtest/engine.py`
 
 Zeilen: 731
+Aufrufer: Paket 2 · Werkzeuge 5 · Tests 9
 
 Backtest-Maschine: fuehrt Splits, Daten und Kostenmodell zusammen.
 
@@ -44,6 +48,7 @@ Backtest-Maschine: fuehrt Splits, Daten und Kostenmodell zusammen.
 ## `mt5_trading_ai/backtest/ereignisstudie.py`
 
 Zeilen: 492
+Aufrufer: Paket 0 · Werkzeuge 3 · Tests 6
 
 Ereignisstudie — traegt eine bekannte Zwangslage mehr als ihre Kosten?
 
@@ -62,6 +67,7 @@ Ereignisstudie — traegt eine bekannte Zwangslage mehr als ihre Kosten?
 ## `mt5_trading_ai/backtest/kalender.py`
 
 Zeilen: 373
+Aufrufer: Paket 1 · Werkzeuge 3 · Tests 4
 
 Ereigniskalender — wann genau ist das Ereignis, in echtem UTC?
 
@@ -78,6 +84,7 @@ Ereigniskalender — wann genau ist das Ereignis, in echtem UTC?
 ## `mt5_trading_ai/backtest/provenance.py`
 
 Zeilen: 117
+Aufrufer: Paket 0 · Werkzeuge 2 · Tests 1
 
 Herkunft eines Backtest-Laufs: der Codestand aus git (Paket 6).
 
@@ -87,6 +94,7 @@ Herkunft eines Backtest-Laufs: der Codestand aus git (Paket 6).
 ## `mt5_trading_ai/backtest/resolution.py`
 
 Zeilen: 364
+Aufrufer: Paket 0 · Werkzeuge 1 · Tests 3
 
 Aufloesung einer Ereignisstudie — kann sie den Effekt ueberhaupt sehen?
 
@@ -103,6 +111,7 @@ Aufloesung einer Ereignisstudie — kann sie den Effekt ueberhaupt sehen?
 ## `mt5_trading_ai/backtest/splits.py`
 
 Zeilen: 102
+Aufrufer: Paket 1 · Werkzeuge 0 · Tests 1
 
 Zeitreihen-Splits mit Purge und Embargo — herausgeloest aus learning_engine.
 
@@ -112,6 +121,7 @@ Zeitreihen-Splits mit Purge und Embargo — herausgeloest aus learning_engine.
 ## `mt5_trading_ai/backtest/strategies.py`
 
 Zeilen: 123
+Aufrufer: Paket 0 · Werkzeuge 4 · Tests 5
 
 Einfache, ernsthafte Signallogiken fuer den Edge-Test -- ohne Optimierung.
 
@@ -122,6 +132,7 @@ Einfache, ernsthafte Signallogiken fuer den Edge-Test -- ohne Optimierung.
 ## `mt5_trading_ai/betrieb/dienstguete.py`
 
 Zeilen: 595
+Aufrufer: Paket 0 · Werkzeuge 1 · Tests 4
 
 Alarmregeln, Dienstgüteziele und Fehlerbudget -- aus dem Betriebsjournal.
 
@@ -141,6 +152,7 @@ Alarmregeln, Dienstgüteziele und Fehlerbudget -- aus dem Betriebsjournal.
 ## `mt5_trading_ai/betrieb/journal.py`
 
 Zeilen: 630
+Aufrufer: Paket 0 · Werkzeuge 2 · Tests 2
 
 Betriebsjournale lesen -- die eine Stelle, an der aus Zeilen Aussagen werden.
 
@@ -159,6 +171,7 @@ Betriebsjournale lesen -- die eine Stelle, an der aus Zeilen Aussagen werden.
 ## `mt5_trading_ai/costs/broker_costs.py`
 
 Zeilen: 453
+Aufrufer: Paket 0 · Werkzeuge 4 · Tests 2
 
 Broker-Kostentabelle — versioniert, belegt, fail-closed.
 
@@ -172,6 +185,7 @@ Broker-Kostentabelle — versioniert, belegt, fail-closed.
 ## `mt5_trading_ai/costs/model.py`
 
 Zeilen: 225
+Aufrufer: Paket 2 · Werkzeuge 3 · Tests 3
 
 Kostenmodell: die realen Kosten einer Order, gemessen statt angenommen.
 
@@ -183,6 +197,7 @@ Kostenmodell: die realen Kosten einer Order, gemessen statt angenommen.
 ## `mt5_trading_ai/costs/volatility.py`
 
 Zeilen: 391
+Aufrufer: Paket 0 · Werkzeuge 2 · Tests 3
 
 Gemessene Volatilitaet je Instrument — ATR(14) und die Ablage dafuer.
 
@@ -202,6 +217,7 @@ Gemessene Volatilitaet je Instrument — ATR(14) und die Ablage dafuer.
 ## `mt5_trading_ai/data/loader.py`
 
 Zeilen: 466
+Aufrufer: Paket 1 · Werkzeuge 4 · Tests 7
 
 Lader fuer historische Bars -- an das Datenqualitaetstor gekettet.
 
@@ -224,6 +240,7 @@ Lader fuer historische Bars -- an das Datenqualitaetstor gekettet.
 ## `mt5_trading_ai/data/quality.py`
 
 Zeilen: 229
+Aufrufer: Paket 3 · Werkzeuge 3 · Tests 7
 
 Datenqualitaet als Gate (Phase 7.2).
 
@@ -236,6 +253,7 @@ Datenqualitaet als Gate (Phase 7.2).
 ## `mt5_trading_ai/execution/cost_gate.py`
 
 Zeilen: 137
+Aufrufer: Paket 2 · Werkzeuge 3 · Tests 5
 
 Pre-Trade-Kostentor am Order-Pfad.
 
@@ -246,6 +264,7 @@ Pre-Trade-Kostentor am Order-Pfad.
 ## `mt5_trading_ai/execution/freshness.py`
 
 Zeilen: 246
+Aufrufer: Paket 1 · Werkzeuge 1 · Tests 2
 
 Frische-Latch fuer den Kontozustand — S2 aus Paket 0.
 
@@ -255,6 +274,7 @@ Frische-Latch fuer den Kontozustand — S2 aus Paket 0.
 ## `mt5_trading_ai/execution/leverage_preflight.py`
 
 Zeilen: 106
+Aufrufer: Paket 1 · Werkzeuge 0 · Tests 2
 
 Anschluss der Hebelklammer an den Order-Pfad.
 
@@ -264,6 +284,7 @@ Anschluss der Hebelklammer an den Order-Pfad.
 ## `mt5_trading_ai/execution/private_sync.py`
 
 Zeilen: 89
+Aufrufer: Paket 2 · Werkzeuge 1 · Tests 3
 
 Private Ereignis-Synchronisation: der Kontostrom haelt das Buch aktuell.
 
@@ -274,6 +295,7 @@ Private Ereignis-Synchronisation: der Kontostrom haelt das Buch aktuell.
 ## `mt5_trading_ai/execution/reconcile.py`
 
 Zeilen: 111
+Aufrufer: Paket 3 · Werkzeuge 0 · Tests 1
 
 Order-Lebenszyklus und Reconcile: Konto gegen Buch.
 
@@ -286,6 +308,7 @@ Order-Lebenszyklus und Reconcile: Konto gegen Buch.
 ## `mt5_trading_ai/execution/release.py`
 
 Zeilen: 128
+Aufrufer: Paket 1 · Werkzeuge 0 · Tests 1
 
 Mehrteilige Freigabe fuer Order-Submit an einen echten Markt.
 
@@ -296,6 +319,7 @@ Mehrteilige Freigabe fuer Order-Submit an einen echten Markt.
 ## `mt5_trading_ai/execution/risiko_zustand.py`
 
 Zeilen: 1586
+Aufrufer: Paket 3 · Werkzeuge 1 · Tests 9
 
 Der Risikozustand, der einen Neustart ueberdauert -- und wie er fail-closed liest.
 
@@ -314,6 +338,7 @@ Der Risikozustand, der einen Neustart ueberdauert -- und wie er fail-closed lies
 ## `mt5_trading_ai/execution/risk_manager.py`
 
 Zeilen: 1188
+Aufrufer: Paket 3 · Werkzeuge 5 · Tests 22
 
 Risikoschicht am Order-Pfad: die vier Grenzen als letzte Verteidigungslinie.
 
@@ -326,6 +351,7 @@ Risikoschicht am Order-Pfad: die vier Grenzen als letzte Verteidigungslinie.
 ## `mt5_trading_ai/execution/runner.py`
 
 Zeilen: 500
+Aufrufer: Paket 0 · Werkzeuge 3 · Tests 3
 
 Integrierender Paper/Dry-Run-Runner (Paket 7): die eine beweisbare Kette.
 
@@ -337,6 +363,7 @@ Integrierender Paper/Dry-Run-Runner (Paket 7): die eine beweisbare Kette.
 ## `mt5_trading_ai/execution/scheduler.py`
 
 Zeilen: 121
+Aufrufer: Paket 0 · Werkzeuge 2 · Tests 4
 
 Treiber-Loop/Scheduler (Paket 7): Frische, Drift und Drawdown-Peak getaktet pruefen.
 
@@ -346,6 +373,7 @@ Treiber-Loop/Scheduler (Paket 7): Frische, Drift und Drawdown-Peak getaktet prue
 ## `mt5_trading_ai/execution/schwebende_auftraege.py`
 
 Zeilen: 305
+Aufrufer: Paket 1 · Werkzeuge 1 · Tests 4
 
 Auftraege, deren Sendeversuch ohne Antwort endete -- „koennte beim Broker leben".
 
@@ -357,6 +385,7 @@ Auftraege, deren Sendeversuch ohne Antwort endete -- „koennte beim Broker lebe
 ## `mt5_trading_ai/gates/criteria.py`
 
 Zeilen: 393
+Aufrufer: Paket 4 · Werkzeuge 5 · Tests 9
 
 Vorregistrierte Kriterien und ihre Auswertung (Phase 9.3).
 
@@ -373,6 +402,7 @@ Vorregistrierte Kriterien und ihre Auswertung (Phase 9.3).
 ## `mt5_trading_ai/gates/erkundung.py`
 
 Zeilen: 232
+Aufrufer: Paket 1 · Werkzeuge 1 · Tests 1
 
 Kaltstart: den Kreis aufbrechen, ohne die Sperren aufzuweichen.
 
@@ -387,6 +417,7 @@ Kaltstart: den Kreis aufbrechen, ohne die Sperren aufzuweichen.
 ## `mt5_trading_ai/gates/evaluation.py`
 
 Zeilen: 207
+Aufrufer: Paket 1 · Werkzeuge 1 · Tests 5
 
 Bewerten ist nicht handeln (Phase 8.3).
 
@@ -402,6 +433,7 @@ Bewerten ist nicht handeln (Phase 8.3).
 ## `mt5_trading_ai/gates/trials.py`
 
 Zeilen: 319
+Aufrufer: Paket 2 · Werkzeuge 2 · Tests 7
 
 Trials-Ledger (Phase 9.4) — ``TRIALS.jsonl``, ausschliesslich anhaengend.
 
@@ -421,6 +453,7 @@ Trials-Ledger (Phase 9.4) — ``TRIALS.jsonl``, ausschliesslich anhaengend.
 ## `mt5_trading_ai/risk/leverage.py`
 
 Zeilen: 253
+Aufrufer: Paket 2 · Werkzeuge 0 · Tests 3
 
 Gesetzlicher Hebeldeckel je Anlageklasse — geladen aus einer versionierten Datei.
 
@@ -436,6 +469,7 @@ Gesetzlicher Hebeldeckel je Anlageklasse — geladen aus einer versionierten Dat
 ## `mt5_trading_ai/risk/limits.py`
 
 Zeilen: 174
+Aufrufer: Paket 1 · Werkzeuge 0 · Tests 3
 
 Verlustgrenzen und das **Kriterium** des Kill-Switch (Phase 6.4).
 
@@ -448,6 +482,7 @@ Verlustgrenzen und das **Kriterium** des Kill-Switch (Phase 6.4).
 ## `mt5_trading_ai/risk/sizing.py`
 
 Zeilen: 223
+Aufrufer: Paket 2 · Werkzeuge 0 · Tests 1
 
 Risiko je Trade, ausfuehrbarer Stop-Floor und Positionsgroesse (Phase 6.2/6.3).
 
@@ -462,6 +497,7 @@ Risiko je Trade, ausfuehrbarer Stop-Floor und Positionsgroesse (Phase 6.2/6.3).
 ## `mt5_trading_ai/risk/stop_budget.py`
 
 Zeilen: 357
+Aufrufer: Paket 2 · Werkzeuge 2 · Tests 6
 
 Stop-Budget je Anlageklasse — hergeleitet, nicht uebertragen (Phase 6.5).
 
@@ -476,6 +512,7 @@ Stop-Budget je Anlageklasse — hergeleitet, nicht uebertragen (Phase 6.5).
 ## `mt5_trading_ai/venue/catalog.py`
 
 Zeilen: 260
+Aufrufer: Paket 2 · Werkzeuge 4 · Tests 8
 
 Instrumentenkatalog — die Metadaten, die MT5 nicht liefert.
 
@@ -488,6 +525,7 @@ Instrumentenkatalog — die Metadaten, die MT5 nicht liefert.
 ## `mt5_trading_ai/venue/demo_run.py`
 
 Zeilen: 372
+Aufrufer: Paket 2 · Werkzeuge 0 · Tests 8
 
 Paket 5: Registrierung und Fortschritts-Tor des Demo-Betriebs (§8.5).
 
@@ -502,6 +540,7 @@ Paket 5: Registrierung und Fortschritts-Tor des Demo-Betriebs (§8.5).
 ## `mt5_trading_ai/venue/mt5.py`
 
 Zeilen: 2724
+Aufrufer: Paket 3 · Werkzeuge 7 · Tests 33
 
 MT5-Anbindung an das ``TradingVenue``-Protokoll.
 
@@ -522,6 +561,7 @@ MT5-Anbindung an das ``TradingVenue``-Protokoll.
 ## `mt5_trading_ai/venue/protocol.py`
 
 Zeilen: 531
+Aufrufer: Paket 12 · Werkzeuge 8 · Tests 43
 
 Plattformunabhaengiger Handelsplatz-Vertrag.
 
@@ -549,6 +589,7 @@ Plattformunabhaengiger Handelsplatz-Vertrag.
 ## `mt5_trading_ai/venue/smoke.py`
 
 Zeilen: 344
+Aufrufer: Paket 0 · Werkzeuge 1 · Tests 2
 
 Demo-Smoke-Test der MT5-Bindung — die Orchestrierung, terminalunabhaengig.
 
