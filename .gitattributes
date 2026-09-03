@@ -1,0 +1,4 @@
+# Zeilenenden: im Repo und im Arbeitsbaum LF, auf jeder Plattform.
+# Grund: core.autocrlf=true ohne diese Datei erzeugte bei jedem Commit CRLF-Warnungen
+# und liess Werkzeuge (Mutationstor, Kopien-Tor) mit CRLF-Sonderbehandlung leben.
+* text=auto eol=lf
