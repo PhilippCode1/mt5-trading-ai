@@ -1,8 +1,10 @@
 name: CI
 
-# Erzwingt bei jedem Push und jedem Pull Request dieselben sechs Tore, die lokal
-# gelten. Bricht eines, wird der Lauf rot -- die Sperren sind damit nicht mehr nur
-# bei manuellem Aufruf aktiv (Audit-Fund: "keine CI erzwingt die Sperren").
+# Ehrliche CI (Programm NEUAUFBAU, Auftrag 1, Katalog A1): auf einem frischen
+# Linux-Klon laufen dieselben Tore wie lokal im Pre-Commit- und Pre-Push-Hook.
+# Kein Tor ist optional, keines wird uebersprungen; ein rotes Tor macht den Lauf rot.
+# Reihenfolge: billige, schnelle Tore zuerst, damit ein Formatfehler nicht erst nach
+# der Suite auffaellt. Kein Terminal, keine Zugangsdaten, kein Handel.
 
 on:
   push:
@@ -11,11 +13,17 @@ on:
 permissions:
   contents: read
 
+env:
+  PYTHONDONTWRITEBYTECODE: "1"
+  PYTHONIOENCODING: "utf-8"
+
 jobs:
-  gates:
+  tore:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # der Geheimnis-Scan liest die gesamte Historie
 
       - name: Python 3.11
         uses: actions/setup-python@v5
@@ -25,19 +33,25 @@ jobs:
       - name: Werkzeuge (gepinnt)
         run: pip install -r requirements-dev.txt
 
-      - name: Tests
-        run: python -m pytest -q
+      - name: Abnahmekatalog eingefroren (A16)
+        run: python tools/katalog_hash.py --pruefen
 
-      - name: Ruff
+      - name: Archiv, Eingaenge, Vorregistrierungen unveraendert (A8, A14)
+        run: python tools/archiv_manifest.py --pruefen
+
+      - name: Formatierung
+        run: python -m ruff format --check .
+
+      - name: Lint
         run: python -m ruff check .
 
-      - name: Mypy (strict)
-        run: python -m mypy --strict mt5_trading_ai tools
+      - name: Typen (strict, Paket + Werkzeuge + Hooks)
+        run: python -m mypy --strict mt5_trading_ai tools PROGRAMM/hooks
 
-      - name: MODULES.md aktuell
+      - name: MODULES.md und Kennzahlen erzeugt, nicht gepflegt
         run: python tools/gen_docs.py --check
 
-      - name: Doku-Behauptungen belegt
+      - name: Doku-Behauptungen belegt, Mengenregel (A14)
         run: python tools/check_docs_claims.py
 
       - name: Doku-Zahlen = Code
@@ -45,3 +59,15 @@ jobs:
 
       - name: Kopien wortgleich mit ihren Originalen
         run: python tools/kopien_abgleichen.py --pruefen
+
+      - name: Tests (Skip = Fehlschlag, kein Schreiben in den Baum; tests/conftest.py)
+        run: python -m pytest -q -p no:cacheprovider -rs
+
+      - name: Zweigdeckung je Geldpfad-Datei >= 90 % (A15)
+        run: python tools/zweigdeckung.py --messen
+
+      - name: Mutationstor (Katalog 1,0; erzeugte Sonden >= 0,90 bei >= 50) (A4, A17)
+        run: python tools/mutationstor.py
+
+      - name: Geheimnis-Scan ueber Baum und Historie, Exit != 0 bei neuem Fund (A5)
+        run: python tools/geheimnis_scan.py
