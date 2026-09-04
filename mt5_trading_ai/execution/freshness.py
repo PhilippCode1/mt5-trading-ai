@@ -71,19 +71,26 @@ kommt ``snapshot_ts`` vom Handelsserver und ``now`` vom lokalen Rechner. Damit g
   und PC sperrt den gesamten Eroeffnungspfad -- dauerhaft und ohne Bezug zur
   Datenfrische. Ein laufender Zeitabgleich auf beiden Seiten ist damit
   Betriebsvoraussetzung, keine Empfehlung.
-* Schaltet der Server seine Sommerzeit nach einem anderen Termin als die
-  konfigurierte Zone (der bekannte MT5-Fall: US-Termin am Server,
-  ``ZoneInfo("Europe/Helsinki")`` nach EU-Termin), liegt der Stempel im Fruehjahr und
-  im Herbst je rund drei Wochen eine volle Stunde daneben. Der Eroeffnungspfad steht
-  dann still.
+* Der Serverversatz wird **gemessen, nicht angenommen** (Befund D20):
+  ``RealMt5Terminal.messe_serverversatz`` liest die Tickzeit des Terminals gegen die
+  lokale UTC-Uhr, rundet auf ganze Stunden und setzt den Versatz nur, wenn der Tick
+  nachweislich frisch ist (er ist zwischen zwei Lesungen vorgerueckt) und der Rest
+  unter zehn Minuten liegt. Bis 2026-09-04 stand hier eine feste Zone
+  (``ZoneInfo("Europe/Helsinki")``, EU-Termin) -- schaltet ein Server nach US-Termin,
+  laege der Stempel im Fruehjahr und im Herbst je rund drei Wochen eine volle
+  Stunde daneben, und dieser Latch stuende still (``tests/eichfall_d20.py``, rot
+  gegen 306bbaa). Was die Messung NICHT wegnimmt: der Rest ist genau die
+  Uhrenabweichung zwischen Rechner und Server, und die muss unter dieser
+  Sekunden-Toleranz bleiben. Ohne Messung (Terminal ohne ``server_versatz``) bleibt
+  der Stempel ungedreht und dieser Latch dauerhaft rot -- richtig so, siehe unten.
 
 Beides ist fail-closed und damit die sichere Richtung -- aber es ist eine
 Betriebsbremse, die wie ein geschlossener Markt aussieht. Wer sie sucht, findet sie
 am Ablehnungsgrund: ``snapshot_from_future`` bzw. ``snapshot_stale`` bei einem
 Alter nahe einer runden Stunde ist keine Marktaussage, sondern ein Uhrenbefund. Der
 Beleg fuer die Serverzone in ``backtest/kalender.py`` ist an Tageskerzen-Grenzen
-gemessen (Minutenaufloesung) und traegt fuer eine Sekunden-Kante ausdruecklich
-nicht.
+gemessen (Minutenaufloesung) und gilt fuer historische Kerzen; fuer die
+Sekunden-Kante dieses Latches zaehlt allein die Laufzeitmessung.
 
 WELCHER STEMPEL HIER HINEINGEHOERT -- UND WELCHER NIE
 -----------------------------------------------------
@@ -137,12 +144,13 @@ gehoeren nicht zu dieser Sperre. In einer Zeile nachzupruefen: steht die Zuweisu
 von ``jetzt`` vor der Sammlung oder neben dem Aufruf? Wer sie an die Messung
 heranschiebt, streicht diesen Absatz mit.
 
-Ein Nebeneffekt gehoert dazu: ohne bekannte Serverzone tragen die Kursstempel die
-Wanduhr des Brokers unter dem Etikett UTC, und der Vergleich gegen echte UTC hat den
-vollen Versatz drin. Die Sperre steht dann dauerhaft rot -- als
+Ein Nebeneffekt gehoert dazu: ohne gemessenen Serverversatz tragen die Kursstempel
+die Wanduhr des Brokers unter dem Etikett UTC, und der Vergleich gegen echte UTC hat
+den vollen Versatz drin. Die Sperre steht dann dauerhaft rot -- als
 ``snapshot_from_future`` bei einem Server vor UTC, als ``snapshot_stale`` bei einem
 dahinter. Das ist die richtige Antwort: wer den Versatz nicht kennt, kann das Alter
-nicht messen.
+nicht messen. Der Betrieb misst ihn darum am Kopf jedes Taktes
+(``tools/live_betrieb.py``), der Rauchtest einmal je Lauf (``venue/smoke.py``).
 
 WAS DIESE SPERRE NICHT LEISTET
 ------------------------------

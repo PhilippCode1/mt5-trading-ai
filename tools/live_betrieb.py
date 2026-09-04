@@ -127,7 +127,6 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from mt5_trading_ai.backtest.engine import MarketView, Signal  # noqa: E402
-from mt5_trading_ai.backtest.kalender import SERVER_TZ_NAME  # noqa: E402
 from mt5_trading_ai.backtest.strategies import moving_average_crossover  # noqa: E402
 from mt5_trading_ai.data.quality import BarRow  # noqa: E402
 from mt5_trading_ai.execution.cost_gate import CostGate  # noqa: E402
@@ -150,6 +149,7 @@ from mt5_trading_ai.venue.mt5 import (  # noqa: E402
     Mt5Terminal,
     Mt5Venue,
     RealMt5Terminal,
+    ServerversatzFehler,
 )
 from mt5_trading_ai.venue.protocol import (  # noqa: E402
     OrderRequest,
@@ -390,7 +390,7 @@ def _signal_mit_protokoll(
 def _lage_lesen(venue: Mt5Venue) -> dict[str, Lage]:
     """Die WIRKLICH offenen Positionen, vom Terminal. Nicht aus dem Gedaechtnis.
 
-    ``opened_at`` kommt in ECHTEM UTC: das Terminal wird mit ``server_tz`` gebaut und
+    ``opened_at`` kommt in ECHTEM UTC: der Takt misst den Serverversatz (D20) und
     dreht selbst (siehe ``RealMt5Terminal._utc``). Hier darf darum **nicht** noch
     einmal gedreht werden -- eine zweite Drehung waere ein zweiter Versatz, und einem
     Zeitstempel sieht man nicht an, wie oft er schon gedreht wurde.
@@ -755,6 +755,80 @@ def _notbremse(
     return True
 
 
+def _serverversatz_messen(
+    terminal: object, symbole: list[str], journal: Journal
+) -> None:
+    """Am Kopf jedes Taktes: den Serverversatz messen, nicht annehmen (Befund D20).
+
+    Bis 2026-09-04 drehte das Terminal seine Zeitstempel ueber eine feste Zone
+    (``server_tz="Europe/Helsinki"``); ein Broker mit anderem Sommerzeittermin laege
+    2-4 Wochen im Jahr eine Stunde daneben, und der Frische-Latch sperrte jeden
+    Eintritt still. Jetzt misst ``RealMt5Terminal.messe_serverversatz`` je Takt --
+    mit dem Takt als Frischebeweis (ein seit dem vorigen Takt vorgerueckter Tick).
+
+    Drei Ausgaenge, alle im Journal:
+
+    * Messung gelungen, vorher keine: ``serverversatz_gemessen``.
+    * Messung gelungen, anderer Wert als bisher (Sommerzeitwechsel):
+      ``serverversatz_geaendert`` mit alt und neu.
+    * Messung gescheitert (Kursstrom steht, Rest zu gross): ohne fruehere Messung
+      ``serverversatz_unmessbar`` -- dann gibt es in diesem Takt **keinen Eintritt**,
+      und zwar nicht durch einen Schalter hier, sondern weil die ungedrehten Stempel
+      den Frische-Latch des Venues rot stellen (``_enforce_account_freshness``) und
+      ``is_trading_open`` denselben Stempel misst; mit frueherer Messung bleibt die
+      alte stehen, ``serverversatz_nicht_erneuert`` sagt es.
+
+    Gemessen wird am ersten Symbol, das misst -- nicht nur am ersten der Liste: die
+    Liste ist alphabetisch (``BTCUSD`` zuerst), und ein Symbol, das dieser Broker
+    ruhig oder gar nicht stellt, darf die Messung nicht fuer alle blockieren.
+    Ein Terminal, das nicht ``RealMt5Terminal`` ist (Attrappe), hat nichts zu messen.
+    """
+    if not isinstance(terminal, RealMt5Terminal):
+        return
+    bisher = terminal.server_versatz
+    gruende: list[str] = []
+    for symbol in symbole:
+        try:
+            gemessen = terminal.messe_serverversatz(symbol)
+        except ServerversatzFehler as exc:
+            gruende.append(str(exc))
+            continue
+        if bisher is None:
+            journal.schreib(
+                "serverversatz_gemessen",
+                symbol=symbol,
+                stunden=gemessen.stunden,
+                rest_s=gemessen.rest.total_seconds(),
+                tick_alter_hoechstens_s=gemessen.tick_alter.total_seconds(),
+            )
+            print(
+                f"  ..   Serverversatz gemessen: {gemessen.stunden:+d} h "
+                f"(Rest {gemessen.rest.total_seconds():+.1f} s, {symbol})"
+            )
+        elif gemessen.versatz != bisher:
+            journal.schreib(
+                "serverversatz_geaendert",
+                symbol=symbol,
+                alt_stunden=round(bisher / timedelta(hours=1)),
+                neu_stunden=gemessen.stunden,
+                rest_s=gemessen.rest.total_seconds(),
+            )
+            print(
+                f"  ..   Serverversatz geaendert: "
+                f"{round(bisher / timedelta(hours=1)):+d} h -> {gemessen.stunden:+d} h"
+            )
+        return
+    if bisher is None:
+        journal.schreib("serverversatz_unmessbar", gruende=gruende)
+        print("  !! Serverversatz nicht messbar -- kein Eintritt in diesem Takt")
+    else:
+        journal.schreib(
+            "serverversatz_nicht_erneuert",
+            bisher_stunden=round(bisher / timedelta(hours=1)),
+            gruende=gruende,
+        )
+
+
 def takt(
     venue: Mt5Venue,
     manager: RiskManager,
@@ -769,9 +843,14 @@ def takt(
     equity_start: Decimal,
     verlustgrenze: Decimal,
     darf_schreiben: bool = False,
+    terminal: object | None = None,
 ) -> tuple[dict[str, Lage], bool]:
     """Ein Takt. ``darf_schreiben`` ist die Vorgabe ``False``: ein fehlender Wert
     sperrt, der Takt rechnet dann trocken (D1)."""
+    # 0) Serverversatz messen (D20) -- VOR dem Einfrieren von ``jetzt`` und vor jedem
+    #    Zeitstempel, der aus dem Terminal kommt. Ohne ``terminal`` (Attrappe im
+    #    Test) gibt es nichts zu messen.
+    _serverversatz_messen(terminal, symbole, journal)
     jetzt = datetime.now(UTC)
 
     # 1) Herzschlag. Der Scheduler beobachtet die Equity (ohne das feuert die
@@ -1126,9 +1205,11 @@ def _terminal_bauen(art: str, *, darf_schreiben: bool) -> Mt5Terminal:
     MetaTrader5-Import (``venue/fake.py``)."""
     if art == "fake":
         return FakeMt5Terminal()
-    # server_tz: das Terminal dreht seine Zeitstempel selbst in echtes UTC.
-    # Ohne das rechnet jede Haltedauer und jede Uhrzeit 2-3 Stunden daneben.
-    return RealMt5Terminal(allow_write=darf_schreiben, server_tz=SERVER_TZ_NAME)
+    # Kein ``server_tz`` mehr (D20): den Versatz misst ``_serverversatz_messen`` am
+    # Kopf jedes Taktes am Tickstrom; das Terminal dreht seine Zeitstempel danach
+    # selbst in echtes UTC. Ohne Messung bleibt der Frische-Latch rot, und ohne
+    # Drehung rechnete jede Haltedauer 2-3 Stunden daneben.
+    return RealMt5Terminal(allow_write=darf_schreiben)
 
 
 def _terminal_grund(terminal: Mt5Terminal) -> str | None:
@@ -1440,6 +1521,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     equity_start=konto.equity,
                     verlustgrenze=verlustgrenze,
                     darf_schreiben=darf_schreiben,
+                    terminal=terminal,
                 )
             except VenueError as exc:
                 # Ein Defekt am Handelsplatz beendet den Lauf NICHT -- er wird

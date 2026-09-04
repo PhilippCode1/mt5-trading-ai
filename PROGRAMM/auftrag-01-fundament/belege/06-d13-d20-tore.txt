@@ -1,0 +1,13 @@
+# Statische Tore im Worktree (Basis 1c272fe + Familie Zeit), 2026-09-04, PYTHONDONTWRITEBYTECODE=1.
+$ python -m ruff format --check .
+177 files already formatted
+[exit=0]
+
+$ python -m ruff check .
+All checks passed!
+[exit=0]
+
+$ python -m mypy --strict mt5_trading_ai tools PROGRAMM/hooks
+Success: no issues found in 83 source files
+[exit=0]
+

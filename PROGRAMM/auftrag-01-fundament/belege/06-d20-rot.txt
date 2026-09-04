@@ -1,0 +1,169 @@
+# Eichfall D20, ROT gegen 306bbaa (Worktree C:\Users\<konto>\nachstellung-306bbaa, 2026-09-04):
+# tests/eichfall_d20.py dort hineinkopiert, ausgefuehrt, wieder geloescht (git status danach sauber, siehe Ende).
+# Rot ist der Befund: mit RealMt5Terminal(server_tz='Europe/Helsinki') wie in tools/live_betrieb.py:988
+# (306bbaa) liegt der Tickstempel im Fenster US-Sommer/EU-Winter (2026-03-16) eine Stunde neben der
+# echten UTC (13:00 statt 12:00), und Mt5Venue._enforce_account_freshness sperrt den taufrischen Tick
+# als snapshot_from_future (Alter -1 day, 23:00:00 = -1 h). Der dritte rote Fall importiert einen
+# HEAD-Namen (ServerversatzFehler).
+# Gruen ist die Gegenprobe ausserhalb des Fensters (2026-02-02): dort sagen Zone und Messung dasselbe.
+$ python -m pytest -v -p no:cacheprovider tests/eichfall_d20.py
+============================= test session starts =============================
+platform win32 -- Python 3.11.7, pytest-8.3.4, pluggy-1.6.0 -- C:\Users\<konto>\AppData\Local\Programs\Python\Python311\python.exe
+rootdir: C:\Users\<konto>\nachstellung-306bbaa
+configfile: pyproject.toml
+plugins: anyio-4.8.0, base-url-2.1.0, cov-6.0.0, playwright-0.7.2
+collecting ... collected 4 items
+
+tests/eichfall_d20.py::test_im_us_sommer_eu_winter_fenster_trifft_der_tickstempel_die_echte_utc FAILED [ 25%]
+tests/eichfall_d20.py::test_der_frische_latch_sperrt_im_fenster_keinen_taufrischen_tick FAILED [ 50%]
+tests/eichfall_d20.py::test_ausserhalb_des_fensters_stimmen_zone_und_messung_ueberein PASSED [ 75%]
+tests/eichfall_d20.py::test_ein_alter_tick_setzt_keinen_versatz_und_die_eroeffnung_bleibt_abgewiesen FAILED [100%]
+
+================================== FAILURES ===================================
+__ test_im_us_sommer_eu_winter_fenster_trifft_der_tickstempel_die_echte_utc ___
+
+    def test_im_us_sommer_eu_winter_fenster_trifft_der_tickstempel_die_echte_utc() -> None:
+        """ROT gegen 306bbaa: 13:00 statt 12:00 -- die Zone rechnet noch Winter."""
+        uhr = _Uhr(IM_FENSTER)
+        terminal = _terminal_wie_im_betrieb(uhr, _Mt5Attrappe(uhr))
+        tick = terminal.tick("EURUSD")
+        assert tick is not None
+>       assert tick.ts == uhr.jetzt, f"Tickstempel {tick.ts} liegt neben {uhr.jetzt}"
+E       AssertionError: Tickstempel 2026-03-16 13:00:00+00:00 liegt neben 2026-03-16 12:00:00+00:00
+E       assert datetime.datetime(2026, 3, 16, 13, 0, tzinfo=datetime.timezone.utc) == datetime.datetime(2026, 3, 16, 12, 0, tzinfo=datetime.timezone.utc)
+E        +  where datetime.datetime(2026, 3, 16, 13, 0, tzinfo=datetime.timezone.utc) = Mt5Tick(ts=datetime.datetime(2026, 3, 16, 13, 0, tzinfo=datetime.timezone.utc), bid=Decimal('1.0999'), ask=Decimal('1.1'), bid_volume=None, ask_volume=None).ts
+E        +  and   datetime.datetime(2026, 3, 16, 12, 0, tzinfo=datetime.timezone.utc) = <eichfall_d20._Uhr object at 0x000001FEF88152D0>.jetzt
+
+tests\eichfall_d20.py:127: AssertionError
+______ test_der_frische_latch_sperrt_im_fenster_keinen_taufrischen_tick _______
+
+    def test_der_frische_latch_sperrt_im_fenster_keinen_taufrischen_tick() -> None:
+        """ROT gegen 306bbaa: ``snapshot_from_future`` (Alter -1 h) fuer einen Tick von
+        gerade eben -- der Eintrittspfad steht still, obwohl der Platz druckt."""
+        uhr = _Uhr(IM_FENSTER)
+        terminal = _terminal_wie_im_betrieb(uhr, _Mt5Attrappe(uhr))
+        venue = _venue(terminal, uhr)
+>       venue._enforce_account_freshness("EURUSD")  # keine Ausnahme = bewertbar
+
+tests\eichfall_d20.py:136: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <mt5_trading_ai.venue.mt5.Mt5Venue object at 0x000001FEF8A98A10>
+symbol = 'EURUSD'
+
+    def _enforce_account_freshness(self, symbol: str) -> None:
+        """Frische-Latch (S2) fuer eine eroeffnende Order -- auf JEDEM Konto.
+    
+        Erste der fuenf Sperren aus A3.2. Ein Zustand, dessen Alter die Frist reisst,
+        ist nicht bewertbar; nicht bewertbar gilt als nicht erfuellt. Ohne diese Sperre
+        rechnen Tagesverlustdeckel, Drawdown-Halt und Positionsgroesse auf Zahlen, die
+        aussehen wie Messwerte und keine sind.
+    
+        **Gemessen wird der Kursstempel des Brokers, nicht der Kontoschnappschuss.**
+        Das ist der Kern dieser Sperre, und die erste Fassung hatte ihn falsch herum:
+    
+        * MetaTrader liefert ueberhaupt keinen Kontozeitstempel.
+          ``RealMt5Terminal.account`` setzt ``ts`` in genau diesem Aufruf selbst auf
+          ``datetime.now(UTC)``. Wer den so entstandenen Stempel gegen
+          ``self._clock()`` haelt, misst die eigene Uhr gegen die eigene Uhr: das
+          Alter ist per Konstruktion ein paar Mikrosekunden, die Frist betraegt fuenf
+          Sekunden. Die Sperre konnte nicht ausloesen -- und hat es in 21
+          Betriebsjournalen kein einziges Mal getan, kein einziges ``snapshot_stale``.
+        * Der Kursstempel kommt von der anderen Seite der Leitung. Er ist das einzige
+          Lebenszeichen im System, das nicht im eigenen Prozess entsteht, und damit
+          das einzige, an dem sich ein haengendes Terminal ueberhaupt zeigen kann.
+    
+        Genau diese Umstellung ist in ``tools/oberflaeche.py`` (Kachel "Kursfrische")
+        und ``tools/live_konsole.py`` bereits gefahren und dort begruendet; hier steht
+        dieselbe Messung an der Stelle, an der sie eine Order **stoppt**, statt sie
+        nur anzuzeigen.
+    
+        Gemessen wird der Stempel **des zu handelnden Symbols**, nicht irgendeiner.
+        Ein frischer EURUSD-Tick sagt nichts ueber einen eingefrorenen XAUUSD-Strom,
+        und alle folgenden Sperren (Hebel, Kostentor, Groesse) rechnen mit dem Preis
+        genau dieses Symbols.
+    
+        Kein Kurs = kein Stempel = nicht bewertbar. Auch das ist eine Ablehnung, kein
+        stilles Durchwinken.
+    
+        Bewusst **nicht** demofrei: ein veralteter Kurs ist auf dem Demokonto genauso
+        wenig bewertbar wie auf dem Livekonto, und das Demokonto ist der Ort, an dem
+        sich die Sperre beweisen muss.
+    
+        Nebenwirkung, die keine ist: ohne konfigurierte Serverzone
+        (``RealMt5Terminal(server_tz=...)``) tragen die Kursstempel die Wanduhr des
+        Servers unter dem Etikett UTC. Der Vergleich gegen echte UTC hat dann den
+        vollen Serverversatz drin, und die Sperre steht dauerhaft rot -- je nach
+        Richtung des Versatzes als ``snapshot_from_future`` oder als
+        ``snapshot_stale``. Das ist richtig so: wer den Versatz nicht kennt, kann das
+        Alter nicht messen, und nicht messbar heisst nicht bewertbar.
+    
+        Hier stand "alle drei realen Aufrufer setzen die Zone". Es sind **vier**, und
+        der vierte setzt sie nicht: ``tools/mt5_smoke.py`` baut sein
+        ``RealMt5Terminal`` ohne ``server_tz`` und faehrt darueber ``run_smoke`` ->
+        ``_write_probe`` -> ``submit_order``. Bei einem Server vor UTC (gemessene Zone
+        ``Europe/Helsinki``, im Sommer UTC+3) kommt der Tick drei Stunden in der
+        Zukunft heraus, und diese Sperre steht dort dauerhaft rot. Die Schreibprobe
+        des Rauchtests -- also genau das Tor, das ``RealMt5Terminal._require_write``
+        als Vorbedingung fuer ``allow_write`` nennt -- ist damit nicht durchfuehrbar,
+        bis ``tools/mt5_smoke.py`` die Zone mitgibt. Die Fehlrichtung ist sicher
+        (fail-closed), die Freigabeprozedur ist es nicht mehr. ``tools/`` gehoert
+        nicht zu dieser Datei; der Satz steht hier, damit der naechste Eingriff die
+        Stelle findet statt eine falsche Zusicherung zu lesen. Zone gesetzt:
+        ``tools/live_betrieb.py``, ``tools/live_konsole.py``, ``tools/oberflaeche.py``.
+        """
+        tick = self._terminal.tick(symbol)
+        if tick is None:
+            raise OrderRejectedError(
+                f"Kein Kursstempel fuer {symbol} -- Frische nicht bewertbar",
+                reason="no_market_stamp",
+                retryable=True,
+            )
+        verdict = evaluate_account_freshness(
+            snapshot_ts=tick.ts,
+            now=self._clock(),
+            connected=self._terminal.is_connected(),
+            max_age=self._max_account_age,
+        )
+        if not verdict.evaluable:
+>           raise OrderRejectedError(
+                f"Kurslage nicht bewertbar: {verdict.reason} "
+                f"(Alter {verdict.age}, Frist {verdict.max_age})",
+                reason=verdict.reason or "market_state_unevaluable",
+                retryable=True,
+            )
+E           mt5_trading_ai.venue.protocol.OrderRejectedError: Kurslage nicht bewertbar: snapshot_from_future (Alter -1 day, 23:00:00, Frist 0:00:05)
+
+mt5_trading_ai\venue\mt5.py:1276: OrderRejectedError
+_ test_ein_alter_tick_setzt_keinen_versatz_und_die_eroeffnung_bleibt_abgewiesen _
+
+    def test_ein_alter_tick_setzt_keinen_versatz_und_die_eroeffnung_bleibt_abgewiesen() -> (
+        None
+    ):
+        """HEAD-Fall (Namen erst seit D20): 40 min alter Tick -> ``ServerversatzFehler``,
+        ``server_versatz`` bleibt ``None``, der Frische-Latch lehnt ab."""
+>       from mt5_trading_ai.venue.mt5 import ServerversatzFehler
+E       ImportError: cannot import name 'ServerversatzFehler' from 'mt5_trading_ai.venue.mt5' (C:\Users\<konto>\nachstellung-306bbaa\mt5_trading_ai\venue\mt5.py)
+
+tests\eichfall_d20.py:155: ImportError
+=========================== short test summary info ===========================
+FAILED tests/eichfall_d20.py::test_im_us_sommer_eu_winter_fenster_trifft_der_tickstempel_die_echte_utc
+FAILED tests/eichfall_d20.py::test_der_frische_latch_sperrt_im_fenster_keinen_taufrischen_tick
+FAILED tests/eichfall_d20.py::test_ein_alter_tick_setzt_keinen_versatz_und_die_eroeffnung_bleibt_abgewiesen
+========================= 3 failed, 1 passed in 4.29s =========================
+[exit=1]
+
+$ git status --short   (im Referenz-Worktree, nach dem Loeschen der Kopie)
+(leer -- sauber)
+
+## Nachstellung durch den Auftraggeber (2026-09-04, nach dem Einspielen und der Anpassung an die Zustandspflicht aus D8)
+# Die Eichfaelle bauen Risikokern und Ablagen jetzt ueber inspect.signature bzw. try/ImportError, damit sie gegen 306bbaa
+# an ihren Zusicherungen fallen und nicht am Import.
+$ cp tests/eichfall_d13.py tests/eichfall_d20.py <306bbaa-Worktree>/tests/ && python -m pytest -q --tb=line tests/eichfall_d13.py tests/eichfall_d20.py
+C:\Users\<konto>\nachstellung-306bbaa\tests\eichfall_d13.py:278: Failed: DID NOT RAISE <class 'mt5_trading_ai.venue.protocol.OrderRejectedError'>
+C:\Users\<konto>\nachstellung-306bbaa\tests\eichfall_d13.py:363: ImportError: cannot import name 'GAP_SPERRE_STANDARD' from 'mt5_trading_ai.venue.catalog' (C:\Users\<konto>\nachstellung-306bbaa\mt5_trading_ai\venue\catalog.py)
+C:\Users\<konto>\nachstellung-306bbaa\tests\eichfall_d20.py:160: AssertionError: Tickstempel 2026-03-16 13:00:00+00:00 liegt neben 2026-03-16 12:00:00+00:00
+C:\Users\<konto>\nachstellung-306bbaa\mt5_trading_ai\venue\mt5.py:1276: mt5_trading_ai.venue.protocol.OrderRejectedError: Kurslage nicht bewertbar: snapshot_from_future (Alter -1 day, 23:00:00, Frist 0:00:05)
+C:\Users\<konto>\nachstellung-306bbaa\tests\eichfall_d20.py:188: ImportError: cannot import name 'ServerversatzFehler' from 'mt5_trading_ai.venue.mt5' (C:\Users\<konto>\nachstellung-306bbaa\mt5_trading_ai\venue\mt5.py)
+5 failed, 5 passed in 0.44s
+# Referenz-Worktree danach sauber: 0 Eintraege in git status --porcelain

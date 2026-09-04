@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
@@ -49,15 +49,59 @@ class InstrumentCatalogError(ValueError):
 
 
 @dataclass(frozen=True)
+class GapSperre:
+    """Die zwei Zahlen der Gap-Sperre (Befund D13, ``execution/handelspause.py``).
+
+    ``vorlauf``: so lange vor Beginn einer Handelspause wird nicht mehr eroeffnet.
+    ``mindestpause``: erst eine Pause dieser Laenge zaehlt als Luecke (die taegliche
+    Luecke 21:00-24:00 UTC des FX-Fensters ist keine).
+    """
+
+    vorlauf: timedelta
+    mindestpause: timedelta
+
+    def __post_init__(self) -> None:
+        if self.vorlauf <= timedelta(0):
+            raise InstrumentCatalogError("Gap-Sperre: vorlauf muss positiv sein")
+        if self.mindestpause <= timedelta(0):
+            raise InstrumentCatalogError("Gap-Sperre: mindestpause muss positiv sein")
+
+    def verengt_hoechstens(self, standard: GapSperre) -> bool:
+        """Ist diese Sperre mindestens so streng wie ``standard``?
+
+        Strenger heisst: laengerer Vorlauf oder kuerzere Mindestpause. Die Datei darf
+        die Sperre nur verengen -- wie die Sitzungstabelle (``_sessions_status``).
+        """
+        return (
+            self.vorlauf >= standard.vorlauf
+            and self.mindestpause <= standard.mindestpause
+        )
+
+
+#: Konservativer Standard der Gap-Sperre; Herkunft der Zahlen steht im Katalogblock
+#: ``_gap_sperre`` (``config/instrument_catalog.json``) und im Modulkopf von
+#: ``execution/handelspause.py``. Die Datei darf ihn nur verengen (Regel: keine
+#: Schwelle sinkt); fehlt der Block, gilt der Standard -- ein fehlender Block oeffnet
+#: nichts.
+GAP_SPERRE_STANDARD = GapSperre(
+    vorlauf=timedelta(minutes=120), mindestpause=timedelta(hours=24)
+)
+GAP_SPERRE_SCHLUESSEL = "_gap_sperre"
+
+
+@dataclass(frozen=True)
 class CatalogEntry:
     """Metadaten je Symbol, die MT5 nicht liefert: Klasse, Kosten, Handelszeiten.
 
     ``asset_class`` ist Pflicht — sie steuert den gesetzlichen Hebeldeckel.
+    ``gap_sperre`` traegt die Zahlen der Gap-Sperre aus dem Katalogblock
+    ``_gap_sperre``; ein handgebauter Eintrag bekommt den Standard.
     """
 
     asset_class: AssetClass
     fees: FeeSchedule
     sessions: tuple[TradingSession, ...]
+    gap_sperre: GapSperre = GAP_SPERRE_STANDARD
 
 
 def default_catalog_path() -> Path:
@@ -97,10 +141,50 @@ def load_instrument_catalog(path: Path | str | None = None) -> dict[str, Catalog
     if not isinstance(instruments, dict) or not instruments:
         raise InstrumentCatalogError("Katalog-Datei ohne Instrumente")
 
+    gap = _parse_gap_sperre(raw.get(GAP_SPERRE_SCHLUESSEL))
     out: dict[str, CatalogEntry] = {}
     for symbol, entry in instruments.items():
-        out[str(symbol)] = _parse_entry(str(symbol), entry)
+        out[str(symbol)] = _parse_entry(str(symbol), entry, gap)
     return out
+
+
+def _parse_gap_sperre(block: Any) -> GapSperre:
+    """Den Katalogblock ``_gap_sperre`` lesen -- fehlt er, gilt der Standard.
+
+    Fail-closed in der einen Richtung, die zaehlt: ein Block, der die Sperre
+    **lockert** (kuerzerer Vorlauf oder laengere Mindestpause als der Standard), ist
+    ein Fehler und kein Wert. Eine Datei kann die Sperre damit nur verengen -- wie die
+    Sitzungstabelle den Platz nur schliessen kann. Jeder andere Defekt (kein Objekt,
+    keine ganze Zahl, nicht positiv) ist ebenfalls ein Fehler.
+    """
+    if block is None:
+        return GAP_SPERRE_STANDARD
+    if not isinstance(block, dict):
+        raise InstrumentCatalogError(
+            f"Katalog-Datei: {GAP_SPERRE_SCHLUESSEL} ist kein Objekt: {block!r}"
+        )
+
+    def ganzzahl(field: str) -> int:
+        value = block.get(field)
+        if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+            raise InstrumentCatalogError(
+                f"Katalog-Datei: {GAP_SPERRE_SCHLUESSEL}.{field} ist keine positive "
+                f"ganze Zahl: {value!r}"
+            )
+        return value
+
+    gelesen = GapSperre(
+        vorlauf=timedelta(minutes=ganzzahl("vorlauf_minuten")),
+        mindestpause=timedelta(hours=ganzzahl("mindestpause_stunden")),
+    )
+    if not gelesen.verengt_hoechstens(GAP_SPERRE_STANDARD):
+        raise InstrumentCatalogError(
+            f"Katalog-Datei: {GAP_SPERRE_SCHLUESSEL} lockert die Sperre "
+            f"(vorlauf {gelesen.vorlauf}, mindestpause {gelesen.mindestpause}) unter "
+            f"den Standard (vorlauf {GAP_SPERRE_STANDARD.vorlauf}, mindestpause "
+            f"{GAP_SPERRE_STANDARD.mindestpause}) -- die Datei darf nur verengen"
+        )
+    return gelesen
 
 
 def _pruefe_datum(field: str, value: Any) -> date:
@@ -132,13 +216,16 @@ def _pruefe_datum(field: str, value: Any) -> date:
         ) from exc
 
 
-def _parse_entry(symbol: str, entry: Any) -> CatalogEntry:
+def _parse_entry(
+    symbol: str, entry: Any, gap: GapSperre = GAP_SPERRE_STANDARD
+) -> CatalogEntry:
     if not isinstance(entry, dict):
         raise InstrumentCatalogError(f"{symbol}: Eintrag ist kein Objekt")
     return CatalogEntry(
         asset_class=_parse_asset_class(symbol, entry.get("asset_class")),
         fees=_parse_fees(symbol, entry.get("fees")),
         sessions=_parse_sessions(symbol, entry.get("sessions")),
+        gap_sperre=gap,
     )
 
 

@@ -66,8 +66,8 @@ Ereignisstudie — traegt eine bekannte Zwangslage mehr als ihre Kosten?
 
 ## `mt5_trading_ai/backtest/kalender.py`
 
-Zeilen: 373
-Aufrufer: Paket 1 · Werkzeuge 3 · Tests 4
+Zeilen: 379
+Aufrufer: Paket 1 · Werkzeuge 1 · Tests 5
 
 Ereigniskalender — wann genau ist das Ereignis, in echtem UTC?
 
@@ -264,13 +264,25 @@ Pre-Trade-Kostentor am Order-Pfad.
 
 ## `mt5_trading_ai/execution/freshness.py`
 
-Zeilen: 246
+Zeilen: 254
 Aufrufer: Paket 1 · Werkzeuge 1 · Tests 2
 
 Frische-Latch fuer den Kontozustand — S2 aus Paket 0.
 
 - `class FreshnessVerdict`
 - `def evaluate_account_freshness`
+
+## `mt5_trading_ai/execution/handelspause.py`
+
+Zeilen: 204
+Aufrufer: Paket 1 · Werkzeuge 0 · Tests 1
+
+Handelspausen aus der Sitzungstabelle -- und die Gap-Sperre davor (Befund D13).
+
+- `class Pause`
+- `def wochenbloecke`
+- `def naechste_pause`
+- `def gap_sperre`
 
 ## `mt5_trading_ai/execution/leverage_preflight.py`
 
@@ -296,7 +308,7 @@ Private Ereignis-Synchronisation: der Kontostrom haelt das Buch aktuell.
 ## `mt5_trading_ai/execution/reconcile.py`
 
 Zeilen: 321
-Aufrufer: Paket 3 · Werkzeuge 2 · Tests 19
+Aufrufer: Paket 3 · Werkzeuge 2 · Tests 22
 
 Order-Lebenszyklus und Reconcile: Konto gegen Buch.
 
@@ -326,7 +338,7 @@ Mehrteilige Freigabe fuer Order-Submit an einen echten Markt.
 ## `mt5_trading_ai/execution/risiko_zustand.py`
 
 Zeilen: 1722
-Aufrufer: Paket 4 · Werkzeuge 7 · Tests 35
+Aufrufer: Paket 4 · Werkzeuge 7 · Tests 37
 
 Der Risikozustand, der einen Neustart ueberdauert -- und wie er fail-closed liest.
 
@@ -349,7 +361,7 @@ Der Risikozustand, der einen Neustart ueberdauert -- und wie er fail-closed lies
 ## `mt5_trading_ai/execution/risk_manager.py`
 
 Zeilen: 1203
-Aufrufer: Paket 3 · Werkzeuge 6 · Tests 28
+Aufrufer: Paket 3 · Werkzeuge 6 · Tests 30
 
 Risikoschicht am Order-Pfad: die vier Grenzen als letzte Verteidigungslinie.
 
@@ -384,7 +396,7 @@ Treiber-Loop/Scheduler (Paket 7): Frische, Drift und Drawdown-Peak getaktet prue
 ## `mt5_trading_ai/execution/schwebende_auftraege.py`
 
 Zeilen: 423
-Aufrufer: Paket 1 · Werkzeuge 2 · Tests 25
+Aufrufer: Paket 1 · Werkzeuge 2 · Tests 28
 
 Auftraege, deren Sendeversuch ohne Antwort endete -- „koennte beim Broker leben".
 
@@ -397,7 +409,7 @@ Auftraege, deren Sendeversuch ohne Antwort endete -- „koennte beim Broker lebe
 ## `mt5_trading_ai/gates/criteria.py`
 
 Zeilen: 393
-Aufrufer: Paket 4 · Werkzeuge 5 · Tests 11
+Aufrufer: Paket 4 · Werkzeuge 5 · Tests 12
 
 Vorregistrierte Kriterien und ihre Auswertung (Phase 9.3).
 
@@ -535,12 +547,13 @@ Geldbetraege tragen ihre Waehrung; ein Kurs ist ein Messwert oder eine Sperre.
 
 ## `mt5_trading_ai/venue/catalog.py`
 
-Zeilen: 260
-Aufrufer: Paket 2 · Werkzeuge 4 · Tests 8
+Zeilen: 347
+Aufrufer: Paket 3 · Werkzeuge 4 · Tests 12
 
 Instrumentenkatalog — die Metadaten, die MT5 nicht liefert.
 
 - `class InstrumentCatalogError`
+- `class GapSperre`
 - `class CatalogEntry`
 - `def default_catalog_path`
 - `def load_instrument_catalog`
@@ -572,8 +585,8 @@ Ein Terminal ohne MetaTrader: die Betriebsattrappe fuer Trockenlauf und Eichfael
 
 ## `mt5_trading_ai/venue/mt5.py`
 
-Zeilen: 3045
-Aufrufer: Paket 4 · Werkzeuge 7 · Tests 40
+Zeilen: 3271
+Aufrufer: Paket 4 · Werkzeuge 7 · Tests 44
 
 MT5-Anbindung an das ``TradingVenue``-Protokoll.
 
@@ -590,12 +603,15 @@ MT5-Anbindung an das ``TradingVenue``-Protokoll.
 - `def konto_maengel`
 - `class Mt5Venue`
 - `def kennmarke`
+- `class ServerversatzFehler`
+- `class Serverversatz`
+- `def serverversatz_runden`
 - `class RealMt5Terminal`
 
 ## `mt5_trading_ai/venue/protocol.py`
 
 Zeilen: 547
-Aufrufer: Paket 13 · Werkzeuge 9 · Tests 51
+Aufrufer: Paket 14 · Werkzeuge 9 · Tests 55
 
 Plattformunabhaengiger Handelsplatz-Vertrag.
 
@@ -622,8 +638,8 @@ Plattformunabhaengiger Handelsplatz-Vertrag.
 
 ## `mt5_trading_ai/venue/smoke.py`
 
-Zeilen: 471
-Aufrufer: Paket 0 · Werkzeuge 1 · Tests 3
+Zeilen: 517
+Aufrufer: Paket 0 · Werkzeuge 1 · Tests 4
 
 Demo-Smoke-Test der MT5-Bindung — die Orchestrierung, terminalunabhaengig.
 

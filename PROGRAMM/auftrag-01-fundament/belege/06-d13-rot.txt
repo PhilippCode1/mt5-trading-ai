@@ -1,0 +1,66 @@
+# Eichfall D13, ROT gegen 306bbaa (Worktree C:\Users\<konto>\nachstellung-306bbaa, 2026-09-04):
+# tests/eichfall_d13.py dort hineinkopiert, ausgefuehrt, wieder geloescht (git status danach sauber, siehe Ende).
+# Rot ist der Befund: die Eroeffnung um Freitag 19:30 UTC erreicht das Terminal (DID NOT RAISE).
+# Der zweite rote Fall importiert einen HEAD-Namen (GAP_SPERRE_STANDARD, venue/catalog.py).
+# Die vier gruenen Faelle sind die Nachstellung der Frage, WO nach Freitag 21:00 UTC eine Schliessung
+# scheitert: Fr 18:59 und Mi 19:30 gehen in beiden Fassungen durch; die Schliessung um Fr 21:30 mit
+# druckendem Kursstrom erreicht auch bei 306bbaa das Terminal (Sitzungstabelle sagt zu, die Order geht
+# trotzdem), und tools/live_betrieb._schliesse fragt is_trading_open nicht. Die Schliessung scheitert
+# also nicht an einer Tabelle im Haus, sondern am Platz, der nach 21:00 UTC keinen Kurs mehr stellt.
+$ python -m pytest -v -p no:cacheprovider tests/eichfall_d13.py
+============================= test session starts =============================
+platform win32 -- Python 3.11.7, pytest-8.3.4, pluggy-1.6.0 -- C:\Users\<konto>\AppData\Local\Programs\Python\Python311\python.exe
+rootdir: C:\Users\<konto>\nachstellung-306bbaa
+configfile: pyproject.toml
+plugins: anyio-4.8.0, base-url-2.1.0, cov-6.0.0, playwright-0.7.2
+collecting ... collected 6 items
+
+tests/eichfall_d13.py::test_freitag_1930_wird_vor_der_luecke_abgewiesen FAILED [ 16%]
+tests/eichfall_d13.py::test_freitag_1859_ist_noch_erlaubt PASSED         [ 33%]
+tests/eichfall_d13.py::test_mittwoch_1930_ist_erlaubt_die_nachtluecke_ist_keine_wochenendluecke PASSED [ 50%]
+tests/eichfall_d13.py::test_schliessung_freitag_2130_erreicht_das_terminal PASSED [ 66%]
+tests/eichfall_d13.py::test_die_schliessung_des_betriebs_fragt_die_tabelle_nicht PASSED [ 83%]
+tests/eichfall_d13.py::test_der_ausgelieferte_katalog_traegt_die_zahlen_der_sperre FAILED [100%]
+
+================================== FAILURES ===================================
+______________ test_freitag_1930_wird_vor_der_luecke_abgewiesen _______________
+
+    def test_freitag_1930_wird_vor_der_luecke_abgewiesen() -> None:
+        """ROT gegen 306bbaa: die Order erreicht das Terminal."""
+        venue, terminal = _venue(FREITAG_1930)
+>       with pytest.raises(OrderRejectedError) as abgelehnt:
+E       Failed: DID NOT RAISE <class 'mt5_trading_ai.venue.protocol.OrderRejectedError'>
+
+tests\eichfall_d13.py:239: Failed
+_________ test_der_ausgelieferte_katalog_traegt_die_zahlen_der_sperre _________
+
+    def test_der_ausgelieferte_katalog_traegt_die_zahlen_der_sperre() -> None:
+        """HEAD-Fall: der Block ``_gap_sperre`` steht in der Datei und entspricht dem
+        Standard (120 min Vorlauf, 24 h Mindestpause) -- eine lockerere Datei laedt nicht."""
+>       from mt5_trading_ai.venue.catalog import (
+            GAP_SPERRE_STANDARD,
+            load_instrument_catalog,
+        )
+E       ImportError: cannot import name 'GAP_SPERRE_STANDARD' from 'mt5_trading_ai.venue.catalog' (C:\Users\<konto>\nachstellung-306bbaa\mt5_trading_ai\venue\catalog.py)
+
+tests\eichfall_d13.py:324: ImportError
+=========================== short test summary info ===========================
+FAILED tests/eichfall_d13.py::test_freitag_1930_wird_vor_der_luecke_abgewiesen
+FAILED tests/eichfall_d13.py::test_der_ausgelieferte_katalog_traegt_die_zahlen_der_sperre
+======================== 2 failed, 4 passed in 13.36s =========================
+[exit=1]
+
+$ git status --short   (im Referenz-Worktree, nach dem Loeschen der Kopie)
+(leer -- sauber)
+
+## Nachstellung durch den Auftraggeber (2026-09-04, nach dem Einspielen und der Anpassung an die Zustandspflicht aus D8)
+# Die Eichfaelle bauen Risikokern und Ablagen jetzt ueber inspect.signature bzw. try/ImportError, damit sie gegen 306bbaa
+# an ihren Zusicherungen fallen und nicht am Import.
+$ cp tests/eichfall_d13.py tests/eichfall_d20.py <306bbaa-Worktree>/tests/ && python -m pytest -q --tb=line tests/eichfall_d13.py tests/eichfall_d20.py
+C:\Users\<konto>\nachstellung-306bbaa\tests\eichfall_d13.py:278: Failed: DID NOT RAISE <class 'mt5_trading_ai.venue.protocol.OrderRejectedError'>
+C:\Users\<konto>\nachstellung-306bbaa\tests\eichfall_d13.py:363: ImportError: cannot import name 'GAP_SPERRE_STANDARD' from 'mt5_trading_ai.venue.catalog' (C:\Users\<konto>\nachstellung-306bbaa\mt5_trading_ai\venue\catalog.py)
+C:\Users\<konto>\nachstellung-306bbaa\tests\eichfall_d20.py:160: AssertionError: Tickstempel 2026-03-16 13:00:00+00:00 liegt neben 2026-03-16 12:00:00+00:00
+C:\Users\<konto>\nachstellung-306bbaa\mt5_trading_ai\venue\mt5.py:1276: mt5_trading_ai.venue.protocol.OrderRejectedError: Kurslage nicht bewertbar: snapshot_from_future (Alter -1 day, 23:00:00, Frist 0:00:05)
+C:\Users\<konto>\nachstellung-306bbaa\tests\eichfall_d20.py:188: ImportError: cannot import name 'ServerversatzFehler' from 'mt5_trading_ai.venue.mt5' (C:\Users\<konto>\nachstellung-306bbaa\mt5_trading_ai\venue\mt5.py)
+5 failed, 5 passed in 0.44s
+# Referenz-Worktree danach sauber: 0 Eintraege in git status --porcelain

@@ -1,0 +1,21 @@
+# Eichfall D13, GRUEN gegen den Arbeitsbaum nach dem Umbau (Basis 1c272fe + Familie Zeit, 2026-09-04).
+# Dazu die Pausenrechnung und das Tor am Venue: tests/test_handelszeiten.py, Abschnitt Handelspausen (14 Faelle).
+$ python -m pytest -v -p no:cacheprovider tests/eichfall_d13.py
+============================= test session starts =============================
+platform win32 -- Python 3.11.7, pytest-8.3.4, pluggy-1.6.0 -- C:\Users\<konto>\AppData\Local\Programs\Python\Python311\python.exe
+Waechter A2 (tests/conftest.py): Skip = Fehlschlag.
+Waechter A10 (tests/conftest.py): Zustandsordner C:\Users\<konto>\AppData\Local\mt5_trading_ai\risiko (vorhanden: ja, 1 Dateien) und Arbeitsbaum C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_f2d56c67-47d-4 bleiben unveraendert.
+rootdir: C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_f2d56c67-47d-4
+configfile: pyproject.toml
+plugins: anyio-4.8.0, base-url-2.1.0, cov-6.0.0, playwright-0.7.2
+collecting ... collected 6 items
+
+tests/eichfall_d13.py::test_freitag_1930_wird_vor_der_luecke_abgewiesen PASSED [ 16%]
+tests/eichfall_d13.py::test_freitag_1859_ist_noch_erlaubt PASSED         [ 33%]
+tests/eichfall_d13.py::test_mittwoch_1930_ist_erlaubt_die_nachtluecke_ist_keine_wochenendluecke PASSED [ 50%]
+tests/eichfall_d13.py::test_schliessung_freitag_2130_erreicht_das_terminal PASSED [ 66%]
+tests/eichfall_d13.py::test_die_schliessung_des_betriebs_fragt_die_tabelle_nicht PASSED [ 83%]
+tests/eichfall_d13.py::test_der_ausgelieferte_katalog_traegt_die_zahlen_der_sperre PASSED [100%]
+
+============================== 6 passed in 9.00s ==============================
+[exit=0]

@@ -1,0 +1,90 @@
+# Suite ohne slow im Worktree (Basis 1c272fe + Familie Zeit), 2026-09-04.
+# Start 2026-09-04T01:45:21+00:00, Dauer 359 s -- unter Last: mehrere Agenten parallel
+# auf demselben Rechner, dazu Beleglaeufe im selben Worktree; Laufzeiten sind nicht vergleichbar.
+# Bekannt rot aus anderen Familien (1c272fe): --help von check_doc_numbers.py und check_docs_claims.py,
+# --help von geheimnis_scan.py (Familie Geheimnis-Scan), Terminalzeile von live_betrieb.py (Familie Zustand).
+# Erwartet rot durch diese Familie, nicht behebbar ohne README/MODULES.md (hook-/auftragsgeschuetzt):
+# tests/test_readme_numbers.py (Modulzahl, Testzahl, Quellzeilen, Zeilenzahl venue/mt5.py in MODULES.md)
+# -- nach dem Einspielen `python tools/gen_docs.py` fahren.
+$ python -m pytest -q -p no:cacheprovider -m "not slow"   (letzte 80 Zeilen)
+E           File "<frozen importlib._bootstrap>", line 1176, in _find_and_load
+E           File "<frozen importlib._bootstrap>", line 1147, in _find_and_load_unlocked
+E           File "<frozen importlib._bootstrap>", line 690, in _load_unlocked
+E           File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+E           File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+E           File "C:\Users\<konto>\AppData\Local\Temp\pytest-of-Acer\pytest-367\test_ohne_terminal_eine_benann4\shim\MetaTrader5.py", line 2, in <module>
+E             raise ImportError("MetaTrader5 (Shim der Eichfaelle): Paket absichtlich unsichtbar")
+E         ImportError: MetaTrader5 (Shim der Eichfaelle): Paket absichtlich unsichtbar
+E         
+E         The above exception was the direct cause of the following exception:
+E         
+E         Traceback (most recent call last):
+E           File "C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_f2d56c67-47d-4\tools\live_betrieb.py", line 1336, in <module>
+E             sys.exit(main())
+E                      ^^^^^^
+E           File "C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_f2d56c67-47d-4\tools\live_betrieb.py", line 1073, in main
+E             if not terminal.initialize():
+E                    ^^^^^^^^^^^^^^^^^^^^^
+E           File "C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_f2d56c67-47d-4\mt5_trading_ai\venue\mt5.py", line 2322, in initialize
+E             raise VenueUnavailableError(
+E         mt5_trading_ai.venue.protocol.VenueUnavailableError: MetaTrader5 nicht installiert (pip install MetaTrader5)
+E         
+E       assert False
+E        +  where False = Befund(werkzeug='live_betrieb.py --dauer 0.001 --takt 1', gruen=False, grund='exit=1 (verlangt 2), benannte Zeilen=0 (...ror(\nmt5_trading_ai.venue.protocol.VenueUnavailableError: MetaTrader5 nicht installiert (pip install MetaTrader5)\n')).gruen
+
+tests\eichfall_werkzeuge.py:386: AssertionError
+____________________ test_readme_module_count_matches_code ____________________
+
+    def test_readme_module_count_matches_code() -> None:
+>       assert _declared()["module_count"] == _module_count()
+E       assert 40 == 41
+E        +  where 41 = _module_count()
+
+tests\test_readme_numbers.py:88: AssertionError
+________________ test_readme_test_function_count_matches_code _________________
+
+    def test_readme_test_function_count_matches_code() -> None:
+>       assert _declared()["test_function_count"] == _test_function_count()
+E       assert 1361 == 1394
+E        +  where 1394 = _test_function_count()
+
+tests\test_readme_numbers.py:92: AssertionError
+____________________ test_readme_source_lines_matches_code ____________________
+
+    def test_readme_source_lines_matches_code() -> None:
+>       assert _declared()["source_lines"] == _source_lines()
+E       assert 16827 == 17404
+E        +  where 17404 = _source_lines()
+
+tests\test_readme_numbers.py:96: AssertionError
+_______________ test_zeilenzahl_je_modul_lebt_nur_in_modules_md _______________
+
+    def test_zeilenzahl_je_modul_lebt_nur_in_modules_md() -> None:
+        """Regel 5: die Zahl wird an einer Stelle erzeugt, nicht an mehreren gepflegt."""
+        tor = _lade_tor()
+        assert tor.LINE_COUNT_OWNER == "MODULES.md"
+        modules = ROOT / "MODULES.md"
+        assert modules.is_file()
+        text = modules.read_text(encoding="utf-8")
+        # Stichprobe: ein reales Modul und seine echte Zeilenzahl stehen dort.
+        ziel = PKG / "venue" / "mt5.py"
+        zeilen = len(ziel.read_text(encoding="utf-8").splitlines())
+>       assert f"Zeilen: {zeilen}" in text, (
+            f"MODULES.md fuehrt fuer venue/mt5.py nicht die gemessenen {zeilen} Zeilen. "
+            "`python tools/gen_docs.py` ausfuehren."
+        )
+E       AssertionError: MODULES.md fuehrt fuer venue/mt5.py nicht die gemessenen 3011 Zeilen. `python tools/gen_docs.py` ausfuehren.
+E       assert 'Zeilen: 3011' in '<!-- GENERIERT von tools/gen_docs.py — nicht von Hand bearbeiten -->\n\n# MODULES — oeffentliche API je Modul (generi...rung, terminalunabhaengig.\n\n- `class DemoRunInputs`\n- `class SmokeStep`\n- `class SmokeReport`\n- `def run_smoke`\n'
+
+tests\test_readme_numbers.py:136: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/eichfall_werkzeuge.py::test_help_antwortet_mit_exit_0_und_usage[check_doc_numbers.py]
+FAILED tests/eichfall_werkzeuge.py::test_help_antwortet_mit_exit_0_und_usage[check_docs_claims.py]
+FAILED tests/eichfall_werkzeuge.py::test_help_antwortet_mit_exit_0_und_usage[geheimnis_scan.py]
+FAILED tests/eichfall_werkzeuge.py::test_ohne_terminal_eine_benannte_zeile_und_exit_2[live_betrieb]
+FAILED tests/test_readme_numbers.py::test_readme_module_count_matches_code - ...
+FAILED tests/test_readme_numbers.py::test_readme_test_function_count_matches_code
+FAILED tests/test_readme_numbers.py::test_readme_source_lines_matches_code - ...
+FAILED tests/test_readme_numbers.py::test_zeilenzahl_je_modul_lebt_nur_in_modules_md
+8 failed, 1619 passed, 1 deselected in 349.32s (0:05:49)
+[exit=1]

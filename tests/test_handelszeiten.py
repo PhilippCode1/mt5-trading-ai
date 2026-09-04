@@ -556,3 +556,246 @@ def test_stehende_indikative_kurse_gelten_als_offen() -> None:
     venue = _venue(stempel={"EURUSD": DIENSTAG})
     # Richtig waere hier eine Rueckfrage beim Broker, ob das Symbol handelbar ist.
     assert venue.is_trading_open("EURUSD", at=DIENSTAG) is True
+
+
+# =========================================================================== #
+# Handelspausen und die Gap-Sperre davor (Befund D13, execution/handelspause.py) #
+# =========================================================================== #
+from mt5_trading_ai.execution.handelspause import (  # noqa: E402
+    GRUND_GAP_SPERRE,
+    Pause,
+    gap_sperre,
+    naechste_pause,
+    wochenbloecke,
+)
+
+#: 2026-09-04 ist ein Freitag; 2026-09-02 ein Mittwoch; 2026-09-05 ein Samstag.
+FREITAG_1930 = datetime(2026, 9, 4, 19, 30, tzinfo=UTC)
+FREITAG_2100 = datetime(2026, 9, 4, 21, 0, tzinfo=UTC)
+MONTAG_0000 = datetime(2026, 9, 7, 0, 0, tzinfo=UTC)
+MITTWOCH_1930 = datetime(2026, 9, 2, 19, 30, tzinfo=UTC)
+SAMSTAG_1200 = datetime(2026, 9, 5, 12, 0, tzinfo=UTC)
+FX_FENSTER = tuple(
+    TradingSession(weekday=tag, open_utc="00:00", close_utc="21:00") for tag in range(5)
+)
+RUND_UM_DIE_UHR = tuple(
+    TradingSession(weekday=tag, open_utc="00:00", close_utc="24:00") for tag in range(7)
+)
+VORLAUF = timedelta(minutes=120)
+MINDESTPAUSE = timedelta(hours=24)
+
+
+def test_die_fx_tabelle_hat_am_freitag_die_wochenendluecke_vor_sich() -> None:
+    pause = naechste_pause(FX_FENSTER, FREITAG_1930)
+    assert pause == Pause(beginn=FREITAG_2100, ende=MONTAG_0000)
+    assert pause.dauer == timedelta(hours=51)
+
+
+def test_am_mittwoch_ist_die_naechste_pause_die_nachtluecke() -> None:
+    pause = naechste_pause(FX_FENSTER, MITTWOCH_1930)
+    assert pause is not None
+    assert pause.beginn == datetime(2026, 9, 2, 21, 0, tzinfo=UTC)
+    assert pause.dauer == timedelta(hours=3)
+
+
+def test_in_der_luecke_ist_die_pause_die_laufende() -> None:
+    """Samstag: die Pause hat schon begonnen -- ihr Beginn liegt zurueck."""
+    pause = naechste_pause(FX_FENSTER, SAMSTAG_1200)
+    assert pause == Pause(beginn=FREITAG_2100, ende=MONTAG_0000)
+
+
+def test_rund_um_die_uhr_kennt_keine_pause() -> None:
+    assert naechste_pause(RUND_UM_DIE_UHR, FREITAG_1930) is None
+    assert naechste_pause((), FREITAG_1930) is None
+    assert (
+        gap_sperre(
+            RUND_UM_DIE_UHR, FREITAG_1930, vorlauf=VORLAUF, mindestpause=MINDESTPAUSE
+        )
+        is None
+    )
+
+
+def test_ein_fenster_ueber_die_wochengrenze_bildet_keine_nullpause() -> None:
+    """Sonntag 22:00-24:00 und Montag 00:00-21:00 stossen aneinander: wer Sonntag
+    23:00 fragt, bekommt die Montagnacht, nicht eine Pause von null Minuten."""
+    fenster = FX_FENSTER + (
+        TradingSession(weekday=6, open_utc="22:00", close_utc="24:00"),
+    )
+    assert wochenbloecke(fenster)[0] == (0, 21 * 60)
+    assert wochenbloecke(fenster)[-1] == (6 * 1440 + 22 * 60, 7 * 1440)
+    sonntag = datetime(2026, 9, 6, 23, 0, tzinfo=UTC)
+    pause = naechste_pause(fenster, sonntag)
+    assert pause is not None
+    assert pause.beginn == datetime(2026, 9, 7, 21, 0, tzinfo=UTC)
+    assert pause.dauer == timedelta(hours=3)
+    # und die Freitagsluecke endet jetzt Sonntag 22:00, nicht Montag 00:00
+    freitag = naechste_pause(fenster, FREITAG_1930)
+    assert freitag is not None
+    assert freitag.ende == datetime(2026, 9, 6, 22, 0, tzinfo=UTC)
+
+
+def test_ein_fenster_ueber_mitternacht_wird_auf_den_montag_umgebrochen() -> None:
+    fenster = (TradingSession(weekday=6, open_utc="22:00", close_utc="06:00"),)
+    assert wochenbloecke(fenster) == ((0, 6 * 60), (6 * 1440 + 22 * 60, 7 * 1440))
+
+
+def test_die_gap_sperre_greift_nur_vor_langen_pausen() -> None:
+    sperre = dict(vorlauf=VORLAUF, mindestpause=MINDESTPAUSE)
+    assert gap_sperre(FX_FENSTER, FREITAG_1930, **sperre) == GRUND_GAP_SPERRE
+    assert (
+        gap_sperre(FX_FENSTER, FREITAG_1930 - timedelta(minutes=31), **sperre) is None
+    )
+    assert (
+        gap_sperre(FX_FENSTER, datetime(2026, 9, 4, 19, 0, tzinfo=UTC), **sperre)
+        is None
+    )
+    assert (
+        gap_sperre(FX_FENSTER, datetime(2026, 9, 4, 19, 0, 1, tzinfo=UTC), **sperre)
+        == GRUND_GAP_SPERRE
+    )
+    assert gap_sperre(FX_FENSTER, MITTWOCH_1930, **sperre) is None
+    assert gap_sperre(FX_FENSTER, SAMSTAG_1200, **sperre) == GRUND_GAP_SPERRE
+    # eine Mindestpause unter der Nachtluecke sperrt auch den Mittwochabend
+    assert (
+        gap_sperre(
+            FX_FENSTER, MITTWOCH_1930, vorlauf=VORLAUF, mindestpause=timedelta(hours=3)
+        )
+        == GRUND_GAP_SPERRE
+    )
+
+
+def test_die_gap_sperre_verlangt_positive_zahlen_und_eine_zone() -> None:
+    with pytest.raises(ValueError, match="vorlauf"):
+        gap_sperre(
+            FX_FENSTER, FREITAG_1930, vorlauf=timedelta(0), mindestpause=MINDESTPAUSE
+        )
+    with pytest.raises(ValueError, match="mindestpause"):
+        gap_sperre(FX_FENSTER, FREITAG_1930, vorlauf=VORLAUF, mindestpause=timedelta(0))
+    with pytest.raises(ValueError, match="zonenbewussten"):
+        naechste_pause(FX_FENSTER, FREITAG_1930.replace(tzinfo=None))
+
+
+def test_ein_zeitpunkt_in_fremder_zone_wird_umgerechnet_bevor_gerechnet_wird() -> None:
+    tokio = FREITAG_1930.astimezone(timezone(timedelta(hours=9)))
+    assert naechste_pause(FX_FENSTER, tokio) == naechste_pause(FX_FENSTER, FREITAG_1930)
+
+
+def test_das_tor_am_venue_lehnt_den_freitagabend_ab_und_nur_den() -> None:
+    """``Mt5Venue.submit_order``: nach dem Frische-Latch, vor der Live-Freigabe."""
+    from mt5_trading_ai.venue.protocol import (
+        OrderRejectedError,
+        OrderRequest,
+        OrderSide,
+        OrderType,
+    )
+
+    def order() -> OrderRequest:
+        return OrderRequest(
+            client_order_id="c-1",
+            symbol="EURUSD",
+            side=OrderSide.BUY,
+            order_type=OrderType.MARKET,
+            volume=Decimal("0.01"),
+            stop_loss=Decimal("1.09000"),
+        )
+
+    venue = _venue(stempel={"EURUSD": FREITAG_1930}, jetzt=FREITAG_1930)
+    with pytest.raises(OrderRejectedError) as abgelehnt:
+        venue.submit_order(order())
+    assert abgelehnt.value.reason == GRUND_GAP_SPERRE
+    # Mittwoch: die Gap-Sperre schweigt; die naechste Sperre (keine Risikoschicht in
+    # diesem Venue) antwortet -- also ist die Order an der Gap-Sperre vorbeigekommen.
+    venue = _venue(stempel={"EURUSD": MITTWOCH_1930}, jetzt=MITTWOCH_1930)
+    with pytest.raises(OrderRejectedError) as abgelehnt:
+        venue.submit_order(order())
+    assert abgelehnt.value.reason != GRUND_GAP_SPERRE
+
+
+def _katalog_roh(gap: object | None) -> dict[str, object]:
+    roh: dict[str, object] = {
+        "catalog_id": "test",
+        "valid_from": "2026-01-01",
+        "verified_on": "2026-01-01",
+        "instruments": {
+            "EURUSD": {
+                "asset_class": "fx_major",
+                "fees": {
+                    "commission_per_lot_round_turn": "7",
+                    "typical_spread_points": "6",
+                    "swap_long_per_lot_per_night": "-2",
+                    "swap_short_per_lot_per_night": "-1",
+                    "triple_swap_weekday": 2,
+                    "currency": "USD",
+                },
+                "sessions": [{"weekday": 0, "open_utc": "00:00", "close_utc": "21:00"}],
+            }
+        },
+    }
+    if gap is not None:
+        roh["_gap_sperre"] = gap
+    return roh
+
+
+def test_der_katalogblock_darf_die_sperre_nur_verengen(tmp_path: Path) -> None:
+    import json
+
+    from mt5_trading_ai.venue.catalog import (
+        GAP_SPERRE_STANDARD,
+        GapSperre,
+        InstrumentCatalogError,
+        load_instrument_catalog,
+    )
+
+    def lade(gap: object | None) -> GapSperre:
+        pfad = tmp_path / "katalog.json"
+        pfad.write_text(json.dumps(_katalog_roh(gap)), encoding="utf-8")
+        return load_instrument_catalog(pfad)["EURUSD"].gap_sperre
+
+    assert lade(None) == GAP_SPERRE_STANDARD  # fehlender Block oeffnet nichts
+    enger = lade({"vorlauf_minuten": 180, "mindestpause_stunden": 12})
+    assert enger == GapSperre(timedelta(minutes=180), timedelta(hours=12))
+    for lockerer in (
+        {"vorlauf_minuten": 60, "mindestpause_stunden": 24},
+        {"vorlauf_minuten": 120, "mindestpause_stunden": 48},
+    ):
+        with pytest.raises(InstrumentCatalogError, match="nur verengen"):
+            lade(lockerer)
+    for kaputt in (
+        "120",
+        {"vorlauf_minuten": "120", "mindestpause_stunden": 24},
+        {"vorlauf_minuten": 120},
+        {"vorlauf_minuten": 0, "mindestpause_stunden": 24},
+        {"vorlauf_minuten": True, "mindestpause_stunden": 24},
+    ):
+        with pytest.raises(InstrumentCatalogError):
+            lade(kaputt)
+
+
+def test_die_gap_sperre_wirkt_am_venue_mit_den_zahlen_des_katalogs() -> None:
+    """Ein engerer Block (180 min Vorlauf) sperrt schon um 18:30."""
+    from mt5_trading_ai.venue.catalog import GapSperre
+    from mt5_trading_ai.venue.protocol import (
+        OrderRejectedError,
+        OrderRequest,
+        OrderSide,
+        OrderType,
+    )
+
+    achtzehn_dreissig = datetime(2026, 9, 4, 18, 30, tzinfo=UTC)
+    venue = _venue(stempel={"EURUSD": achtzehn_dreissig}, jetzt=achtzehn_dreissig)
+    eng = GapSperre(timedelta(minutes=180), timedelta(hours=24))
+    venue._catalog["EURUSD"] = CatalogEntry(
+        AssetClass.FX_MAJOR, _fees(), FX_FENSTER, gap_sperre=eng
+    )
+    with pytest.raises(OrderRejectedError) as abgelehnt:
+        venue.submit_order(
+            OrderRequest(
+                client_order_id="c-1",
+                symbol="EURUSD",
+                side=OrderSide.BUY,
+                order_type=OrderType.MARKET,
+                volume=Decimal("0.01"),
+                stop_loss=Decimal("1.09000"),
+            )
+        )
+    assert abgelehnt.value.reason == GRUND_GAP_SPERRE

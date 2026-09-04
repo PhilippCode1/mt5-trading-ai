@@ -51,14 +51,23 @@ Zwei Messungen, die der lesende Lauf bisher nicht machte:
   ``unbekannt`` im Bericht, nicht ein geratener Wert.
 * **Serverzeitversatz**: die Tick-Zeit des Terminals gegen die lokale UTC-Uhr, in
   Sekunden, gemessen am ersten aufloesbaren Katalogsymbol (bevorzugt dem Probesymbol).
-  Ohne ``server_tz`` am Terminal ist das der Versatz der Broker-Serverzone (am
-  2026-09-03 gemessen: +10796 s); mit ``server_tz`` bleibt der Uhrenversatz. Der Wert
-  steht als ``SmokeReport.serverzeitversatz_s`` fuer weitere Leser bereit.
+  Am 2026-09-03 gemessen: +10796 s (Broker-Serverzone UTC+3). Der Wert steht als
+  ``SmokeReport.serverzeitversatz_s`` fuer weitere Leser bereit.
+
+  Seit Befund D20 ist das **dieselbe Messung wie im Betrieb**: reicht der Aufrufer
+  ``serverversatz_messen=terminal.messe_serverversatz`` herein (``tools/mt5_smoke.py``
+  tut das), misst der Schritt ueber ``RealMt5Terminal.messe_serverversatz`` -- mit
+  Frischebeweis, Rundung auf ganze Stunden und Rest --, und der Versatz ist danach am
+  Terminal **gesetzt**. Erst damit kommen alle folgenden Zeitstempel in echtem UTC
+  heraus und die Schreib-Probe kann den Frische-Latch passieren; vorher stand sie an
+  einem Server vor UTC dauerhaft rot (``venue/mt5.py``, ``_enforce_account_freshness``).
+  Ohne Messfunktion (Attrappen in Tests) bleibt der Weg ueber ``get_quote`` -- mit
+  derselben Zerlegung in Stunden und Rest, aber ohne Setzen.
 """
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from decimal import ROUND_DOWN, Decimal
@@ -72,7 +81,12 @@ from mt5_trading_ai.venue.demo_run import (
     evaluate_demo_progress,
     register_for_demo,
 )
-from mt5_trading_ai.venue.mt5 import Mt5Venue
+from mt5_trading_ai.venue.mt5 import (
+    Mt5Venue,
+    Serverversatz,
+    ServerversatzFehler,
+    serverversatz_runden,
+)
 from mt5_trading_ai.venue.protocol import (
     Instrument,
     OrderRequest,
@@ -154,6 +168,7 @@ def run_smoke(
     now: datetime | None = None,
     demo: DemoRunInputs | None = None,
     symbole: Sequence[str] | None = None,
+    serverversatz_messen: Callable[[str], Serverversatz] | None = None,
 ) -> SmokeReport:
     """Fahre die Smoke-Folge. Standardmaessig nur lesend; ``allow_write`` schaltet die
     Schreib-Probe frei (die dennoch ein Demokonto verlangt).
@@ -161,7 +176,8 @@ def run_smoke(
     ``symbole`` sind die Katalogsymbole, die je einen eigenen Schritt bekommen
     (``symbol_<NAME>``, siehe Modulkopf). Ohne Angabe ist es nur das Probesymbol.
     Der Serverzeitversatz wird am ersten aufloesbaren dieser Symbole gemessen, auch
-    wenn ein anderes fehlt.
+    wenn ein anderes fehlt -- ueber ``serverversatz_messen`` (die Messung des
+    Terminals, siehe Modulkopf), sonst ueber ``get_quote``.
 
     ``demo`` fuettert die Naht §8.5->§7: die Harness registriert die Strategie fuer den
     Demo-Betrieb (``register_for_demo`` -- fail-closed ohne bestandenen Edge, auf dem
@@ -250,7 +266,9 @@ def run_smoke(
         # harte Antwort des Adapters (vollstaendige Liste oder Fehler) -- es laeuft
         # NACH dem Versatz, damit der auch bei einem fehlenden Symbol gemessen ist.
         aufgeloest = _katalogsymbole(venue, report, symbole or (symbol,))
-        _serverzeitversatz(venue, report, aufgeloest, symbol, now)
+        _serverzeitversatz(
+            venue, report, aufgeloest, symbol, now, messen=serverversatz_messen
+        )
 
         instruments = venue.list_instruments()
         report.add(
@@ -345,13 +363,21 @@ def _serverzeitversatz(
     aufgeloest: Sequence[str],
     probesymbol: str,
     now: datetime | None,
+    *,
+    messen: Callable[[str], Serverversatz] | None = None,
 ) -> None:
     """Tick-Zeit des Terminals gegen die lokale UTC-Uhr, in Sekunden.
 
-    Die lokale Uhr wird **unmittelbar nach** dem Tick gelesen (oder ist ``now``, wenn
-    der Aufrufer die Uhr stellt); so misst die Zahl den Versatz und nicht die Dauer
-    der vorigen Schritte. Ohne aufloesbares Symbol oder ohne Tick ist der Schritt rot
-    und ``serverzeitversatz_s`` bleibt ``None`` -- kein Versatz ist nicht null Versatz.
+    Mit ``messen`` (``RealMt5Terminal.messe_serverversatz``) ist es die Messung des
+    Betriebs: Frischebeweis, ganze Stunden, Rest -- und der Versatz wird am Terminal
+    gesetzt. Scheitert sie (``ServerversatzFehler``: Kursstrom steht, Rest zu gross),
+    ist der Schritt rot mit dem Grund, und ``serverzeitversatz_s`` bleibt ``None``.
+
+    Ohne ``messen`` wird die lokale Uhr **unmittelbar nach** dem Tick gelesen (oder
+    ist ``now``, wenn der Aufrufer die Uhr stellt); so misst die Zahl den Versatz und
+    nicht die Dauer der vorigen Schritte. Ohne aufloesbares Symbol oder ohne Tick ist
+    der Schritt rot und ``serverzeitversatz_s`` bleibt ``None`` -- kein Versatz ist
+    nicht null Versatz.
     """
     if probesymbol in aufgeloest:
         symbol = probesymbol
@@ -364,19 +390,39 @@ def _serverzeitversatz(
             "kein aufloesbares Katalogsymbol -- Versatz nicht messbar",
         )
         return
+    if messen is not None:
+        try:
+            gemessen = messen(symbol)
+        except ServerversatzFehler as exc:
+            report.add("serverzeitversatz", False, str(exc))
+            return
+        roh = (gemessen.versatz + gemessen.rest).total_seconds()
+        report.serverzeitversatz_s = roh
+        report.add(
+            "serverzeitversatz",
+            True,
+            f"{roh:+.1f} s = {gemessen.stunden:+d} h ganze Stunden, Rest "
+            f"{gemessen.rest.total_seconds():+.1f} s (Tick {symbol} hoechstens "
+            f"{gemessen.tick_alter.total_seconds():.1f} s alt; Versatz am Terminal "
+            "gesetzt)",
+        )
+        return
     try:
         quote = venue.get_quote(symbol)
     except VenueUnavailableError as exc:
         report.add("serverzeitversatz", False, f"kein Tick fuer {symbol}: {exc}")
         return
     lokal = now if now is not None else datetime.now(UTC)
-    versatz = (quote.ts - lokal).total_seconds()
-    report.serverzeitversatz_s = versatz
+    differenz = quote.ts - lokal
+    stunden, rest = serverversatz_runden(differenz)
+    report.serverzeitversatz_s = differenz.total_seconds()
     report.add(
         "serverzeitversatz",
         True,
-        f"{versatz:+.1f} s (Tick {symbol} {quote.ts.isoformat()} gegen lokale "
-        f"UTC-Uhr {lokal.isoformat()})",
+        f"{differenz.total_seconds():+.1f} s (Tick {symbol} {quote.ts.isoformat()} "
+        f"gegen lokale UTC-Uhr {lokal.isoformat()}; ganze Stunden "
+        f"{round(stunden / timedelta(hours=1)):+d} h, Rest {rest.total_seconds():+.1f} "
+        "s; nicht gesetzt -- keine Messfunktion uebergeben)",
     )
 
 

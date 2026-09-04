@@ -66,7 +66,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from mt5_trading_ai.backtest.engine import MarketView, Signal  # noqa: E402
-from mt5_trading_ai.backtest.kalender import SERVER_TZ_NAME  # noqa: E402
 from mt5_trading_ai.backtest.strategies import moving_average_crossover  # noqa: E402
 from mt5_trading_ai.costs.broker_costs import load_broker_costs  # noqa: E402
 from mt5_trading_ai.data.quality import BarRow  # noqa: E402
@@ -86,7 +85,11 @@ from mt5_trading_ai.execution.risk_manager import RiskManager  # noqa: E402
 from mt5_trading_ai.execution.runner import RunnerConfig, run_signal  # noqa: E402
 from mt5_trading_ai.gates.criteria import CriteriaVerdict  # noqa: E402
 from mt5_trading_ai.venue.catalog import load_instrument_catalog  # noqa: E402
-from mt5_trading_ai.venue.mt5 import Mt5Venue, RealMt5Terminal  # noqa: E402
+from mt5_trading_ai.venue.mt5 import (  # noqa: E402
+    Mt5Venue,
+    RealMt5Terminal,
+    ServerversatzFehler,
+)
 from mt5_trading_ai.venue.protocol import (  # noqa: E402
     Timeframe,
     VenueError,
@@ -360,7 +363,8 @@ def main() -> int:
 
     # allow_write ist hier KEIN Schalter. Eine Konsole zum Zusehen darf nicht
     # versehentlich handeln koennen -- auch nicht auf einem Demokonto.
-    terminal = RealMt5Terminal(allow_write=False, server_tz=SERVER_TZ_NAME)
+    # Kein server_tz mehr (D20): der Serverversatz wird unten am Terminal gemessen.
+    terminal = RealMt5Terminal(allow_write=False)
     grund = _terminal_grund(terminal)
     if grund is not None:
         print(
@@ -385,6 +389,19 @@ def main() -> int:
         return 2
     symbole = args.symbol or sorted(load_instrument_catalog())
     leit = args.leit or ("EURUSD" if "EURUSD" in symbole else symbole[0])
+    # D20: Serverversatz messen statt annehmen -- einmal je Lauf (die Konsole liest
+    # nur; im Betrieb misst jeder Takt). Scheitert die Messung, bleiben die Stempel
+    # Serverwanduhr, und die Kursfrische-Zeile zeigt den vollen Versatz -- das ist
+    # ein Befund, keine Panne.
+    try:
+        gemessen = terminal.messe_serverversatz(leit)
+    except ServerversatzFehler as exc:
+        print(f"!! Serverversatz nicht messbar: {exc}", file=sys.stderr)
+    else:
+        print(
+            f"Serverversatz gemessen: {gemessen.stunden:+d} h "
+            f"(Rest {gemessen.rest.total_seconds():+.1f} s, {leit})"
+        )
     print(
         f"Live-Konsole — NUR LESEND. {len(symbole)} Instrumente, Leitsymbol {leit}, "
         f"Takt {args.takt:g} s. Abbruch mit Strg-C.\n"

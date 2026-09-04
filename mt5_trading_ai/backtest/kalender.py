@@ -26,6 +26,12 @@ betraegt die Abweichung in jedem einzelnen Monat des Jahres 0,09 bp.
 Belege: ``archiv/ABSCHLUSS-3a/02-DATENLAGE.md`` Abschnitt 3, Rohausgabe in
 ``archiv/ABSCHLUSS-3a/07-AUSGABEN/gegenprobe.txt``.
 
+``SERVER_TZ`` gilt fuer **historische Kerzen** (die Studie, ``server_zu_utc``). Der
+laufende Betrieb dreht seine Zeitstempel NICHT mehr ueber diese Zone: der Versatz
+wird zur Laufzeit gemessen (``venue/mt5.py::RealMt5Terminal.messe_serverversatz``,
+Befund D20) -- eine feste Zone waere fuer einen Broker mit anderem
+Sommerzeittermin 2-4 Wochen im Jahr eine Stunde daneben.
+
 WAS DIESES MODUL NICHT TUT
 --------------------------
 Es kennt keine Feiertage. Es liefert die **planmaessigen** Zeitpunkte; ob an einem

@@ -21,13 +21,13 @@ from __future__ import annotations
 
 import hashlib
 import importlib
+import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 from decimal import ROUND_CEILING, Decimal
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
-from zoneinfo import ZoneInfo
 
 from mt5_trading_ai.backtest.edge import EdgeVerdict
 from mt5_trading_ai.execution.cost_gate import CostGate, evaluate_cost_gate
@@ -35,6 +35,7 @@ from mt5_trading_ai.execution.freshness import (
     MAX_SNAPSHOT_AGE,
     evaluate_account_freshness,
 )
+from mt5_trading_ai.execution.handelspause import gap_sperre
 from mt5_trading_ai.execution.leverage_preflight import evaluate_leverage_preflight
 from mt5_trading_ai.execution.private_sync import PrivateEvent, PrivateSync
 from mt5_trading_ai.execution.reconcile import (
@@ -1039,6 +1040,9 @@ class Mt5Venue(TradingVenue):
             # ``is_demo`` aus dem Kontoschnappschuss zieht. Gemessen wird der
             # Kursstempel des Brokers; die Begruendung steht an der Methode.
             self._enforce_account_freshness(request.symbol)
+            # D13: keine Eroeffnung kurz vor einer Handelspause (Wochenendluecke).
+            # Nur im eroeffnenden Zweig; eine Schliessung haengt allein am Kursstrom.
+            self._enforce_gap_sperre(instrument)
             # Live-Freigabe (inkl. Demo-Reife): nur eroeffnende Orders am Live-Konto.
             self._require_live_release_for_opening()
             # Hebelklammer am Order-Pfad: handelbar, geklammert, Marge frei?
@@ -1623,6 +1627,45 @@ class Mt5Venue(TradingVenue):
                     reason="volume_off_step",
                     retryable=False,
                 )
+
+    def _enforce_gap_sperre(self, instrument: Instrument) -> None:
+        """Gap-Sperre vor einer Handelspause (Befund D13) -- nur fuer Eroeffnungen.
+
+        Bis Auftrag 1 lief eine Eroeffnung um Freitag 20:59 UTC durch alle Tore, und
+        ab 21:00 UTC nimmt der FX-Platz keine Schliessung mehr an (Sitzungstabelle,
+        ``_fx_sessions``): die Position stand ohne Aufsicht ueber die
+        Wochenendluecke, den einen Zustand, in dem kein Stop traegt, weil kein Kurs
+        gestellt wird. Nachgestellt in ``tests/eichfall_d13.py`` gegen 306bbaa.
+
+        Gerechnet wird rein auf der Sitzungstabelle des Katalogs
+        (``execution/handelspause.py``): beginnt in weniger als ``vorlauf`` eine Pause
+        von mindestens ``mindestpause`` (oder laeuft sie schon), wird abgelehnt. Die
+        beiden Zahlen kommen aus dem Katalogblock ``_gap_sperre`` und koennen die
+        Sperre nur verengen (``venue/catalog.py``). Die Uhr ist ``self._clock`` -- die
+        Gegenwart dieses Venues, dieselbe wie am Frische-Latch davor.
+
+        Warum NACH der Frische und VOR der Live-Freigabe: die Frische ist die erste
+        Sperre, weil jede folgende mit Zahlen aus dem Kursstempel rechnet; die
+        Gap-Sperre braucht keine dieser Zahlen, aber sie soll vor dem Kontoabruf der
+        Live-Freigabe stehen, damit ein Wochenendversuch nicht erst das Konto liest.
+        Warum nicht im reduzierenden Zweig: eine Schliessung darf zu jeder Zeit an
+        das Terminal, das dann selbst sagt, ob der Platz sie annimmt. Eine Tabelle,
+        die Schliessungen sperrt, waere die gefaehrliche Richtung.
+        """
+        sperre = self._catalog[instrument.symbol].gap_sperre
+        grund = gap_sperre(
+            instrument.sessions,
+            self._clock(),
+            vorlauf=sperre.vorlauf,
+            mindestpause=sperre.mindestpause,
+        )
+        if grund is not None:
+            raise OrderRejectedError(
+                f"Handelspause von mindestens {sperre.mindestpause} beginnt in "
+                f"weniger als {sperre.vorlauf} -- keine Eroeffnung vor der Luecke",
+                reason=grund,
+                retryable=True,
+            )
 
     def _to_terminal_request(self, request: OrderRequest) -> dict[str, Any]:
         return {
@@ -2390,6 +2433,69 @@ def _fuellart(mt5: Any, symbol: str) -> int:
     )
 
 
+class ServerversatzFehler(VenueUnavailableError):
+    """Der Serverversatz ist gerade nicht messbar -- es wird **nichts** gesetzt.
+
+    Eine Unterklasse von ``VenueUnavailableError``, weil ein Terminal ohne bekannten
+    Versatz fuer den Order-Pfad dasselbe ist wie eines ohne Kurs: nicht bewertbar.
+    """
+
+
+#: Ein Rest jenseits dieser Grenze macht die Rundung auf ganze Stunden unglaubwuerdig
+#: (Uhrenabweichung Rechner/Server, Halbstundenzone, ruhiger Kursstrom).
+SERVERVERSATZ_TOLERANZ = timedelta(minutes=10)
+#: Groesster Versatz, den eine Zeitzone der Erde hat (UTC-12 .. UTC+14).
+SERVERVERSATZ_HOECHSTENS = timedelta(hours=14)
+#: So lange darf die vorige Lesung desselben Symbols zurueckliegen, damit ein seither
+#: vorgerueckter Tick als frisch gilt (Alter <= Leseabstand).
+SERVERVERSATZ_LESEABSTAND = timedelta(minutes=10)
+#: Wartezeit zwischen zwei Lesungen, wenn es keine brauchbare vorige Lesung gibt.
+SERVERVERSATZ_WARTE_S = 2.0
+
+
+@dataclass(frozen=True)
+class Serverversatz:
+    """Ergebnis einer Messung von :meth:`RealMt5Terminal.messe_serverversatz`.
+
+    ``versatz``: Wanduhr des Servers minus UTC, auf ganze Stunden gerundet.
+    ``rest``: was nach der Rundung uebrig blieb (Tick minus Uhr minus Versatz) --
+    das ist die Uhrenabweichung zwischen Rechner und Server, mit Vorzeichen.
+    ``tick_alter``: Obergrenze des Tickalters, gemessen als der Leseabstand, in dem
+    der Kurs vorgerueckt ist (der Beweis, dass der Tick frisch war).
+    """
+
+    symbol: str
+    versatz: timedelta
+    rest: timedelta
+    tick_alter: timedelta
+
+    @property
+    def stunden(self) -> int:
+        return round(self.versatz / timedelta(hours=1))
+
+
+def serverversatz_runden(differenz: timedelta) -> tuple[timedelta, timedelta]:
+    """``differenz`` (Tickzeit minus lokale Uhr) in ganze Stunden und Rest zerlegen.
+
+    Rein rechnerisch, ohne Urteil -- das Urteil (Rest in Toleranz, Versatz plausibel,
+    Tick frisch) faellt :meth:`RealMt5Terminal.messe_serverversatz`. Der Rauchtest
+    (``venue/smoke.py``) benutzt dieselbe Zerlegung, damit beide dieselbe Zahl
+    zeigen.
+    """
+    stunden = round(differenz / timedelta(hours=1))
+    versatz = timedelta(hours=stunden)
+    return versatz, differenz - versatz
+
+
+@dataclass(frozen=True)
+class _Ticklesung:
+    """Eine Rohlesung: Tickzeit des Terminals (ms seit Epoche, Server-Wanduhr als UTC
+    gelesen) und die lokale UTC-Uhr unmittelbar nach dem Lesen."""
+
+    tick_ms: int
+    lokal: datetime
+
+
 class RealMt5Terminal:
     """Duenne Bindung an das echte ``MetaTrader5``-Paket.
 
@@ -2400,6 +2506,13 @@ class RealMt5Terminal:
 
     ``MetaTrader5`` wird erst in :meth:`initialize` geladen; ist es nicht installiert,
     scheitert der Verbindungsaufbau laut, nicht der Import.
+
+    ``server_versatz`` ist die Wanduhr des Servers minus UTC (Befund D20). Sie wird
+    normalerweise nicht uebergeben, sondern **gemessen**
+    (:meth:`messe_serverversatz`); der Parameter ist fuer Aufrufer, die den Versatz
+    aus einer eigenen Messung kennen, und fuer Tests. ``uhr`` und ``schlaf`` sind die
+    lokale UTC-Uhr und die Wartefunktion der Messung -- injizierbar, damit die
+    Messung ohne Terminal und ohne echtes Warten pruefbar ist.
     """
 
     def __init__(
@@ -2411,23 +2524,44 @@ class RealMt5Terminal:
         path: str | None = None,
         allow_write: bool = False,
         require_demo: bool = True,
-        server_tz: str | None = None,
+        server_versatz: timedelta | None = None,
+        uhr: Callable[[], datetime] | None = None,
+        schlaf: Callable[[float], None] | None = None,
     ) -> None:
         self._login = login
         self._password = password
         self._server = server
         self._path = path
-        #: Zeitzone der Broker-Serverzeit, z. B. ``"Europe/Helsinki"``. Ist sie
-        #: gesetzt, werden ALLE Zeitstempel dieses Terminals in echtes UTC gedreht.
-        #: Ist sie ``None``, kommen sie so heraus, wie MetaTrader sie liefert: mit
-        #: dem Etikett UTC, aber der Wanduhr des Servers.
+        #: Wanduhr des Servers minus UTC, auf ganze Stunden. Ist er bekannt, werden
+        #: ALLE Zeitstempel dieses Terminals in echtes UTC gedreht. Ist er ``None``,
+        #: kommen sie so heraus, wie MetaTrader sie liefert: mit dem Etikett UTC,
+        #: aber der Wanduhr des Servers -- und der Frische-Latch des Venues steht
+        #: dann dauerhaft rot (richtig: wer den Versatz nicht kennt, kann kein Alter
+        #: messen).
         #:
-        #: Warum das ueberhaupt eine Wahl ist: die Zone ist eine Eigenschaft des
-        #: BROKERS und laesst sich nicht erraten. Sie muss gemessen werden (siehe
-        #: archiv/ABSCHLUSS-3a/02-DATENLAGE.md). Ein fest verdrahteter Wert waere fuer
-        #: jeden
-        #: anderen Broker falsch, und falsch waere hier schlimmer als unbekannt.
-        self._server_tz = ZoneInfo(server_tz) if server_tz else None
+        #: Bis 2026-09-04 stand hier eine Zeitzone (``server_tz="Europe/Helsinki"``),
+        #: deren Sommerzeitregel die des Brokers nur annahm. Ein Broker mit anderem
+        #: Umschalttermin laege 2-4 Wochen im Jahr eine Stunde daneben (D20). Der
+        #: Versatz ist eine Eigenschaft des BROKERS und wird darum am Terminal
+        #: gemessen, nicht konfiguriert.
+        if (
+            server_versatz is not None
+            and abs(server_versatz) > SERVERVERSATZ_HOECHSTENS
+        ):
+            raise ValueError(
+                f"server_versatz {server_versatz} ist kein Zeitzonenversatz "
+                f"(hoechstens {SERVERVERSATZ_HOECHSTENS})"
+            )
+        self._server_versatz: timedelta | None = server_versatz
+        #: Letzte Rohlesung je Symbol -- der Beweis fuer die Frische des naechsten
+        #: Ticks (siehe :meth:`messe_serverversatz`).
+        self._ticklesungen: dict[str, _Ticklesung] = {}
+        self._uhr: Callable[[], datetime] = (
+            uhr if uhr is not None else (lambda: datetime.now(UTC))
+        )
+        self._schlaf: Callable[[float], None] = (
+            schlaf if schlaf is not None else time.sleep
+        )
         #: Fail-closed: der Schreibpfad (Orders senden/aendern) ist gesperrt, bis er
         #: bewusst freigegeben wird — nach einem Smoke-Test gegen ein Demo-Terminal.
         self._allow_write = allow_write
@@ -2536,15 +2670,15 @@ class RealMt5Terminal:
         naiv 18:00, **als UTC etikettiert 20:00**, mit sechs Stunden Puffer 20:00.
         Nur die dritte trifft UND schiesst nicht darueber hinaus.
 
-        Ohne bekannte Serverzone bleibt die Zeit unveraendert -- dann ist ohnehin nichts
-        gedreht, und ein einseitiger Eingriff waere schlimmer als keiner.
+        Ohne gemessenen Serverversatz bleibt die Zeit unveraendert -- dann ist ohnehin
+        nichts gedreht, und ein einseitiger Eingriff waere schlimmer als keiner.
         """
-        if self._server_tz is None:
+        if self._server_versatz is None:
             return ts
-        return ts.astimezone(self._server_tz).replace(tzinfo=None).replace(tzinfo=UTC)
+        return ts.astimezone(UTC) + self._server_versatz
 
     def _utc(self, epoch_seconds: Any) -> datetime:
-        """Zeitstempel des Terminals -- in echtem UTC, wenn die Serverzone bekannt ist.
+        """Zeitstempel des Terminals -- in echtem UTC, wenn der Versatz gemessen ist.
 
         MetaTrader liefert Balken- und Positionszeiten so, dass sie **als UTC gelesen
         die Server-Ortszeit ergeben**. Wer sie ungedreht weiterreicht, haengt das
@@ -2552,14 +2686,106 @@ class RealMt5Terminal:
         mit einer echten UTC-Zeit vergleicht, rechnet falsch. Gemessen an diesem
         Broker: 2 h im Winter, 3 h im Sommer.
 
-        Ohne ``server_tz`` bleibt es beim alten Verhalten. Das ist bewusst kein
-        stiller Standardwert: eine geratene Zone waere fuer einen anderen Broker
-        falsch, und ein falscher Versatz ist schlimmer als ein bekannter fehlender.
+        Ohne Messung bleibt es beim alten Verhalten. Das ist bewusst kein stiller
+        Standardwert: ein geratener Versatz waere fuer einen anderen Broker falsch,
+        und ein falscher Versatz ist schlimmer als ein bekannter fehlender.
         """
         roh = datetime.fromtimestamp(int(epoch_seconds), tz=UTC)
-        if self._server_tz is None:
+        if self._server_versatz is None:
             return roh
-        return roh.replace(tzinfo=None).replace(tzinfo=self._server_tz).astimezone(UTC)
+        return roh - self._server_versatz
+
+    @property
+    def server_versatz(self) -> timedelta | None:
+        """Der gesetzte Versatz (Server-Wanduhr minus UTC) oder ``None``."""
+        return self._server_versatz
+
+    def _roh_tick(self, symbol: str) -> _Ticklesung:
+        raw = self._mt5.symbol_info_tick(symbol)
+        if raw is None:
+            raise ServerversatzFehler(
+                f"{symbol}: kein Tick vom Terminal -- Serverversatz nicht messbar"
+            )
+        msc = int(getattr(raw, "time_msc", 0) or 0)
+        tick_ms = msc if msc > 0 else int(raw.time) * 1000
+        return _Ticklesung(tick_ms=tick_ms, lokal=self._uhr())
+
+    def messe_serverversatz(
+        self, symbol: str, *, warte_s: float = SERVERVERSATZ_WARTE_S
+    ) -> Serverversatz:
+        """Serverversatz messen: Tickzeit des Terminals gegen die lokale UTC-Uhr.
+
+        ``symbol_info_tick(symbol).time`` ist die Wanduhr des Servers als UTC-Epoche.
+        Ihre Differenz zur lokalen UTC-Uhr ist der Versatz **minus das Alter des
+        Ticks**. Gerundet auf ganze Stunden (Broker-Serverzeiten sind ganze Stunden)
+        ergibt das den Versatz -- solange der Tick jung ist. Genau da liegt die Falle,
+        die eine blosse Rest-Toleranz nicht schliesst: ein Tick, der 50 bis 70 Minuten
+        alt ist (Feiertag, Wochenende, ruhiges Symbol), rundet auf den Versatz **minus
+        eine Stunde** und laesst einen kleinen Rest uebrig, der wie eine gute Messung
+        aussieht. Darum verlangt die Messung einen **Frischebeweis**, der nicht aus
+        dem Tick selbst kommt:
+
+        1. Gibt es eine vorige Lesung desselben Symbols, die hoechstens
+           ``SERVERVERSATZ_LESEABSTAND`` zurueckliegt, und ist die Tickzeit seither
+           vorgerueckt, dann ist der neue Tick hoechstens so alt wie der Leseabstand
+           (im Betrieb: ein Takt, 60 s).
+        2. Sonst wird ``warte_s`` gewartet und ein zweites Mal gelesen; rueckt die
+           Tickzeit vor, ist der Tick hoechstens ``warte_s`` alt.
+
+        Rueckt sie nicht vor, steht der Kursstrom: ``ServerversatzFehler``, es wird
+        nichts gesetzt, ein frueherer Versatz bleibt stehen. Ebenso bei einem Rest
+        ueber ``SERVERVERSATZ_TOLERANZ`` (Uhrenabweichung Rechner/Server oder eine
+        Halbstundenzone -- beides macht die Stundenrundung unglaubwuerdig) und bei
+        einem Versatz jenseits ``SERVERVERSATZ_HOECHSTENS`` (kein Zeitzonenversatz).
+
+        Bei Erfolg wird der Versatz gesetzt; ab dann drehen :meth:`_utc` und
+        :meth:`_zu_server`. Zurueck kommt die Messung fuer Journal und Rauchtest.
+        Gemessen am 2026-09-04 gegen das Demoterminal dieses Rechners: +10795,5 s,
+        also 3 h mit Rest -4,5 s (Beleg ``09-smoke-roh.txt``, Serverzone im Sommer
+        UTC+3).
+        """
+        if self._mt5 is None:
+            raise ServerversatzFehler(
+                "Terminal nicht initialisiert -- kein Tick zu lesen, Serverversatz "
+                "nicht messbar"
+            )
+        erste = self._roh_tick(symbol)
+        vorige = self._ticklesungen.get(symbol)
+        self._ticklesungen[symbol] = erste
+        if (
+            vorige is not None
+            and timedelta(0) <= erste.lokal - vorige.lokal <= SERVERVERSATZ_LESEABSTAND
+            and erste.tick_ms > vorige.tick_ms
+        ):
+            frisch, alter = erste, erste.lokal - vorige.lokal
+        else:
+            self._schlaf(warte_s)
+            zweite = self._roh_tick(symbol)
+            self._ticklesungen[symbol] = zweite
+            if zweite.tick_ms <= erste.tick_ms:
+                raise ServerversatzFehler(
+                    f"{symbol}: Kursstrom steht -- kein neuer Tick in {warte_s:.1f} s "
+                    "(Markt geschlossen oder ruhiges Symbol); Serverversatz nicht "
+                    "messbar, nichts gesetzt"
+                )
+            frisch, alter = zweite, zweite.lokal - erste.lokal
+        tickzeit = datetime.fromtimestamp(frisch.tick_ms / 1000, tz=UTC)
+        versatz, rest = serverversatz_runden(tickzeit - frisch.lokal)
+        if abs(rest) > SERVERVERSATZ_TOLERANZ:
+            raise ServerversatzFehler(
+                f"{symbol}: Rest {rest} nach Rundung auf {versatz} liegt ueber "
+                f"{SERVERVERSATZ_TOLERANZ} -- Uhrenabweichung oder keine "
+                "Ganzstundenzone; Serverversatz nicht messbar, nichts gesetzt"
+            )
+        if abs(versatz) > SERVERVERSATZ_HOECHSTENS:
+            raise ServerversatzFehler(
+                f"{symbol}: {versatz} ist kein Zeitzonenversatz (hoechstens "
+                f"{SERVERVERSATZ_HOECHSTENS}); nichts gesetzt"
+            )
+        self._server_versatz = versatz
+        return Serverversatz(
+            symbol=symbol, versatz=versatz, rest=rest, tick_alter=alter
+        )
 
     def _require_write(self) -> None:
         if not self._allow_write:

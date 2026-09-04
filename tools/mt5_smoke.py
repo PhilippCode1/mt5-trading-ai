@@ -11,7 +11,11 @@ laufende Terminal — es werden **keine** Zugangsdaten auf der Kommandozeile erw
 
 Der lesende Lauf prueft jedes Katalogsymbol einzeln (``symbol_<NAME>`` mit
 ``currency_profit`` und ``currency_margin``) und misst den Serverzeitversatz
-(Tick-Zeit des Terminals gegen die lokale UTC-Uhr, Sekunden) -- Abnahmekatalog A9.
+(Tick-Zeit des Terminals gegen die lokale UTC-Uhr: ganze Stunden, Rest in Sekunden,
+Tickalter) -- Abnahmekatalog A9. Die Messung ist dieselbe wie im Betrieb
+(``RealMt5Terminal.messe_serverversatz``, Befund D20) und setzt den Versatz am
+Terminal; erst damit tragen die folgenden Zeitstempel echtes UTC, und die
+Schreib-Probe kann den Frische-Latch passieren.
 
 Rueckgabewerte:
 
@@ -125,6 +129,9 @@ def main(argv: list[str] | None = None) -> int:
         symbol=args.symbol,
         allow_write=args.allow_write,
         symbole=sorted(katalog),
+        # D20: dieselbe Messung wie im Betrieb, nicht eine zweite; sie setzt den
+        # Versatz am Terminal, bevor Kerzen, Marktoffenheit und Schreib-Probe laufen.
+        serverversatz_messen=terminal.messe_serverversatz,
     )
     # ``run_smoke`` faengt den Verbindungsaufbau selbst ab und bricht dann mit genau
     # einem Schritt ab. Das ist der Fall "kein Terminal" -- eine Zeile, Exit 2, kein
