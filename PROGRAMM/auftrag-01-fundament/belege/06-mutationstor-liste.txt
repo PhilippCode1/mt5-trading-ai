@@ -1,0 +1,113 @@
+# Beleg 06 (T6, Familie Mutationstor und Zweigdeckung): --liste zeigt Katalog und erzeugte Sonden.
+# Worktree wf_f2d56c67-47d-2 (HEAD 1c272fe + Aenderungen dieser Familie), Windows 11, Python 3.11.7, 2026-09-04.
+# Katalog 13 (handverlesen, Schwelle 1,0; 1 Sonde auf tools/live_betrieb.py ausserhalb der Geldpfad-Zaehlung),
+# erzeugt 56 ueber 11 Geldpfad-Dateien (je >= 3: min 3 bei protocol.py, cost_gate.py, limits.py; max 13 bei venue/mt5.py),
+# gesamt 69 (Mindestzahl 50). Gegen die Vorarbeit auf 97ee206 (59 erzeugt, 72 gesamt) haben sich die Quoten durch D2/D3
+# verschoben (venue/mt5.py 364 -> 380 Kandidatenstellen, risk/sizing.py 48 -> 58, venue/protocol.py 3 -> 7).
+# Auswahl: Kandidatenstellen aus dem Syntaxbaum, sortiert nach (Zeile, Spalte, Operator); Quote je Datei
+# max(3, ceil(50 * sqrt(Kandidaten) / Summe der Wurzeln)); Ziehung random.Random(f"{SEED}:{Datei}"), SEED 20260903.
+# Bestaetigt durch Ausfuehrung: tests/test_stufe8_testwirkung.py::test_die_erzeugung_ist_deterministisch faehrt --liste in
+# einem zweiten Prozess und vergleicht jede Sondenkennung.
+$ python -B tools/mutationstor.py --liste
+
+Katalog: 13 Sonden (handverlesen, Schwelle 1.0)
+    1. reduce-only-sperre                       mt5_trading_ai/venue/mt5.py
+       Der Risikoabbau laeuft durch die Eroeffnungstore (V5-Verstosz).
+    2. kontopruefung                            mt5_trading_ai/venue/mt5.py
+       Leere Kontodaten stuerzen wieder ab, statt mit Grund abzulehnen.
+    3. schwebender-auftrag                      mt5_trading_ai/venue/mt5.py
+       Nach einem Sendeversuch ohne Antwort wird weiter eroeffnet.
+    4. schwebeakte-fluechtig                    mt5_trading_ai/execution/schwebende_auftraege.py
+       Ein ungeklaerter Auftrag ueberlebt den Neustart nicht mehr.
+    5. aufloesung-ohne-befund                   mt5_trading_ai/execution/schwebende_auftraege.py
+       Ein schwebender Auftrag laesst sich ohne Nachsehen abraeumen.
+    6. erkundung-positivliste                   mt5_trading_ai/gates/erkundung.py
+       Jede Sicherheitssperre wird erkundbar -- auch der Global-Halt.
+    7. erkundung-echtgeld                       mt5_trading_ai/gates/erkundung.py
+       Erkundet wird mit echtem Geld.
+    8. gewichtung                               mt5_trading_ai/gates/erkundung.py
+       Erkundete Beobachtungen wiegen wie regulaere.
+    9. kostenpraemisse                          mt5_trading_ai/execution/risk_manager.py
+       Die Kostenschwelle misst wieder ihre eigene Ausgabe (V2).
+   10. stop-kostenboden                         mt5_trading_ai/risk/stop_budget.py
+       Die Stop-Untergrenze halbiert sich; Kosten fressen mehr vom Rand.
+   11. margen-obergrenze                        mt5_trading_ai/risk/stop_budget.py
+       Der Abstand zum Margin-Close-out schrumpft fast auf null.
+   12. geschlossene-kerze                       mt5_trading_ai/venue/protocol.py
+       Auf der noch offenen Kerze wird gerechnet (Leckage).
+   13. journal-zeitstempel                      tools/live_betrieb.py
+       Das Betriebsprotokoll wirft wieder bei eingefrorener Uhr (F-008).
+
+Erzeugt: 56 Sonden ueber 11 Dateien (Seed 20260903; Quote je Datei max(3, ceil(50 * sqrt(Kandidaten) / Summe)); Tests aus der Deckung des Grundlaufs)
+   14. venue/mt5.py:292:11:not-ergaenzt         'anfang <= minute < ende' -> 'not (anfang <= minute < ende)'
+   15. venue/mt5.py:388:20:bool                 'or' -> 'and'
+   16. venue/mt5.py:1025:11:not-ergaenzt        'send.idempotent_replay' -> 'not (send.idempotent_replay)'
+   17. venue/mt5.py:1098:44:konstante           '0' -> '1'
+   18. venue/mt5.py:1411:11:not-ergaenzt        'not preflight.approved or preflight.effective...' -> 'not (not preflight.approved or preflight.effe...'
+   19. venue/mt5.py:1518:11:not-ergaenzt        'volume < instrument.volume_min' -> 'not (volume < instrument.volume_min)'
+   20. venue/mt5.py:1604:11:not-ergaenzt        'mangel is not None' -> 'not (mangel is not None)'
+   21. venue/mt5.py:2030:7:not-ergaenzt         'code in _erfolgscodes(mt5)' -> 'not (code in _erfolgscodes(mt5))'
+   22. venue/mt5.py:2034:50:bool                'or' -> 'and'
+   23. venue/mt5.py:2199:11:not-ergaenzt        'self._server is not None' -> 'not (self._server is not None)'
+   24. venue/mt5.py:2597:11:not-ergaenzt        'angenommen and not gefuellt and not ticket' -> 'not (angenommen and not gefuellt and not ticket)'
+   25. venue/mt5.py:2615:16:vergleich           'is not' -> 'is'
+   26. venue/mt5.py:2766:11:not-entfernt        'not' -> ''
+   27. venue/protocol.py:107:11:not-ergaenzt    'seconds is None' -> 'not (seconds is None)'
+   28. venue/protocol.py:107:18:vergleich       'is' -> 'is not'
+   29. venue/protocol.py:339:27:bool            'and' -> 'or'
+   30. execution/risk_manager.py:423:23:vergleich 'is not' -> 'is'
+   31. execution/risk_manager.py:432:49:bool    'or' -> 'and'
+   32. execution/risk_manager.py:470:21:bool    'and' -> 'or'
+   33. execution/risk_manager.py:611:15:not-ergaenzt 'vorher is None or ts > vorher' -> 'not (vorher is None or ts > vorher)'
+   34. execution/risk_manager.py:653:17:vergleich '>' -> '>='
+   35. execution/risk_manager.py:690:38:konstante '1' -> '2'
+   36. execution/risk_manager.py:1002:23:konstante '0' -> '1'
+   37. execution/risk_manager.py:1172:24:vergleich 'is not' -> 'is'
+   38. execution/schwebende_auftraege.py:97:32:vergleich 'is' -> 'is not'
+   39. execution/schwebende_auftraege.py:209:15:not-entfernt 'not' -> ''
+   40. execution/schwebende_auftraege.py:222:41:bool 'or' -> 'and'
+   41. execution/schwebende_auftraege.py:280:11:not-ergaenzt 'len(bleiben) == len(gelesen.eintraege) and ge...' -> 'not (len(bleiben) == len(gelesen.eintraege) a...'
+   42. execution/cost_gate.py:91:7:not-ergaenzt 'gate.max_roundturn_cost_fraction < 0' -> 'not (gate.max_roundturn_cost_fraction < 0)'
+   43. execution/cost_gate.py:96:7:not-ergaenzt 'instrument.quote_currency is None' -> 'not (instrument.quote_currency is None)'
+   44. execution/cost_gate.py:135:7:not-ergaenzt 'fraction > gate.max_roundturn_cost_fraction' -> 'not (fraction > gate.max_roundturn_cost_fract...'
+   45. risk/sizing.py:92:19:konstante           '0' -> '1'
+   46. risk/sizing.py:114:27:vergleich          '<' -> '<='
+   47. risk/sizing.py:179:7:not-ergaenzt        'price <= 0' -> 'not (price <= 0)'
+   48. risk/sizing.py:188:7:not-ergaenzt        'kurs is None' -> 'not (kurs is None)'
+   49. risk/sizing.py:193:7:not-ergaenzt        'stop_floor_bps > stop_budget_bps' -> 'not (stop_floor_bps > stop_budget_bps)'
+   50. risk/stop_budget.py:249:7:not-ergaenzt   'safety <= 0' -> 'not (safety <= 0)'
+   51. risk/stop_budget.py:283:32:vergleich     'is not' -> 'is'
+   52. risk/stop_budget.py:295:59:vergleich     'is not' -> 'is'
+   53. risk/stop_budget.py:329:12:vergleich     '>' -> '>='
+   54. risk/limits.py:68:36:konstante           '3' -> '4'
+   55. risk/limits.py:137:24:vergleich          '>=' -> '>'
+   56. risk/limits.py:160:27:vergleich          '<=' -> '<'
+   57. risk/leverage.py:26:22:konstante         '10' -> '11'
+   58. risk/leverage.py:171:48:bool             'or' -> 'and'
+   59. risk/leverage.py:201:29:vergleich        'is not' -> 'is'
+   60. risk/leverage.py:228:7:not-ergaenzt      'class_is_binding' -> 'not (class_is_binding)'
+   61. risk/leverage.py:248:20:bool             'or' -> 'and'
+   62. costs/model.py:87:7:not-ergaenzt         'not value.is_finite() or value <= 0' -> 'not (not value.is_finite() or value <= 0)'
+   63. costs/model.py:107:30:konstante          '0' -> '1'
+   64. costs/model.py:148:7:not-ergaenzt        'holding_nights < 0 or triple_swap_nights < 0' -> 'not (holding_nights < 0 or triple_swap_nights...'
+   65. costs/model.py:219:49:bool               'and' -> 'or'
+   66. gates/erkundung.py:134:7:not-entfernt    'not' -> ''
+   67. gates/erkundung.py:158:11:konstante      '0.0' -> '1.0'
+   68. gates/erkundung.py:170:38:vergleich      '<' -> '<='
+   69. gates/erkundung.py:194:19:konstante      '1.0' -> '2.0'
+
+Kandidatenstellen je Datei (Quote):
+  mt5_trading_ai/venue/mt5.py                           380 (13)  bool 54, konstante 27, not-entfernt 29, not-ergaenzt 105, return 33, vergleich 132
+  mt5_trading_ai/venue/protocol.py                        7 ( 3)  bool 2, not-entfernt 1, not-ergaenzt 2, vergleich 2
+  mt5_trading_ai/execution/risk_manager.py              133 ( 8)  bool 12, konstante 7, not-entfernt 7, not-ergaenzt 46, return 1, vergleich 60
+  mt5_trading_ai/execution/schwebende_auftraege.py       34 ( 4)  bool 4, konstante 1, not-entfernt 9, not-ergaenzt 8, return 2, vergleich 10
+  mt5_trading_ai/execution/cost_gate.py                   8 ( 3)  konstante 1, not-ergaenzt 3, vergleich 4
+  mt5_trading_ai/risk/sizing.py                          58 ( 5)  bool 4, konstante 11, not-entfernt 1, not-ergaenzt 19, vergleich 23
+  mt5_trading_ai/risk/stop_budget.py                     38 ( 4)  bool 5, konstante 8, not-entfernt 3, not-ergaenzt 9, vergleich 13
+  mt5_trading_ai/risk/limits.py                          22 ( 3)  bool 3, konstante 2, not-ergaenzt 7, return 1, vergleich 9
+  mt5_trading_ai/risk/leverage.py                        44 ( 5)  bool 8, konstante 3, not-entfernt 4, not-ergaenzt 11, vergleich 18
+  mt5_trading_ai/costs/model.py                          38 ( 4)  bool 3, konstante 8, not-entfernt 2, not-ergaenzt 11, vergleich 14
+  mt5_trading_ai/gates/erkundung.py                      28 ( 4)  bool 1, konstante 11, not-entfernt 5, not-ergaenzt 3, vergleich 8
+
+Gesamt: 69 Sonden (Mindestzahl 50)
+rc=0

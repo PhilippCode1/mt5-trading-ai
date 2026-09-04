@@ -1,0 +1,42 @@
+# Beleg 06 (T6, Familie Mutationstor und Zweigdeckung): die Eichfaelle des Mutationstors und der slow-Selbsttest, gefahren.
+# Worktree wf_f2d56c67-47d-2 (HEAD 1c272fe + Aenderungen dieser Familie), Windows 11, Python 3.11.7, pytest 8.3.4,
+# 2026-09-04; Waechter A2 und A10 aus tests/conftest.py aktiv. Kontoname im Pfad redigiert.
+#
+# 4 passed in 125 s (Last: CPU 45-53 %, 4 python.exe-Prozesse; parallel lief die Suite ohne slow):
+#   tests/eichfall_mutationstor.py::test_rot_eine_unwirksame_sonde_ueberlebt_und_faerbt_das_tor_rot -- ROT: eine Sonde,
+#     deren Anker im Docstring von risk/stop_budget.py steht (kein Verhalten aendert sich), wird als UEBERLEBT erkannt,
+#     das Tor gibt rc 1 mit FEHLGESCHLAGEN; die Kopie unter tmp_path ist ein eigenes Git ohne betrieb/ und ohne .pyc,
+#     die Sondendatei in der Kopie danach byteidentisch; git status und .pyc-Stand des Arbeitsbaums vorher = nachher (9,3 s).
+#   tests/eichfall_mutationstor.py::test_rot_eine_sonde_ohne_anker_zaehlt_nicht_als_getoetet -- ROT: ANKER FEHLT ist rc 1,
+#     nie gruen; die Kopie wird entfernt (5,8 s).
+#   tests/eichfall_mutationstor.py::test_gruen_der_katalog_wird_in_der_kopie_vollstaendig_getoetet [slow] -- GRUEN:
+#     python -B tools/mutationstor.py --katalog --kopie <tmp_path>/kopie: "Katalog:  13/13 getoetet, Toetungsrate: 1.000",
+#     kein UEBERLEBT, der Lauf nennt die Kopie; Arbeitsbaum und Bytecode unveraendert (95,8 s).
+#   tests/test_stufe8_testwirkung.py::test_das_mutationstor_selbsttest_toetet_zwei_katalogsonden_in_der_kopie [slow]:
+#     --selbsttest (stop-kostenboden, geschlossene-kerze) in der Kopie: "Katalog:  2/2 getoetet, Toetungsrate: 1.000",
+#     Kopie danach entfernt (13,9 s). Der slow-Test faehrt nur diesen Selbsttest; das volle Tor ist ein CI-Schritt
+#     (06-mutationstor-voll.txt).
+# Ein erster Lauf dieser Datei (1014 s unter Last, 4 passed, 1 error) endete mit ERROR im Teardown von test_gruen_...:
+# Waechter A10 meldete "Arbeitsbaum veraendert: PROGRAMM/.../06-mutationstor-entwurfsmessungen.txt" -- ich hatte waehrend
+# des Laufs diese Belegdatei im Arbeitsbaum bearbeitet. Eigener Fehler, kein Befund des Tors; der Waechter hat gehalten.
+# Wiederholung ohne Aenderungen am Arbeitsbaum: 4 passed (dieser Beleg).
+$ python -m pytest -q -p no:cacheprovider -rA --durations=5 tests/eichfall_mutationstor.py "tests/test_stufe8_testwirkung.py::test_das_mutationstor_selbsttest_toetet_zwei_katalogsonden_in_der_kopie"
+
+$ python -m pytest -q -p no:cacheprovider -rA --durations=5 tests/eichfall_mutationstor.py tests/test_stufe8_testwirkung.py::test_das_mutationstor_selbsttest_toetet_zwei_katalogsonden_in_der_kopie
+# Start 2026-09-04T02:12:00+00:00; Last vorher: CPU-Auslastung 48 % (Win32_Processor.LoadPercentage), python.exe-Prozesse 6
+....                                                                     [100%]
+=================================== PASSES ====================================
+============================= slowest 5 durations =============================
+95.83s call     tests/eichfall_mutationstor.py::test_gruen_der_katalog_wird_in_der_kopie_vollstaendig_getoetet
+13.92s call     tests/test_stufe8_testwirkung.py::test_das_mutationstor_selbsttest_toetet_zwei_katalogsonden_in_der_kopie
+9.26s call     tests/eichfall_mutationstor.py::test_rot_eine_unwirksame_sonde_ueberlebt_und_faerbt_das_tor_rot
+5.83s call     tests/eichfall_mutationstor.py::test_rot_eine_sonde_ohne_anker_zaehlt_nicht_als_getoetet
+0.05s teardown tests/eichfall_mutationstor.py::test_rot_eine_sonde_ohne_anker_zaehlt_nicht_als_getoetet
+=========================== short test summary info ===========================
+PASSED tests/eichfall_mutationstor.py::test_rot_eine_unwirksame_sonde_ueberlebt_und_faerbt_das_tor_rot
+PASSED tests/eichfall_mutationstor.py::test_rot_eine_sonde_ohne_anker_zaehlt_nicht_als_getoetet
+PASSED tests/eichfall_mutationstor.py::test_gruen_der_katalog_wird_in_der_kopie_vollstaendig_getoetet
+PASSED tests/test_stufe8_testwirkung.py::test_das_mutationstor_selbsttest_toetet_zwei_katalogsonden_in_der_kopie
+4 passed in 125.25s (0:02:05)
+[exit=0]
+# Ende 2026-09-04T02:14:08+00:00; Laufzeit 127 s; Last nachher: CPU-Auslastung 53 % (Win32_Processor.LoadPercentage), python.exe-Prozesse 4

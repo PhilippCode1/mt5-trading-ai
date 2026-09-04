@@ -1,0 +1,53 @@
+# Beleg 06 (T6, Familie Mutationstor und Zweigdeckung): ROTER EICHFALL gegen 306bbaa -- das alte Tor schreibt in den
+# Arbeitsbaum (A18, F-005, Befund T(d) Bytecode-Vergiftung). Referenz-Worktree C:\Users\<konto>\nachstellung-306bbaa
+# (HEAD 306bbaa, unveraendert, kein betrieb/), Windows 11, Python 3.11.7, 2026-09-04. Skript: 06-mutationstor-eichfall.py.
+#
+# Messung: EINE Sonde des alten Katalogs (Nr. 13 = stop-kostenboden), Umgebung ohne PYTHONDONTWRITEBYTECODE (so faehrt
+# ein Entwickler oder der Pre-Push-Hook das Tor). Vorher/nachher: jede .py unter mt5_trading_ai/ und tools/ mit
+# (Groesse, mtime_ns) -- der Massstab des Waechters A10 in tests/conftest.py --, jede .pyc ebenso, git status --porcelain.
+# Ergebnis (Teil 1): git status identisch (das alte Tor stellt aus dem Speicher zurueck), ABER die Sondendatei
+# mt5_trading_ai/risk/stop_budget.py ist neu geschrieben (mtime), und 6 .pyc unter mt5_trading_ai/__pycache__ tragen
+# den Testlauf mit dem Mutanten -- Waechter A10 haette den Lauf als Schreiben in den Arbeitsbaum gemeldet. URTEIL ROT.
+# Teil 2: tests/eichfall_mutationstor.py zeitweise in den Referenz-Worktree kopiert und gefahren: ImportError (kein
+# ``tor`` in tools/mutationstor.py bei 306bbaa), exit 2; Datei danach geloescht, git status dort sauber (0 Zeilen).
+# Beide Laeufe waehrend paralleler Last (Mutationstor voll, Zweigdeckung, weitere Agenten; CPU 57-100 %).
+$ python PROGRAMM/auftrag-01-fundament/belege/06-mutationstor-eichfall.py C:\Users\<konto>\nachstellung-306bbaa -- python tools/mutationstor.py --sonde 13
+
+Worktree: C:\Users\<konto>\nachstellung-306bbaa
+Befehl (cwd=Worktree, ohne PYTHONDONTWRITEBYTECODE): python tools/mutationstor.py --sonde 13
+vorher: 81 Quelldateien, 73 .pyc unter mt5_trading_ai/ und tools/; git status --porcelain: 0 Zeilen
+--- Ausgabe des Tors (exit=0, 36 s) ---
+==============================================================================
+MUTATIONSTOR -- faerbt eine Aenderung am Geldpfad den Lauf rot?
+==============================================================================
+Sonden: 1   Mindest-Toetungsrate: 1.0
+
+   1/1  stop-kostenboden           getoetet
+
+Toetungsrate: 1.000 (1/1)
+ok — jede Sonde wurde gefangen.
+--- Messung nachher ---
+git status identisch: ja
+Quelldateien geschrieben (Massstab A10): 1
+    geschrieben: mt5_trading_ai/risk/stop_budget.py (Groesse 16557 -> 16557, mtime +277.6 s)
+.pyc neu oder geschrieben: 1
+    geschrieben: mt5_trading_ai/risk/__pycache__/stop_budget.cpython-311.pyc (Groesse 15207 -> 15207, mtime +282.3 s)
+URTEIL: ROT -- das Tor hat den Arbeitsbaum angefasst.
+
+
+=================================== ERRORS ====================================
+_______________ ERROR collecting tests/eichfall_mutationstor.py _______________
+ImportError while importing test module 'C:\Users\<konto>\nachstellung-306bbaa\tests\eichfall_mutationstor.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\AppData\Local\Programs\Python\Python311\Lib\importlib\__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests\eichfall_mutationstor.py:26: in <module>
+    from tools.mutationstor import KATALOG, Sonde, tor
+E   ImportError: cannot import name 'tor' from 'tools.mutationstor' (C:\Users\<konto>\nachstellung-306bbaa\tools\mutationstor.py)
+=========================== short test summary info ===========================
+ERROR tests/eichfall_mutationstor.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+1 error in 3.32s
+[exit=2]
+git status --porcelain im Referenz-Worktree danach: 0 Zeilen (sauber)

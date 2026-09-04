@@ -1,0 +1,89 @@
+# Beleg 06 (T6, Familie Mutationstor und Zweigdeckung): EICHFALL des Zweigdeckungstors, Fehlerpfad unter Windows (A12-Form).
+# Worktree wf_f2d56c67-47d-2 (HEAD 1c272fe + Aenderungen dieser Familie), Windows 11, Python 3.11.7, coverage 7.13.5,
+# 2026-09-04. Skript: 06-zweigdeckung-eichfall.py. Wegwerf-Repo mit Mini-Paket mt5_trading_ai/kern.py, einem absichtlich
+# roten Test, der ein Byte 0x81 (utf-8 von U+0141) auf stdout schreibt, und einem gruenen Test; PYTHONIOENCODING=utf-8.
+#
+# ROT (tools/zweigdeckung.py aus 306bbaa, Datei aus dem Referenz-Worktree kopiert): der Leser-Thread stirbt an
+# UnicodeDecodeError (cp1252, Byte 0x81), stdout bleibt None, TypeError-Traceback in messen(), kein Urteil, der rote Fall
+# wird nicht genannt -- derselbe Absturz wie in der Grundmessung (03-grundmessung-mutation-pycache-worktree.txt).
+# GRUEN (Fassung des Arbeitsbaums): Kopie (6 Dateien), Suite exit 1, der rote Fall beim Namen
+# (tests/test_rot_eichfall.py::test_rot), Bericht geschrieben (kern.py 100 % Zweige), jede Geldpfad-Datei "fehlt in der
+# Messung", exit 1, kein Traceback. Dauertor: tests/test_stufe8_testwirkung.py::test_die_messung_faellt_ohne_absturz_wenn_die_suite_rot_ist.
+# Schwelle: 0,80 -> 0,90 (A15); bei 0,80 waeren die drei Dateien der Messung (80,7 / 83,3 / 83,3 %) gruen gewesen, bei
+# 0,90 sind sie rot (06-zweigdeckung-messung.txt) -- das ist der rote Eichfall der Schwelle selbst.
+$ python PROGRAMM/auftrag-01-fundament/belege/06-zweigdeckung-eichfall.py C:\Users\<konto>\nachstellung-306bbaa\tools\zweigdeckung.py <worktree>\tools\zweigdeckung.py <scratch>\zweig-eich
+
+=== ROT: tools/zweigdeckung.py aus 306bbaa (Referenz-Worktree), --messen ===
+$ python -B tools/zweigdeckung.py --messen --bericht alt.json
+Exception in thread Thread-1 (_readerthread):
+Traceback (most recent call last):
+  File "C:\Users\<konto>\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1045, in _bootstrap_inner
+    self.run()
+  File "C:\Users\<konto>\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 982, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\<konto>\AppData\Local\Programs\Python\Python311\Lib\subprocess.py", line 1597, in _readerthread
+    buffer.append(fh.read())
+                  ^^^^^^^^^
+  File "C:\Users\<konto>\AppData\Local\Programs\Python\Python311\Lib\encodings\cp1252.py", line 23, in decode
+    return codecs.charmap_decode(input,self.errors,decoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeDecodeError: 'charmap' codec can't decode byte 0x81 in position 621: character maps to <undefined>
+FEHLGESCHLAGEN — die Suite ist rot; eine Deckung daraus taugt nichts.
+Traceback (most recent call last):
+  File "C:\Users\<konto>\AppData\Local\Temp\claude\C--Users-<konto>-OneDrive-Documents-Cursor1-mt5-trading-ai\d519626c-32fb-4c44-8526-edc9791110ae\scratchpad\t6\mut\zweig-eich\eichfall-repo\tools\zweigdeckung.py", line 177, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "C:\Users\<konto>\AppData\Local\Temp\claude\C--Users-<konto>-OneDrive-Documents-Cursor1-mt5-trading-ai\d519626c-32fb-4c44-8526-edc9791110ae\scratchpad\t6\mut\zweig-eich\eichfall-repo\tools\zweigdeckung.py", line 170, in main
+    rc = messen(args.bericht)
+         ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\<konto>\AppData\Local\Temp\claude\C--Users-<konto>-OneDrive-Documents-Cursor1-mt5-trading-ai\d519626c-32fb-4c44-8526-edc9791110ae\scratchpad\t6\mut\zweig-eich\eichfall-repo\tools\zweigdeckung.py", line 86, in messen
+    print(lauf.stdout[-2000:], file=sys.stderr)
+          ~~~~~~~~~~~^^^^^^^^
+TypeError: 'NoneType' object is not subscriptable
+[exit=1]
+Traceback in der Ausgabe: JA
+roter Fall beim Namen: NEIN
+
+=== GRUEN: tools/zweigdeckung.py des Arbeitsbaums, --messen in der Kopie ===
+$ python -B tools/zweigdeckung.py --messen --bericht neu.json --kopie <temp>/kopie
+Kopie: C:\Users\<konto>\AppData\Local\Temp\claude\C--Users-<konto>-OneDrive-Documents-Cursor1-mt5-trading-ai\d519626c-32fb-4c44-8526-edc9791110ae\scratchpad\t6\mut\zweig-eich\kopie (6 Dateien, 2.4 s)
+Suite unter coverage: exit=1, 13 s -- 1 failed, 1 passed in 0.80s
+Bericht: C:\Users\<konto>\AppData\Local\Temp\claude\C--Users-<konto>-OneDrive-Documents-Cursor1-mt5-trading-ai\d519626c-32fb-4c44-8526-edc9791110ae\scratchpad\t6\mut\zweig-eich\eichfall-repo\neu.json
+Suite rot: 1 Faelle -- das Tor bleibt rot, s. Urteil.
+    tests/test_rot_eichfall.py::test_rot
+==========================================================================
+ZWEIGDECKUNG JE DATEI DES GELDPFADS
+==========================================================================
+Schwelle je Datei: 90% (Katalog A15)
+
+Datei                                      Zeilen   Zweige  fehlend
+venue/mt5.py                                   --    FEHLT       --
+venue/protocol.py                              --    FEHLT       --
+execution/risk_manager.py                      --    FEHLT       --
+execution/schwebende_auftraege.py              --    FEHLT       --
+execution/cost_gate.py                         --    FEHLT       --
+risk/sizing.py                                 --    FEHLT       --
+risk/stop_budget.py                            --    FEHLT       --
+risk/limits.py                                 --    FEHLT       --
+risk/leverage.py                               --    FEHLT       --
+costs/model.py                                 --    FEHLT       --
+gates/erkundung.py                             --    FEHLT       --
+
+Paket gesamt: Zeilen 100.0 %, Zweige 100.0 %
+
+FEHLGESCHLAGEN — die Suite ist rot (1 Faelle); die Deckung oben stammt aus einem roten Lauf, ein gruenes Urteil setzt eine gruene Suite voraus: tests/test_rot_eichfall.py::test_rot
+FEHLGESCHLAGEN — venue/mt5.py fehlt in der Messung.
+FEHLGESCHLAGEN — venue/protocol.py fehlt in der Messung.
+FEHLGESCHLAGEN — execution/risk_manager.py fehlt in der Messung.
+FEHLGESCHLAGEN — execution/schwebende_auftraege.py fehlt in der Messung.
+FEHLGESCHLAGEN — execution/cost_gate.py fehlt in der Messung.
+FEHLGESCHLAGEN — risk/sizing.py fehlt in der Messung.
+FEHLGESCHLAGEN — risk/stop_budget.py fehlt in der Messung.
+FEHLGESCHLAGEN — risk/limits.py fehlt in der Messung.
+FEHLGESCHLAGEN — risk/leverage.py fehlt in der Messung.
+FEHLGESCHLAGEN — costs/model.py fehlt in der Messung.
+FEHLGESCHLAGEN — gates/erkundung.py fehlt in der Messung.
+Was fehlt, sind in aller Regel die ablehnenden Zweige -- also die, wegen derer die Datei existiert.
+[exit=1]
+Traceback in der Ausgabe: nein
+roter Fall beim Namen: ja

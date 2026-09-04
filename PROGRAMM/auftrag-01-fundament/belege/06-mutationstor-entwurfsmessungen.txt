@@ -1,0 +1,135 @@
+# HINWEIS (2026-09-04): Entwurfsmessungen der Vorarbeit auf Stand 97ee206 (vor D2/D3 und vor dem Skip-Tor in tests/conftest.py);
+# die Sondenzahlen (59 erzeugt, 72 gesamt) und "12 skipped" gelten fuer diesen alten Stand. Der Endstand steht in
+# 06-mutationstor-liste.txt (56 erzeugt, 69 gesamt) und 06-mutationstor-voll.txt (voller Lauf). Unveraendert uebernommen.
+# Beleg 06 (T6, Familie Mutationstor und Zweigdeckung): Entwurfsmessungen vor dem Bau des Tors.
+# Worktree wf_358a8ac6-c0a-3, Windows 11, Python 3.11.7, pytest 8.3.4, coverage 7.13.5, 2026-09-03.
+# Kontoname im Pfad redigiert.
+#
+# Drei Fragen, drei Messungen:
+# (1) Laeuft die Suite ohne slow in einer Kopie (git ls-files + aufzeichnungen/ + config/, Wegwerf-Git) gruen,
+#     und bleibt die Kopie ohne Bytecode?  -> 1500 passed, 12 skipped, 1 deselected, 207 s; 0 .pyc in der Kopie.
+#     Kopie: 510 Dateien in 9,2 s (davon git init/add/commit).
+# (2) Wie eng laesst sich je erzeugter Sonde der zustaendige Test bestimmen?
+#     Versuch A, statischer Importabschluss je Testdatei: 66-67 von 85 Testdateien fuer JEDE Geldpfad-Datei
+#     (jede Testdatei, die tools.live_betrieb oder venue.mt5 importiert, hat den ganzen Geldpfad im Abschluss) --
+#     praktisch die ganze Suite, verworfen.
+#     Versuch B, Deckungskontexte (coverage, dynamic_context = test_function): Suite ohne slow unter coverage
+#     480 s (Faktor 2,3 gegen 207 s); Kontexte fuer 11 Dateien aus der .coverage-Datei in 14,1 s gelesen.
+#     Von 61 erzeugten Sonden (damalige Auswahl, proportional): 56 mit Testkontext (Median 7 Testdateien),
+#     3 nur mit leerem Kontext (Modulkonstanten, Vorgabewerte -- Import-Zeit), 2 ohne Kontext (nicht gelaufene Zeilen).
+#     -> Gewaehlt: B, mit Rueckfall auf die ganze Suite bei leerem Kontext und "unerreicht" ohne jeden Kontext
+#        (kein Test kann die Zeile fangen); dazu die Testdateien mit Unterprozess-Start im Importabschluss.
+# (3) Kompilieren alle erzeugten Mutanten, und ist die Auswahl in einem zweiten Prozess dieselbe?
+#     -> 59 Sonden, 0 Syntaxfehler; zweiter Prozess: identische Namensliste.
+#
+# --- (1) Grundlauf in der Kopie ---
+$ python grundlauf_kopie.py
+
+kopiert 510 Dateien in 9.2 s
+(git status in der Kopie sauber)
+exit 0 Dauer 212.2 s
+........................................................................ [  4%]
+........s............................................................... [  9%]
+.....................s....s............................................. [ 14%]
+........................................................................ [ 19%]
+........................................................................ [ 23%]
+........................................................................ [ 28%]
+........................................................................ [ 33%]
+..................s..................................................... [ 38%]
+........................................................................ [ 42%]
+......sssssss.s......................................................... [ 47%]
+........................................................................ [ 52%]
+........................................................................ [ 57%]
+........................................................................ [ 61%]
+........................................................................ [ 66%]
+........................................................................ [ 71%]
+........................................................................ [ 76%]
+........................................................................ [ 80%]
+........................................................................ [ 85%]
+........................................................................ [ 90%]
+........................................................................ [ 95%]
+........................................................................ [100%]
+1500 passed, 12 skipped, 1 deselected in 207.31s (0:03:27)
+
+
+pyc in der Kopie: 0
+
+# --- (2) Deckungskontexte ueber die ganze Suite ohne slow in der Kopie (Auswahl vor der Wurzel-Quote: 61 Sonden) ---
+$ python kontext_voll.py
+
+run exit 0 480.2 s
+..................................................... [ 95%]
+........................................................................ [100%]
+1500 passed, 12 skipped, 1 deselected in 471.96s (0:07:51)
+
+coverage-Datei: 7581696 Bytes
+measured files 48 0.5 s
+contexts_by_lineno fuer 11 Dateien: 14.1 s
+venue/mt5.py:289:11:not-ergaenzt              kontexte=  35 testdateien=  4 leer=False
+venue/mt5.py:385:20:bool                      kontexte=   4 testdateien=  1 leer=False
+venue/mt5.py:444:41:not-entfernt              kontexte= 122 testdateien= 16 leer=False
+venue/mt5.py:594:11:not-entfernt              kontexte= 195 testdateien= 18 leer=False
+venue/mt5.py:797:15:vergleich                 kontexte=  45 testdateien=  7 leer=False
+venue/mt5.py:958:15:not-ergaenzt              kontexte= 107 testdateien= 16 leer=False
+venue/mt5.py:1021:11:not-ergaenzt             kontexte=  81 testdateien= 15 leer=False
+venue/mt5.py:1094:44:konstante                kontexte=  27 testdateien= 10 leer=False
+venue/mt5.py:1201:23:vergleich                kontexte=  34 testdateien= 11 leer=False
+venue/mt5.py:1378:44:vergleich                kontexte=  79 testdateien= 15 leer=False
+venue/mt5.py:1410:19:vergleich                kontexte=  16 testdateien=  3 leer=False
+venue/mt5.py:1505:15:not-ergaenzt             kontexte= 114 testdateien= 16 leer=False
+venue/mt5.py:1708:21:vergleich                kontexte=   6 testdateien=  4 leer=False
+venue/mt5.py:1764:11:not-entfernt             kontexte=  10 testdateien=  3 leer=False
+venue/mt5.py:1852:47:vergleich                kontexte=  14 testdateien=  3 leer=False
+venue/mt5.py:2004:81:bool                     kontexte=   5 testdateien=  2 leer=False
+venue/mt5.py:2090:57:vergleich                kontexte=  15 testdateien=  2 leer=False
+venue/mt5.py:2216:19:return                   kontexte=   1 testdateien=  1 leer=False
+venue/mt5.py:2513:48:vergleich                kontexte=  15 testdateien=  2 leer=False
+venue/mt5.py:2535:19:not-ergaenzt             kontexte=   1 testdateien=  1 leer=False
+venue/mt5.py:2643:31:konstante                kontexte=   5 testdateien=  1 leer=False
+venue/mt5.py:2688:11:not-ergaenzt             kontexte=   8 testdateien=  1 leer=False
+venue/mt5.py:2710:19:return                   kontexte=   0 testdateien=  0 leer=False
+venue/mt5.py:2722:50:vergleich                kontexte=   5 testdateien=  1 leer=False
+venue/protocol.py:107:11:not-ergaenzt         kontexte=  40 testdateien=  8 leer=False
+venue/protocol.py:107:18:vergleich            kontexte=  40 testdateien=  8 leer=False
+venue/protocol.py:311:34:vergleich            kontexte=  39 testdateien=  8 leer=False
+execution/risk_manager.py:423:23:vergleich    kontexte=  55 testdateien=  5 leer=False
+execution/risk_manager.py:432:49:bool         kontexte= 270 testdateien= 23 leer=False
+execution/risk_manager.py:470:21:bool         kontexte=  55 testdateien=  5 leer=False
+execution/risk_manager.py:611:15:not-ergaenzt kontexte=  32 testdateien=  3 leer=False
+execution/risk_manager.py:653:17:vergleich    kontexte= 144 testdateien= 20 leer=False
+execution/risk_manager.py:690:38:konstante    kontexte=  96 testdateien= 18 leer=False
+execution/risk_manager.py:871:24:vergleich    kontexte= 149 testdateien= 20 leer=False
+execution/risk_manager.py:1001:23:konstante   kontexte= 144 testdateien= 20 leer=False
+execution/risk_manager.py:1168:24:vergleich   kontexte= 110 testdateien= 20 leer=False
+execution/schwebende_auftraege.py:97:32:vergleich kontexte=   0 testdateien=  0 leer=False
+execution/schwebende_auftraege.py:209:15:not-entfernt kontexte=  12 testdateien=  3 leer=False
+execution/schwebende_auftraege.py:280:11:not-ergaenzt kontexte=   2 testdateien=  2 leer=False
+execution/cost_gate.py:91:7:not-ergaenzt      kontexte=  36 testdateien=  7 leer=False
+execution/cost_gate.py:96:7:not-ergaenzt      kontexte=  35 testdateien=  7 leer=False
+execution/cost_gate.py:135:7:not-ergaenzt     kontexte=  31 testdateien=  7 leer=False
+risk/sizing.py:89:19:konstante                kontexte= 115 testdateien= 21 leer=False
+risk/sizing.py:111:27:vergleich               kontexte=   2 testdateien=  1 leer=False
+risk/sizing.py:159:58:bool                    kontexte= 125 testdateien= 21 leer=False
+risk/sizing.py:169:14:bool                    kontexte= 125 testdateien= 21 leer=False
+risk/stop_budget.py:249:7:not-ergaenzt        kontexte= 134 testdateien= 23 leer=False
+risk/stop_budget.py:283:32:vergleich          kontexte= 131 testdateien= 21 leer=False
+risk/stop_budget.py:329:12:vergleich          kontexte= 127 testdateien= 21 leer=False
+risk/limits.py:68:36:konstante                kontexte=   1 testdateien=  0 leer=True
+risk/limits.py:137:24:vergleich               kontexte= 153 testdateien= 21 leer=False
+risk/limits.py:160:27:vergleich               kontexte=   2 testdateien=  2 leer=False
+risk/leverage.py:26:22:konstante              kontexte=   1 testdateien=  0 leer=True
+risk/leverage.py:201:29:vergleich             kontexte=  95 testdateien= 17 leer=False
+risk/leverage.py:228:7:not-ergaenzt           kontexte=  94 testdateien= 17 leer=False
+costs/model.py:87:7:not-ergaenzt              kontexte=  79 testdateien= 15 leer=False
+costs/model.py:107:30:konstante               kontexte=   1 testdateien=  0 leer=True
+costs/model.py:219:49:bool                    kontexte=  10 testdateien=  5 leer=False
+gates/erkundung.py:158:11:konstante           kontexte=   7 testdateien=  4 leer=False
+gates/erkundung.py:170:38:vergleich           kontexte=   5 testdateien=  4 leer=False
+gates/erkundung.py:194:19:konstante           kontexte=   2 testdateien=  1 leer=False
+{'tests': 56, 'nur-leer': 3, 'keine': 2}
+Testdateien je Sonde: [0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 7, 7, 7, 7, 8, 8, 8, 10, 11, 15, 15, 15, 16, 16, 16, 17, 17, 18, 18, 20, 20, 20, 20, 21, 21, 21, 21, 21, 21, 23, 23]
+
+# --- (3) Mutanten kompilieren, Auswahl im zweiten Prozess ---
+$ python mutanten_kompilieren.py
+erzeugte Sonden: 59 Syntaxfehler: 0
+zweiter Prozess identisch: True 59

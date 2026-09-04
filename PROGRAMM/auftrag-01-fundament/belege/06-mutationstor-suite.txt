@@ -1,0 +1,174 @@
+# Beleg 06 (T6, Familie Mutationstor und Zweigdeckung): Suite ohne slow und statische Tore im Worktree nach dem Umbau.
+# Worktree wf_f2d56c67-47d-2 (HEAD 1c272fe + Aenderungen dieser Familie), Windows 11, Python 3.11.7, pytest 8.3.4,
+# ruff 0.9.2, mypy 1.14.1, 2026-09-04; PYTHONDONTWRITEBYTECODE=1, PYTHONIOENCODING=utf-8. Kontoname im Pfad redigiert.
+#
+# Suite ohne slow: 5 failed, 1607 passed, 2 deselected in 222 s (Last: CPU 27-45 %, 2-4 python.exe-Prozesse; parallel
+# lief nur der slow-Testlauf dieser Familie). Die 5 roten Faelle:
+#   4 bekannte Faelle anderer Familien bei 1c272fe (tests/eichfall_werkzeuge.py: --help von check_doc_numbers.py und
+#     check_docs_claims.py [Hauptrepo], --help von geheimnis_scan.py [Geheimnis-Scan], Terminalzeile live_betrieb.py
+#     [Zustand]) -- vor dem Umbau dieser Familie gemessen: 4 failed, 47 passed, 1 error in 110 s in derselben Datei;
+#   tests/test_readme_numbers.py::test_readme_test_function_count_matches_code: "assert 1361 == 1380" -- die neue
+#     Datei tests/eichfall_mutationstor.py (3 Tests) und die neuen Faelle in tests/test_stufe8_testwirkung.py sind
+#     nicht im README-Kennzahlenblock (README.md ist dieser Familie entzogen; der Block wird beim Einspielen generiert).
+# Alle Faelle dieser Familie gruen: tests/test_stufe8_testwirkung.py 50 Faelle (davon 1 slow) und
+# tests/eichfall_mutationstor.py 3 Faelle (davon 1 slow); slow-Faelle in 06-mutationstor-selbsttest.txt.
+# Statische Tore (check-only, nach allen Aenderungen): ruff format --check 175 Dateien, ruff check, mypy --strict
+# ueber mt5_trading_ai, tools, PROGRAMM/hooks (82 Dateien) -- alle exit 0.
+$ python -m pytest -q -p no:cacheprovider -m "not slow"
+
+$ python -m pytest -q -p no:cacheprovider -m not slow
+# Start 2026-09-04T02:11:57+00:00; Last vorher: CPU-Auslastung 45 % (Win32_Processor.LoadPercentage), python.exe-Prozesse 4
+..............................FF....F....................F.............. [  4%]
+........................................................................ [  8%]
+........................................................................ [ 13%]
+........................................................................ [ 17%]
+........................................................................ [ 22%]
+........................................................................ [ 26%]
+........................................................................ [ 31%]
+........................................................................ [ 35%]
+........................................................................ [ 40%]
+........................................................................ [ 44%]
+........................................................................ [ 49%]
+........................................................................ [ 53%]
+........................................................................ [ 58%]
+..............................................F......................... [ 62%]
+........................................................................ [ 66%]
+........................................................................ [ 71%]
+........................................................................ [ 75%]
+........................................................................ [ 80%]
+........................................................................ [ 84%]
+........................................................................ [ 89%]
+........................................................................ [ 93%]
+........................................................................ [ 98%]
+............................                                             [100%]
+================================== FAILURES ===================================
+_______ test_help_antwortet_mit_exit_0_und_usage[check_doc_numbers.py] ________
+
+werkzeug = WindowsPath('C:/Users/<konto>/mt5_trading_ai/.claude/worktrees/wf_f2d56c67-47d-2/tools/check_doc_numbers.py')
+tmp_path = WindowsPath('C:/Users/<konto>/AppData/Local/Temp/pytest-of-<konto>/pytest-428/test_help_antwortet_mit_exit_07')
+
+    @pytest.mark.parametrize("werkzeug", WERKZEUGE, ids=[w.name for w in WERKZEUGE])
+    def test_help_antwortet_mit_exit_0_und_usage(werkzeug: Path, tmp_path: Path) -> None:
+        befund = pruefe_help(werkzeug, env=shim_umgebung(tmp_path / "shim"), cwd=REPO)
+>       assert befund.gruen, f"{befund.werkzeug}: {befund.grund}\n{befund.lauf.ausgabe}"
+E       AssertionError: check_doc_numbers.py: exit=1, usage=nein
+E         FEHLGESCHLAGEN - Zahlen-Drift zwischen Doku und Code:
+E         
+E           README.md: test_function_count = 1361 im Block, Code sagt 1380
+E         
+E         Kennzahlen leben im README-KENNZAHLEN-Block; andere Wurzeldokumente verweisen. Archiv und Eingaenge sind per Manifest gesichert (A14).
+E         
+E       assert False
+E        +  where False = Befund(werkzeug='check_doc_numbers.py', gruen=False, grund='exit=1, usage=nein', lauf=Lauf(befehl=('C:\\Users\\<konto>\\A...ZAHLEN-Block; andere Wurzeldokumente verweisen. Archiv und Eingaenge sind per Manifest gesichert (A14).\n', stderr='')).gruen
+
+tests\eichfall_werkzeuge.py:361: AssertionError
+_______ test_help_antwortet_mit_exit_0_und_usage[check_docs_claims.py] ________
+
+werkzeug = WindowsPath('C:/Users/<konto>/mt5_trading_ai/.claude/worktrees/wf_f2d56c67-47d-2/tools/check_docs_claims.py')
+tmp_path = WindowsPath('C:/Users/<konto>/AppData/Local/Temp/pytest-of-<konto>/pytest-428/test_help_antwortet_mit_exit_08')
+
+    @pytest.mark.parametrize("werkzeug", WERKZEUGE, ids=[w.name for w in WERKZEUGE])
+    def test_help_antwortet_mit_exit_0_und_usage(werkzeug: Path, tmp_path: Path) -> None:
+        befund = pruefe_help(werkzeug, env=shim_umgebung(tmp_path / "shim"), cwd=REPO)
+>       assert befund.gruen, f"{befund.werkzeug}: {befund.grund}\n{befund.lauf.ausgabe}"
+E       AssertionError: check_docs_claims.py: exit=0, usage=nein
+E         ok - 13/32 lebende Markdown-Dateien (Wurzel: README.md, MODULES.md, CLAUDE.md), keine Zusicherung ohne Beleg; per Manifest gesichert statt gescannt: archiv, PROGRAMM/eingang, PROGRAMM/masterprompts
+E         
+E       assert False
+E        +  where False = Befund(werkzeug='check_docs_claims.py', gruen=False, grund='exit=0, usage=nein', lauf=Lauf(befehl=('C:\\Users\\<konto>\\A...ung ohne Beleg; per Manifest gesichert statt gescannt: archiv, PROGRAMM/eingang, PROGRAMM/masterprompts\n', stderr='')).gruen
+
+tests\eichfall_werkzeuge.py:361: AssertionError
+_________ test_help_antwortet_mit_exit_0_und_usage[geheimnis_scan.py] _________
+
+werkzeug = WindowsPath('C:/Users/<konto>/mt5_trading_ai/.claude/worktrees/wf_f2d56c67-47d-2/tools/geheimnis_scan.py')
+tmp_path = WindowsPath('C:/Users/<konto>/AppData/Local/Temp/pytest-of-<konto>/pytest-428/test_help_antwortet_mit_exit_013')
+
+    @pytest.mark.parametrize("werkzeug", WERKZEUGE, ids=[w.name for w in WERKZEUGE])
+    def test_help_antwortet_mit_exit_0_und_usage(werkzeug: Path, tmp_path: Path) -> None:
+        befund = pruefe_help(werkzeug, env=shim_umgebung(tmp_path / "shim"), cwd=REPO)
+>       assert befund.gruen, f"{befund.werkzeug}: {befund.grund}\n{befund.lauf.ausgabe}"
+E       AssertionError: geheimnis_scan.py: exit=None, usage=nein, stderr: <Zeitschranke 60 s ueberschritten>
+E         
+E         <Zeitschranke 60 s ueberschritten>
+E       assert False
+E        +  where False = Befund(werkzeug='geheimnis_scan.py', gruen=False, grund='exit=None, usage=nein, stderr: <Zeitschranke 60 s ueberschrit...6c67-47d-2\\tools\\geheimnis_scan.py', '--help'), exit=None, stdout='', stderr='\n<Zeitschranke 60 s ueberschritten>')).gruen
+
+tests\eichfall_werkzeuge.py:361: AssertionError
+_______ test_ohne_terminal_eine_benannte_zeile_und_exit_2[live_betrieb] _______
+
+aufruf = Terminalaufruf(datei='live_betrieb.py', kennung='live_betrieb', argumente=<function <lambda> at 0x000001A963BDE7A0>)
+tmp_path = WindowsPath('C:/Users/<konto>/AppData/Local/Temp/pytest-of-<konto>/pytest-428/test_ohne_terminal_eine_benann4')
+
+    @pytest.mark.parametrize(
+        "aufruf", TERMINALAUFRUFE, ids=[a.kennung for a in TERMINALAUFRUFE]
+    )
+    def test_ohne_terminal_eine_benannte_zeile_und_exit_2(
+        aufruf: Terminalaufruf, tmp_path: Path
+    ) -> None:
+        env = shim_umgebung(tmp_path / "shim")
+        befund = pruefe_benannt(
+            TOOLS / aufruf.datei, aufruf.argumente(tmp_path), env=env, cwd=REPO
+        )
+>       assert befund.gruen, f"{befund.werkzeug}: {befund.grund}\n{befund.lauf.ausgabe}"
+E       AssertionError: live_betrieb.py --dauer 0.001 --takt 1: exit=1 (verlangt 2), benannte Zeilen=0 (verlangt 1), FEHLGESCHLAGEN-Zeilen=0 (verlangt 1), Traceback=ja (verlangt nein)
+E         Traceback (most recent call last):
+E           File "C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_f2d56c67-47d-2\mt5_trading_ai\venue\mt5.py", line 2186, in initialize
+E             mt5: Any = importlib.import_module("MetaTrader5")
+E                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           File "C:\Users\<konto>\AppData\Local\Programs\Python\Python311\Lib\importlib\__init__.py", line 126, in import_module
+E             return _bootstrap._gcd_import(name[level:], package, level)
+E                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           File "<frozen importlib._bootstrap>", line 1204, in _gcd_import
+E           File "<frozen importlib._bootstrap>", line 1176, in _find_and_load
+E           File "<frozen importlib._bootstrap>", line 1147, in _find_and_load_unlocked
+E           File "<frozen importlib._bootstrap>", line 690, in _load_unlocked
+E           File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+E           File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+E           File "C:\Users\<konto>\AppData\Local\Temp\pytest-of-<konto>\pytest-428\test_ohne_terminal_eine_benann4\shim\MetaTrader5.py", line 2, in <module>
+E             raise ImportError("MetaTrader5 (Shim der Eichfaelle): Paket absichtlich unsichtbar")
+E         ImportError: MetaTrader5 (Shim der Eichfaelle): Paket absichtlich unsichtbar
+E         
+E         The above exception was the direct cause of the following exception:
+E         
+E         Traceback (most recent call last):
+E           File "C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_f2d56c67-47d-2\tools\live_betrieb.py", line 1251, in <module>
+E             sys.exit(main())
+E                      ^^^^^^
+E           File "C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_f2d56c67-47d-2\tools\live_betrieb.py", line 989, in main
+E             if not terminal.initialize():
+E                    ^^^^^^^^^^^^^^^^^^^^^
+E           File "C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_f2d56c67-47d-2\mt5_trading_ai\venue\mt5.py", line 2188, in initialize
+E             raise VenueUnavailableError(
+E         mt5_trading_ai.venue.protocol.VenueUnavailableError: MetaTrader5 nicht installiert (pip install MetaTrader5)
+E         
+E       assert False
+E        +  where False = Befund(werkzeug='live_betrieb.py --dauer 0.001 --takt 1', gruen=False, grund='exit=1 (verlangt 2), benannte Zeilen=0 (...ror(\nmt5_trading_ai.venue.protocol.VenueUnavailableError: MetaTrader5 nicht installiert (pip install MetaTrader5)\n')).gruen
+
+tests\eichfall_werkzeuge.py:386: AssertionError
+________________ test_readme_test_function_count_matches_code _________________
+
+    def test_readme_test_function_count_matches_code() -> None:
+>       assert _declared()["test_function_count"] == _test_function_count()
+E       assert 1361 == 1380
+E        +  where 1380 = _test_function_count()
+
+tests\test_readme_numbers.py:92: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/eichfall_werkzeuge.py::test_help_antwortet_mit_exit_0_und_usage[check_doc_numbers.py]
+FAILED tests/eichfall_werkzeuge.py::test_help_antwortet_mit_exit_0_und_usage[check_docs_claims.py]
+FAILED tests/eichfall_werkzeuge.py::test_help_antwortet_mit_exit_0_und_usage[geheimnis_scan.py]
+FAILED tests/eichfall_werkzeuge.py::test_ohne_terminal_eine_benannte_zeile_und_exit_2[live_betrieb]
+FAILED tests/test_readme_numbers.py::test_readme_test_function_count_matches_code
+5 failed, 1607 passed, 2 deselected in 222.44s (0:03:42)
+[exit=1]
+# Ende 2026-09-04T02:15:44+00:00; Laufzeit 225 s; Last nachher: CPU-Auslastung 27 % (Win32_Processor.LoadPercentage), python.exe-Prozesse 2
+
+$ python -m ruff format --check .
+175 files already formatted
+[exit=0]
+$ python -m ruff check .
+All checks passed!
+[exit=0]
+$ python -m mypy --strict mt5_trading_ai tools PROGRAMM/hooks
+Success: no issues found in 82 source files
+[exit=0]

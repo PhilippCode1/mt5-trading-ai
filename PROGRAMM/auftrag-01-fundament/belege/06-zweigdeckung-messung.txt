@@ -1,0 +1,101 @@
+# Beleg 06 (T6, Familie Mutationstor und Zweigdeckung): Zweigdeckung je Geldpfad-Datei, Schwelle 0,90 (A15), in der Kopie.
+# Worktree wf_f2d56c67-47d-2 (HEAD 1c272fe + Aenderungen dieser Familie), Windows 11, Python 3.11.7, coverage 7.13.5,
+# pytest 8.3.4, 2026-09-04. Kopie = Arbeitsbaum ohne Ignoriertes (552 Dateien, Wegwerf-Git), Suite ohne slow,
+# PYTHONDONTWRITEBYTECODE=1. Kontoname im Pfad redigiert. Reihenfolge in dieser Umleitung: die stderr-Zeilen des Urteils
+# stehen vor dem stdout-Bericht (stderr ungepuffert; im Werkzeug seitdem stdout.flush() vor jeder stderr-Ausgabe).
+#
+# ERGEBNIS: exit 1 -- ROT, wie erwartet, aus zwei Gruenden:
+#   (1) drei der elf Dateien unter 90 %: venue/mt5.py 80,8 % (53 fehlende Zweige), risk/leverage.py 83,3 % (5),
+#       costs/model.py 83,3 % (4). Grundmessung T3 (03-grundmessung-coverage-direkt-worktree.txt): 80,7 / 83,3 / 83,3 --
+#       nach D2/D3 in mt5.py +1 Zweig fehlend, sonst gleich. Bei der alten Schwelle 0,80 waeren alle drei gruen gewesen;
+#       die Anhebung auf 0,90 ist die Verschaerfung A15 und macht die Luecke sichtbar. Eine andere Familie schreibt
+#       gerade Tests fuer leverage.py und model.py; die Liste der fehlenden Zweige (Zeile->Ziel, "Ausgang" =
+#       Funktionsende) je Datei ist ihre Arbeitsliste.
+#   (2) die Suite ist in der Kopie rot (6 Faelle, beim Namen genannt): 4 bekannte anderer Familien (eichfall_werkzeuge.py),
+#       test_readme_numbers.py::test_readme_test_function_count_matches_code (neue Testdatei dieser Familie in der
+#       Kopie; README-Kennzahlenblock wird beim Einspielen generiert) und EINMAL
+#       test_provenance.py::test_untracked_source_file_is_rejected -- im gleichzeitigen Grundlauf des Mutationstors
+#       (gleiche Kopie-Mechanik, gleiche Suite, 1605 passed) NICHT rot: Flake-Kandidat unter Last (A11, s. "offen").
+#       Die Deckung wird trotzdem berichtet (Messung dessen, was gelaufen ist); ein gruenes Urteil setzt eine gruene Suite
+#       voraus.
+# Suite unter coverage in der Kopie: 6 failed, 1604 passed, 1 deselected, 1579 s unter Last (Vorarbeit auf 97ee206 ohne
+# Last: 516 s); parallel liefen der volle Mutationslauf (3 Kopien), der Katalog, die slow-Tests und weitere Agenten
+# (CPU 100 % beim Start, 24 python.exe-Prozesse; 74 % / 11 am Ende). Gesamtlaufzeit 1604 s.
+$ python -B tools/zweigdeckung.py --messen --zweige --kopie <scratch>/zweig-kopie --bericht <scratch>/coverage.json
+
+$ python -B tools/zweigdeckung.py --messen --zweige --kopie C:/Users/<konto>/AppData/Local/Temp/claude/C--Users-<konto>-OneDrive-Documents-Cursor1-mt5-trading-ai/d519626c-32fb-4c44-8526-edc9791110ae/scratchpad/t6/mut/zweig-kopie --bericht C:/Users/<konto>/AppData/Local/Temp/claude/C--Users-<konto>-OneDrive-Documents-Cursor1-mt5-trading-ai/d519626c-32fb-4c44-8526-edc9791110ae/scratchpad/t6/mut/coverage.json
+# Start 2026-09-04T01:23:42+00:00; Last vorher: CPU-Auslastung 100 % (Win32_Processor.LoadPercentage), python.exe-Prozesse 24
+FEHLGESCHLAGEN — die Suite ist rot (6 Faelle); die Deckung oben stammt aus einem roten Lauf, ein gruenes Urteil setzt eine gruene Suite voraus: tests/eichfall_werkzeuge.py::test_help_antwortet_mit_exit_0_und_usage[check_doc_numbers.py], tests/eichfall_werkzeuge.py::test_help_antwortet_mit_exit_0_und_usage[check_docs_claims.py], tests/eichfall_werkzeuge.py::test_help_antwortet_mit_exit_0_und_usage[geheimnis_scan.py], tests/eichfall_werkzeuge.py::test_ohne_terminal_eine_benannte_zeile_und_exit_2[live_betrieb], tests/test_provenance.py::test_untracked_source_file_is_rejected, tests/test_readme_numbers.py::test_readme_test_function_count_matches_code
+FEHLGESCHLAGEN — venue/mt5.py: 80.8% Zweigdeckung, verlangt sind 90% (53 Zweige fehlen).
+FEHLGESCHLAGEN — risk/leverage.py: 83.3% Zweigdeckung, verlangt sind 90% (5 Zweige fehlen).
+FEHLGESCHLAGEN — costs/model.py: 83.3% Zweigdeckung, verlangt sind 90% (4 Zweige fehlen).
+Was fehlt, sind in aller Regel die ablehnenden Zweige -- also die, wegen derer die Datei existiert.
+Kopie: C:\Users\<konto>\AppData\Local\Temp\claude\C--Users-<konto>-OneDrive-Documents-Cursor1-mt5-trading-ai\d519626c-32fb-4c44-8526-edc9791110ae\scratchpad\t6\mut\zweig-kopie (552 Dateien, 20.3 s)
+Suite unter coverage: exit=1, 1579 s -- 6 failed, 1604 passed, 1 deselected in 1559.56s (0:25:59)
+Bericht: C:\Users\<konto>\AppData\Local\Temp\claude\C--Users-<konto>-OneDrive-Documents-Cursor1-mt5-trading-ai\d519626c-32fb-4c44-8526-edc9791110ae\scratchpad\t6\mut\coverage.json
+Suite rot: 6 Faelle -- das Tor bleibt rot, s. Urteil.
+    tests/eichfall_werkzeuge.py::test_help_antwortet_mit_exit_0_und_usage[check_doc_numbers.py]
+    tests/eichfall_werkzeuge.py::test_help_antwortet_mit_exit_0_und_usage[check_docs_claims.py]
+    tests/eichfall_werkzeuge.py::test_help_antwortet_mit_exit_0_und_usage[geheimnis_scan.py]
+    tests/eichfall_werkzeuge.py::test_ohne_terminal_eine_benannte_zeile_und_exit_2[live_betrieb]
+    tests/test_provenance.py::test_untracked_source_file_is_rejected
+    tests/test_readme_numbers.py::test_readme_test_function_count_matches_code
+==========================================================================
+ZWEIGDECKUNG JE DATEI DES GELDPFADS
+==========================================================================
+Schwelle je Datei: 90% (Katalog A15)
+
+Datei                                      Zeilen   Zweige  fehlend
+venue/mt5.py                                87.8%    80.8%       53  <== unter der Schwelle
+venue/protocol.py                          100.0%   100.0%        0
+execution/risk_manager.py                   99.5%    98.2%        2
+execution/schwebende_auftraege.py           93.3%    92.9%        2
+execution/cost_gate.py                     100.0%   100.0%        0
+risk/sizing.py                              94.6%    90.0%        4
+risk/stop_budget.py                         97.4%    94.4%        1
+risk/limits.py                             100.0%   100.0%        0
+risk/leverage.py                            90.5%    83.3%        5  <== unter der Schwelle
+costs/model.py                              92.6%    83.3%        4  <== unter der Schwelle
+gates/erkundung.py                          97.4%    93.8%        1
+
+Paket gesamt: Zeilen 93.2 %, Zweige 87.9 %
+
+venue/mt5.py: 53 fehlende Zweige (Zeile->Ziel)
+    264->265, 270->271, 274->275, 362->367, 445->446, 572->573, 1088->1102, 1202->1203
+    1387->1388, 1395->1396, 1435->1436, 1483->1484, 1531->Ausgang, 1748->1749, 1781->1782, 1950->1951
+    1994->1995, 2121->2123, 2123->2124, 2123->2125, 2125->2126, 2125->2127, 2193->2194, 2193->2195
+    2195->2196, 2195->2197, 2197->2198, 2197->2199, 2199->2200, 2199->2201, 2204->Ausgang, 2204->2205
+    2282->2283, 2282->2284, 2305->2306, 2310->2311, 2314->2315, 2359->2360, 2359->2361, 2372->2373
+    2372->2374, 2376->2377, 2376->2391, 2407->2408, 2426->2427, 2509->2510, 2511->2516, 2542->2543
+    2557->2558, 2615->2621, 2766->2767, 2770->2771, 2781->2782
+    nicht gelaufene Zeilen: 265, 271, 275, 367, 446, 573, 1203, 1388, 1396, 1436, 1484, 1749, 1752, 1753, 1782, 1951, 1995, 2123, 2124, 2125, 2126, 2127, 2185, 2186, 2187, 2188, 2191, 2192, 2193, 2194, 2195, 2196, 2197, 2198, 2199, 2200, 2201, 2204, 2205, 2282, 2283, 2284, 2306, 2311, 2315, 2351, 2354, 2355, 2358, 2359, 2360, 2361, 2368, 2369, 2372, 2373, 2374, 2375, 2376, 2377, 2391, 2408, 2427, 2510, 2516, 2517, 2518, 2543, 2558, 2621, 2767, 2771, 2782
+
+execution/risk_manager.py: 2 fehlende Zweige (Zeile->Ziel)
+    478->Ausgang, 899->Ausgang
+
+execution/schwebende_auftraege.py: 2 fehlende Zweige (Zeile->Ziel)
+    99->100, 99->101
+    nicht gelaufene Zeilen: 97, 98, 99, 100, 101, 102, 169
+
+risk/sizing.py: 4 fehlende Zweige (Zeile->Ziel)
+    114->115, 116->117, 139->140, 202->203
+    nicht gelaufene Zeilen: 115, 117, 140, 203
+
+risk/stop_budget.py: 1 fehlende Zweige (Zeile->Ziel)
+    249->250
+    nicht gelaufene Zeilen: 250
+
+risk/leverage.py: 5 fehlende Zweige (Zeile->Ziel)
+    106->111, 136->137, 152->153, 155->156, 158->159
+    nicht gelaufene Zeilen: 81, 111, 137, 153, 156, 159, 252, 253
+
+costs/model.py: 4 fehlende Zweige (Zeile->Ziel)
+    92->93, 146->147, 148->149, 203->208
+    nicht gelaufene Zeilen: 93, 147, 149
+
+gates/erkundung.py: 1 fehlende Zweige (Zeile->Ziel)
+    212->213
+    nicht gelaufene Zeilen: 213
+
+[exit=1]
+# Ende 2026-09-04T01:50:31+00:00; Laufzeit 1604 s; Last nachher: CPU-Auslastung 74 % (Win32_Processor.LoadPercentage), python.exe-Prozesse 11

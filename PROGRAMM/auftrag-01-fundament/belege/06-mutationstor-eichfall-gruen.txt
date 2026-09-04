@@ -1,0 +1,35 @@
+# Beleg 06 (T6, Familie Mutationstor und Zweigdeckung): GRUENER EICHFALL -- das neue Tor faehrt in einer Kopie und
+# laesst den Arbeitsbaum unangetastet (A18, F-005, T(d)). Worktree wf_f2d56c67-47d-2 (HEAD 1c272fe + Aenderungen dieser
+# Familie), Windows 11, Python 3.11.7, 2026-09-04. Skript: 06-mutationstor-eichfall.py, dieselbe Messung wie im roten Fall.
+#
+# EINE Katalogsonde (Nr. 10 = stop-kostenboden), Umgebung ohne PYTHONDONTWRITEBYTECODE, Tor ohne -B gestartet (es setzt
+# sys.dont_write_bytecode selbst und gibt der Kopie PYTHONDONTWRITEBYTECODE=1 mit). Ergebnis: 0 Quelldateien geschrieben,
+# 0 .pyc neu oder geschrieben (vorher 0, nachher 0), git status identisch (9 Zeilen = die unverfolgten/geaenderten Dateien
+# dieser Familie, vorher wie nachher). Die Sonde wird in der Kopie getoetet (test_cost_floor_follows_the_breakeven_formula).
+# Kopie 552 Dateien in 40 s unter Last (ohne Last 13 s, s. 06-mutationstor-katalog-gruen.txt); Laufzeit 106 s unter Last
+# (CPU 57-100 %, 22-28 python.exe-Prozesse: Mutationstor voll, Zweigdeckung, weitere Agenten).
+# Dauertor: tests/eichfall_mutationstor.py (git status und .pyc-Stand vor/nach jedem Lauf; 06-mutationstor-selbsttest.txt).
+$ python PROGRAMM/auftrag-01-fundament/belege/06-mutationstor-eichfall.py <worktree> -- python tools/mutationstor.py --sonde 10 --kopie <scratch>/kopie-eich
+
+Worktree: C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_f2d56c67-47d-2
+Befehl (cwd=Worktree, ohne PYTHONDONTWRITEBYTECODE): python tools/mutationstor.py --sonde 10 --kopie C:/Users/<konto>/AppData/Local/Temp/claude/C--Users-<konto>-OneDrive-Documents-Cursor1-mt5-trading-ai/d519626c-32fb-4c44-8526-edc9791110ae/scratchpad/t6/mut/kopie-eich
+vorher: 80 Quelldateien, 0 .pyc unter mt5_trading_ai/ und tools/; git status --porcelain: 9 Zeilen
+--- Ausgabe des Tors (exit=0, 108 s) ---
+==============================================================================
+MUTATIONSTOR -- faerbt eine Aenderung am Geldpfad den Lauf rot?
+==============================================================================
+Sonden: 1 (Katalog 1, erzeugt 0)   Schwellen: Katalog 1.0, gesamt 0.9 bei >= 50 Sonden
+Kopie: C:\Users\<konto>\AppData\Local\Temp\claude\C--Users-<konto>-OneDrive-Documents-Cursor1-mt5-trading-ai\d519626c-32fb-4c44-8526-edc9791110ae\scratchpad\t6\mut\kopie-eich\kopie-0 (552 Dateien, 1 Kopie(n), 17.2 s)
+
+    1/1  stop-kostenboden                         getoetet    26.2 s  [2 Testdateien (Katalog)]  tests/test_stop_budget.py::test_cost_floor_follows_the_breakeven_formula
+Kopien unter C:\Users\<konto>\AppData\Local\Temp\claude\C--Users-<konto>-OneDrive-Documents-Cursor1-mt5-trading-ai\d519626c-32fb-4c44-8526-edc9791110ae\scratchpad\t6\mut\kopie-eich entfernt.
+
+Katalog:  1/1 getoetet, Toetungsrate: 1.000 (Schwelle 1.0)
+Gesamt:   1/1 getoetet, Toetungsrate: 1.000 (Schwelle 0.9 bei >= 50 Sonden)
+Laufzeit: 106 s (Sonden 26 s)
+ok — jede Schwelle gehalten.
+--- Messung nachher ---
+git status identisch: ja
+Quelldateien geschrieben (Massstab A10): 0
+.pyc neu oder geschrieben: 0
+URTEIL: GRUEN -- Arbeitsbaum unveraendert, kein neuer Bytecode.

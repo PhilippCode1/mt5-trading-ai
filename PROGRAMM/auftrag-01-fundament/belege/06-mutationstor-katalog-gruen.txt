@@ -1,0 +1,45 @@
+# Beleg 06 (T6, Familie Mutationstor und Zweigdeckung): der handverlesene Katalog in der Kopie -- 13/13, Rate 1,000.
+# Worktree wf_f2d56c67-47d-2 (HEAD 1c272fe + Aenderungen dieser Familie, Endstand des Werkzeugs), Windows 11,
+# Python 3.11.7, pytest 8.3.4, 2026-09-04. Kontoname im Pfad redigiert.
+#
+# Frage der Pruefung: treffen die 13 Anker nach D2 (Positionsticket im Auftragstyp) und D3 (Betraege mit Waehrung;
+# venue/mt5.py, risk/sizing.py, execution/risk_manager.py geaendert) noch, und wird jede Sonde getoetet?
+# Antwort: 13/13 getoetet, jede durch einen benannten Test (Spalte rechts: erster fallender Fall, z. B. reduce-only-sperre
+# durch test_stufe4_risikokern.py::test_abbau_einer_position_unter_dem_mindestvolumen_geht_durch). Kein Anker musste
+# nachgezogen werden (tests/test_stufe8_testwirkung.py::test_jede_sonde_findet_ihren_anker_im_heutigen_code prueft
+# das statisch fuer alle 69 Sonden).
+# Grundlauf je Ausschnitt in der Kopie gruen (kein "Grundlauf rot"); Katalogsonden nennen ihre Tests selbst.
+# LAUFZEIT 726 s unter Last (parallel: voller Lauf mit 3 Kopien, Zweigdeckung, slow-Tests, weitere Agenten; CPU 57-100 %,
+# 28-37 python.exe-Prozesse). Derselbe Lauf mit der Fassung vor dem Grundlauf-Umbau, allein auf dem Rechner: 189 s
+# (Sonden 93 s), ebenfalls 13/13 -- die Zaehlung ist gleich, die Zeit nicht.
+$ python -B tools/mutationstor.py --katalog --kopie <scratch>/kopie-katalog2
+
+$ python -B tools/mutationstor.py --katalog --kopie C:/Users/<konto>/AppData/Local/Temp/claude/C--Users-<konto>-OneDrive-Documents-Cursor1-mt5-trading-ai/d519626c-32fb-4c44-8526-edc9791110ae/scratchpad/t6/mut/kopie-katalog2
+# Start 2026-09-04T01:27:41+00:00; Last vorher: CPU-Auslastung 57 % (Win32_Processor.LoadPercentage), python.exe-Prozesse 28
+==============================================================================
+MUTATIONSTOR -- faerbt eine Aenderung am Geldpfad den Lauf rot?
+==============================================================================
+Sonden: 13 (Katalog 13, erzeugt 0)   Schwellen: Katalog 1.0, gesamt 0.9 bei >= 50 Sonden
+Kopie: C:\Users\<konto>\AppData\Local\Temp\claude\C--Users-<konto>-OneDrive-Documents-Cursor1-mt5-trading-ai\d519626c-32fb-4c44-8526-edc9791110ae\scratchpad\t6\mut\kopie-katalog2\kopie-0 (552 Dateien, 1 Kopie(n), 45.3 s)
+
+    1/13  reduce-only-sperre                       getoetet    17.5 s  [1 Testdateien (Katalog)]  tests/test_stufe4_risikokern.py::test_abbau_einer_position_unter_dem_mindestvolumen_geht_durch
+    2/13  kontopruefung                            getoetet    20.3 s  [1 Testdateien (Katalog)]  tests/test_stufe4_risikokern.py::test_fehlender_kontoschnappschuss_wird_mit_grund_abgelehnt
+    3/13  schwebender-auftrag                      getoetet    27.9 s  [1 Testdateien (Katalog)]  tests/test_stufe5_ausfuehrung.py::test_datenbankzustand_sperrt_wenn_die_akte_unlesbar_ist
+    4/13  schwebeakte-fluechtig                    getoetet    81.0 s  [1 Testdateien (Katalog)]  tests/test_stufe5_ausfuehrung.py::test_datenbankzustand_ueberdauert_den_neustart
+    5/13  aufloesung-ohne-befund                   getoetet    22.6 s  [1 Testdateien (Katalog)]  tests/test_stufe5_ausfuehrung.py::test_aufloesung_ohne_befund_wird_abgewiesen
+    6/13  erkundung-positivliste                   getoetet     8.8 s  [1 Testdateien (Katalog)]  tests/test_stufe7_kaltstart.py::test_keine_sicherheitssperre_wird_je_erkundet[global_halt]
+    7/13  erkundung-echtgeld                       getoetet    15.2 s  [1 Testdateien (Katalog)]  tests/test_stufe7_kaltstart.py::test_auf_einem_echtgeldkonto_wird_nie_erkundet
+    8/13  gewichtung                               getoetet    48.1 s  [1 Testdateien (Katalog)]  tests/test_stufe7_kaltstart.py::test_eine_erkundete_zeile_wiegt_invers_zu_ihrer_wahrscheinlichkeit
+    9/13  kostenpraemisse                          getoetet    30.4 s  [1 Testdateien (Katalog)]  tests/test_stop_budget_kostenbasis.py::test_uebergebene_messung_hebt_die_untergrenze_am_orderpfad
+   10/13  stop-kostenboden                         getoetet     6.5 s  [2 Testdateien (Katalog)]  tests/test_stop_budget.py::test_cost_floor_follows_the_breakeven_formula
+   11/13  margen-obergrenze                        getoetet    15.1 s  [1 Testdateien (Katalog)]  tests/test_stop_budget.py::test_margin_ceiling_halves_when_leverage_doubles
+   12/13  geschlossene-kerze                       getoetet     9.6 s  [1 Testdateien (Katalog)]  tests/test_zeitschranken.py::test_die_laufende_kerze_faellt_heraus_die_fertige_nicht
+   13/13  journal-zeitstempel                      getoetet    24.4 s  [1 Testdateien (Katalog)]  tests/test_live_betrieb_sperren.py::test_die_hoechsthaltedauer_greift_genau_auf_der_grenze
+Kopien unter C:\Users\<konto>\AppData\Local\Temp\claude\C--Users-<konto>-OneDrive-Documents-Cursor1-mt5-trading-ai\d519626c-32fb-4c44-8526-edc9791110ae\scratchpad\t6\mut\kopie-katalog2 entfernt.
+
+Katalog:  13/13 getoetet, Toetungsrate: 1.000 (Schwelle 1.0)
+Gesamt:   13/13 getoetet, Toetungsrate: 1.000 (Schwelle 0.9 bei >= 50 Sonden)
+Laufzeit: 725 s (Sonden 327 s)
+ok — jede Schwelle gehalten.
+[exit=0]
+# Ende 2026-09-04T01:40:01+00:00; Laufzeit 726 s; Last nachher: CPU-Auslastung 100 % (Win32_Processor.LoadPercentage), python.exe-Prozesse 37
