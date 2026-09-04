@@ -218,6 +218,11 @@ def kopie_entfernen(pfad: Path) -> None:
         shutil.rmtree(pfad, onerror=_schreibbar_und_nochmal)
 
 
+#: Versuche fuer jeden Git-Befehl in der Kopie (F-008: unter Last hielt ein
+#: Virenscanner Dateien laenger fest, als drei Versuche abdeckten).
+VERSUCHE_WEGWERF_GIT = 6
+
+
 def _wegwerf_git(ziel: Path) -> None:
     """Ein eigenes Git in der Kopie -- ohne Hooks, ohne Remote, ohne Signatur."""
     basis = [
@@ -247,10 +252,13 @@ def _wegwerf_git(ziel: Path) -> None:
             "Kopie fuer Zweigdeckung und Mutationstor",
         ],
     ):
-        # Drei Versuche: unter Windows haelt ein Virenscanner frisch kopierte
-        # Dateien kurz fest, und ``git add`` endet dann mit exit 128 (gemessen beim
-        # ersten Lauf zweier Kopien zugleich).
-        for versuch in range(3):
+        # Sechs Versuche mit wachsender Wartezeit: unter Windows haelt ein
+        # Virenscanner frisch kopierte Dateien kurz fest, und ``git add`` endet dann
+        # mit exit 128 (gemessen beim ersten Lauf zweier Kopien zugleich). Unter der
+        # Last des Pre-Push-Laufs reichten drei Versuche nicht: der Push fiel zweimal
+        # an genau dieser Stelle (F-008), einmal zusaetzlich wegen fehlenden Platzes.
+        # Der Fehler bleibt hart -- nur die Zahl der Versuche steigt.
+        for versuch in range(VERSUCHE_WEGWERF_GIT):
             lauf = subprocess.run(
                 [*basis, *befehl],
                 cwd=ziel,
@@ -262,12 +270,13 @@ def _wegwerf_git(ziel: Path) -> None:
             )
             if lauf.returncode == 0:
                 break
-            if versuch == 2:
+            if versuch == VERSUCHE_WEGWERF_GIT - 1:
                 raise KopieFehler(
                     f"Wegwerf-Git in {ziel}: git {' '.join(befehl)} endete mit "
-                    f"exit={lauf.returncode}: {(lauf.stderr or '').strip()[-500:]}"
+                    f"exit={lauf.returncode} nach {VERSUCHE_WEGWERF_GIT} Versuchen: "
+                    f"{(lauf.stderr or '').strip()[-500:]}"
                 )
-            time.sleep(1.0)
+            time.sleep(0.5 * 2**versuch)
 
 
 def _ausgabe(lauf: subprocess.CompletedProcess[str]) -> str:

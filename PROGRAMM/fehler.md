@@ -133,6 +133,14 @@ Platz pruefen; unter 5 GB zuerst aufraeumen. (2) Nach jeder Runde Subagenten die
 sobald ihre Patches eingespielt sind — sie kosten je rund 25 MB. (3) Eine Fehlermeldung ueber Rechte an
 `.git/objects` ist zuerst ein Platzverdacht, kein Rechteverdacht.
 
+**Zweiter Anlauf, zweite Ursache.** Mit 3,8 GB frei fiel der Push erneut an derselben Stelle:
+`tests/eichfall_mutationstor.py` -- `git add` in der Wegwerf-Kopie, exit 128, `failed to insert into
+database`. Diesmal war es nicht der Platz: dieselbe Kopie ohne Last gelingt in 1,8 s (613 Dateien, 15 MB,
+`git add ok`). `tools/zweigdeckung.py::_wegwerf_git` kannte den Fall bereits und versuchte es dreimal mit
+je einer Sekunde -- unter der Last des Pre-Push-Laufs (Suite, Mutantenlaeufe, Virenscanner) zu wenig.
+Jetzt sechs Versuche mit wachsender Wartezeit (0,5 bis 16 s, in Summe unter 32 s); der Fehler bleibt hart,
+nur die Zahl der Versuche steigt. Danach: `tests/eichfall_mutationstor.py` 3 gruen in 232 s.
+
 **Nicht meine Sache, aber zu sagen:** die Platte ist zu 99,4 % belegt; die restlichen 470 GB sind fremde
 Daten. Wer hier weiterarbeitet, braucht Platz — das steht in `PROGRAMM/haltepunkte.md` als Hinweis, nicht
 als Handlung von mir.
