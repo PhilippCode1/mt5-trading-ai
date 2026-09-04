@@ -307,3 +307,5 @@ def test_die_auswertung_laeuft_gegen_die_eingecheckte_aufzeichnung() -> None:
     assert lauf.returncode == 0, lauf.stderr or lauf.stdout
     assert "abgelehnt" in lauf.stdout
     assert "Ablehnungsgruende" in lauf.stdout
+    # Gegenlese T5 (B16): der Abnahmesatz der Stufe 7 wird wieder am Werkzeug gemessen.
+    assert "Anteil erkundender Beobachtungen" in lauf.stdout

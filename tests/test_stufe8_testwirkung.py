@@ -16,7 +16,8 @@ WAS DIE MESSUNG GEFUNDEN HAT
 ----------------------------
 * **Kein Mutationstor.** Die Proben der Stufen 4 bis 7 liefen von Hand, je einmal. Eine
   Probe, die nur laeuft, wenn ich daran denke, ist keine Sperre.
-* **``gates/learning_phase.py`` war von keinem Einstiegspunkt aus erreichbar** -- 20 von
+* **``gates/learning_phase.py`` (geloescht, E-009) war von keinem Einstiegspunkt aus
+  erreichbar** -- 20 von
   21 Dateien des Sicherheitsverzeichnisses waren es, diese eine nicht.
 * **Keine Zweigdeckung konfiguriert**, keine Schwelle. Gemessen lag das Paket bei 86,9 %
   Zweigdeckung, die schwaechste Datei bei 67,9 % -- ausgerechnet die aus Stufe 5.
@@ -174,8 +175,9 @@ def test_jede_datei_des_sicherheitsverzeichnisses_ist_vom_einstiegspunkt_erreich
 
     Vor dieser Stufe war ``gates/learning_phase.py`` von keinem Einstiegspunkt aus
     erreichbar: ein Modul mit vier ausformulierten Grenzen, gruenen Eigentests und
-    **null** Aufrufern im Ausfuehrungspfad. Es ist jetzt in ``tools/modelllauf.py``
-    verdrahtet; dieser Fall haelt fest, dass keine weitere Datei still verwaist.
+    **null** Aufrufern im Ausfuehrungspfad. Es wurde damals in ``tools/modelllauf.py``
+    verdrahtet; beide sind seit b0a4c5b geloescht (E-009). Dieser Fall haelt fest,
+    dass keine Datei still verwaist.
     """
     erreicht = _erreichbar()
     dateien = [

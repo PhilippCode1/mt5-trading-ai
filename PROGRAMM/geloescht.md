@@ -22,10 +22,16 @@ Prüfsumme) oder „gelöscht, im Git-Verlauf bei Commit …".
 - `tools/oberflaeche.py` (1075 Zeilen): Web-Oberflaeche; Auftrag 1 schliesst Oberflaechen aus; Sammler-Thread starb ohne Terminal still (Bewertung F1). Im Verlauf bei 06bb392.
 - `tests/test_llm_compare.py` (100 Zeilen): Tests des geloeschten Moduls (6 Faelle). Im Verlauf bei 06bb392.
 - `tests/test_learning_phase.py` (132 Zeilen): Tests des geloeschten Moduls (9 Faelle). Im Verlauf bei 06bb392.
-- `tests/test_stufe6_modellpfad.py` (409 Zeilen): Tests von modelllauf/herausforderer/learning_phase (26 Faelle). Im Verlauf bei 06bb392.
+- `tests/test_stufe6_modellpfad.py` (409 Zeilen): Tests von modelllauf/herausforderer (26 Faelle; learning_phase wurde dort nicht importiert -- Gegenlese T5, B15). Im Verlauf bei 06bb392.
 - `tests/test_oberflaeche_kacheln.py` (908 Zeilen): Tests der Oberflaeche (37 Faelle). Im Verlauf bei 06bb392.
 - `tests/test_oberflaeche_seite.py` (291 Zeilen): Tests der Oberflaeche (27 Faelle). Im Verlauf bei 06bb392.
 - `tests/test_stufe7_kaltstart.py::test_der_trainingslauf_weist_den_anteil_erkundender_beobachtungen_aus`: fuhr das geloeschte Werkzeug als Unterprozess.
 - `tools/mutationstor.py`: die drei Sonden auf `gates/herausforderer.py` (Katalog 16 -> 13).
 - `tools/zweigdeckung.py`: `gates/herausforderer.py` aus der Geldpfad-Liste (12 -> 11 Dateien).
-- 9 Nennungen der Oberflaeche/des LLM-Tests in Docstrings als geloescht gekennzeichnet (nicht entfernt: sie erklaeren Entscheidungen im Code).
+- 13 Nennungen geloeschter Module in Docstrings als geloescht gekennzeichnet (nicht entfernt: sie erklaeren Entscheidungen im Code). 9 davon in T5; 4 erst nach der Gegenlese T5 (B7/B13): `gates/erkundung.py:56`, `tests/test_stufe8_testwirkung.py:19`, `:175`, `:177`.
+- `docs/overview.html` (Oberflaechenseite) wurde nicht geloescht, sondern mit dem Ordner `docs/` archiviert: `archiv/docs/overview.html`, Manifestzeile in `archiv/MANIFEST.sha256` (E-009 nannte sie als Loeschkandidat; Gegenlese T5, B15).
+- `tests/test_llm_compare.py::test_decision_path_is_llm_free` prüfte das ganze Paket gegen 16 Bibliotheksmuster; der Zwilling `tests/test_stufe10_betrieb.py::test_kein_modul_des_pakets_zieht_eine_sprachmodell_bibliothek` kannte 11. Die 4 nicht per Teilstring gedeckten Muster (litellm, groq, torch, tensorflow) sind dort nachgetragen (Gegenlese T5, B12).
+
+## 2026-09-03 — `tests/test_auftrag_doku_tore.py` ersetzt (Commit 102f68d; Eintrag nachgetragen 2026-09-04, Gegenlese T5, B8)
+
+- `tests/test_auftrag_doku_tore.py` (213 Zeilen, 13 Faelle): prüfte die Doku-Tore mit einer Ausnahmeliste für `AUFTRAG/`. Ersetzt durch `tests/test_doku_menge.py` (Mengenregel A14 ohne Ausnahmeliste; git erkennt 12 % Ähnlichkeit, R012). Im Verlauf bei 102f68d.

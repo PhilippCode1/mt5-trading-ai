@@ -81,7 +81,30 @@ Korrektur an mir selbst (Regel 9): meine erste Erwartung für die USDJPY-Marge w
 
 ## 6 · Gegenlese (T10)
 
-(folgt)
+### 6a · Gegenlese von T5 (2026-09-03/04)
+
+Drei Prüf-Subagenten mit frischem Kontext (Linsen Archiv, Löschungen, Doku-Tore/README) gegen den Stand 5f9a98c; jeder Einwand von einem zweiten, unabhängigen Subagenten adversarial nachgestellt („widerlege ihn“). Ergebnis: 16 Einwände, 13 bestätigt, 3 widerlegt (Workflow wf_18427a0d, 19 Agenten). Jeder bestätigte Einwand ist behoben; Beleg ist der jeweils genannte Test oder die genannte Datei im Commit „Gegenlese T5“ (Hash in `zustand.md`).
+
+| # | Einwand (Schwere) | Nachstellung durch den Skeptiker | Antwort | Beleg |
+|---|---|---|---|---|
+| B1 | Mengenregel hatte bei 5f9a98c eine dritte Klasse (.md unter tests/, tools/ …): weder lebend noch gesichert (S2) | bestätigt am Stand 5f9a98c; der Nachfolger 97ee206 schließt die Lücke (`unbeaufsichtigt()`) | Für die T5-Abnahme zählt der Stand nach 97ee206; die Lücke bestand einen Commit lang und ist als eigener Befund geführt | `tests/test_doku_menge.py::test_eine_markdown_unter_tests_ist_rot`, `belege/05-mengenregel-luecke.py` |
+| B2 | `git ls-files '*.md'` übersieht NOTES.MD / STAND.markdown (S3) | bestätigt in einem Scratch-Repo (git 2.49): Pathspec ist schreibungsempfindlich | `verfolgte_markdown()` listet ohne Muster und filtert in Python (`.md`, `.markdown`, Kleinschreibung) | `tests/test_doku_menge.py::test_rot_eine_gross_geschriebene_md_an_der_wurzel_wird_gesehen` (echtes Git-Repo in tmp_path) |
+| B3 | Phrasen-Tor akzeptiert Belege ins Leere und „NICHT WIDERRUFEN“ (S3) | bestätigt: `check_file()` = [] für vier Fälle ohne existierenden Beleg | Ein Beleg zählt nur, wenn Datei bzw. Testfunktion existiert (`_beleg_existiert`); „NICHT WIDERRUFEN“ ist kein Widerruf | `tests/test_doku_menge.py::test_rot_ein_beleg_ins_leere_zaehlt_nicht`, `::test_gruen_ein_existierender_beleg_deckt_die_behauptung` |
+| B4 | E-012 widerspricht dem Code (Zählbasis) (S3) | bestätigt: E-012 sagt „zählt nicht“, `counted()` zählt seit 102f68d | E-018 ersetzt den Zählsatz von E-012 ausdrücklich; E-012 bleibt stehen (Registerregel) | `PROGRAMM/entscheidungen.md` E-018 |
+| B5 | Obergrenze 32 lässt nach neun Aufträgen 3 Plätze; Vorregistrierungen weder archivier- noch löschbar (S3) | bestätigt (Rechnung 11 + 2·9 = 29) | Vorregistrierungen sind nach dem Schreiben unveränderlich, also „gesichert“, nicht „lebend“: Manifest statt Zählung; 12/32 belegt, 2 je weiterem Auftrag | E-018; `PROGRAMM/vorregistrierung/MANIFEST.sha256`; `tests/test_doku_menge.py::test_vorregistrierungen_sind_gesichert_und_zaehlen_nicht`; `python tools/check_docs_claims.py` → 12/32 |
+| B6 | `test_readme_numbers.py`: Docstring nennt archivierte Dateien, Zählungen nachgebaut statt aufgerufen (S3) | bestätigt | Docstring auf die Wurzelmenge; `BEWACHTE_DOKUMENTE = doku_menge.PFLICHT_WURZEL`; die drei Zählungen rufen `check_doc_numbers` auf | `tests/test_readme_numbers.py` |
+| B7 | Docstrings im Präsens auf gelöschte Module ohne Vermerk (S3) | bestätigt: 4 Stellen ohne Vermerk (erkundung.py:56, test_stufe8:19/175/177) | Vermerk „(geloescht, E-009)“ bzw. Vergangenheit; `geloescht.md` nennt 13 statt 9 Nennungen | `mt5_trading_ai/gates/erkundung.py`, `tests/test_stufe8_testwirkung.py`, `PROGRAMM/geloescht.md` |
+| B8 | `tests/test_auftrag_doku_tore.py` gelöscht ohne Eintrag in `geloescht.md` (S3) | bestätigt (Commit-Text nannte es, Register nicht) | Eintrag nachgetragen (213 Zeilen, 102f68d, ersetzt durch `test_doku_menge.py`) | `PROGRAMM/geloescht.md` |
+| B9 | Mengenregel-Lücke (wie B1) (S3) | **widerlegt**: bereits in 97ee206 geschlossen, roter Eichfall vorhanden | keine Änderung | `tests/test_doku_menge.py::test_eine_markdown_unter_tests_ist_rot` |
+| B10 | E-011 nennt `ruff format --check` als CI-Tor, `ci.yml` hat ihn nicht (S3) | **widerlegt**: E-011 sagt „wird CI-Tor“, Plan weist ihn T7 zu | keine Änderung in T5; kommt mit T7 (A1) | `plan.md` T7; `PROGRAMM/entscheidungen.md` E-011 |
+| B11 | README: „jedes Werkzeug antwortet auf `--help`“ — 2 von 31 taten es nicht (S2) | bestätigt: `betrieb_auswerten.py` (kein argparse) und `edge_test.py` (nacktes %) Exit 1; dazu drei Werkzeuge ohne usage | `edge_test.py` und `betrieb_auswerten.py` durch die T6-Familien Werkzeuge/Aufzeichnung; `check_docs_claims.py`, `check_doc_numbers.py` mit argparse; `geheimnis_scan.py` in der Familie Geheimnis-Scan; der Satz bleibt und wird gemessen | `tests/eichfall_werkzeuge.py::test_help_antwortet_mit_exit_0_und_usage` (alle Werkzeuge mit `main()`) |
+| B12 | LLM-Sperre beim Verlegen verengt: 16 Muster → 11 (S2) | bestätigt mit Korrektur: 4 Muster ungedeckt (litellm, groq, torch, tensorflow); Wirkung heute 0 Treffer | Vereinigungsmenge nachgetragen (15 Muster); `geloescht.md` vermerkt das Verlegen | `tests/test_stufe10_betrieb.py::test_kein_modul_des_pakets_zieht_eine_sprachmodell_bibliothek` |
+| B13 | Nachziehen der Verweise unvollständig: 4 von 13 Nennungen (S2) | bestätigt (wie B7; Ursache: `05-loeschen.py` suchte nur zwei Namen) | wie B7 | wie B7 |
+| B14 | README: `backtest/` „unverändert bis Auftrag 3“, T5 löschte dort `llm_compare.py` und zog Verweise nach (S3) | bestätigt (Ordner-Lesart) | Klammer sagt jetzt „Logik unverändert; in T5 nur Verweise nachgezogen und `llm_compare.py` gelöscht“ | `README.md` |
+| B15 | E-009 nennt `docs/overview.html` als Löschkandidat; tatsächlich archiviert, ohne Vermerk; `geloescht.md` Z. 25 nennt learning_phase falsch (S3) | bestätigt | Vermerk „archiviert statt gelöscht“ und Korrektur der Zeile | `PROGRAMM/geloescht.md` |
+| B16 | Mit dem gelöschten Kaltstart-Test fiel die einzige Werkzeugprüfung des Satzes „weist den Anteil erkundender Beobachtungen aus“ (S3) | **widerlegt**: der Satz gehört zum Altstand-Abnahmesatz, nicht zum eingefrorenen Katalog; die Funktion ist getestet | trotzdem billig nachgezogen: `test_die_auswertung_laeuft_gegen_die_eingecheckte_aufzeichnung` prüft die Werkzeugzeile mit | `tests/test_stufe7_kaltstart.py` |
+
+Was die Gegenlese nicht fand: keinen Einwand gegen das Archiv selbst (alle 160 Manifesteinträge gegen die Blobs von d45d3a0 geprüft, 0 Abweichungen; kein Leser von `archiv/` außer `tools/archiv_manifest.py`).
 
 ## 7 · Eigene Fehler
 

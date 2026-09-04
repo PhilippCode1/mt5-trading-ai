@@ -53,7 +53,7 @@ wird -- ohne das Feld gibt es nichts zu gewichten.
 **Die Grenze, ausdruecklich:** Die Gewichtung heilt die Auswahl, nicht die
 Beobachtungszahl. Zwanzig erkundete Zeilen bei ``p = 0,05`` stehen fuer vierhundert
 Gelegenheiten -- sie sind aber weiterhin zwanzig Beobachtungen, und
-``gates/herausforderer.py`` zaehlt sie auch so.
+``gates/herausforderer.py`` (geloescht, E-009) zaehlte sie auch so.
 """
 
 from __future__ import annotations

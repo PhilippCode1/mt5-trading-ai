@@ -39,11 +39,16 @@ PRUEFSUMMEN_GESICHERT: tuple[str, ...] = (
     "archiv",
     "PROGRAMM/eingang",
     "PROGRAMM/masterprompts",
+    "PROGRAMM/vorregistrierung",
 )
 
 
 def ist_lebend(rel: str) -> bool:
     """Ob ein repo-relativer Markdown-Pfad zur eigenen, lebenden Doku gehoert."""
+    # Gesicherte Ordner (Manifest) sind nie lebend -- auch nicht unter PROGRAMM/
+    # (E-018: Vorregistrierungen sind nach dem Schreiben unveraenderlich).
+    if ist_gesichert(rel):
+        return False
     teile = rel.replace("\\", "/").split("/")
     if len(teile) == 1:
         return True
@@ -58,14 +63,20 @@ def ist_wurzel(rel: str) -> bool:
 
 def verfolgte_markdown(repo: Path = REPO) -> list[str]:
     out = subprocess.run(
-        ["git", "ls-files", "*.md"],
+        ["git", "ls-files"],
         cwd=repo,
         capture_output=True,
         text=True,
         check=True,
         encoding="utf-8",
     ).stdout
-    return [z.strip() for z in out.splitlines() if z.strip()]
+    # Kein Pathspec: `git ls-files '*.md'` ist schreibungsempfindlich und uebersieht
+    # NOTES.MD oder STAND.markdown (Gegenlese T5, Einwand B2). Gefiltert wird hier.
+    return [
+        z.strip()
+        for z in out.splitlines()
+        if z.strip().lower().endswith((".md", ".markdown"))
+    ]
 
 
 def lebende_dokumente(repo: Path = REPO) -> list[Path]:

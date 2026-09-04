@@ -473,6 +473,12 @@ def test_kein_modul_des_pakets_zieht_eine_sprachmodell_bibliothek() -> None:
         "huggingface",
         "ollama",
         "mistralai",
+        # Vereinigungsmenge mit der geloeschten Liste aus tests/test_llm_compare.py
+        # (E-009): eine Sperre wird beim Verlegen nicht schmaler (Gegenlese T5, B12).
+        "litellm",
+        "groq",
+        "torch",
+        "tensorflow",
     )
     treffer: list[str] = []
     pkg = ROOT / "mt5_trading_ai"

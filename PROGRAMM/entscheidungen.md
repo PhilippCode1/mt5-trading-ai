@@ -270,3 +270,33 @@ nur in `sizing.py` — der Margendeckel im Runner und der Preflight rechnen dies
 **Eigener Fehler dabei.** Die Marge für 0,01 Lot USDJPY erwartete ich mit 33,33 USD (Kontohebel 30); die
 Hebelklammer der Klasse ist 5, richtig sind 200 USD. Der Eichfall pinnt jetzt Hebel und Rechnung, nicht
 nur die Zahl. Die Bewertung nannte ebenfalls 33 USD.
+
+## E-018 — Zählbasis der Obergrenze: Wurzel + eigene PROGRAMM/-Dateien; Vorregistrierungen sind gesichert, nicht lebend (2026-09-04; ersetzt den Zählsatz von E-012)
+
+**Anlass.** Gegenlese T5 (Einwände B4, B5): E-012 sagte, `check_docs_claims.py` zähle die eigenen
+`PROGRAMM/`-Dateien nicht gegen die Obergrenze; der T5-Code (`counted()` = alle lebenden) zählt sie
+seit 102f68d. Der Code ist richtig, der Registereintrag war es nicht mehr. Dazu die Rechnung des
+Prüfers: 3 Wurzel + 8 feste PROGRAMM-Dateien + 2 je Auftrag × 9 = 29 von 32 — und jede
+Vorregistrierung wäre eine weitere lebende Datei, die der Hook weder archivieren noch löschen lässt.
+
+**Kriterium.** Die Mengenregel (A14) unterscheidet lebend (wird bearbeitet, wird gezählt und
+geprüft) von gesichert (wird nie mehr geändert, Manifest statt Scan). Vorregistrierungen sind per
+Wächter nach dem Schreiben unveränderlich — sie gehören nach diesem Kriterium zur zweiten Klasse,
+nicht zur ersten. Die Obergrenze 32 bleibt (Katalog eingefroren).
+
+**Entscheidung.** Zählbasis = Wurzel (genau README.md, MODULES.md, CLAUDE.md) + eigene Dateien unter
+`PROGRAMM/` ohne `eingang/`, `masterprompts/` und `vorregistrierung/`. `PROGRAMM/vorregistrierung/`
+wird per Manifest (`PROGRAMM/vorregistrierung/MANIFEST.sha256`, `tools/archiv_manifest.py`) gesichert;
+das Manifest wird nur beim Anlegen einer neuen Vorregistrierung erneuert (`--schreiben --erneuern`),
+und der Wächter lässt bestehende Einträge unverändert. Nachträge zu Aufträgen stehen in
+`entscheidungen.md`, `fehler.md`, `geloescht.md` (anhängend), nicht in neuen Dateien. Damit sind
+12 von 32 belegt (Stand 2026-09-04) und 2 je weiterem Auftrag; die Vorregistrierungen zählen nicht.
+
+**Verworfen.** (a) Obergrenze anheben — verboten (Regel 6). (b) Vorregistrierungen in eine
+einzige anhängende Datei — der Wächter schützt Dateien, nicht Absätze; ein Nachtrag wäre nicht von
+einer Änderung zu unterscheiden. (c) E-012 umschreiben — Register bleiben stehen; dieser Eintrag
+ersetzt den Zählsatz von E-012 ausdrücklich.
+
+**Messung.** `python tools/check_docs_claims.py` vor dieser Änderung: 13/32; danach: 12/32
+(`PROGRAMM/vorregistrierung/00-HINWEIS.md` ist gesichert statt lebend); `python
+tools/archiv_manifest.py --pruefen` nennt vier Ordner. Tests: `tests/test_doku_menge.py`.

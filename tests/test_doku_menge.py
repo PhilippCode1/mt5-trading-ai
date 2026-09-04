@@ -8,6 +8,7 @@ Eingaenge und das Archiv nicht gescannt, sondern per Manifest gesichert sind.
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -128,3 +129,87 @@ def test_eine_markdown_unter_tests_ist_rot(monkeypatch: pytest.MonkeyPatch) -> N
         lambda repo=None: ["README.md", "tests/NOTIZEN.md", "archiv/x.md"],
     )
     assert doku_menge.unbeaufsichtigt() == ["tests/NOTIZEN.md"]
+
+
+# --- Gegenlese T5 (2026-09-04): Einwaende B2, B3, B4/B5 als Eichfaelle ------------------
+
+
+def _git(repo: Path, *args: str) -> None:
+    subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True)
+
+
+def test_rot_eine_gross_geschriebene_md_an_der_wurzel_wird_gesehen(
+    tmp_path: Path,
+) -> None:
+    """ROTER EICHFALL (B2): `git ls-files '*.md'` sah NOTES.MD nicht; die Menge sah sie nicht."""
+    _git(tmp_path, "init", "-q")
+    _git(tmp_path, "config", "user.email", "t@t")
+    _git(tmp_path, "config", "user.name", "t")
+    for name in (*doku_menge.PFLICHT_WURZEL, "NOTES.MD", "STAND.markdown"):
+        (tmp_path / name).write_text("# x\n", encoding="utf-8")
+    _git(tmp_path, "add", ".")
+    gesehen = doku_menge.verfolgte_markdown(tmp_path)
+    assert "NOTES.MD" in gesehen and "STAND.markdown" in gesehen
+    befunde = doku_menge.wurzel_befunde(tmp_path)
+    assert any("NOTES.MD" in b for b in befunde), befunde
+    assert any("STAND.markdown" in b for b in befunde), befunde
+
+
+def test_rot_ein_beleg_ins_leere_zaehlt_nicht(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """ROTER EICHFALL (B3): Beleg auf nicht existierende Datei/Test/Codespan, NICHT WIDERRUFEN."""
+    monkeypatch.setattr(check_docs_claims, "REPO", tmp_path)
+    (tmp_path / "PROGRAMM").mkdir()
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests" / "test_echt.py").write_text(
+        "def test_echt() -> None:\n    assert True\n", encoding="utf-8"
+    )
+    doc = tmp_path / "PROGRAMM" / "bericht.md"
+    doc.write_text(
+        "Das Fundament ist produktionsreif. Beleg: `gibt_es_nicht`\n"
+        "A1 ist erfuellt und abnahmefertig (Nachweis: tests/test_gibt_es_nicht.py).\n"
+        "production ready\n"
+        "Beleg: tools/nicht_vorhanden.py\n"
+        "Zustand: betriebsbereit (dieser Satz wurde NICHT WIDERRUFEN)\n"
+        "Weiter im Text.\n"
+        "Noch ein Satz ohne Beleg.\n"
+        "Dieser Stand ist produktionsreif.\n"
+        "Beleg: tests/test_echt.py::test_echt\n"
+        "Dieser Stand ist abnahmefertig. Beleg: test_echt\n",
+        encoding="utf-8",
+    )
+    probleme = check_docs_claims.check_file(doc)
+    zeilen = sorted(int(p.split(":")[1]) for p in probleme)
+    assert zeilen == [1, 2, 3, 5], probleme
+
+
+def test_gruen_ein_existierender_beleg_deckt_die_behauptung(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(check_docs_claims, "REPO", tmp_path)
+    (tmp_path / "PROGRAMM").mkdir()
+    (tmp_path / "tools").mkdir()
+    (tmp_path / "tools" / "tor.py").write_text("print(1)\n", encoding="utf-8")
+    doc = tmp_path / "PROGRAMM" / "zustand.md"
+    doc.write_text(
+        "produktionsreif -- WIDERRUFEN am 2026-09-04.\n"
+        "Keine Zusicherung („produktionsreif“, „fertig“) ohne Katalogpunkt.\n"
+        "Das Wort `betriebsbereit` faellt hier nur als Erwaehnung.\n"
+        "Der Stand ist betriebsbereit.\n"
+        "Beleg: `python tools/tor.py --pruefen`\n",
+        encoding="utf-8",
+    )
+    assert check_docs_claims.check_file(doc) == []
+
+
+def test_vorregistrierungen_sind_gesichert_und_zaehlen_nicht() -> None:
+    """E-018: der Ordner ist per Manifest gesichert, seine Dateien sind nicht lebend."""
+    assert "PROGRAMM/vorregistrierung" in doku_menge.PRUEFSUMMEN_GESICHERT
+    assert "PROGRAMM/vorregistrierung" in archiv_manifest.STANDARD
+    assert not doku_menge.ist_lebend("PROGRAMM/vorregistrierung/00-HINWEIS.md")
+    assert doku_menge.ist_gesichert("PROGRAMM/vorregistrierung/00-HINWEIS.md")
+    assert (
+        doku_menge.REPO / "PROGRAMM" / "vorregistrierung" / "MANIFEST.sha256"
+    ).is_file()
+    assert doku_menge.ist_lebend("PROGRAMM/zustand.md")

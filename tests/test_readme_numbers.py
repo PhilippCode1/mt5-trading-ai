@@ -13,15 +13,16 @@ Modul, von der 13 von 18 Werten falsch waren, und kein Test bemerkte es. Der Gru
 nicht Nachlaessigkeit, sondern Struktur -- eine Zahl, die an zwei Stellen von Hand steht,
 geht an einer davon irgendwann falsch.
 
-Dieser Test spannt darum jetzt drei Dateien unter denselben Waechter:
-``README.md``, ``archiv/MASTERBERICHT.md`` und ``archiv/FEHLT.md``. Er ruft dafuer die Regeln von
-``tools/check_doc_numbers.py`` direkt auf, statt sie nachzubauen -- eine zweite Kopie
-derselben Regeln waere genau der Fehler, den beide verhindern sollen.
+Dieser Test spannt darum die lebende Wurzel unter denselben Waechter -- genau die
+Pflichtdateien aus ``tools/doku_menge.py`` (README.md, MODULES.md, CLAUDE.md; das
+Archiv ist per Manifest gesichert, A14). Er ruft dafuer die Regeln und die Zaehlungen
+von ``tools/check_doc_numbers.py`` direkt auf, statt sie nachzubauen -- eine zweite
+Kopie derselben Regeln waere genau der Fehler, den beide verhindern sollen
+(Gegenlese T5, Einwand B6: der Nachbau stand hier bis 2026-09-04).
 """
 
 from __future__ import annotations
 
-import ast
 import importlib.util
 import re
 import sys
@@ -29,16 +30,16 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from tools import doku_menge
 
 ROOT = Path(__file__).resolve().parents[1]
 PKG = ROOT / "mt5_trading_ai"
 TESTS = ROOT / "tests"
 README = ROOT / "README.md"
 
-#: Die Live-Dokumente, die unter dem Waechter stehen. ``archiv/PROGRESS.md`` und ``archiv/docs/audit/``
-#: fehlen hier bewusst: sie sind anhaengende Logbuecher bzw. datierte Snapshots, deren
-#: Zahlen Zeitpunkt-Belege sind (siehe ``tools/check_doc_numbers.py``, A4.2).
-BEWACHTE_DOKUMENTE = ("README.md", "MODULES.md", "CLAUDE.md")
+#: Die lebende Wurzel (tools/doku_menge.py, A14). Archiv und Eingaenge sind per
+#: Manifest gesichert und kein Gegenstand.
+BEWACHTE_DOKUMENTE = doku_menge.PFLICHT_WURZEL
 
 
 def _lade_tor() -> Any:
@@ -64,23 +65,15 @@ def _declared() -> dict[str, int]:
 
 
 def _module_count() -> int:
-    return len([p for p in PKG.rglob("*.py") if p.name != "__init__.py"])
+    return int(_lade_tor().module_count())
 
 
 def _test_function_count() -> int:
-    total = 0
-    for path in TESTS.glob("*.py"):
-        tree = ast.parse(path.read_text(encoding="utf-8"))
-        for node in ast.walk(tree):
-            if isinstance(node, ast.FunctionDef) and node.name.startswith("test_"):
-                total += 1
-    return total
+    return int(_lade_tor().test_function_count())
 
 
 def _source_lines() -> int:
-    return sum(
-        len(p.read_text(encoding="utf-8").splitlines()) for p in PKG.rglob("*.py")
-    )
+    return int(_lade_tor().source_lines())
 
 
 # --- Der README-Block: die eine Quelle der Live-Kennzahlen ----------------

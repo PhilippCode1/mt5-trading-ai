@@ -29,6 +29,7 @@ Exit 1 bei Verstoss.
 
 from __future__ import annotations
 
+import argparse
 import re
 import sys
 from pathlib import Path
@@ -68,14 +69,59 @@ CLAIMS: list[tuple[str, re.Pattern[str]]] = [
 
 # Eine ausdruecklich WIDERRUFENE Zusicherung ist keine Zusicherung mehr: der alte Satz
 # bleibt lesbar (nie ueberschreiben), und er behauptet nichts mehr.
-WITHDRAWN = re.compile(r"WIDERRUFEN\b")
+# "NICHT WIDERRUFEN" ist kein Widerruf (Gegenlese T5, Einwand B3).
+WITHDRAWN = re.compile(r"(?<![Nn][Ii][Cc][Hh][Tt] )WIDERRUFEN\b")
 
 # Ein Beleg ist ausfuehrbar, wenn er auf einen Test, einen CI-Job oder ein Skript zeigt.
 PROOF = re.compile(
-    r"(?i)\b(beleg|nachweis|proof|verifiziert durch|evidence)\b[^\n]*"
-    r"(test_[A-Za-z0-9_]+|tests?/[A-Za-z0-9_./-]+|\.github/workflows/[A-Za-z0-9_.-]+"
+    r"(?i)\b(beleg|nachweis|proof|verifiziert durch|evidence)\b[^\n]*?"
+    r"(?P<ref>test_[A-Za-z0-9_]+(?:\[[^\]]*\])?|tests?/[A-Za-z0-9_./:\[\]-]+"
+    r"|\.github/workflows/[A-Za-z0-9_.-]+"
     r"|tools/[A-Za-z0-9_.-]+\.py|scripts/[A-Za-z0-9_.-]+|`[^`]+`)"
 )
+
+_PFAD_IM_SPAN = re.compile(r"[A-Za-z0-9_./-]+\.(?:py|yml|yaml)(?:::[A-Za-z0-9_]+)?")
+_TESTNAME = re.compile(r"^test_[A-Za-z0-9_]+")
+
+
+def _beleg_existiert(ref: str) -> bool:
+    """Ein Beleg zaehlt nur, wenn er auf etwas zeigt, das es gibt (Gegenlese T5, B3):
+    eine Datei im Repo (optional ``::testname``) oder eine Testfunktion in tests/."""
+    ref = ref.strip("`").strip()
+    if ref.startswith("`"):
+        ref = ref.strip("`")
+    m = _PFAD_IM_SPAN.search(ref)
+    if m:
+        pfad, _, name = m.group(0).partition("::")
+        datei = REPO / pfad
+        if not datei.is_file():
+            return False
+        if not name:
+            return True
+        return f"def {name}(" in datei.read_text(encoding="utf-8", errors="replace")
+    t = _TESTNAME.match(ref)
+    if t:
+        name = t.group(0)
+        tests = REPO / "tests"
+        return any(
+            f"def {name}(" in p.read_text(encoding="utf-8", errors="replace")
+            for p in tests.glob("*.py")
+        )
+    return False
+
+
+_ZITAT = re.compile(r"„[^“]*“|\"[^\"]*\"|`[^`]*`")
+
+
+def _ohne_zitate(line: str) -> str:
+    """Eine Phrase in Anfuehrungszeichen ist Erwaehnung, keine Zusicherung -- CLAUDE.md
+    Abschnitt 0 nennt („produktionsreif“) als verbotenes Wort (Gegenlese T5, B3)."""
+    return _ZITAT.sub("", line)
+
+
+def hat_beleg(text: str) -> bool:
+    """Steht in ``text`` ein Beleg, der existiert?"""
+    return any(_beleg_existiert(m.group("ref")) for m in PROOF.finditer(text))
 
 
 def tracked_markdown() -> list[Path]:
@@ -88,16 +134,17 @@ def check_file(path: Path) -> list[str]:
     lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
     rel = path.relative_to(REPO).as_posix()
     for i, line in enumerate(lines):
-        # Eine Zeile, die SELBST der Beleg ist, stellt keine Behauptung auf.
-        if PROOF.search(line):
+        # Eine Zeile, die SELBST einen existierenden Beleg nennt, stellt keine
+        # Behauptung auf. Ein Beleg ins Leere zaehlt nicht (Gegenlese T5, B3).
+        if hat_beleg(line):
             continue
         if WITHDRAWN.search(line):
             continue
         for label, rx in CLAIMS:
-            if not rx.search(line):
+            if not rx.search(_ohne_zitate(line)):
                 continue
             following = "\n".join(lines[i + 1 : i + 3])
-            if PROOF.search(following) or WITHDRAWN.search(following):
+            if hat_beleg(following) or WITHDRAWN.search(following):
                 continue
             problems.append(
                 f"{rel}:{i + 1}: {label} ohne ausfuehrbaren Beleg\n"
@@ -112,6 +159,8 @@ def counted(files: list[Path]) -> list[Path]:
 
 
 def main() -> int:
+    # A13: jedes Werkzeug antwortet auf --help mit Exit 0 (Gegenlese T5, B11).
+    argparse.ArgumentParser(description=__doc__.splitlines()[0]).parse_args()
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     files = tracked_markdown()

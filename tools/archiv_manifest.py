@@ -34,7 +34,12 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 MANIFEST = "MANIFEST.sha256"
-STANDARD = ("archiv", "PROGRAMM/eingang", "PROGRAMM/masterprompts")
+STANDARD = (
+    "archiv",
+    "PROGRAMM/eingang",
+    "PROGRAMM/masterprompts",
+    "PROGRAMM/vorregistrierung",  # E-018: nach dem Schreiben unveraenderlich
+)
 
 
 def _hash(p: Path) -> str:

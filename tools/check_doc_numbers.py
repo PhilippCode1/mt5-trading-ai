@@ -52,6 +52,7 @@ Exit 1 bei Verstoss. Laeuft in der CI bei jedem Push und PR.
 
 from __future__ import annotations
 
+import argparse
 import ast
 import re
 import sys
@@ -219,6 +220,8 @@ def check_live_doc(path: Path) -> list[str]:
 
 
 def main() -> int:
+    # A13: jedes Werkzeug antwortet auf --help mit Exit 0 (Gegenlese T5, B11).
+    argparse.ArgumentParser(description=__doc__.splitlines()[0]).parse_args()
     # Windows-Konsole (cp1252) darf an einem Sonderzeichen im Zitat nicht abstuerzen.
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")

@@ -6,7 +6,7 @@ Kein Dienst, kein Server, keine Datenbank, keine Oberfläche. Kein echter Handel
 
 ## Was hier liegt
 
-- `mt5_trading_ai/` — das Paket: Handelsplatz-Adapter mit Fake- und Echt-Terminal (`venue/`), Orderpfad mit Risikoschicht, Risikozustand und Schwebeakte (`execution/`, `risk/`), Kostenmodell (`costs/`), Datenlader und Datenqualität (`data/`), Kriterien, Register, Erkundung (`gates/`), Backtest-Maschine und Sechs-Bedingungen-Tor (`backtest/`, unverändert bis Auftrag 3), Journal-Leser und Dienstgüte (`betrieb/`).
+- `mt5_trading_ai/` — das Paket: Handelsplatz-Adapter mit Fake- und Echt-Terminal (`venue/`), Orderpfad mit Risikoschicht, Risikozustand und Schwebeakte (`execution/`, `risk/`), Kostenmodell (`costs/`), Datenlader und Datenqualität (`data/`), Kriterien, Register, Erkundung (`gates/`), Backtest-Maschine und Sechs-Bedingungen-Tor (`backtest/`, Logik unverändert bis Auftrag 3; in T5 nur Verweise nachgezogen und `llm_compare.py` gelöscht), Journal-Leser und Dienstgüte (`betrieb/`).
 - `tools/` — Kommandozeilenwerkzeuge; jedes antwortet auf `--help`.
 - `tests/` — die Testsuite (`python -m pytest -q`).
 - `config/` — Instrumentenkatalog, Kostentabelle, Hebeldeckel je Anlageklasse, Manifeste der Datenreihen, Live-Schalter.
@@ -37,7 +37,7 @@ Erzeugt von `tools/gen_docs.py`, geprüft von `tools/check_doc_numbers.py` und `
 
 <!-- KENNZAHLEN-ANFANG (erzeugt von tools/gen_docs.py, geprueft von tests/test_readme_numbers.py) -->
 - module_count: 40
-- test_function_count: 1361
+- test_function_count: 1365
 - source_lines: 16827
 <!-- KENNZAHLEN-ENDE -->
 
