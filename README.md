@@ -43,4 +43,4 @@ Erzeugt von `tools/gen_docs.py`, geprüft von `tools/check_doc_numbers.py` und `
 
 ## Zustand außerhalb des Arbeitsbaums
 
-Risikozustand und Schwebeakte gehören in den Zustandsordner des Benutzers (Windows: `%LOCALAPPDATA%\mt5_trading_ai\risiko`), nicht ins Repository. Heute geschieht das nur, wenn `MT5_RISIKO_ZUSTAND`, `MT5_RISIKO_ZUSTAND_ORDNER` oder `MT5_SCHWEBENDE_AUFTRAEGE` gesetzt sind (Befund D8 der Bewertung); der Umbau auf Persistenz per Vorgabe ist Teil von Auftrag 1 (`PROGRAMM/auftrag-01-fundament/plan.md`, T6).
+Risikozustand, Schwebeakte, Positionsbuch, Stoppdatei und Journale liegen im Zustandsordner des Benutzers (Windows: `%LOCALAPPDATA%\mt5_trading_aiisiko`), nie im Repository. `tools/live_betrieb.py --zustandsordner <pfad>` waehlt ihn; ohne Angabe gilt `standard_zustandsordner()`. Ein fluechtiger Zustand ist ein ausdruecklicher Testtyp, den das Betriebswerkzeug abweist. Ansehen und Eingreifen: `tools/zustand.py --zeigen | --halt-freigeben | --schwebeakte-aufloesen`. Die drei Umgebungsvariablen des Altstands sind entfallen (Befund D8, `PROGRAMM/entscheidungen.md`).
