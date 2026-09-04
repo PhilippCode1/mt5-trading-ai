@@ -214,10 +214,20 @@ def repo_kopieren(ziel: Path, wurzel: Path = ROOT) -> int:
 def _schreibbar_und_nochmal(
     funktion: Callable[[str], object], pfad: str, _exc: object
 ) -> None:
-    # Windows: Git legt seine Objekte schreibgeschuetzt an, und ``rmtree`` bricht
-    # daran ab -- also Schreibrecht setzen und den Schritt wiederholen.
-    os.chmod(pfad, stat.S_IWRITE)
-    funktion(pfad)
+    # Zwei Faelle, beide beim Aufraeumen der Kopie und keiner ein Befund:
+    # (a) Windows: Git legt seine Objekte schreibgeschuetzt an, und ``rmtree`` bricht
+    #     daran ab -- also Schreibrecht setzen und den Schritt wiederholen.
+    # (b) Linux (CI-Lauf 33846933734): Git raeumt im Hintergrund auf und legt dabei
+    #     Wegwerfdateien an (``.git/objects/bitmap-ref-tips_*``); zwischen dem
+    #     Auflisten und dem Loeschen sind sie wieder weg. Eine Datei, die schon
+    #     fehlt, ist geloescht -- genau das war das Ziel.
+    if not os.path.lexists(pfad):
+        return
+    try:
+        os.chmod(pfad, stat.S_IWRITE)
+        funktion(pfad)
+    except FileNotFoundError:
+        return
 
 
 def kopie_entfernen(pfad: Path) -> None:

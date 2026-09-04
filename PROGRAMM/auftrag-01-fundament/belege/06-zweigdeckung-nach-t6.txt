@@ -1,0 +1,25 @@
+# Zweigdeckung je Geldpfad-Datei nach dem Einspielen aller T6-Familien (Stand 7eec7d4, 2026-09-04).
+# Schwelle 0,90 (A15); GELDPFAD seit E-020 14 Dateien. Ohne fremde Last gemessen; Kontoname redigiert.
+$ python tools/zweigdeckung.py --messen
+Paket gesamt: Zeilen 92.9 %, Zweige 87.8 %
+venue/mt5.py: 54 fehlende Zweige (Zeile->Ziel)
+    270->271, 276->277, 280->281, 498->499, 642->643, 1178->1192, 1293->1294, 1478->1479
+    1486->1487, 1526->1527, 1574->1575, 1622->Ausgang, 1845->Ausgang, 1862->1863, 1870->1872, 1945->1946
+    1985->1990, 2053->2058, 2084->2085, 2253->2254, 2297->2298, 2424->2426, 2426->2427, 2426->2428
+    2428->2429, 2428->2430, 2587->2588, 2587->2589, 2589->2590, 2589->2591, 2591->2592, 2591->2593
+    2593->2594, 2593->2595, 2598->Ausgang, 2598->2599, 2791->2792, 2796->2797, 2800->2801, 2845->2846
+    2858->2859, 2858->2860, 2862->2863, 2862->2877, 2893->2894, 2912->2913, 2995->2996, 2997->3002
+    3028->3029, 3043->3044, 3101->3107, 3252->3253, 3256->3257, 3267->3268
+    nicht gelaufene Zeilen: 271, 277, 281, 499, 643, 1294, 1479, 1487, 1527, 1575, 1863, 1864, 1946, 1949, 1950, 1996, 1997, 1998, 1999, 2058, 2059, 2062, 2076, 2077, 2078, 2085, 2254, 2298, 2426, 2427, 2428, 2429, 2430, 2579, 2580, 2581, 2582, 2585, 2586, 2587, 2588, 2589, 2590, 2591, 2592, 2593, 2594, 2595, 2598, 2599, 2792, 2797, 2801, 2837, 2840, 2841, 2846, 2854, 2855, 2858, 2859, 2860, 2861, 2862, 2863, 2877, 2894, 2913, 2996, 3002, 3003, 3004, 3029, 3044, 3107, 3253, 3257, 3268
+risk/waehrung.py: 5 fehlende Zweige (Zeile->Ziel)
+    42->43, 46->Ausgang, 66->67, 93->95, 98->100
+    nicht gelaufene Zeilen: 43, 54, 57, 58, 61, 67
+execution/reconcile.py: 7 fehlende Zweige (Zeile->Ziel)
+    177->178, 192->193, 194->195, 241->242, 247->248, 250->251, 282->283
+    nicht gelaufene Zeilen: 162, 178, 188, 189, 193, 195, 226, 239, 240, 242, 245, 246, 248, 251, 283
+FEHLGESCHLAGEN — venue/mt5.py: 83.0% Zweigdeckung, verlangt sind 90% (54 Zweige fehlen).
+FEHLGESCHLAGEN — risk/waehrung.py: 72.2% Zweigdeckung, verlangt sind 90% (5 Zweige fehlen).
+FEHLGESCHLAGEN — execution/reconcile.py: 79.4% Zweigdeckung, verlangt sind 90% (7 Zweige fehlen).
+Was fehlt, sind in aller Regel die ablehnenden Zweige -- also die, wegen derer die Datei existiert.
+[rc=1]
+[exited with code 0]
