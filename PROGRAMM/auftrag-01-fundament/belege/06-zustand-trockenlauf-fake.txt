@@ -1,0 +1,38 @@
+# Trockenlauf tools/live_betrieb.py --terminal fake (2026-09-04 02:06 UTC); MetaTrader5 per Shim unsichtbar (PYTHONPATH)
+$ python tools/live_betrieb.py --terminal fake --zustandsordner <tmp>/zustand --dauer 0.0003 --takt 1 --symbol EURUSD
+==============================================================================
+TROCKEN: kein Schreibrecht, die Kette erreicht das Terminal nie.
+KEINE Zulassung (keine_zulassungsdatei): die Kette haelt an der Zulassung; ohne Schreibrecht wird auch nicht erkundet.
+Alle uebrigen Sperren bleiben aktiv.
+==============================================================================
+Journal: C:\Users\<konto>\AppData\Local\Temp\zustand-belege-g1k_duy4\zustand\journale\journal-20260904T020626.jsonl
+Geordnet beenden: diese Datei anlegen -> C:\Users\<konto>\AppData\Local\Temp\zustand-belege-g1k_duy4\zustand\STOP
+Laufzeit 0.0003 h, Takt 1 s, 1 Instrumente, Hoechsthaltedauer 4.0 h, Notbremse bei 2.0 % Verlust.
+
+[02:06:26] Takt 1 | Equity 10000 USD | Halt: nein
+  --   EURUSD LONG: strategy_not_admitted (bei zulassung)
+
+Beendet nach 1 Takten. Equity 10000 -> 10000 USD
+Journal: C:\Users\<konto>\AppData\Local\Temp\zustand-belege-g1k_duy4\zustand\journale\journal-20260904T020626.jsonl
+Auswertung: python tools/betrieb_auswerten.py C:\Users\<konto>\AppData\Local\Temp\zustand-belege-g1k_duy4\zustand\journale\journal-20260904T020626.jsonl
+
+[exit=0]
+
+$ git status --porcelain --ignored --untracked-files=all   (vorher == nachher?)
+identisch: True; Zeilen vorher 452, nachher 452
+
+Dateien im Zustandsordner danach:
+  journale/journal-20260904T020626.jsonl  (2755 Bytes)
+  risikozustand.json  (199 Bytes)
+
+Journal: 8 Saetze, Arten: ['ende', 'eroeffnungsversuch', 'kurs', 'signal', 'signalbasis', 'start', 'startabgleich', 'takt']
+  start.terminal = 'fake'
+  start.scharf = False
+  start.demo_schreiben = False
+  start.zulassung = {'datei': None, 'gueltig': False, 'mangel': 'keine_zulassungsdatei'}
+  start.zulassung_uebergangen = False
+  start.symbole = ['EURUSD']
+  start.uebersprungen = []
+  start.konto = '<redigiert>'
+  startabgleich = {'offen_beim_broker': [], 'geister_zaehler': [], 'geister_buch': [], 'fremde': [], 'defekt': None}
+  ende.takte = 1, offen_geblieben = []

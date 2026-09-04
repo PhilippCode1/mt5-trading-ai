@@ -5,7 +5,7 @@ Der Befund: ``venue/demo_run.py`` rechnete die Laufzeit inzwischen selbst, aber
 entgegen und las nur dessen Ja/Nein. Damit war das 180-Tage-Tor am Order-Pfad
 unveraendert mit einer Zeile auf::
 
-    Mt5Venue(..., demo_readiness=DemoReadiness(True, ()))
+    Mt5Venue(..., demo_readiness=DemoReadiness(True, ()), positionsbuch=FluechtigesPositionsbuch(), schwebeakte=FluechtigeSchwebeAkte())
 
 Der freie ``elapsed_days`` war also nicht verschwunden, sondern eine Ebene hoeher
 gewandert. Diese Datei misst das an der Stelle, an der es zaehlt: an einer
@@ -35,10 +35,13 @@ import dataclasses
 import inspect
 from datetime import timedelta
 from decimal import Decimal
+from pathlib import Path
 from typing import Any
 
 import pytest
 from mt5_trading_ai.backtest.edge import EdgeVerdict
+from mt5_trading_ai.execution.reconcile import FluechtigesPositionsbuch
+from mt5_trading_ai.execution.schwebende_auftraege import FluechtigeSchwebeAkte
 from mt5_trading_ai.venue import demo_run
 from mt5_trading_ai.venue.mt5 import Mt5Venue
 from mt5_trading_ai.venue.protocol import OrderRejectedError
@@ -48,9 +51,9 @@ from test_mt5_venue import (
     TS,
     FakeMt5Terminal,
     _catalog,
+    _freigabedatei,
     _fresh_risk,
     _order,
-    _released_settings,
 )
 
 #: Kontonummer des Fake-Terminals (in beiden Fassungen "123").
@@ -117,17 +120,21 @@ def _demo_argumente(beleg: Any) -> dict[str, Any]:
     return {}
 
 
-def _live_venue(**demo_argumente: Any) -> tuple[Mt5Venue, FakeMt5Terminal]:
+def _live_venue(
+    tmp_path: Path, **demo_argumente: Any
+) -> tuple[Mt5Venue, FakeMt5Terminal]:
     terminal = FakeMt5Terminal(is_demo=False)
     venue = Mt5Venue(
         name="mt5-live",
         terminal=terminal,
         catalog=_catalog(),
-        settings=_released_settings(),  # Live-Freigabe vollstaendig
+        freigabedatei=_freigabedatei(tmp_path),  # Live-Freigabe vollstaendig
         cost_gate=_LENIENT_COST_GATE,
         risk_manager=_fresh_risk(),
         clock=lambda: TS,
         **demo_argumente,
+        positionsbuch=FluechtigesPositionsbuch(),
+        schwebeakte=FluechtigeSchwebeAkte(),
     )
     venue.connect()
     return venue, terminal
@@ -137,7 +144,7 @@ def _live_eroeffnung(venue: Mt5Venue) -> Any:
     return venue.submit_order(_order(volume=Decimal("0.01")))
 
 
-def test_ein_behauptetes_ja_oeffnet_keine_live_order() -> None:
+def test_ein_behauptetes_ja_oeffnet_keine_live_order(tmp_path: Path) -> None:
     """DER Eichfall: das Tor bekommt ein fertiges ``DemoReadiness(True, ())`` --
     kein Datum, keine verstrichene Zeit, nur eine Behauptung. Die alte Fassung glaubte
     sie und liess die Live-Order durch."""
@@ -147,7 +154,7 @@ def test_ein_behauptetes_ja_oeffnet_keine_live_order() -> None:
         argumente["demo_readiness"] = demo_run.DemoReadiness(
             ready_for_live_question=True, reasons=()
         )
-    venue, terminal = _live_venue(**argumente)
+    venue, terminal = _live_venue(tmp_path, **argumente)
     with pytest.raises(OrderRejectedError) as ex:
         _live_eroeffnung(venue)
     assert ex.value.reason == "demo_not_ready", (
@@ -156,11 +163,11 @@ def test_ein_behauptetes_ja_oeffnet_keine_live_order() -> None:
     assert terminal.order_send_calls == 0
 
 
-def test_eine_registrierung_von_heute_oeffnet_keine_live_order() -> None:
+def test_eine_registrierung_von_heute_oeffnet_keine_live_order(tmp_path: Path) -> None:
     """Dieselbe Frage einen Schritt frueher: der Beleg ist von HEUTE -- null Tage
     Demo-Betrieb. Die alte Fassung liess sich daraus (ueber ``elapsed_days=400``) ein
     reifes Urteil bauen und oeffnete."""
-    venue, terminal = _live_venue(**_demo_argumente(_beleg(tage_alt=0)))
+    venue, terminal = _live_venue(tmp_path, **_demo_argumente(_beleg(tage_alt=0)))
     with pytest.raises(OrderRejectedError) as ex:
         _live_eroeffnung(venue)
     assert ex.value.reason == "demo_not_ready", (
@@ -180,14 +187,16 @@ def test_eine_registrierung_von_heute_oeffnet_keine_live_order() -> None:
     ],
 )
 def test_ein_unvollstaendiger_beleg_oeffnet_keine_live_order(
-    maengel: dict[str, Any], erwarteter_grund: str
+    tmp_path: Path, maengel: dict[str, Any], erwarteter_grund: str
 ) -> None:
     """Die Frist allein macht keinen Beleg. Ein Zeugnis ohne Strategie passt auf jede
     Strategie, eines ohne Konto auf jedes Konto, und ein Demo-Zeugnis, das auf einem
     Echtgeldkonto ausgestellt wurde, ist keins. 400 Tage aendern daran nichts -- die
     alte Fassung liess trotzdem oeffnen, weil sie von der Registrierung ueberhaupt
     nichts las."""
-    venue, terminal = _live_venue(**_demo_argumente(_beleg(tage_alt=400, **maengel)))
+    venue, terminal = _live_venue(
+        tmp_path, **_demo_argumente(_beleg(tage_alt=400, **maengel))
+    )
     with pytest.raises(OrderRejectedError) as ex:
         _live_eroeffnung(venue)
     assert ex.value.reason == "demo_not_ready", (
@@ -200,12 +209,12 @@ def test_ein_unvollstaendiger_beleg_oeffnet_keine_live_order(
     assert terminal.order_send_calls == 0
 
 
-def test_ein_beleg_auf_das_livekonto_oeffnet_keine_live_order() -> None:
+def test_ein_beleg_auf_das_livekonto_oeffnet_keine_live_order(tmp_path: Path) -> None:
     """Der Beleg behauptet, das Livekonto sei ein Demokonto, auf dem 400 Tage gelaufen
     sind. Das ist ein Widerspruch in sich -- und der naechstliegende Griff, wenn jemand
     einen Beleg passend machen will."""
     beleg = _beleg(tage_alt=400, konto=LIVE_KONTO)
-    venue, terminal = _live_venue(**_demo_argumente(beleg))
+    venue, terminal = _live_venue(tmp_path, **_demo_argumente(beleg))
     with pytest.raises(OrderRejectedError) as ex:
         _live_eroeffnung(venue)
     assert ex.value.reason == "demo_not_ready", (

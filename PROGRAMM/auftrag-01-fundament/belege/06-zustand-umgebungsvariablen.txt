@@ -1,0 +1,14 @@
+# Umgebungsvariablen MT5_RISIKO_ZUSTAND, MT5_RISIKO_ZUSTAND_ORDNER, MT5_SCHWEBENDE_AUFTRAEGE (2026-09-04 02:06 UTC)
+# Gezaehlt ueber mt5_trading_ai/**/*.py und tools/*.py (ohne __pycache__).
+
+Erwaehnungen der Namen (auch in Prosa/Docstrings): 1
+  mt5_trading_ai/venue/mt5.py:361: entschied hier ``os.environ``: ohne ``MT5_SCHWEBENDE_AUFTRAEGE`` blieb die Akte
+Lesestellen (os.environ[...] / os.environ.get(...) / getenv(...) mit einem der Namen): 0
+
+$ grep -rn "os.environ\|getenv" mt5_trading_ai tools
+mt5_trading_ai/execution/risiko_zustand.py:408:    umg = os.environ if umgebung is None else umgebung
+mt5_trading_ai/venue/mt5.py:361:    entschied hier ``os.environ``: ohne ``MT5_SCHWEBENDE_AUFTRAEGE`` blieb die Akte
+
+$ grep -rn MT5_RISIKO_ZUSTAND\|MT5_SCHWEBENDE mt5_trading_ai tools .env.example
+mt5_trading_ai/venue/mt5.py:361:    entschied hier ``os.environ``: ohne ``MT5_SCHWEBENDE_AUFTRAEGE`` blieb die Akte
+.env.example:4:# Altstands (MT5_RISIKO_ZUSTAND, MT5_RISIKO_ZUSTAND_ORDNER, MT5_SCHWEBENDE_AUFTRAEGE)

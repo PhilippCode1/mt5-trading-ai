@@ -8,8 +8,10 @@ Datei ``tests/conftest.py``, die ueber dieser Suite liegt, nicht eine Kopie.
 
 Der rote A10-Fall fuer den Zustandsordner schreibt NICHT in den echten Ordner des
 Benutzers -- das waere genau der Verstoss, den A10 verbietet. Er setzt im Unterprozess
-``MT5_RISIKO_ZUSTAND_ORDNER`` (die dokumentierte Betreibervariable) auf einen Ordner
-im tmp_path; ``standard_zustandsordner()`` und damit der Waechter folgen ihr. Welchen
+die Plattformvariablen ``LOCALAPPDATA`` und ``XDG_STATE_HOME`` (die einzigen, die
+``standard_zustandsordner()`` noch liest -- die Betreibervariable
+``MT5_RISIKO_ZUSTAND_ORDNER`` ist mit D8 entfallen) auf einen Ordner im tmp_path;
+``standard_zustandsordner()`` und damit der Waechter folgen ihnen. Welchen
 Ordner der Waechter in einem gewoehnlichen Lauf bewacht, steht in dessen Kopfzeile
 (``pytest_report_header``).
 
@@ -203,15 +205,14 @@ def test_rot_a10_schreiben_in_den_zustandsordner_faellt(
         pytester,
         monkeypatch,
         """
-        import os
-        from pathlib import Path
+        from mt5_trading_ai.execution.risiko_zustand import standard_zustandsordner
 
         def test_schreibt_in_den_zustandsordner():
-            ordner = Path(os.environ["MT5_RISIKO_ZUSTAND_ORDNER"])
+            ordner = standard_zustandsordner()
             ordner.mkdir(parents=True, exist_ok=True)
             (ordner / "risikozustand.json").write_text("{}", encoding="utf-8")
         """,
-        umgebung={"MT5_RISIKO_ZUSTAND_ORDNER": str(attrappe)},
+        umgebung={"LOCALAPPDATA": str(attrappe), "XDG_STATE_HOME": str(attrappe)},
     )
     assert ergebnis.ret != 0, ergebnis.outlines[-5:]
     zaehlung = _zaehlung(ergebnis)

@@ -34,6 +34,7 @@ from pathlib import Path
 import pytest
 from mt5_trading_ai.execution.cost_gate import CostGate, evaluate_cost_gate
 from mt5_trading_ai.execution.leverage_preflight import evaluate_leverage_preflight
+from mt5_trading_ai.execution.risiko_zustand import FluechtigerZustand
 from mt5_trading_ai.venue.protocol import (
     OrderRejectedError,
     OrderSide,
@@ -298,7 +299,7 @@ def test_ein_preis_von_null_loest_risk_price_missing_aus() -> None:
     from mt5_trading_ai.execution.risk_manager import RiskManager
 
     venue, _t = _venue(is_demo=True)
-    auth = RiskManager().authorize_opening(
+    auth = RiskManager(zustand=FluechtigerZustand()).authorize_opening(
         instrument=venue.get_instrument("EURUSD"),
         request=_order(volume=Decimal("0.01")),
         account=venue.get_account(),
@@ -334,7 +335,7 @@ def test_ein_konto_ohne_auskunft_latcht_account_unavailable() -> None:
         venue,
         max_silence=timedelta(minutes=5),
         started_at=R.TS,
-        risk_manager=RiskManager(),
+        risk_manager=RiskManager(zustand=FluechtigerZustand()),
     )
     scheduler.tick(R.TS)
     assert venue.is_halted() is True

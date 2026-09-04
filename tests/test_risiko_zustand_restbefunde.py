@@ -26,9 +26,11 @@ from typing import Any
 import pytest
 from mt5_trading_ai.execution.risiko_zustand import (
     DateiZustand,
+    FluechtigerZustand,
     ZustandsortFehler,
     standard_zustandsdatei,
     verbotene_baeume,
+    zustandsordner_pruefen,
 )
 from mt5_trading_ai.execution.risk_manager import (
     RiskAuthorization,
@@ -214,11 +216,7 @@ def test_die_ortsgarantie_deckt_auch_betrieb_und_die_arbeitskopie() -> None:
     for ort in ("betrieb/z.json", "z.json", "tests/z.json"):
         ziel = baum.joinpath(*ort.split("/"))
         with pytest.raises(ZustandsortFehler):
-            standard_zustandsdatei(umgebung={"MT5_RISIKO_ZUSTAND": str(ziel)})
-        with pytest.raises(ZustandsortFehler):
-            standard_zustandsdatei(
-                umgebung={"MT5_RISIKO_ZUSTAND_ORDNER": str(ziel.parent)}
-            )
+            zustandsordner_pruefen(ziel.parent)
 
 
 def test_die_ortsgarantie_nennt_genau_zwei_baeume() -> None:
@@ -243,7 +241,8 @@ def test_ausserhalb_des_baums_geht_ein_absoluter_pfad_durch(tmp_path) -> None:  
     die Regel haengt also am Ort des Pakets und nicht an einer festen Zeichenkette.
     """
     ziel = tmp_path / "risikozustand.json"
-    assert standard_zustandsdatei(umgebung={"MT5_RISIKO_ZUSTAND": str(ziel)}) == ziel
+    assert zustandsordner_pruefen(tmp_path) == tmp_path
+    assert standard_zustandsdatei(ordner=tmp_path) == ziel
 
     anker = tmp_path / "irgendwo" / "paket"
     anker.mkdir(parents=True)
@@ -317,14 +316,11 @@ def test_eine_unsichtbare_kennung_erreicht_die_limit_pruefung_nicht(  # noqa: E5
     Der Tagesverlust ist dann 0 und kann die Aussage nicht mit verdecken -- geprueft
     wird genau ein Tor.
 
-    Ohne Zustandsdatei (die Umgebung wird geraeumt): geprueft wird die Weitergabe der
+    Ohne Zustandsdatei (fluechtiger Testtyp): geprueft wird die Weitergabe der
     Kennung, nicht die Platte.
     """
-    monkeypatch.delenv("MT5_RISIKO_ZUSTAND", raising=False)
-    monkeypatch.delenv("MT5_RISIKO_ZUSTAND_ORDNER", raising=False)
-
     for zeichen in UNSICHTBAR:
-        rm = RiskManager(manual_release_id=zeichen)
+        rm = RiskManager(manual_release_id=zeichen, zustand=FluechtigerZustand())
         rm.observe_equity(NOW - timedelta(hours=26), Decimal("12000"))
         auth = _autorisiere(rm, account=_konto("10000"))
         assert auth.approved is False, zeichen
@@ -334,7 +330,7 @@ def test_eine_unsichtbare_kennung_erreicht_die_limit_pruefung_nicht(  # noqa: E5
     # Gegenprobe: eine echte Kennung kommt bei ``evaluate_limits`` an und macht aus
     # demselben Drawdown ``drawdown_limit_manually_released`` -- kein Halt, kein
     # Latch, Order zulaessig. Die Strenge trifft nur die unsichtbare Kennung.
-    echt = RiskManager(manual_release_id="ops-2026-08-13")
+    echt = RiskManager(manual_release_id="ops-2026-08-13", zustand=FluechtigerZustand())
     echt.observe_equity(NOW - timedelta(hours=26), Decimal("12000"))
     assert _autorisiere(echt, account=_konto("10000")).approved is True
 
@@ -358,10 +354,9 @@ def test_die_freigabe_deckt_nur_die_episode_die_der_mensch_gesehen_hat(  # noqa:
     * **Vertiefung.** 10000 -> 16,67 % (freigegeben, Niveau festgehalten); 9000 ->
       3000/12000 = 25 % > 16,67 %: eine andere Lage als die freigegebene, also HALT.
     """
-    monkeypatch.delenv("MT5_RISIKO_ZUSTAND", raising=False)
-    monkeypatch.delenv("MT5_RISIKO_ZUSTAND_ORDNER", raising=False)
-
-    erholung = RiskManager(manual_release_id="ops-2026-08-13")
+    erholung = RiskManager(
+        manual_release_id="ops-2026-08-13", zustand=FluechtigerZustand()
+    )
     erholung.observe_equity(NOW - timedelta(hours=26), Decimal("12000"))
     assert _autorisiere(erholung, account=_konto("10000")).approved is True
     assert (
@@ -377,7 +372,9 @@ def test_die_freigabe_deckt_nur_die_episode_die_der_mensch_gesehen_hat(  # noqa:
     assert wieder.latch_halt is True
     assert wieder.reason == "risk_drawdown_limit_reached"
 
-    vertiefung = RiskManager(manual_release_id="ops-2026-08-13")
+    vertiefung = RiskManager(
+        manual_release_id="ops-2026-08-13", zustand=FluechtigerZustand()
+    )
     vertiefung.observe_equity(NOW - timedelta(hours=26), Decimal("12000"))
     assert _autorisiere(vertiefung, account=_konto("10000")).approved is True
     tiefer = _autorisiere(

@@ -46,6 +46,8 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from mt5_trading_ai.execution.reconcile import FluechtigesPositionsbuch
+from mt5_trading_ai.execution.schwebende_auftraege import FluechtigeSchwebeAkte
 from mt5_trading_ai.venue.catalog import CatalogEntry  # noqa: E402
 from mt5_trading_ai.venue.mt5 import (  # noqa: E402
     Mt5Account,
@@ -204,6 +206,8 @@ def _venue(
         terminal=terminal,  # type: ignore[arg-type]
         catalog=katalog,
         clock=clock,
+        positionsbuch=FluechtigesPositionsbuch(),
+        schwebeakte=FluechtigeSchwebeAkte(),
     )
     venue.connect()
     return venue

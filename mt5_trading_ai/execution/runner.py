@@ -48,7 +48,10 @@ from mt5_trading_ai.execution.risk_manager import (
     RiskManager,
 )
 from mt5_trading_ai.gates.criteria import CriteriaVerdict
-from mt5_trading_ai.gates.erkundung import entscheide_erkundung
+from mt5_trading_ai.gates.erkundung import (
+    VERWEIGERT_OHNE_SCHREIBRECHT,
+    entscheide_erkundung,
+)
 from mt5_trading_ai.risk.leverage import clamp_leverage
 from mt5_trading_ai.risk.sizing import StopFloorInputs, executable_stop_floor
 from mt5_trading_ai.risk.stop_budget import cost_bps_from_fraction
@@ -201,12 +204,21 @@ def run_signal(
     config: RunnerConfig,
     now: datetime,
     client_order_id: str,
+    darf_schreiben: bool = False,
 ) -> RunnerReport:
     """Fuehre EIN Signal durch die volle Kette. Gibt die Checkliste + das Ergebnis.
 
     ``admission`` ist das §9.3-Zulassungsurteil (``evaluate_criteria``) -- ohne
     bestandene Zulassung handelt die Strategie nicht (Stufe A, fail-closed). ``side``
     ist die Signalrichtung; ``Signal.FLAT`` eroeffnet nichts (kein Handel).
+
+    ``darf_schreiben`` sagt, ob dieser Lauf ueberhaupt senden darf
+    (``--demo-schreiben`` in ``tools/live_betrieb.py``). Ohne Schreibrecht wird der
+    Erkundungswuerfel NICHT befragt (D1): die Kette endet an der Zulassung, ohne
+    Sendeversuch, ohne Schwebeakteneintrag, ohne Halt. Ist die Strategie zugelassen,
+    rechnet die Kette bis zum Margendeckel und endet VOR dem Senden mit
+    ``kein_schreibrecht`` -- ein Trockenlauf erreicht das Terminal nie. Vorgabe
+    ``False`` -- ein fehlender Wert sperrt.
     """
     report = RunnerReport()
 
@@ -223,6 +235,22 @@ def run_signal(
         # Global-Halt, Stop-Pflicht, Frische, Kostentor, Risikoschicht -- laeuft
         # unveraendert; ``venue.submit_order`` prueft sie ohnehin ein zweites Mal.
         # Erkundung kauft Wissen, sie bezahlt nie mit einer Sperre.
+        #
+        # Und sie wird nur befragt, wenn der Lauf schreiben darf (D1). Gemessen
+        # gegen 306bbaa (V1): im Trockenlauf wuerfelte der Runner trotzdem, der
+        # Versuch lief bis ``_require_write`` des Terminals, dessen Wurf wurde als
+        # ungeklaerter Sendeversuch gelatcht -- Schwebeakteneintrag plus Global-
+        # Halt, den auch ``clear_halt()`` nicht loeste. Ein Trockenlauf, der sich
+        # selbst sperrt, misst nichts.
+        if not darf_schreiben:
+            return report._reject(
+                "zulassung",
+                "strategy_not_admitted",
+                detail=(
+                    f"nicht erfuellt: {', '.join(admission.unmet) or 'unbekannt'}"
+                    f" (Erkundung: {VERWEIGERT_OHNE_SCHREIBRECHT})"
+                ),
+            )
         entscheidung = entscheide_erkundung(
             ist_papierkonto=venue.get_account().is_demo,
             ablehnungsgrund="strategy_not_admitted",
@@ -491,6 +519,22 @@ def run_signal(
         sized_volume = deckel
     else:
         report.add("margen-deckel", True, "nicht bindend")
+
+    # 8a) Schreibrecht (D1). Ein Lauf ohne Schreibrecht erreicht das Terminal NIE:
+    # die Kette ist bis hierher vollstaendig gerechnet (Zulassung, Daten, Hebel,
+    # Kostentor, Stop, Risikoschicht, Margendeckel), gesendet wird nichts. Bis
+    # 306bbaa lief der Versuch weiter bis ``RealMt5Terminal._require_write``, dessen
+    # Wurf ``submit_order`` als ungeklaerten Sendeversuch latchte -- Schwebeakte plus
+    # Global-Halt in einem Trockenlauf, der gar nichts gesendet hatte.
+    if not darf_schreiben:
+        return report._reject(
+            "senden",
+            "kein_schreibrecht",
+            detail=(
+                f"Trockenlauf: Order gerechnet (volume={sized_volume}, "
+                f"stop={stop_loss}), nicht gesendet -- kein Schreibrecht"
+            ),
+        )
 
     # 8) Submit: die eigentliche Paper-Order. ``submit_order`` erzwingt Hebel, Frische
     # und die volle Risikoschicht erneut (auf jedem Konto), auf Live zusaetzlich

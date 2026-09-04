@@ -1,12 +1,11 @@
 """Rote Eichfaelle: der Risikozustand ueberdauert einen Neustart.
 
-Diese Datei ist absichtlich **frei von jedem Import des neuen Moduls**. Sie kennt nur
-``RiskManager``, ``RiskPolicy`` und ``ThrottlePolicy`` -- alles, was es am Stand 5e7c4f7
-schon gab -- und schaltet die Dauerhaftigkeit ueber die Umgebungsvariable
-``MT5_RISIKO_ZUSTAND`` ein. Das ist kein Stilentscheid: gegen HEAD ausgepackt faellt
-jeder Test hier an einer **Zusicherung**, nicht an einem ``ImportError``. Ein
-Sammelfehler beweist nur, dass eine Datei fehlt; eine gerissene Zusicherung beweist,
-dass das Verhalten falsch war.
+Diese Datei war bis D8 absichtlich frei von jedem Import des Zustandsmoduls und
+schaltete die Dauerhaftigkeit ueber die Umgebungsvariable ``MT5_RISIKO_ZUSTAND`` ein,
+damit sie gegen den Stand 5e7c4f7 an einer **Zusicherung** fiel und nicht an einem
+``ImportError``. Seit D8 (E-005) gibt es die Variable nicht mehr: der Ort ist ein
+Konstruktorargument (``zustand=DateiZustand(...)`` in ``tmp_path``), und die Messungen
+unten gelten fuer den Stand, an dem sie gemacht wurden.
 
 Gemessen gegen HEAD (``git archive 5e7c4f7`` schreibfrei in einen Temp-Ordner
 ausgepackt, diese Datei hineinkopiert, dort ``pytest`` gefahren): **9 failed,
@@ -33,6 +32,11 @@ from decimal import Decimal
 from pathlib import Path
 
 import pytest
+from mt5_trading_ai.execution.risiko_zustand import (
+    DateiZustand,
+    FluechtigerZustand,
+    zustandsordner_pruefen,
+)
 from mt5_trading_ai.execution.risk_manager import (
     RiskAuthorization,
     RiskManager,
@@ -121,14 +125,15 @@ def _autorisiere(
     )
 
 
-def _dauerhaft(monkeypatch, tmp_path) -> None:  # type: ignore[no-untyped-def]
-    """Schalte die Dauerhaftigkeit auf eine Datei im Temp-Verzeichnis.
+def _zustand(tmp_path) -> DateiZustand:  # type: ignore[no-untyped-def]
+    """Die Dauerhaftigkeit auf eine Datei im Temp-Verzeichnis -- je Aufruf ein
+    frischer ``DateiZustand`` auf derselben Datei, also ein Prozessstart.
 
     Ausdruecklich ueber ``tmp_path``: kein Test dieses Repos darf an einer Datei
     haengen, die nicht versioniert ist -- weder an ``TRIALS.jsonl`` noch an
-    ``betrieb/*.jsonl`` noch am Zustandsverzeichnis des Benutzers.
+    ``betrieb/*.jsonl`` noch am Zustandsverzeichnis des Benutzers (A10).
     """
-    monkeypatch.setenv("MT5_RISIKO_ZUSTAND", str(tmp_path / "risikozustand.json"))
+    return DateiZustand(tmp_path / "risikozustand.json")
 
 
 # --- Eichfall 1: der Drawdown-Halt ueberdauert den Neustart ---------------------
@@ -142,16 +147,14 @@ def test_eichfall_drawdown_halt_ueberdauert_den_neustart(monkeypatch, tmp_path) 
     die Order ginge durch. Genau das ist „ein System, das sich nach einem
     Drawdown-Halt selbst wieder freischaltet" (``risk/limits.py``).
     """
-    _dauerhaft(monkeypatch, tmp_path)
-
-    lauf1 = RiskManager()
+    lauf1 = RiskManager(zustand=_zustand(tmp_path))
     lauf1.observe_equity(NOW - timedelta(hours=2), Decimal("12000"))
     a1 = _autorisiere(lauf1, account=_account("10000"))
     assert a1.approved is False
     assert a1.latch_halt is True
 
     # --- Neustart: neuer Prozess, gleiche Zustandsdatei, erholte Equity ---
-    lauf2 = RiskManager()
+    lauf2 = RiskManager(zustand=_zustand(tmp_path))
     a2 = _autorisiere(lauf2, account=_account("12000"), now=NOW + timedelta(minutes=5))
     assert a2.approved is False
     assert a2.latch_halt is True
@@ -165,13 +168,11 @@ def test_eichfall_freigabe_hebt_den_ueberdauernden_halt(monkeypatch, tmp_path) -
     also gibt es nichts freizugeben. Er steht hier, weil eine Sperre ohne belegten
     Ausgang im Betrieb ausgebaut statt bedient wird.
     """
-    _dauerhaft(monkeypatch, tmp_path)
-
-    lauf1 = RiskManager()
+    lauf1 = RiskManager(zustand=_zustand(tmp_path))
     lauf1.observe_equity(NOW - timedelta(hours=2), Decimal("12000"))
     assert _autorisiere(lauf1, account=_account("10000")).latch_halt is True
 
-    lauf2 = RiskManager()
+    lauf2 = RiskManager(zustand=_zustand(tmp_path))
     lauf2.release_drawdown("ops-2026-08-13")
     a2 = _autorisiere(lauf2, account=_account("12000"), now=NOW + timedelta(minutes=5))
     assert a2.approved is True
@@ -180,7 +181,7 @@ def test_eichfall_freigabe_hebt_den_ueberdauernden_halt(monkeypatch, tmp_path) -
     # handelt trotzdem, weil der HALT geloescht wurde -- nicht, weil eine Freigabe
     # ueberdauert haette. Der Unterschied wird sichtbar, sobald der Drawdown erneut
     # reisst (siehe ``test_risiko_zustand.py``).
-    lauf3 = RiskManager()
+    lauf3 = RiskManager(zustand=_zustand(tmp_path))
     assert (
         _autorisiere(
             lauf3, account=_account("12000"), now=NOW + timedelta(minutes=6)
@@ -194,21 +195,20 @@ def test_eichfall_freigabe_hebt_den_ueberdauernden_halt(monkeypatch, tmp_path) -
 
 def test_eichfall_tageskappe_ueberdauert_den_neustart(monkeypatch, tmp_path) -> None:  # type: ignore[no-untyped-def]
     """ROT gegen HEAD: dort war ``a2.approved is True``."""
-    _dauerhaft(monkeypatch, tmp_path)
     politik = RiskPolicy(throttle=ThrottlePolicy(max_trades_per_account_per_day=1))
 
-    lauf1 = RiskManager(politik)
+    lauf1 = RiskManager(politik, zustand=_zustand(tmp_path))
     assert _autorisiere(lauf1, account=_account()).approved is True
     lauf1.record_open_fill("EURUSD", NOW)
 
     # --- Neustart: die Kappe ist fuer HEUTE erschoepft, auch im neuen Prozess ---
-    lauf2 = RiskManager(politik)
+    lauf2 = RiskManager(politik, zustand=_zustand(tmp_path))
     a2 = _autorisiere(lauf2, account=_account(), now=NOW + timedelta(hours=2))
     assert a2.approved is False
     assert a2.reason == "throttle_account_daily_cap"
 
     # Am Folgetag laeuft die Kappe ab -- sonst waere sie keine TAGESkappe.
-    lauf3 = RiskManager(politik)
+    lauf3 = RiskManager(politik, zustand=_zustand(tmp_path))
     a3 = _autorisiere(lauf3, account=_account(), now=NOW + timedelta(days=1))
     assert a3.approved is True
 
@@ -223,7 +223,6 @@ def test_eichfall_zweiundzwanzig_eroeffnungen_gegen_eine_kappe_von_zehn(  # noqa
     10, weil jeder Neustart bei null anfing. Hier zwoelf Neustarts mit je zwei
     Versuchen am selben Tag; mit dauerhaftem Zaehler kommen genau 10 durch.
     """
-    _dauerhaft(monkeypatch, tmp_path)
     politik = RiskPolicy(
         throttle=ThrottlePolicy(
             max_trades_per_account_per_day=10,
@@ -236,7 +235,9 @@ def test_eichfall_zweiundzwanzig_eroeffnungen_gegen_eine_kappe_von_zehn(  # noqa
     eroeffnet = 0
     zeit = NOW
     for _neustart in range(12):
-        rm = RiskManager(politik)  # jeder Durchgang ist ein Prozessstart
+        rm = RiskManager(
+            politik, zustand=_zustand(tmp_path)
+        )  # jeder Durchgang ist ein Prozessstart
         for _versuch in range(2):
             if _autorisiere(rm, account=_account(), now=zeit).approved:
                 rm.record_open_fill("EURUSD", zeit)
@@ -256,10 +257,7 @@ def test_eichfall_halt_latcht_auch_im_selben_prozess(monkeypatch) -> None:  # ty
     muss auch im laufenden Prozess latchen, sonst waere ein Neustart **strenger** als
     kein Neustart: die Platte wuesste vom Halt, der laufende Prozess nicht.
     """
-    monkeypatch.delenv("MT5_RISIKO_ZUSTAND", raising=False)
-    monkeypatch.delenv("MT5_RISIKO_ZUSTAND_ORDNER", raising=False)
-
-    rm = RiskManager()
+    rm = RiskManager(zustand=FluechtigerZustand())
     rm.observe_equity(NOW - timedelta(hours=2), Decimal("12000"))
     a1 = _autorisiere(rm, account=_account("10000"))  # 16,7 % -> HALT
     assert a1.latch_halt is True
@@ -283,13 +281,11 @@ def test_eichfall_leere_freigabe_loest_den_halt_nicht(monkeypatch, tmp_path) -> 
     auf dem Not-Aus. Gemessen am Arbeitsstand vor der Reparatur: nach
     ``release_drawdown('   ')`` war ``approved=True``.
     """
-    _dauerhaft(monkeypatch, tmp_path)
-
-    lauf1 = RiskManager()
+    lauf1 = RiskManager(zustand=_zustand(tmp_path))
     lauf1.observe_equity(NOW - timedelta(hours=2), Decimal("12000"))
     assert _autorisiere(lauf1, account=_account("10000")).latch_halt is True
 
-    lauf2 = RiskManager()
+    lauf2 = RiskManager(zustand=_zustand(tmp_path))
     for keine_freigabe in ("", "   ", "\t\n"):
         with pytest.raises(ValueError):
             lauf2.release_drawdown(keine_freigabe)
@@ -315,7 +311,7 @@ def test_eichfall_leere_freigabe_loest_den_halt_nicht(monkeypatch, tmp_path) -> 
 
 
 def test_eichfall_relativer_zustandspfad_wird_abgewiesen(monkeypatch, tmp_path) -> None:  # type: ignore[no-untyped-def]
-    """ROT gegen HEAD: dort wurde die Umgebungsvariable gar nicht gelesen (kein Wurf).
+    """ROT gegen HEAD: dort wurde der genannte Ort gar nicht geprueft (kein Wurf).
 
     Ein relativer Pfad wird gegen das Arbeitsverzeichnis aufgeloest -- die Datei mit
     dem Drawdown-Halt laege damit im Arbeitsbaum, wo ``git clean -xdf`` sie loescht und
@@ -326,20 +322,14 @@ def test_eichfall_relativer_zustandspfad_wird_abgewiesen(monkeypatch, tmp_path) 
     aus dem neuen Modul (siehe Modul-Docstring). ``ZustandsortFehler`` ist ein
     ``ValueError``.
     """
-    monkeypatch.delenv("MT5_RISIKO_ZUSTAND_ORDNER", raising=False)
-    monkeypatch.setenv("MT5_RISIKO_ZUSTAND", "betrieb/risikozustand.json")
-    with pytest.raises(ValueError):
-        RiskManager()
-
-    monkeypatch.delenv("MT5_RISIKO_ZUSTAND")
-    monkeypatch.setenv("MT5_RISIKO_ZUSTAND_ORDNER", "betrieb")
-    with pytest.raises(ValueError):
-        RiskManager()
+    for relativ in ("betrieb/risikozustand.json", "betrieb"):
+        with pytest.raises(ValueError):
+            zustandsordner_pruefen(relativ)
 
     # Gegenprobe: ein absoluter Pfad geht durch -- die Sperre trifft nur den Fall,
     # den sie treffen soll.
-    monkeypatch.setenv("MT5_RISIKO_ZUSTAND_ORDNER", str(tmp_path))
-    assert RiskManager().zustand_dauerhaft is True
+    assert zustandsordner_pruefen(tmp_path) == tmp_path
+    assert RiskManager(zustand=_zustand(tmp_path)).zustand_dauerhaft is True
 
 
 # --- Eichfall 6: der Peak ueberdauert einen Neustart OHNE Order -----------------
@@ -348,9 +338,9 @@ def test_eichfall_relativer_zustandspfad_wird_abgewiesen(monkeypatch, tmp_path) 
 def test_eichfall_peak_ueberdauert_neustart_ohne_order(monkeypatch, tmp_path) -> None:  # type: ignore[no-untyped-def]
     """ROT gegen HEAD **und** gegen den Arbeitsstand vor der Reparatur.
 
-    Der eigentliche Betriebsweg: ``RiskManager()`` ohne Argumente (so bauen ihn
+    Der eigentliche Betriebsweg: ``RiskManager`` ohne Konto (so bauen ihn
     ``tools/live_betrieb.py``, ``tools/paper_run.py``, ``tools/live_konsole.py`` und
-    ``tools/mt5_smoke.py``), Dauerhaftigkeit ueber die Umgebungsvariable. Der Scheduler
+    ``tools/mt5_smoke.py``), Dauerhaftigkeit ueber die Zustandsdatei. Der Scheduler
     beobachtet Equity je Takt, autorisiert wird seltener -- ein Neustart VOR der ersten
     Order darf den Fenster-Hoechststand nicht verlieren.
 
@@ -358,14 +348,12 @@ def test_eichfall_peak_ueberdauert_neustart_ohne_order(monkeypatch, tmp_path) ->
     existierte die Zustandsdatei nicht; nach dem Neustart war der Drawdown gegen 10000
     wieder null und ``approved=True``.
     """
-    _dauerhaft(monkeypatch, tmp_path)
-
-    lauf1 = RiskManager()
+    lauf1 = RiskManager(zustand=_zustand(tmp_path))
     for takt in range(6):
         lauf1.observe_equity(NOW - timedelta(hours=6 - takt), Decimal("12000"))
     assert (tmp_path / "risikozustand.json").exists()
 
-    lauf2 = RiskManager()
+    lauf2 = RiskManager(zustand=_zustand(tmp_path))
     a2 = _autorisiere(lauf2, account=_account("10000"), now=NOW)
     assert a2.approved is False
     assert a2.latch_halt is True
@@ -389,10 +377,7 @@ def test_eichfall_unschreibbarer_zustand_sperrt_statt_abzustuerzen(  # noqa: E50
     """
     sperre = tmp_path / "sperre"
     sperre.write_text("kein Verzeichnis", encoding="utf-8")
-    monkeypatch.delenv("MT5_RISIKO_ZUSTAND_ORDNER", raising=False)
-    monkeypatch.setenv("MT5_RISIKO_ZUSTAND", str(sperre / "risikozustand.json"))
-
-    rm = RiskManager()
+    rm = RiskManager(zustand=DateiZustand(sperre / "risikozustand.json"))
     auth = _autorisiere(rm, account=_account("10000"))
     assert auth.approved is False
     assert auth.reason.startswith("risk_zustand_nicht_gesichert")  # type: ignore[union-attr]
@@ -419,11 +404,9 @@ def test_eichfall_marke_faellt_mit_dem_naechsten_gelungenen_schreiben(  # noqa: 
     """
     ordner = tmp_path / "zustand"
     ziel = ordner / "risikozustand.json"
-    monkeypatch.delenv("MT5_RISIKO_ZUSTAND_ORDNER", raising=False)
-    monkeypatch.setenv("MT5_RISIKO_ZUSTAND", str(ziel))
     ordner.write_text("kein Verzeichnis", encoding="utf-8")
 
-    rm = RiskManager()
+    rm = RiskManager(zustand=DateiZustand(ziel))
     assert _autorisiere(rm, account=_account("10000")).approved is False
 
     # Die Platte wird wieder schreibbar -- ohne Neustart, ohne Freigabe.

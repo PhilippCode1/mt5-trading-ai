@@ -9,12 +9,10 @@ negativ gefahren.
 from __future__ import annotations
 
 import importlib.util
-import sys
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 
-import pytest
 from mt5_trading_ai.backtest.engine import Signal
 from mt5_trading_ai.execution.cost_gate import CostGate
 from mt5_trading_ai.execution.private_sync import (
@@ -22,9 +20,12 @@ from mt5_trading_ai.execution.private_sync import (
     PrivateEventKind,
     PrivateSync,
 )
+from mt5_trading_ai.execution.reconcile import FluechtigesPositionsbuch
+from mt5_trading_ai.execution.risiko_zustand import FluechtigerZustand
 from mt5_trading_ai.execution.risk_manager import RiskManager
 from mt5_trading_ai.execution.runner import RunnerConfig, run_signal
 from mt5_trading_ai.execution.scheduler import SyncScheduler
+from mt5_trading_ai.execution.schwebende_auftraege import FluechtigeSchwebeAkte
 from mt5_trading_ai.gates.criteria import CriteriaVerdict
 from mt5_trading_ai.venue.mt5 import (
     CatalogEntry,
@@ -196,8 +197,12 @@ def _venue(
         sync=sync,
         max_notional_drift=max_notional_drift,
         # Seit A3 auf jedem Konto Pflicht; feste Uhr passend zum Fake-Kontostand.
-        risk_manager=risk_manager if risk_manager is not None else RiskManager(),
+        risk_manager=risk_manager
+        if risk_manager is not None
+        else RiskManager(zustand=FluechtigerZustand()),
         clock=lambda: TS,
+        positionsbuch=FluechtigesPositionsbuch(),
+        schwebeakte=FluechtigeSchwebeAkte(),
     )
     venue.connect()
     return venue
@@ -219,7 +224,7 @@ def _run(**overrides: object):
     # Ein Manager fuer Runner UND Venue -- getrennte Zaehlerstaende saehe keiner.
     geteilt = overrides.get("risk_manager")
     if not isinstance(geteilt, RiskManager):
-        geteilt = RiskManager()
+        geteilt = RiskManager(zustand=FluechtigerZustand())
     kwargs: dict[str, object] = {
         "venue": _venue(risk_manager=geteilt),
         "risk_manager": geteilt,
@@ -229,6 +234,8 @@ def _run(**overrides: object):
         "config": _config(),
         "now": TS,
         "client_order_id": "run-1",
+        # Die Runner-Faelle senden an das Fake-Terminal -- mit Schreibrecht (D1).
+        "darf_schreiben": True,
     }
     kwargs.update(overrides)
     return run_signal(**kwargs)  # type: ignore[arg-type]
@@ -262,7 +269,7 @@ def test_full_chain_opens_and_every_seam_is_green() -> None:
 
 
 def test_records_fill_so_frequency_state_advances() -> None:
-    rm = RiskManager()
+    rm = RiskManager(zustand=FluechtigerZustand())
     _run(venue=_venue(), risk_manager=rm)
     assert rm.open_position_count == 1  # record_open_fill lief genau einmal
 
@@ -306,7 +313,7 @@ def test_drawdown_halt_latches_the_venue() -> None:
     # Risiko-Naht -> Halt -> S2-Latch: ein Fenster-Peak weit ueber der aktuellen Equity
     # (>10 % Drawdown) haltet, und der Runner setzt den Venue-Latch (haelt nicht selbst).
     venue = _venue(equity=Decimal("8000"))
-    rm = RiskManager()
+    rm = RiskManager(zustand=FluechtigerZustand())
     rm.observe_equity(TS - timedelta(days=1), Decimal("10000"))  # Peak
     report = _run(venue=venue, risk_manager=rm)
     assert not report.opened
@@ -385,7 +392,10 @@ def test_scheduler_dead_session_latches_even_with_risk_manager() -> None:
     venue.adopt_book()
     venue.disconnect()  # Sitzung weg
     sched = SyncScheduler(
-        venue, max_silence=MAX_SILENCE, started_at=TS, risk_manager=RiskManager()
+        venue,
+        max_silence=MAX_SILENCE,
+        started_at=TS,
+        risk_manager=RiskManager(zustand=FluechtigerZustand()),
     )
     result = sched.tick(TS)  # darf NICHT werfen
     assert result.halted
@@ -396,7 +406,7 @@ def test_idempotent_replay_is_not_rebooked() -> None:
     # §9 Finding 2: ein Retry mit stabiler client_order_id liefert idempotent_replay=True
     # OHNE zweite Order -- der Runner darf record_open_fill nicht ein zweites Mal rufen.
     venue = _venue()
-    rm = RiskManager()
+    rm = RiskManager(zustand=FluechtigerZustand())
     r1 = _run(venue=venue, risk_manager=rm, client_order_id="dup", now=TS)
     assert r1.opened
     r2 = _run(
@@ -420,14 +430,17 @@ def _load_paper_run() -> object:
     return module
 
 
-def test_paper_run_full_chain_opens_green() -> None:
+def test_paper_run_full_chain_opens_green(tmp_path: Path) -> None:
     module = _load_paper_run()
-    report, halted = module.run_paper("EURUSD")  # type: ignore[attr-defined]
+    report, halted = module.run_paper(  # type: ignore[attr-defined]
+        "EURUSD", zustandsordner=tmp_path
+    )
     assert report.opened and report.ok
     assert not halted  # sauberer Takt (Heartbeat, keine Drift)
 
 
-def test_paper_run_command_exits_zero(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_paper_run_command_exits_zero(tmp_path: Path) -> None:
     module = _load_paper_run()
-    monkeypatch.setattr(sys, "argv", ["paper_run.py", "--symbol", "EURUSD"])
-    assert int(module.main()) == 0  # type: ignore[attr-defined]
+    argv = ["--symbol", "EURUSD", "--zustandsordner", str(tmp_path)]
+    assert int(module.main(argv)) == 0  # type: ignore[attr-defined]
+    assert (tmp_path / "risikozustand.json").is_file()  # der Zustand lag dort (D8)

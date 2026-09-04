@@ -21,11 +21,11 @@ from __future__ import annotations
 
 import hashlib
 import importlib
-import os
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 from decimal import ROUND_CEILING, Decimal
+from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
 from zoneinfo import ZoneInfo
 
@@ -38,19 +38,24 @@ from mt5_trading_ai.execution.freshness import (
 from mt5_trading_ai.execution.leverage_preflight import evaluate_leverage_preflight
 from mt5_trading_ai.execution.private_sync import PrivateEvent, PrivateSync
 from mt5_trading_ai.execution.reconcile import (
+    Buchposition,
     PositionBook,
+    Positionsbuch,
+    PositionsbuchDefekt,
     ReconcileResult,
     positions_to_net,
     reconcile_positions,
 )
-from mt5_trading_ai.execution.release import live_release_blocks_opening_order
+from mt5_trading_ai.execution.release import (
+    lies_live_freigabe,
+    live_release_blocks_opening_order,
+)
 from mt5_trading_ai.execution.risiko_zustand import (
-    UMGEBUNG_ZUSTANDSDATEI,
-    UMGEBUNG_ZUSTANDSORDNER,
+    POSITIONSBUCH_DATEI,
+    ZustandsortFehler,
 )
 from mt5_trading_ai.execution.risk_manager import RiskManager
 from mt5_trading_ai.execution.schwebende_auftraege import (
-    UMGEBUNG_SCHWEBEDATEI,
     SchwebeAkte,
     SchwebenderAuftrag,
     standard_schwebedatei,
@@ -345,27 +350,74 @@ def stop_level_in_tickschritten(
     return int(schritte.to_integral_value(rounding=ROUND_CEILING))
 
 
-def _schwebeakte_waehlen() -> SchwebeAkte:
-    """Umgebung -> Datei, sonst fluechtig. Dieselbe Regel wie fuer den Risikozustand.
+def _ablage_waehlen(
+    zustandsordner: Path | None,
+    schwebeakte: SchwebeAkte | None,
+    positionsbuch: Positionsbuch | None,
+) -> tuple[SchwebeAkte, Positionsbuch]:
+    """Schwebeakte und Positionsbuch -- aus dem Zustandsordner oder ausdruecklich.
 
-    ``RiskManager._zustand_waehlen`` entscheidet genauso, und aus demselben Grund: eine
-    Bibliothek schreibt nicht ungefragt in das Zustandsverzeichnis des Benutzers, nur
-    weil jemand ein Objekt gebaut hat. Wer die Akte dauerhaft will -- und im Betrieb
-    will man das --, setzt ``MT5_SCHWEBENDE_AUFTRAEGE`` oder eine der beiden
-    Zustandsordner-Variablen.
+    Keine Vorgabe „fluechtig", keine Umgebungsvariable (D8, E-005). Bis 306bbaa
+    entschied hier ``os.environ``: ohne ``MT5_SCHWEBENDE_AUFTRAEGE`` blieb die Akte
+    im Prozess, und genau so lief der Betrieb. Jetzt nennt der Aufrufer entweder
+    den Ordner (der Betrieb: ``--zustandsordner``) oder beide Ablagen einzeln (Tests:
+    ``FluechtigeSchwebeAkte()``, ``FluechtigesPositionsbuch()`` -- Typen, die sagen,
+    was sie sind). Fehlt beides, ist das Venue nicht konstruierbar.
 
-    Die Regel ist hier keine Bequemlichkeit, sondern eine Messung: ohne sie schrieb der
-    Testlauf dieses Repos in ``%LOCALAPPDATA%`` des Entwicklers -- und die dort
-    hinterlassenen Kennungen sperrten anschliessend 87 Faelle, die mit der Sache nichts
-    zu tun hatten.
+    Warum keine Vorgabe auf den Standardordner: dann teilten sich alle Tests dieses
+    Repos eine Akte im ``%LOCALAPPDATA%`` des Entwicklers -- gemessen: die dort
+    hinterlassenen Kennungen sperrten anschliessend 87 Faelle, die mit der Sache
+    nichts zu tun hatten.
     """
-    if (
-        os.environ.get(UMGEBUNG_SCHWEBEDATEI)
-        or os.environ.get(UMGEBUNG_ZUSTANDSDATEI)
-        or os.environ.get(UMGEBUNG_ZUSTANDSORDNER)
-    ):
-        return SchwebeAkte(standard_schwebedatei())
-    return SchwebeAkte(None)
+    if zustandsordner is not None:
+        akte = schwebeakte or SchwebeAkte(standard_schwebedatei(zustandsordner))
+        buch = positionsbuch or Positionsbuch(zustandsordner / POSITIONSBUCH_DATEI)
+        return akte, buch
+    if schwebeakte is None or positionsbuch is None:
+        raise ZustandsortFehler(
+            "Mt5Venue braucht einen Zustandsordner (zustandsordner=) oder "
+            "ausdruecklich beide Ablagen (schwebeakte= und positionsbuch=). Eine "
+            "Vorgabe 'fluechtig' gibt es nicht mehr (D8, E-005); fluechtige Ablagen "
+            "heissen FluechtigeSchwebeAkte und FluechtigesPositionsbuch."
+        )
+    return schwebeakte, positionsbuch
+
+
+@dataclass(frozen=True)
+class Startabgleich:
+    """Ergebnis von ``adopt_book``: eigener Zustand gegen ``positions_get()`` (D7).
+
+    ``geister_zaehler`` sind Positionen des Risikozaehlers ohne Gegenstueck beim
+    Broker (Symbol, Eroeffnungszeit); ``geister_buch`` dieselbe Frage fuer das
+    persistierte Positionsbuch; ``fremde`` sind Broker-Positionen, die in keinem
+    Buch stehen (Tickets). ``defekt`` nennt ein unlesbares Buch -- dann steht der
+    Halt. Der Aufrufer schreibt das Ergebnis ins Journal; nichts davon geschieht
+    stillschweigend.
+    """
+
+    offen_beim_broker: tuple[str, ...]
+    geister_zaehler: tuple[tuple[str, datetime], ...]
+    geister_buch: tuple[Buchposition, ...]
+    fremde: tuple[str, ...]
+    defekt: str | None = None
+
+    @property
+    def auffaellig(self) -> bool:
+        return bool(
+            self.geister_zaehler or self.geister_buch or self.fremde or self.defekt
+        )
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "offen_beim_broker": list(self.offen_beim_broker),
+            "geister_zaehler": [
+                {"instrument": sym, "eroeffnet_am": ts.isoformat(timespec="seconds")}
+                for sym, ts in self.geister_zaehler
+            ],
+            "geister_buch": [b.as_dict() for b in self.geister_buch],
+            "fremde": list(self.fremde),
+            "defekt": self.defekt,
+        }
 
 
 def _halt_grund_fortschreiben(bisher: str | None, neu: str) -> str:
@@ -452,8 +504,17 @@ def konto_maengel(acc: object) -> str | None:
 class Mt5Venue(TradingVenue):
     """MT5-Handelsplatz. Erfuellt das ``TradingVenue``-Protokoll (statisch geprueft).
 
-    ``settings`` traegt die Live-Freigabe-Schalter (siehe ``execution/release.py``);
-    fuer Demo/Reduce-Only ist es unerheblich und darf ``None`` sein.
+    ``freigabedatei`` nennt die Datei mit den Live-Freigabe-Schaltern
+    (``execution/release.py``; Vorgabe ``config/live_freigabe.json``, eingecheckt und
+    hook-geschuetzt, alle Schalter aus). Sie wird beim Bau gelesen; fehlt sie oder
+    ein Schluessel, ist nichts freigegeben. Fuer Demo/Reduce-Only ist sie
+    unerheblich. Ein ``settings``-Objekt gibt es seit Z (E-010) nicht mehr: es hat
+    nie jemand uebergeben.
+
+    ``zustandsordner`` nennt den Ort von Schwebeakte und Positionsbuch (D8, E-005);
+    alternativ werden beide ausdruecklich uebergeben (``schwebeakte=``,
+    ``positionsbuch=`` -- in Tests die fluechtigen Typen). Ohne eines von beiden ist
+    das Venue nicht konstruierbar (:func:`_ablage_waehlen`).
 
     ``cost_gate`` traegt die im Backtest vorausgesetzte Kostenobergrenze
     (``execution/cost_gate.py``). Auf einem **Live**-Konto ist es fuer eroeffnende
@@ -511,7 +572,9 @@ class Mt5Venue(TradingVenue):
         name: str,
         terminal: Mt5Terminal,
         catalog: Mapping[str, CatalogEntry],
-        settings: Any = None,
+        freigabedatei: Path | None = None,
+        zustandsordner: Path | None = None,
+        positionsbuch: Positionsbuch | None = None,
         max_notional_drift: Decimal = Decimal("0"),
         sync: PrivateSync | None = None,
         cost_gate: CostGate | None = None,
@@ -525,7 +588,8 @@ class Mt5Venue(TradingVenue):
         self.name = name
         self._terminal = terminal
         self._catalog = dict(catalog)
-        self._settings = settings
+        #: Die vier Schalter und die Kennung, aus der Datei gelesen (fail-closed).
+        self._settings = lies_live_freigabe(freigabedatei)
         self._max_notional_drift = max_notional_drift
         self._cost_gate = cost_gate
         self._risk_manager = risk_manager
@@ -534,13 +598,16 @@ class Mt5Venue(TradingVenue):
         #: Gegenwart fuer den Frische-Latch. Injizierbar, damit die Sperre pruefbar ist.
         self._clock = clock if clock is not None else (lambda: datetime.now(UTC))
         self._max_account_age = max_account_age
-        #: Die Akte der Auftraege, deren Antwort ausblieb. Sie ueberdauert einen
-        #: Neustart -- anders als der frueher hier gefuehrte Speicherzettel, der bei
-        #: jedem Prozessstart leer war und damit gerade die Kenntnis verlor, dass
-        #: moeglicherweise Geld am Markt steht (Stufe 5).
-        self._schwebeakte = (
-            schwebeakte if schwebeakte is not None else _schwebeakte_waehlen()
+        #: Die Akte der Auftraege, deren Antwort ausblieb, und das persistierte Buch
+        #: der eigenen Positionen. Beide ueberdauern einen Neustart -- anders als der
+        #: frueher hier gefuehrte Speicherzettel, der bei jedem Prozessstart leer war
+        #: und damit gerade die Kenntnis verlor, dass moeglicherweise Geld am Markt
+        #: steht (Stufe 5; D8).
+        self._schwebeakte, self._positionsbuch = _ablage_waehlen(
+            zustandsordner, schwebeakte, positionsbuch
         )
+        #: Ergebnis des letzten ``adopt_book`` (D7) -- fuer das Journal des Aufrufers.
+        self._startabgleich: Startabgleich | None = None
         self._connected = False
         #: Idempotenz je ``client_order_id`` — nur angenommene Orders.
         #:
@@ -564,8 +631,10 @@ class Mt5Venue(TradingVenue):
         self._book = sync.book if sync is not None else PositionBook()
         #: Global-Halt-Latch (Reconcile-Drift/Desync). Klaert nur ``clear_halt``.
         self._halted = False
-        #: Grund des zuletzt gesetzten Halts (best-effort, fuer Nachweis/Alarm).
-        self._halt_reason: str | None = None
+        #: ALLE Gruende des Halts, in Reihenfolge ihres Eintritts (D4). Kein Feld,
+        #: das der naechste Latch ueberschreibt: ``reconcile()`` ergaenzt, loescht
+        #: nicht; ``halt_grund_loesen`` nimmt genau einen Anteil heraus.
+        self._halt_gruende: list[str] = []
 
     # --- Verbindung -------------------------------------------------------
     def connect(self) -> None:
@@ -1009,18 +1078,35 @@ class Mt5Venue(TradingVenue):
             # ein Halt zu wenig ist eine unbemerkte Position.
             grund = f"{type(exc).__name__}: {exc}"
             self._unklare_sendeversuche[request.client_order_id] = grund
+            # ZUERST der Latch, dann die Platte (D5): scheitert das Vermerken, steht
+            # der Halt trotzdem. Gemessen gegen 306bbaa (V7): bei ``OSError`` aus
+            # ``vermerken`` blieb ``_halted`` False -- der Sendeversuch stand nur noch
+            # im Prozessspeicher, und die naechste Eroeffnung lief durch.
+            self._halted = True
+            self._halt_grund_ergaenzen(f"sendeversuch_unklar:{request.client_order_id}")
             # Und auf die Platte, sofort: der Zustand entsteht genau in dem Augenblick,
             # in dem auch der Prozess wegbrechen kann.
-            self._schwebeakte.vermerken(
-                SchwebenderAuftrag(
-                    client_order_id=request.client_order_id,
-                    grund=grund,
-                    seit=self._clock(),
-                    symbol=request.symbol,
+            try:
+                self._schwebeakte.vermerken(
+                    SchwebenderAuftrag(
+                        client_order_id=request.client_order_id,
+                        grund=grund,
+                        seit=self._clock(),
+                        symbol=request.symbol,
+                    )
                 )
-            )
-            self._halted = True
-            self._halt_reason = f"sendeversuch_unklar:{request.client_order_id}"
+            except OSError as platte:
+                # Beide Gruende nach aussen: die Ursache (Terminal) als Ausnahme, die
+                # Platte als Ursache-Kette und als Notiz. Der Halt traegt sie auch.
+                self._halt_grund_ergaenzen(
+                    f"schwebeakte_nicht_vermerkt:{type(platte).__name__}"
+                )
+                exc.add_note(
+                    f"Schwebeakte nicht vermerkt ({type(platte).__name__}: {platte}); "
+                    f"Sendeversuch {request.client_order_id} nur im Speicher, "
+                    "Halt steht."
+                )
+                raise exc from platte
             raise
         if send.idempotent_replay:
             # Der Handelsplatz kennt diese Kennung bereits (Marke am Broker, siehe
@@ -1099,6 +1185,7 @@ class Mt5Venue(TradingVenue):
                     # Schliessung, die das Symbol netto glattstellt -> Deckel frei.
                     # pre_net + Fill statt book.net(): stromunabhaengig korrekt.
                     self._risk_manager.record_close(request.symbol)
+        self._positionsbuch_fortschreiben(request, send, is_reducing, pre_net)
         return result
 
     def _verhindere_doppelte_eroeffnung(self, request: OrderRequest) -> None:
@@ -1691,8 +1778,55 @@ class Mt5Venue(TradingVenue):
 
     @property
     def halt_reason(self) -> str | None:
-        """Grund des zuletzt via ``latch_halt`` gesetzten Halts (best-effort)."""
-        return self._halt_reason
+        """Alle Halt-Gruende als Kette, juengster vorn (``a (zuvor: b)``).
+
+        Die Kette ist die Lesart von :attr:`halt_gruende` fuer Journal und Alarm;
+        sie ist kein zweiter Speicher. ``None`` heisst: kein Grund steht.
+        """
+        return self._halt_kette()
+
+    @property
+    def halt_gruende(self) -> tuple[str, ...]:
+        """Alle Gruende des Halts in Eintrittsreihenfolge (D4: nichts wird
+        ueberschrieben)."""
+        return tuple(self._halt_gruende)
+
+    def _halt_kette(self) -> str | None:
+        kette: str | None = None
+        for grund in self._halt_gruende:
+            kette = _halt_grund_fortschreiben(kette, grund)
+        return kette
+
+    def _halt_grund_ergaenzen(self, grund: str) -> None:
+        """Einen Grund anhaengen -- nie einen anderen loeschen (D4)."""
+        if grund not in self._halt_gruende:
+            self._halt_gruende.append(grund)
+
+    @property
+    def _halt_reason(self) -> str | None:
+        """Rueckwaertskompatible Sicht auf die Kette.
+
+        Zuweisungen an ``_halt_reason`` (Risikoschicht, Strom, Not-Aus) landen als
+        weiterer Grund in der Liste statt als Ersatz: ``None`` leert sie, ein Wert in
+        der Form ``neu (zuvor: <aktuelle Kette>)`` wird auf ``neu`` gekuerzt, die
+        aktuelle Kette selbst ist ein Leerlauf. So bleibt kein Weg uebrig, auf dem
+        ein Grund einen anderen verdraengt.
+        """
+        return self._halt_kette()
+
+    @_halt_reason.setter
+    def _halt_reason(self, wert: str | None) -> None:
+        if wert is None:
+            self._halt_gruende.clear()
+            return
+        aktuell = self._halt_kette()
+        if aktuell is not None:
+            if wert == aktuell:
+                return
+            zusatz = f" (zuvor: {aktuell})"
+            if wert.endswith(zusatz):
+                wert = wert[: -len(zusatz)]
+        self._halt_grund_ergaenzen(wert)
 
     @property
     def risk_manager(self) -> RiskManager | None:
@@ -1725,17 +1859,37 @@ class Mt5Venue(TradingVenue):
         die sichere Richtung. Der Treiber-Loop nutzt es, um einen nie gestarteten oder
         still gewordenen Strom zu latchen, den ``check_sync`` selbst nicht faengt
         (``is_stale`` ist blind, solange nie ein Ereignis kam). Klaert nur via
-        ``clear_halt``.
+        ``clear_halt``. Der Grund wird ERGAENZT, nie ueberschrieben (D4).
         """
         self._halted = True
-        self._halt_reason = reason
+        self._halt_grund_ergaenzen(reason)
 
     def clear_halt(self) -> None:
-        """Manuelle Freigabe nach aufgeloester Drift. Der Latch klaert nicht selbst."""
+        """Manuelle Freigabe nach aufgeloester Drift -- ALLE Gruende. Der Latch klaert
+        nicht selbst; wer nur einen Anteil loesen will, nimmt
+        :meth:`halt_grund_loesen`."""
         self._halted = False
-        self._halt_reason = None
+        self._halt_gruende.clear()
         if self._sync is not None:
             self._sync.clear_desync()
+
+    def halt_grund_loesen(self, praefix: str) -> tuple[str, ...]:
+        """Nur die Gruende mit diesem Praefix loesen; ein fremder Grund bleibt (D4).
+
+        Gibt die geloesten Gruende zurueck. Der Halt faellt erst, wenn KEIN Grund
+        mehr steht. Gemessen gegen 306bbaa (V4): ``reconcile()`` ueberschrieb
+        ``tagesverlust`` mit ``reconcile_drift:...``, und ``tools/live_betrieb.py``
+        loeste daraufhin per ``clear_halt()`` beides -- die Notbremse mit.
+        """
+        geloest = tuple(g for g in self._halt_gruende if g.startswith(praefix))
+        if not geloest:
+            return ()
+        self._halt_gruende = [
+            g for g in self._halt_gruende if not g.startswith(praefix)
+        ]
+        if not self._halt_gruende:
+            self._halted = False
+        return geloest
 
     def reconcile(self) -> ReconcileResult:
         """Buch gegen Meldung; bei Drift ueber der Grenze Global-Halt setzen."""
@@ -1760,8 +1914,10 @@ class Mt5Venue(TradingVenue):
             max_notional_drift=self._max_notional_drift,
         )
         if result.halt:
+            # Ergaenzen, nicht ueberschreiben (D4): ein Drawdown- oder Notbremsen-Halt
+            # bleibt neben der Drift stehen; der Betrieb loest spaeter nur die Drift.
             self._halted = True
-            self._halt_reason = f"reconcile_drift:{result.reason or 'drift'}"
+            self._halt_grund_ergaenzen(f"reconcile_drift:{result.reason or 'drift'}")
         return result
 
     def adopt_book(self) -> dict[str, Decimal]:
@@ -1771,10 +1927,114 @@ class Mt5Venue(TradingVenue):
         keine Drift. Bewusst **nicht** automatisch in ``connect()`` — das wuerde
         unerwartete Positionen still uebernehmen. Der Halt-Latch bleibt unberuehrt; die
         Freigabe ist ein getrennter Schritt (``clear_halt()``).
+
+        **Startabgleich (D7):** was Risikozaehler und Positionsbuch fuehren, wird
+        gegen ``positions_get()`` gehalten. Geister -- im Zustand, nicht beim Broker
+        -- werden ausgetragen und in :attr:`startabgleich` benannt, damit der
+        Aufrufer sie journalisiert; nichts verschwindet stillschweigend. Ein
+        unlesbares Positionsbuch latcht den Halt (Schliessungen bleiben frei).
         """
         self._require_healthy()
-        self._book.adopt(positions_to_net(self.get_positions()))
+        positionen = self.get_positions()
+        self._book.adopt(positions_to_net(positionen))
+        offen = {pos.symbol for pos in positionen}
+        geister_zaehler: tuple[tuple[str, datetime], ...] = ()
+        if self._risk_manager is not None:
+            geister_zaehler = tuple(
+                (g.instrument, g.opened_at)
+                for g in self._risk_manager.geister_austragen(offen)
+            )
+        defekt: str | None = None
+        geister_buch: tuple[Buchposition, ...] = ()
+        gebucht: set[str] = set()
+        try:
+            geister_buch = self._positionsbuch.abgleichen(offen)
+            gebucht = {b.symbol for b in self._positionsbuch.laden()}
+        except PositionsbuchDefekt as exc:
+            defekt = str(exc)
+            self._halted = True
+            self._halt_grund_ergaenzen(f"positionsbuch_defekt:{exc}")
+        self._startabgleich = Startabgleich(
+            offen_beim_broker=tuple(sorted(offen)),
+            geister_zaehler=geister_zaehler,
+            geister_buch=geister_buch,
+            fremde=tuple(
+                pos.venue_position_id for pos in positionen if pos.symbol not in gebucht
+            ),
+            defekt=defekt,
+        )
         return self._book.snapshot()
+
+    @property
+    def startabgleich(self) -> Startabgleich | None:
+        """Das Ergebnis des letzten ``adopt_book`` -- fuer das Journal (D7)."""
+        return self._startabgleich
+
+    @property
+    def positionsbuch(self) -> Positionsbuch:
+        """Das persistierte Buch der eigenen Positionen (lesbar fuer Werkzeuge)."""
+        return self._positionsbuch
+
+    @property
+    def zustand_dauerhaft(self) -> bool:
+        """Ueberdauern Schwebeakte UND Positionsbuch einen Neustart? Der Betrieb
+        (``tools/live_betrieb.py``) weist ein Venue ab, bei dem das nicht gilt."""
+        return self._schwebeakte.dauerhaft and self._positionsbuch.dauerhaft
+
+    def _positionsbuch_fortschreiben(
+        self,
+        request: OrderRequest,
+        send: Mt5SendResult,
+        is_reducing: bool,
+        pre_net: Decimal,
+    ) -> None:
+        """Eroeffnung ins Buch, glattstellende Schliessung heraus -- sofort, atomar.
+
+        Laeuft NACH dem Fill; ein Plattenfehler darf dem Aufrufer sein ``OrderResult``
+        nicht nehmen (dieselbe Begruendung wie ``RiskManager._sichern``). Er wird
+        gefangen und latcht den Halt mit Grund: keine neue Eroeffnung, solange das
+        Buch nicht schreibbar ist; Schliessungen bleiben frei. Ein Teilabbau laesst
+        den Eintrag stehen -- die Wahrheit ueber die Restmenge hat der Broker.
+        """
+        try:
+            if is_reducing:
+                signed = (
+                    send.filled_volume
+                    if request.side is OrderSide.BUY
+                    else -send.filled_volume
+                )
+                if pre_net + signed == 0:
+                    self._positionsbuch.austragen_symbol(request.symbol)
+                return
+            ticket = send.venue_order_id
+            if not ticket:
+                # Ein angenommener Fill ohne Ticket ist eine Position, die dieses
+                # Haus spaeter nicht per Ticket schliessen kann (D2). Gebucht wird sie
+                # trotzdem -- unter einem benannten Platzhalter --, und der Halt steht,
+                # bis ein Mensch beim Broker nachgesehen hat.
+                self._halted = True
+                self._halt_grund_ergaenzen(
+                    f"positionsbuch_ohne_ticket:{request.client_order_id}"
+                )
+                ticket = "unbekannt"
+            self._positionsbuch.eintragen(
+                Buchposition(
+                    kennung=request.client_order_id,
+                    ticket=ticket,
+                    symbol=request.symbol,
+                    richtung="kauf" if request.side is OrderSide.BUY else "verkauf",
+                    menge=send.filled_volume
+                    if send.filled_volume > 0
+                    else request.volume,
+                    eroeffnet_am=send.ts,
+                    stop=request.stop_loss if request.stop_loss > 0 else None,
+                )
+            )
+        except (OSError, PositionsbuchDefekt) as exc:
+            self._halted = True
+            self._halt_grund_ergaenzen(
+                f"positionsbuch_nicht_gesichert:{type(exc).__name__}"
+            )
 
     def apply_private_event(self, event: PrivateEvent) -> None:
         """Fuehre ein Kontoereignis ins Buch. Bei Desync (Luecke) Global-Halt."""

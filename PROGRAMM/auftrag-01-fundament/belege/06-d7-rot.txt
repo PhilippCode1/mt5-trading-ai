@@ -1,0 +1,17 @@
+# Eichfall D7, ROT gegen 306bbaa (Worktree C:\Users\<konto>\nachstellung-306bbaa, 2026-09-04 02:07 UTC): tests/eichfall_d7.py dort hineinkopiert, ausgefuehrt, entfernt
+$ python -m pytest -q -p no:cacheprovider --tb=line tests/eichfall_d7.py
+FFFF                                                                     [100%]
+================================== FAILURES ===================================
+C:\Users\<konto>\nachstellung-306bbaa\tests\eichfall_d7.py:139: AssertionError: nach dem Neustart zaehlt der Deckel 3 Geister
+C:\Users\<konto>\nachstellung-306bbaa\tests\eichfall_d7.py:154: AttributeError: 'Mt5Venue' object has no attribute 'startabgleich'
+C:\Users\<konto>\nachstellung-306bbaa\tests\eichfall_d7.py:162: ImportError: cannot import name 'Buchposition' from 'mt5_trading_ai.execution.reconcile' (C:\Users\<konto>\nachstellung-306bbaa\mt5_trading_ai\execution\reconcile.py)
+C:\Users\<konto>\nachstellung-306bbaa\tests\eichfall_d7.py:187: ImportError: cannot import name '_startabgleich_journalisieren' from 'tools.live_betrieb' (C:\Users\<konto>\nachstellung-306bbaa\tools\live_betrieb.py)
+=========================== short test summary info ===========================
+FAILED tests/eichfall_d7.py::test_geister_werden_beim_start_ausgetragen - Ass...
+FAILED tests/eichfall_d7.py::test_der_startabgleich_nennt_jeden_geist - Attri...
+FAILED tests/eichfall_d7.py::test_geister_im_positionsbuch_werden_ausgetragen
+FAILED tests/eichfall_d7.py::test_live_betrieb_schreibt_den_startabgleich_ins_journal
+4 failed in 0.53s
+[exit=1, 3.5 s]
+$ git status --porcelain   (im Referenz-Worktree, danach)
+(sauber)

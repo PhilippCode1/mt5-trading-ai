@@ -36,9 +36,9 @@ Der Claude-Code-Hook `PROGRAMM/hooks/waechter.py` (`.claude/settings.json`) weis
 Erzeugt von `tools/gen_docs.py`, geprüft von `tools/check_doc_numbers.py` und `tests/test_readme_numbers.py`; andere Dokumente verweisen hierher.
 
 <!-- KENNZAHLEN-ANFANG (erzeugt von tools/gen_docs.py, geprueft von tests/test_readme_numbers.py) -->
-- module_count: 40
-- test_function_count: 1365
-- source_lines: 16829
+- module_count: 41
+- test_function_count: 1399
+- source_lines: 17904
 <!-- KENNZAHLEN-ENDE -->
 
 ## Zustand außerhalb des Arbeitsbaums

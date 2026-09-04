@@ -46,7 +46,7 @@ Arbeitsverzeichnis davor, die Zustandsdatei landet mitten IM Repo -- und damit g
 genau der Absatz oben, den die Ortswahl vermeiden sollte. Gemessen mit POSIX-Regeln:
 ``PurePosixPath("C:\\\\Users\\\\Test\\\\AppData\\\\Local").is_absolute()`` ist
 ``False``, die Datei laege unter ``<repo>/C:\\Users\\...``. Die CI dieses Repos faehrt
-ubuntu-latest. Ein relativer Pfad aus ``MT5_RISIKO_ZUSTAND`` hat dieselbe Wirkung; er
+ubuntu-latest. Ein relativer Pfad aus ``--zustandsordner`` hat dieselbe Wirkung; er
 wird nicht stillschweigend zurechtgebogen, sondern mit ``ZustandsortFehler``
 abgewiesen -- beim Bau des ``RiskManager``, also vor der ersten Order und nicht mitten
 im Takt.
@@ -198,8 +198,8 @@ Zwischen dem frischen Lesen und ``os.replace`` bleibt ein Fenster von der Dauer 
 Schreibvorgangs, in dem ein zweiter Schreiber landen kann; ein Halt, der genau dort
 gesetzt wird, geht verloren. Das Fenster faellt damit von der Lebensdauer eines
 Prozesses (Stunden) auf Millisekunden -- es wird nicht null. Wer wirklich zwei Runner
-auf **ein** Konto faehrt, gibt jedem seine eigene Datei ueber
-``MT5_RISIKO_ZUSTAND``; das ist ohnehin der vorgesehene Weg fuer zwei Konten.
+auf **ein** Konto faehrt, gibt jedem seinen eigenen Zustandsordner ueber
+``--zustandsordner``; das ist ohnehin der vorgesehene Weg fuer zwei Konten.
 
 WENN DIE PLATTE NICHT MITSPIELT
 -------------------------------
@@ -245,7 +245,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from typing import Any, Final
+from typing import Any, Final, Protocol
 
 #: Schemamarke. Eine unbekannte Marke ist ein **unlesbarer** Zustand, kein leerer:
 #: eine aeltere/neuere Fassung koennte einen Halt anders benannt haben, und ein Halt,
@@ -260,14 +260,20 @@ RISIKO_ZUSTAND_SCHEMA: Final = "risiko-zustand-v1"
 #: absichtlich**"; ein Defekt IN dieser Datei bleibt ein Halt wie ueberall sonst.
 RISIKO_ZUSTAND_SCHEMA_FENSTER: Final = "risiko-zustand-fenster-v1"
 
-#: Umgebungsvariable mit dem vollen Pfad der Zustandsdatei. Sie ist der Schalter, mit
-#: dem der Betrieb die Dauerhaftigkeit einschaltet, ohne dass eine Aufrufstelle
-#: geaendert werden muss -- und sie ist zugleich der Weg, wie ein Betreiber mit ZWEI
-#: Konten arbeitet: eine Datei je Konto.
-UMGEBUNG_ZUSTANDSDATEI: Final = "MT5_RISIKO_ZUSTAND"
-
-#: Umgebungsvariable nur fuer das Verzeichnis (Dateiname bleibt der Standard).
-UMGEBUNG_ZUSTANDSORDNER: Final = "MT5_RISIKO_ZUSTAND_ORDNER"
+#: Die Dateien im Zustandsordner. Feste Namen, keine aus dem Konto abgeleiteten
+#: (Begruendung bei ``standard_zustandsdatei``). Es gibt KEINE Umgebungsvariable
+#: mehr, die den Ort umbiegt (D8, E-005): der Ort kommt aus ``--zustandsordner``
+#: des Betriebswerkzeugs oder aus ``standard_zustandsordner``; jeder Aufrufer, der
+#: einen ``RiskManager``, eine ``SchwebeAkte`` oder ein ``Positionsbuch`` baut,
+#: nennt den Ort ausdruecklich. Eine Vorgabe "fluechtig, wenn nichts gesetzt ist"
+#: war der Befund D8 der Bewertung: der Betrieb lief 21 Laeufe lang ohne Zustand.
+RISIKOZUSTAND_DATEI: Final = "risikozustand.json"
+SCHWEBEAKTE_DATEI: Final = "schwebende_auftraege.json"
+POSITIONSBUCH_DATEI: Final = "positionsbuch.json"
+#: Wer diese Datei im Zustandsordner anlegt, beendet den Betriebslauf geordnet.
+STOPPDATEI_NAME: Final = "STOP"
+#: Unterordner der Betriebsjournale (A18: kein Laufzeitzustand im Arbeitsbaum).
+JOURNALORDNER_NAME: Final = "journale"
 
 #: Rundenzahl der Schluesselableitung fuer den Kontoabdruck. Begruendung samt
 #: Rechnung im Modul-Docstring unter „Kein Geheimnis in der Datei".
@@ -383,6 +389,11 @@ def standard_zustandsordner(
 ) -> Path:
     """Das Zustandsverzeichnis des Benutzers -- ausserhalb des Arbeitsbaums.
 
+    Die Vorgabe fuer ``--zustandsordner`` (``tools/live_betrieb.py``,
+    ``tools/zustand.py``). Keine Umgebungsvariable des Betreibers wird gelesen;
+    gefragt werden nur die Plattformvariablen ``LOCALAPPDATA`` (Windows) und
+    ``XDG_STATE_HOME`` (POSIX), und beide nur als Auskunft, nicht als Anweisung.
+
     Begruendung der Ortswahl im Modul-Docstring. Die Reihenfolge ist bewusst
     plattformnah: unter Windows ist ``%LOCALAPPDATA%`` der Ort fuer maschinenlokalen
     Zustand (nicht ``%APPDATA%``, das in Roaming-Profilen mitwandert -- ein Halt, der
@@ -396,9 +407,6 @@ def standard_zustandsordner(
     """
     umg = os.environ if umgebung is None else umgebung
     windows = os.name == "nt" if ist_windows is None else ist_windows
-    vorgabe = umg.get(UMGEBUNG_ZUSTANDSORDNER)
-    if vorgabe:
-        return _absolut_oder_wurf(vorgabe, UMGEBUNG_ZUSTANDSORDNER)
     # Kein Wurf fuer die vom System gesetzten Variablen: sie sind keine Anweisung des
     # Betreibers, sondern eine Auskunft der Plattform. Ist sie unbrauchbar (leer oder
     # relativ), gilt der naechste Kandidat -- am Ende immer ein absoluter Heimatpfad.
@@ -419,27 +427,43 @@ def standard_zustandsordner(
     return Path.home() / ".local" / "state" / "mt5_trading_ai" / "risiko"
 
 
+def zustandsordner_pruefen(pfad: Path | str, quelle: str = "--zustandsordner") -> Path:
+    """Ein vom Betreiber genannter Zustandsordner -- absolut und ausserhalb des
+    Baums, oder ``ZustandsortFehler``.
+
+    Dieselbe Regel wie frueher fuer die Umgebungsvariablen, jetzt fuer das
+    Kommandozeilenargument: relativ oder im Paket-/Arbeitsbaum wird abgewiesen,
+    nicht zurechtgebogen (Begruendung bei ``_absolut_oder_wurf``).
+    """
+    return _absolut_oder_wurf(str(pfad), quelle)
+
+
+def zustandsordner_waehlen(vorgabe: Path | str | None) -> Path:
+    """``--zustandsordner`` oder der Standardordner -- geprueft, nie geraten."""
+    if vorgabe is None:
+        return standard_zustandsordner()
+    return zustandsordner_pruefen(vorgabe)
+
+
 def standard_zustandsdatei(
     *,
+    ordner: Path | None = None,
     umgebung: Mapping[str, str] | None = None,
     ist_windows: bool | None = None,
 ) -> Path:
-    """Der Standardpfad der Zustandsdatei (``UMGEBUNG_ZUSTANDSDATEI`` schlaegt alles).
+    """Der Pfad der Zustandsdatei: ``RISIKOZUSTAND_DATEI`` im Zustandsordner.
 
     Ein **fester** Dateiname, kein aus dem Konto abgeleiteter. Ein abgeleiteter Name
     waere bequem (je Konto automatisch eine Datei), oeffnete aber ein Loch: das noetige
     Salz muesste neben den Dateien liegen, und ein verlorenes Salz liesse jede
     Zustandsdatei *unauffindbar* werden -- also jeden Halt lautlos verschwinden. Ein
     fester Name kennt diesen Weg nicht: ein fremdes Konto trifft auf eine Datei, die da
-    ist, und wird erkannt (``DateiZustand.binde``). Wer zwei Konten faehrt, setzt
-    ``UMGEBUNG_ZUSTANDSDATEI`` je Lauf.
+    ist, und wird erkannt (``DateiZustand.binde``). Wer zwei Konten faehrt, gibt
+    jedem Lauf seinen eigenen ``--zustandsordner``.
     """
-    umg = os.environ if umgebung is None else umgebung
-    aus_umgebung = umg.get(UMGEBUNG_ZUSTANDSDATEI)
-    if aus_umgebung:
-        return _absolut_oder_wurf(aus_umgebung, UMGEBUNG_ZUSTANDSDATEI)
-    ordner = standard_zustandsordner(umgebung=umg, ist_windows=ist_windows)
-    return ordner / "risikozustand.json"
+    if ordner is None:
+        ordner = standard_zustandsordner(umgebung=umgebung, ist_windows=ist_windows)
+    return ordner / RISIKOZUSTAND_DATEI
 
 
 def korb_start(ts: datetime) -> datetime:
@@ -885,8 +909,14 @@ class DateiZustand:
         self._zuletzt_gesehen: RisikoLage | None = None
 
     @property
-    def pfad(self) -> Path:
+    def pfad(self) -> Path | None:
         return self._pfad
+
+    @property
+    def dauerhaft(self) -> bool:
+        """Eine Datei ueberdauert den Neustart -- im Gegensatz zum Testtyp
+        ``FluechtigerZustand``."""
+        return True
 
     @property
     def gebunden(self) -> bool:
@@ -1594,3 +1624,99 @@ class DateiZustand:
         if bindung is None or self._waehrung is None:
             return self._ungebunden_sichern(lage)
         return self._gebunden_sichern(lage, bindung)
+
+
+# --- Der Vertrag, den der RiskManager braucht -- und der Testtyp dazu -------------
+
+
+class Risikozustand(Protocol):
+    """Was ``RiskManager`` von seinem Zustand verlangt.
+
+    Zwei Erfuellungen: :class:`DateiZustand` (der Betrieb, ueberdauert den Neustart)
+    und :class:`FluechtigerZustand` (nur fuer Tests; sein Name sagt, was er ist).
+    Eine dritte -- „nichts uebergeben, dann fluechtig" -- gibt es seit D8 (E-005)
+    nicht mehr: der ``RiskManager`` ist ohne Zustand nicht konstruierbar.
+    """
+
+    @property
+    def pfad(self) -> Path | None: ...
+    @property
+    def dauerhaft(self) -> bool: ...
+    @property
+    def gebunden(self) -> bool: ...
+    @property
+    def schreibfehler_text(self) -> str: ...
+    @property
+    def zuletzt_gesehen(self) -> RisikoLage | None: ...
+    def laden(self) -> Zustandsbefund: ...
+    def binde(self, konto_id: str, waehrung: str) -> str | None: ...
+    def sichern(self, lage: RisikoLage) -> str | None: ...
+    def freigabe_vormerken(self) -> None: ...
+    def schliessung_vormerken(
+        self, instrument: str, eroeffnet_am: datetime
+    ) -> None: ...
+
+
+class FluechtigerZustand:
+    """Risikozustand NUR im Prozessgedaechtnis -- der ausdrueckliche Testtyp.
+
+    Er heisst so, damit jede Stelle, die ihn baut, es hinschreibt. Der Betrieb weist
+    ihn ab (``tools/live_betrieb.py``); ``dauerhaft`` ist ``False``, ``pfad`` ist
+    ``None``. Er vereinigt nichts und sichert nichts: ``sichern`` merkt sich die Lage
+    nur, damit ein Test den gesicherten Stand nachsehen kann. Ein Halt in diesem
+    Zustand endet mit dem Prozess; genau das ist der Fall, den D8 aus dem Betrieb
+    entfernt hat.
+    """
+
+    def __init__(self) -> None:
+        self._konto_id: str | None = None
+        self._waehrung: str | None = None
+        self.gesichert: RisikoLage | None = None
+
+    @property
+    def pfad(self) -> Path | None:
+        return None
+
+    @property
+    def dauerhaft(self) -> bool:
+        return False
+
+    @property
+    def gebunden(self) -> bool:
+        return self._konto_id is not None
+
+    @property
+    def schreibfehler_text(self) -> str:
+        return ""
+
+    @property
+    def zuletzt_gesehen(self) -> RisikoLage | None:
+        # Kein zweiter Schreiber: es gibt nichts nachzuziehen.
+        return None
+
+    def laden(self) -> Zustandsbefund:
+        return Zustandsbefund(lage=RisikoLage(), herkunft="fluechtig")
+
+    def binde(self, konto_id: str, waehrung: str) -> str | None:
+        """Dieselbe Regel wie ``DateiZustand.binde``: ein Kontowechsel im Lauf
+        faellt auf. Der erste Aufrufer bindet; ein zweiter mit anderem Konto wird
+        abgewiesen."""
+        if self._konto_id is None:
+            self._konto_id = konto_id
+            self._waehrung = waehrung
+            return None
+        if self._waehrung != waehrung:
+            return "zustand_fremde_waehrung"
+        if self._konto_id != konto_id:
+            return "zustand_fremdes_konto"
+        return None
+
+    def sichern(self, lage: RisikoLage) -> str | None:
+        self.gesichert = lage
+        return None
+
+    def freigabe_vormerken(self) -> None:
+        return None
+
+    def schliessung_vormerken(self, instrument: str, eroeffnet_am: datetime) -> None:
+        return None

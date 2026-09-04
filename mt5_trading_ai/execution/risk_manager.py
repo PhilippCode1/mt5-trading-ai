@@ -96,25 +96,33 @@ Zwei Aenderungen tragen das:
    lese ihn beim Start als Ablehnung, im laufenden Prozess aber nicht, dann waere ein
    Neustart **strenger** als kein Neustart. Nebenwirkung ist gewollt: die Sperre loest
    oefter aus.
-2. **Der Zustand wird gesichert** (``execution/risiko_zustand.py``), sobald eine
-   Zustandsdatei da ist -- ``zustand=`` am Konstruktor oder die Umgebungsvariable
-   ``MT5_RISIKO_ZUSTAND``. Ohne beides bleibt diese Schicht fluechtig wie bisher;
-   ``zustand_dauerhaft`` sagt, welcher Fall vorliegt. Was ein fehlender, leerer oder
-   beschaedigter Zustand bedeutet -- und warum der Halt dabei anders behandelt wird als
-   der Tageszaehler --, steht im Docstring von ``execution/risiko_zustand.py``.
+2. **Der Zustand wird gesichert** (``execution/risiko_zustand.py``) -- immer. Der
+   Konstruktor verlangt ``zustand=`` (D8, E-005); es gibt keine Vorgabe „fluechtig,
+   wenn nichts gesetzt ist" mehr und keine Umgebungsvariable, die sie einschaltet.
+   Gemessen gegen 306bbaa: ``RiskManager().zustand_dauerhaft`` war ``False``, und
+   genau so baute ``tools/live_betrieb.py`` ihn -- 21 Betriebslaeufe ohne Halt ueber
+   den Neustart. Fluechtig gibt es nur noch als Testtyp, der es im Namen traegt
+   (``FluechtigerZustand``); ``zustand_dauerhaft`` sagt, welcher Fall vorliegt. Was
+   ein fehlender, leerer oder beschaedigter Zustand bedeutet -- und warum der Halt
+   dabei anders behandelt wird als der Tageszaehler --, steht im Docstring von
+   ``execution/risiko_zustand.py``.
 
-**Die Umgebungsvariable genuegt -- auch fuer den Peak.** Sie muss es, denn alle
-Produktionsstellen bauen ``RiskManager()`` ohne Argumente (``tools/live_betrieb.py``,
-``tools/paper_run.py``, ``tools/live_konsole.py``, ``tools/mt5_smoke.py``). Eine
-Zusage, die auf dem einzigen wirklich benutzten Weg nicht greift, ist keine. Der Weg
-dorthin ist nicht der Konstruktor, sondern die Schreibseite: das Equity-Fenster wird
-**auch ohne geprueftes Konto** gesichert, alles Uebrige erst danach (Begruendung und
-Fehlrichtung in ``execution/risiko_zustand.py``, „Was ohne geprueftes Konto geschrieben
-wird"). Sonst faellt genau der Teil aus, der vor der ersten Order entsteht: der
-Scheduler beobachtet Equity je Takt (``execution/scheduler.py``), autorisiert wird
-seltener -- und ein Neustart vor der ersten Order verloere den Fenster-Hoechststand,
-also den Drawdown, also den Halt. ``konto_id``/``waehrung`` am Konstruktor sind damit
-nur noch eine Abkuerzung fuer den vollen Zustand ab Takt eins, keine Bedingung.
+**Der Zustandsordner genuegt -- auch fuer den Peak.** Der Weg dorthin ist nicht der
+Konstruktor, sondern die Schreibseite: das Equity-Fenster wird **auch ohne
+geprueftes Konto** gesichert, alles Uebrige erst danach (Begruendung und Fehlrichtung
+in ``execution/risiko_zustand.py``, „Was ohne geprueftes Konto geschrieben wird").
+Sonst faellt genau der Teil aus, der vor der ersten Order entsteht: der Scheduler
+beobachtet Equity je Takt (``execution/scheduler.py``), autorisiert wird seltener --
+und ein Neustart vor der ersten Order verloere den Fenster-Hoechststand, also den
+Drawdown, also den Halt. ``konto_id``/``waehrung`` am Konstruktor sind damit nur
+noch eine Abkuerzung fuer den vollen Zustand ab Takt eins, keine Bedingung.
+
+**Geister (D7).** Eine Position, die im Zustand steht und beim Broker fehlt, ist im
+Stillstand geschlossen worden (Stop uebers Wochenende). Sie zaehlte gegen den
+Positionsdeckel weiter -- ohne Ablauf, ohne Werkzeug (V5 der Bewertung: drei Geister,
+``risk_concurrent_position_cap`` auf jedem Symbol). ``geister_austragen`` gleicht beim
+Start gegen ``positions_get()`` ab; der Aufrufer (``Mt5Venue.adopt_book``) schreibt
+den Journalsatz. Nicht stillschweigend, aber auch nicht ewig.
 
 Fail-closed: jede nicht sicher zulaessige Order wird abgelehnt, ohne Default. Die
 **Politik** (Grenzen, Schwellen, Risikoanteil) traegt der ``RiskPolicy``; die Venue
@@ -123,22 +131,19 @@ erzwingt sie am Order-Pfad (siehe ``venue/mt5.py``).
 
 from __future__ import annotations
 
-import os
 import unicodedata
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Final
 
 from mt5_trading_ai.execution.risiko_zustand import (
-    UMGEBUNG_ZUSTANDSDATEI,
-    UMGEBUNG_ZUSTANDSORDNER,
-    DateiZustand,
     RisikoLage,
+    Risikozustand,
     Zustandsbefund,
     fenster_fortschreiben,
     fenster_vereinen,
-    standard_zustandsdatei,
 )
 from mt5_trading_ai.gates.evaluation import (
     Candidate,
@@ -344,24 +349,21 @@ class RiskManager:
         self,
         policy: RiskPolicy | None = None,
         *,
+        zustand: Risikozustand,
         manual_release_id: str | None = None,
         gap_events: tuple[datetime, ...] = (),
-        zustand: DateiZustand | None = None,
         konto_id: str | None = None,
         waehrung: str | None = None,
     ) -> None:
-        """``zustand`` macht den Risikozustand dauerhaft (siehe Modul-Docstring).
+        """``zustand`` ist Pflicht: ``DateiZustand`` im Betrieb, ``FluechtigerZustand``
+        nur in Tests (Modul-Docstring, D8).
 
-        Wird nichts uebergeben, entscheidet die Umgebung: ist
-        ``MT5_RISIKO_ZUSTAND`` (oder ``MT5_RISIKO_ZUSTAND_ORDNER``) gesetzt, wird die
-        Datei dort gefuehrt, sonst bleibt die Schicht fluechtig. Die Umgebung ist hier
-        der richtige Schalter und nicht Bequemlichkeit: die Stellen, die einen
-        ``RiskManager`` bauen (``tools/live_betrieb.py``, ``venue/demo_run.py``),
-        gehoeren anderen Wellen -- ueber die Umgebung schaltet der Betrieb die
-        Dauerhaftigkeit ein, ohne dass eine davon angefasst werden muss. Eine Vorgabe
-        „immer dauerhaft am Standardpfad" scheidet aus: dann teilten sich alle Tests
-        dieses Repos **eine** Zustandsdatei, und ein Halt aus einem Test haltete den
-        naechsten.
+        Kein Vorgabewert, keine Umgebungsvariable: ein ``RiskManager()`` ohne Zustand
+        ist ein ``TypeError`` beim Bau -- vor der ersten Order, nicht am Morgen nach
+        dem Neustart. Eine Vorgabe „immer dauerhaft am Standardpfad" scheidet ebenso
+        aus: dann teilten sich alle Tests dieses Repos **eine** Zustandsdatei, und ein
+        Halt aus einem Test haltete den naechsten. Der Ort ist darum immer eine
+        Entscheidung des Aufrufers.
 
         ``konto_id``/``waehrung`` binden den Zustand sofort an ein Konto. Ohne sie
         bindet die erste ``authorize_opening`` (dort kommt die ``AccountState``
@@ -369,9 +371,9 @@ class RiskManager:
         auch ohne Kontobeweis nicht schmeicheln kann. Wer den vollen Zustand ab dem
         ersten Scheduler-Takt auf der Platte haben will, uebergibt sie hier.
 
-        Wirft ``ZustandsortFehler``, wenn die Umgebung einen relativen Pfad vorgibt --
-        beim Bau, also vor der ersten Order (Begruendung in
-        ``execution/risiko_zustand.py``).
+        Einen relativen Pfad oder einen im Arbeitsbaum weist der Aufrufer schon beim
+        Waehlen des Ordners ab (``risiko_zustand.zustandsordner_pruefen``), also
+        ebenfalls vor der ersten Order.
         """
         self._policy = policy if policy is not None else RiskPolicy()
         #: Manuelle Freigabe nach einem Drawdown-Halt. Ohne sie bleibt der Halt.
@@ -417,23 +419,11 @@ class RiskManager:
         #: Begruendung und Wirkung: ``_sichern``.
         self._schreibfehler: str | None = None
 
-        self._zustand = self._zustand_waehlen(zustand)
-        if self._zustand is not None:
-            self._uebernehme(self._zustand.laden())
-            if konto_id is not None and waehrung is not None:
-                self._bindungsgrund = self._zustand.binde(konto_id, waehrung)
-            self._sichern()
-
-    @staticmethod
-    def _zustand_waehlen(zustand: DateiZustand | None) -> DateiZustand | None:
-        """Uebergeben -> Umgebung -> fluechtig. Begruendung im ``__init__``."""
-        if zustand is not None:
-            return zustand
-        if os.environ.get(UMGEBUNG_ZUSTANDSDATEI) or os.environ.get(
-            UMGEBUNG_ZUSTANDSORDNER
-        ):
-            return DateiZustand(standard_zustandsdatei())
-        return None
+        self._zustand: Risikozustand = zustand
+        self._uebernehme(self._zustand.laden())
+        if konto_id is not None and waehrung is not None:
+            self._bindungsgrund = self._zustand.binde(konto_id, waehrung)
+        self._sichern()
 
     @property
     def zustand_dauerhaft(self) -> bool:
@@ -441,10 +431,17 @@ class RiskManager:
 
         Oeffentlich, weil „fluechtig" keine Eigenschaft ist, die man aus dem Verhalten
         ablesen kann, bevor es zu spaet ist: eine fluechtige Schicht verhaelt sich bis
-        zum Neustart genau wie eine dauerhafte. Die Konsole/das Betriebswerkzeug soll
-        das anzeigen koennen.
+        zum Neustart genau wie eine dauerhafte. ``tools/live_betrieb.py`` weist einen
+        fluechtigen Zustand ab; ``tools/zustand.py --zeigen`` zeigt ihn an.
         """
-        return self._zustand is not None
+        return self._zustand.dauerhaft
+
+    @property
+    def zustandsort(self) -> str:
+        """Der Ort des Zustands fuer Protokoll und Ablehnungen; ``fluechtig`` ohne
+        Datei."""
+        pfad = self._zustand.pfad
+        return "fluechtig" if pfad is None else str(pfad)
 
     def _uebernehme(self, befund: Zustandsbefund) -> None:
         """Uebernimm den gelesenen Zustand -- samt seiner fail-closed-Aufloesung."""
@@ -475,12 +472,11 @@ class RiskManager:
             self._halt = False
             self._halt_grund = ""
             self._halt_seit = None
-            if self._zustand is not None:
-                # Und sie muss beim Schreiben ausdruecklich mitkommen: seit die
-                # Zustandsdatei vereinigt statt ueberschrieben wird, gewinnt ein Halt
-                # der Platte gegen jeden Speicherstand -- ausser gegen diesen einen,
-                # begruendeten Akt (``DateiZustand.freigabe_vormerken``).
-                self._zustand.freigabe_vormerken()
+            # Und sie muss beim Schreiben ausdruecklich mitkommen: seit die
+            # Zustandsdatei vereinigt statt ueberschrieben wird, gewinnt ein Halt
+            # der Platte gegen jeden Speicherstand -- ausser gegen diesen einen,
+            # begruendeten Akt (``DateiZustand.freigabe_vormerken``).
+            self._zustand.freigabe_vormerken()
 
     def _lage(self) -> RisikoLage:
         """Der aktuelle Zustand als sicherbare Lage (ohne Freigabe -- siehe Modul)."""
@@ -554,8 +550,6 @@ class RiskManager:
         nichts davon und eroeffnete weiter. ``_nachziehen`` holt ihn deshalb in den
         Speicher -- ausschliesslich in die strenge Richtung.
         """
-        if self._zustand is None:
-            return
         self._schreibfehler = self._zustand.sichern(self._lage())
         gesehen = self._zustand.zuletzt_gesehen
         if gesehen is not None:
@@ -722,10 +716,38 @@ class RiskManager:
         self._open_positions = [
             pos for pos in self._open_positions if pos.instrument != instrument
         ]
-        if self._zustand is not None:
-            for eroeffnet_am in geschlossen:
-                self._zustand.schliessung_vormerken(instrument, eroeffnet_am)
+        for eroeffnet_am in geschlossen:
+            self._zustand.schliessung_vormerken(instrument, eroeffnet_am)
         self._sichern()
+
+    def geister_austragen(
+        self, offen_beim_broker: Iterable[str]
+    ) -> tuple[OpenPosition, ...]:
+        """Startabgleich (D7): trage aus, was der Broker nicht mehr fuehrt.
+
+        ``offen_beim_broker`` sind die Symbole mit offener Position laut
+        ``positions_get()``. Jede hier gefuehrte Position ohne solches Symbol ist im
+        Stillstand geschlossen worden -- sie wird wie eine erkannte Schliessung
+        behandelt (``schliessung_vormerken`` + sichern) und zurueckgegeben, damit der
+        Aufrufer sie ins Journal schreibt. Gemessen gegen 306bbaa (V5): drei Geister,
+        ``open_position_count`` 3 nach dem Neustart, jede Eroeffnung mit
+        ``risk_concurrent_position_cap`` abgewiesen.
+
+        Die Gegenrichtung -- eine Broker-Position, die hier fehlt -- wird NICHT
+        uebernommen: dieser Zaehler fuehrt die eigenen Eroeffnungen; fremde
+        Positionen nimmt das Netto-Buch des Handelsplatzes auf (``adopt_book``).
+        """
+        offen = set(offen_beim_broker)
+        geister = tuple(p for p in self._open_positions if p.instrument not in offen)
+        if not geister:
+            return ()
+        self._open_positions = [
+            p for p in self._open_positions if p.instrument in offen
+        ]
+        for geist in geister:
+            self._zustand.schliessung_vormerken(geist.instrument, geist.opened_at)
+        self._sichern()
+        return geister
 
     @property
     def open_position_count(self) -> int:
@@ -770,8 +792,7 @@ class RiskManager:
         self._halt = False
         self._halt_grund = ""
         self._halt_seit = None
-        if self._zustand is not None:
-            self._zustand.freigabe_vormerken()
+        self._zustand.freigabe_vormerken()
         self._sichern()
 
     # --- Kostenbasis ------------------------------------------------------
@@ -868,8 +889,6 @@ class RiskManager:
         Richtung sperrt grundlos, die andere ist die stille Freigabe -- und wir wissen
         nicht, welche vorliegt. Also: keine Uebernahme, sondern Ablehnung.
         """
-        if self._zustand is None:
-            return None
         if self._bindungsgrund is not None:
             return self._bindungsgrund
         grund = self._zustand.binde(account.account_id, account.currency)
@@ -960,9 +979,7 @@ class RiskManager:
                 # Fehlgriff des Aufrufers darf nicht den Zustand des richtigen Kontos
                 # vergiften. Die Ablehnung wiederholt sich ohnehin bei jedem Aufruf.
                 latch_halt=True,
-                detail={"zustandsdatei": str(self._zustand.pfad)}
-                if self._zustand is not None
-                else {},
+                detail={"zustandsdatei": self.zustandsort},
             )
 
         self.observe_equity(now, account.equity)
@@ -1033,14 +1050,8 @@ class RiskManager:
                 # eine offene Ticketnummer.
                 latch_halt=False,
                 detail={
-                    "zustandsdatei": str(self._zustand.pfad)
-                    if self._zustand is not None
-                    else "",
-                    "schreibfehler": (
-                        self._zustand.schreibfehler_text
-                        if self._zustand is not None
-                        else ""
-                    ),
+                    "zustandsdatei": self.zustandsort,
+                    "schreibfehler": self._zustand.schreibfehler_text,
                 },
             )
 

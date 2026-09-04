@@ -1,0 +1,5 @@
+# Eichfall D1, GRUEN gegen den Arbeitsbaum (2026-09-04 02:07 UTC)
+$ python -m pytest -q -p no:cacheprovider --tb=line tests/eichfall_d1.py
+......                                                                   [100%]
+6 passed in 2.23s
+[exit=0, 3.5 s]

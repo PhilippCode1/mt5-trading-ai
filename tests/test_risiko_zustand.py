@@ -25,12 +25,15 @@ from mt5_trading_ai.execution.risiko_zustand import (
     RISIKO_ZUSTAND_SCHEMA,
     RISIKO_ZUSTAND_SCHEMA_FENSTER,
     DateiZustand,
+    FluechtigerZustand,
     RisikoLage,
     ZustandsortFehler,
     fenster_fortschreiben,
     korb_start,
     standard_zustandsdatei,
     standard_zustandsordner,
+    zustandsordner_pruefen,
+    zustandsordner_waehlen,
 )
 from mt5_trading_ai.execution.risk_manager import (
     RiskAuthorization,
@@ -157,9 +160,6 @@ def test_standardpfad_liegt_ausserhalb_des_arbeitsbaums(monkeypatch) -> None:  #
     Gefahren auf der Plattform, auf der der Test gerade laeuft -- die Umgebung wird
     dafuer geraeumt, damit nicht eine gesetzte Variable die Aussage traegt.
     """
-    monkeypatch.delenv("MT5_RISIKO_ZUSTAND", raising=False)
-    monkeypatch.delenv("MT5_RISIKO_ZUSTAND_ORDNER", raising=False)
-
     pfad = standard_zustandsdatei()
     assert pfad.is_absolute()
     repo = Path(__file__).resolve().parents[1]
@@ -232,20 +232,19 @@ def test_eine_unbrauchbare_systemvariable_wird_uebergangen() -> None:
         assert Path.home() in ordner.parents
 
 
-def test_relativer_pfad_aus_der_umgebung_wird_abgewiesen() -> None:
+def test_relativer_zustandsordner_wird_abgewiesen() -> None:
     """Der Betreiber hat einen Ort GENANNT -- ein stiller anderer waere schlimmer.
 
     Zurechtbiegen hiesse: der Halt liegt woanders, als der Betreiber denkt. Also ein
-    Wurf, und zwar beim Bau des ``RiskManager`` -- vor der ersten Order.
+    Wurf, und zwar beim Waehlen des Ordners (``--zustandsordner``, D8) -- vor dem Bau
+    des ``RiskManager`` und vor der ersten Order.
     """
-    for variable in ("MT5_RISIKO_ZUSTAND", "MT5_RISIKO_ZUSTAND_ORDNER"):
+    for relativ in ("betrieb", "betrieb/risikozustand.json", "."):
         with pytest.raises(ZustandsortFehler):
-            standard_zustandsdatei(umgebung={variable: "betrieb/risikozustand.json"})
+            zustandsordner_pruefen(relativ)
     # Gegenprobe: absolut geht durch.
-    absolut = str(Path.home() / "risikozustand.json")
-    assert standard_zustandsdatei(umgebung={"MT5_RISIKO_ZUSTAND": absolut}) == Path(
-        absolut
-    )
+    absolut = Path.home() / "eigener-zustand"
+    assert zustandsordner_pruefen(str(absolut)) == absolut
 
 
 def test_ein_pfad_im_paketbaum_wird_abgewiesen() -> None:
@@ -257,30 +256,33 @@ def test_ein_pfad_im_paketbaum_wird_abgewiesen() -> None:
     """
     import mt5_trading_ai.execution.risiko_zustand as modul
 
-    im_paket = Path(modul.__file__).resolve().parents[1] / "risikozustand.json"
+    im_paket = Path(modul.__file__).resolve().parents[1]
     with pytest.raises(ZustandsortFehler):
-        standard_zustandsdatei(umgebung={"MT5_RISIKO_ZUSTAND": str(im_paket)})
+        zustandsordner_pruefen(im_paket)
 
 
-def test_umgebung_schlaegt_den_standardpfad(monkeypatch, tmp_path) -> None:  # type: ignore[no-untyped-def]
-    """Zwei Konten = zwei Dateien; der Betreiber setzt den Pfad je Lauf."""
-    monkeypatch.setenv("MT5_RISIKO_ZUSTAND", str(tmp_path / "konto-a.json"))
-    assert standard_zustandsdatei() == tmp_path / "konto-a.json"
-    monkeypatch.delenv("MT5_RISIKO_ZUSTAND")
-    monkeypatch.setenv("MT5_RISIKO_ZUSTAND_ORDNER", str(tmp_path / "ordner"))
-    assert standard_zustandsordner() == tmp_path / "ordner"
-    assert standard_zustandsdatei().parent == tmp_path / "ordner"
+def test_der_genannte_ordner_schlaegt_den_standardordner(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    """Zwei Konten = zwei Ordner; der Betreiber nennt ihn je Lauf (``--zustandsordner``).
+    Keine Umgebungsvariable entscheidet mehr (D8, E-005)."""
+    assert zustandsordner_waehlen(tmp_path / "ordner") == tmp_path / "ordner"
+    assert zustandsordner_waehlen(None) == standard_zustandsordner()
+    assert standard_zustandsdatei(ordner=tmp_path / "ordner") == (
+        tmp_path / "ordner" / "risikozustand.json"
+    )
 
 
-def test_ohne_umgebung_bleibt_die_schicht_fluechtig(monkeypatch) -> None:  # type: ignore[no-untyped-def]
-    monkeypatch.delenv("MT5_RISIKO_ZUSTAND", raising=False)
-    monkeypatch.delenv("MT5_RISIKO_ZUSTAND_ORDNER", raising=False)
-    assert RiskManager().zustand_dauerhaft is False
+def test_ohne_zustand_ist_der_riskmanager_nicht_konstruierbar() -> None:
+    """D8: ``RiskManager(zustand=FluechtigerZustand())`` gibt es nicht mehr; fluechtig heisst so und ist ablesbar."""
+    ohne_zustand = RiskManager
+    with pytest.raises(TypeError):
+        ohne_zustand()  # der Konstruktor verlangt zustand=
+    assert RiskManager(zustand=FluechtigerZustand()).zustand_dauerhaft is False
 
 
-def test_mit_umgebung_ist_die_schicht_dauerhaft(monkeypatch, tmp_path) -> None:  # type: ignore[no-untyped-def]
-    monkeypatch.setenv("MT5_RISIKO_ZUSTAND", str(tmp_path / "z.json"))
-    assert RiskManager().zustand_dauerhaft is True
+def test_mit_datei_ist_die_schicht_dauerhaft(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    assert (
+        RiskManager(zustand=DateiZustand(tmp_path / "z.json")).zustand_dauerhaft is True
+    )
 
 
 # --- Die fail-closed-Leiter ---------------------------------------------------
@@ -763,7 +765,7 @@ def test_eine_kaputte_ungebundene_datei_haelt_sehr_wohl_an(tmp_path) -> None:  #
 
 
 def test_der_peak_ueberdauert_einen_neustart_ohne_order(tmp_path) -> None:  # type: ignore[no-untyped-def]
-    """Der Betriebsweg: ``RiskManager()`` ohne Konto, Dauerhaftigkeit ueber die Datei.
+    """Der Betriebsweg: ``RiskManager(zustand=FluechtigerZustand())`` ohne Konto, Dauerhaftigkeit ueber die Datei.
 
     Der Scheduler beobachtet Equity je Takt, autorisiert wird seltener. Ginge das
     Fenster bis zur ersten Order verloren, faende der naechste Start einen niedrigeren

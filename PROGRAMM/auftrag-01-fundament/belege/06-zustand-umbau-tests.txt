@@ -1,0 +1,87 @@
+28 Testdateien geaendert:
+   eichfall_skipgate.py
+   eichfall_werkzeuge.py
+   test_ausstiegsdeckung.py
+   test_bar_geschlossen.py
+   test_demo_beleg_grenze.py
+   test_demo_tor_eichfall.py
+   test_frische_am_orderpfad.py
+   test_handelszeiten.py
+   test_idempotenz_am_broker.py
+   test_live_betrieb.py
+   test_live_betrieb_sperren.py
+   test_mt5_smoke.py
+   test_mt5_venue.py
+   test_notaus_wirkung.py
+   test_orderpfad_verdrahtung.py
+   test_paper_runner.py
+   test_private_sync.py
+   test_rauchtest_schaerfe.py
+   test_risiko_zustand.py
+   test_risiko_zustand_geheimnis.py
+   test_risiko_zustand_restbefunde.py
+   test_risikozustand_eichfaelle.py
+   test_risk_manager.py
+   test_schreibpfad_wirkung.py
+   test_stop_budget_kostenbasis.py
+   test_stufe10_betrieb.py
+   test_stufe5_ausfuehrung.py
+   test_stufe9_tote_tore.py
+Zaehlung:
+    1  Mt5Venue: eichfall_werkzeuge.py
+    1  Mt5Venue: test_bar_geschlossen.py
+    1  Mt5Venue: test_demo_beleg_grenze.py
+    2  Mt5Venue: test_demo_tor_eichfall.py
+    3  Mt5Venue: test_frische_am_orderpfad.py
+    1  Mt5Venue: test_handelszeiten.py
+    1  Mt5Venue: test_idempotenz_am_broker.py
+    1  Mt5Venue: test_mt5_smoke.py
+    2  Mt5Venue: test_mt5_venue.py
+    1  Mt5Venue: test_notaus_wirkung.py
+    2  Mt5Venue: test_orderpfad_verdrahtung.py
+    1  Mt5Venue: test_paper_runner.py
+    1  Mt5Venue: test_private_sync.py
+    1  Mt5Venue: test_rauchtest_schaerfe.py
+    1  Mt5Venue: test_schreibpfad_wirkung.py
+   13  RiskManager(DateiZustand): test_risikozustand_eichfaelle.py
+    1  RiskManager: eichfall_werkzeuge.py
+    1  RiskManager: test_idempotenz_am_broker.py
+    4  RiskManager: test_live_betrieb.py
+    6  RiskManager: test_live_betrieb_sperren.py
+    1  RiskManager: test_mt5_smoke.py
+    3  RiskManager: test_mt5_venue.py
+    1  RiskManager: test_notaus_wirkung.py
+    2  RiskManager: test_orderpfad_verdrahtung.py
+    6  RiskManager: test_paper_runner.py
+    1  RiskManager: test_private_sync.py
+    1  RiskManager: test_rauchtest_schaerfe.py
+    2  RiskManager: test_risiko_zustand.py
+    4  RiskManager: test_risiko_zustand_restbefunde.py
+    0  RiskManager: test_risikozustand_eichfaelle.py
+   18  RiskManager: test_risk_manager.py
+   20  RiskManager: test_stop_budget_kostenbasis.py
+    2  RiskManager: test_stufe9_tote_tore.py
+    5  _live_risk_venue: test_mt5_venue.py
+    5  _live_venue: test_demo_beleg_grenze.py
+    4  _live_venue: test_demo_tor_eichfall.py
+   15  freigabedatei: test_mt5_venue.py
+    2  gezielt: eichfall_skipgate.py
+    1  gezielt: test_ausstiegsdeckung.py
+    3  gezielt: test_demo_beleg_grenze.py
+    3  gezielt: test_demo_tor_eichfall.py
+    1  gezielt: test_live_betrieb.py
+    4  gezielt: test_live_betrieb_sperren.py
+   10  gezielt: test_mt5_venue.py
+    3  gezielt: test_orderpfad_verdrahtung.py
+    3  gezielt: test_paper_runner.py
+    5  gezielt: test_risiko_zustand.py
+    1  gezielt: test_risiko_zustand_geheimnis.py
+    6  gezielt: test_risiko_zustand_restbefunde.py
+    8  gezielt: test_risikozustand_eichfaelle.py
+    5  gezielt: test_stop_budget_kostenbasis.py
+    2  gezielt: test_stufe10_betrieb.py
+    3  gezielt: test_stufe5_ausfuehrung.py
+    2  run_signal darf_schreiben: test_stop_budget_kostenbasis.py
+   31  tmp_path-Parameter
+  RiskManager gesamt: 86
+  Mt5Venue gesamt: 20

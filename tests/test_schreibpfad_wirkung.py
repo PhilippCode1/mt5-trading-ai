@@ -44,6 +44,8 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from mt5_trading_ai.execution.reconcile import FluechtigesPositionsbuch
+from mt5_trading_ai.execution.schwebende_auftraege import FluechtigeSchwebeAkte
 from mt5_trading_ai.venue.mt5 import RealMt5Terminal, _send_angenommen  # noqa: E402
 from mt5_trading_ai.venue.protocol import VenueUnavailableError  # noqa: E402
 
@@ -564,6 +566,8 @@ def test_angelegte_order_erzeugt_keine_geisterposition() -> None:
         catalog=_catalog(),
         risk_manager=_fresh_risk(),
         clock=lambda: TS,
+        positionsbuch=FluechtigesPositionsbuch(),
+        schwebeakte=FluechtigeSchwebeAkte(),
     )
     venue.connect()
     from mt5_trading_ai.venue.protocol import OrderRequest, OrderSide, OrderType

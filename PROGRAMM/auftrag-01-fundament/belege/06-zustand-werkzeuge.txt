@@ -1,0 +1,66 @@
+# Werkzeuge der Familie Zustand: ohne Terminal (Shim) und --help (2026-09-04 02:06 UTC)
+
+$ python tools/live_betrieb.py --dauer 0.001 --takt 1
+--- stderr ---
+FEHLGESCHLAGEN -- MT5-Terminal nicht erreichbar: MetaTrader5 nicht installiert (pip install MetaTrader5)
+[exit=2]
+
+$ python tools/live_betrieb.py --scharf x --dauer 0.001 --takt 1
+--- stderr ---
+usage: live_betrieb.py [-h] [--dauer DAUER] [--takt TAKT] [--symbol SYMBOL]
+                       [--max-haltedauer MAX_HALTEDAUER]
+                       [--terminal {real,fake}] [--zustandsordner ORDNER]
+                       [--demo-schreiben] [--zulassung DATEI]
+                       [--verlustgrenze PROZENT] [--am-ende-offen-lassen]
+live_betrieb.py: error: unrecognized arguments: --scharf x
+[exit=2]
+
+$ python tools/live_konsole.py --takte 1
+--- stderr ---
+FEHLGESCHLAGEN -- MT5-Terminal nicht erreichbar: MetaTrader5 nicht installiert (pip install MetaTrader5)
+[exit=2]
+
+$ python tools/mt5_smoke.py
+--- stderr ---
+FEHLGESCHLAGEN -- MT5-Terminal nicht erreichbar: MetaTrader5 nicht installiert (pip install MetaTrader5)
+[exit=2]
+
+$ python tools/live_betrieb.py --zustandsordner betrieb --terminal fake --dauer 0.001
+--- stderr ---
+FEHLGESCHLAGEN -- Zustandsordner unbrauchbar: --zustandsordner='betrieb' ist kein absoluter Pfad. Die Zustandsdatei traegt den Drawdown-Halt ueber Neustarts; ein relativer Pfad wird gegen das Arbeitsverzeichnis aufgeloest und landet damit im Arbeitsbaum, wo ein Aufraeumbefehl ihn loescht. Bitte einen absoluten Pfad angeben.
+[exit=2]
+
+$ python tools/zustand.py --help   -> exit=0, usage=ja
+
+$ python tools/live_betrieb.py --help   -> exit=0, usage=ja
+
+$ python tools/live_konsole.py --help   -> exit=0, usage=ja
+
+$ python tools/mt5_smoke.py --help   -> exit=0, usage=ja
+
+$ python tools/paper_run.py --help   -> exit=0, usage=ja
+
+$ python tools/dienstguete.py --help   -> exit=0, usage=ja
+
+$ python tools/wiederanlaufprobe.py --help   -> exit=0, usage=ja
+
+$ python tools/zustand.py --zeigen --zustandsordner <tmp>/zustand   (der Ordner des Trockenlaufs oben)
+Zustandsordner: C:\Users\<konto>\AppData\Local\Temp\zustand-belege-g1k_duy4\zustand
+
+Risikozustand (risikozustand.json):
+  herkunft: fenster
+  waehrung: ungebunden
+  halt: nein
+  tageszaehler: tag=None konto=0 je_instrument={} gesperrt=nein
+  equity: tag=None tagesstart=None fenster=1 Punkte, hoechststand=10000
+  offene_positionen (Risikozaehler): 0
+
+Schwebeakte (schwebende_auftraege.json):
+  keine Datei -- nichts schwebt
+
+Positionsbuch (positionsbuch.json):
+  keine Datei -- keine eigene Position gebucht
+
+Stoppdatei (STOP): nein
+Journale (journale/): 1, juengstes journal-20260904T020626.jsonl
+[exit=0]

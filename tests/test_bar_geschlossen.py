@@ -33,6 +33,8 @@ from zoneinfo import ZoneInfo
 
 import pytest
 from mt5_trading_ai.data.quality import TIMEFRAME_SECONDS
+from mt5_trading_ai.execution.reconcile import FluechtigesPositionsbuch
+from mt5_trading_ai.execution.schwebende_auftraege import FluechtigeSchwebeAkte
 from mt5_trading_ai.venue.catalog import CatalogEntry
 from mt5_trading_ai.venue.mt5 import (
     Mt5Account,
@@ -228,6 +230,8 @@ def _venue(terminal: FakeTerminal, *, uhr: datetime = RECHNERUHR_VORAUS) -> Mt5V
         terminal=terminal,
         catalog=_catalog(),
         clock=lambda: uhr,
+        positionsbuch=FluechtigesPositionsbuch(),
+        schwebeakte=FluechtigeSchwebeAkte(),
     )
     venue.connect()
     return venue

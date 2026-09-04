@@ -22,7 +22,7 @@ Eindruck, jemand sei benachrichtigt worden.
 
 Aufruf::
 
-    python tools/dienstguete.py                       # Journale unter betrieb/
+    python tools/dienstguete.py                       # Journale im Zustandsordner
     python tools/dienstguete.py --journal aufzeichnungen/demo-2026-08-17.jsonl
 """
 
@@ -46,6 +46,10 @@ from mt5_trading_ai.betrieb.dienstguete import (  # noqa: E402
     stelle_zu,
 )
 from mt5_trading_ai.betrieb.journal import KOPF_ART  # noqa: E402
+from mt5_trading_ai.execution.risiko_zustand import (  # noqa: E402
+    JOURNALORDNER_NAME,
+    standard_zustandsordner,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -85,8 +89,12 @@ def main() -> int:
         if hasattr(strom, "reconfigure"):
             strom.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser(description="Dienstgueteziele und Alarme")
-    ap.add_argument("--journal", type=Path, default=ROOT / "betrieb")
-    ap.add_argument("--alarmdatei", type=Path, default=ROOT / "betrieb" / "ALARME.txt")
+    # Journale und Alarmdatei liegen im Zustandsordner, nicht im Arbeitsbaum (A18):
+    # dort schreibt ``tools/live_betrieb.py`` seit D8, und dort liest dieses
+    # Werkzeug per Vorgabe.
+    zustand = standard_zustandsordner()
+    ap.add_argument("--journal", type=Path, default=zustand / JOURNALORDNER_NAME)
+    ap.add_argument("--alarmdatei", type=Path, default=zustand / "ALARME.txt")
     args = ap.parse_args()
 
     zeilen = _zeilen(args.journal)

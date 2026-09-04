@@ -37,6 +37,14 @@ wird, damit sein Ausgang beobachtbar wird. Dabei gilt:
 * **Kein Zufall ohne Protokoll.** Die Entscheidung faellt aus einem **gesaeten**
   Generator, und die :class:`Erkundungsentscheidung` traegt die
   **Auswahlwahrscheinlichkeit** mit. Ohne sie waere die spaetere Gewichtung geraten.
+* **Nur, wenn der Lauf schreiben darf (D1).** Der Wuerfel entscheidet, ob eine
+  Order gefahren wird; ein Lauf ohne Schreibrecht kann keine fahren. Ihn trotzdem
+  zu befragen hiess (gemessen gegen 306bbaa, V1): der Versuch lief bis zum
+  gesperrten Schreibpfad des Terminals, dessen Wurf wurde als ungeklaerter
+  Sendeversuch gelatcht, und der Trockenlauf stand nach wenigen Minuten still.
+  Der Runner (``execution/runner.py``) fragt darum zuerst ``darf_schreiben`` und
+  erst dann diesen Wuerfel; :data:`VERWEIGERT_OHNE_SCHREIBRECHT` ist der Grund,
+  den er dann protokolliert.
 
 DIE GEWICHTUNG -- UND WARUM SIE NOETIG IST
 ------------------------------------------
@@ -68,6 +76,11 @@ from enum import Enum
 #: System selbst fuer schlecht haelt. 5 % heisst: neunzehn von zwanzig Absagen bleiben
 #: Absagen.
 ERKUNDUNGSRATE = 0.05
+
+#: Der protokollierte Grund, wenn ein Lauf ohne Schreibrecht nicht erkundet (D1).
+#: Er steht neben ``kein_papierkonto`` und ``grund_nicht_erkundbar:*`` -- keine
+#: Wahrscheinlichkeit, kein Wurf: die Gelegenheit konnte nie erkundet werden.
+VERWEIGERT_OHNE_SCHREIBRECHT = "kein_schreibrecht"
 
 
 class Herkunft(str, Enum):

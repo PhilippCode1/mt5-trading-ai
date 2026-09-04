@@ -11,7 +11,10 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 from mt5_trading_ai.backtest.edge import EdgeVerdict
+from mt5_trading_ai.execution.reconcile import FluechtigesPositionsbuch
+from mt5_trading_ai.execution.risiko_zustand import FluechtigerZustand
 from mt5_trading_ai.execution.risk_manager import RiskManager
+from mt5_trading_ai.execution.schwebende_auftraege import FluechtigeSchwebeAkte
 from mt5_trading_ai.venue.demo_run import (
     DemoAccount,
     DemoRegistration,
@@ -67,8 +70,10 @@ def _venue(
         catalog=_catalog(),
         # Seit A3 faehrt die Schreib-Probe durch dieselben fuenf Sperren wie jede andere
         # Eroeffnung -- auch auf Demo. Ohne Manager wuerde sie fail-closed abgelehnt.
-        risk_manager=RiskManager(),
+        risk_manager=RiskManager(zustand=FluechtigerZustand()),
         clock=lambda: TS,
+        positionsbuch=FluechtigesPositionsbuch(),
+        schwebeakte=FluechtigeSchwebeAkte(),
     )
 
 

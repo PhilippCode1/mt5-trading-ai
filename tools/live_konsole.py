@@ -14,8 +14,9 @@ Takt vier Dinge:
 3. **Das Signal** — die Trendfolge aus ``backtest/strategies.py`` auf den LIVE-Kerzen.
 4. **Die Kette trocken** — dieselbe Funktion, die im Ernstfall handelt
    (``execution/runner.py::run_signal``), einmal durchgelassen. Alle Sperren rechnen
-   echt; erst der Schreibschritt am Ende wird verweigert, weil ``allow_write=False``
-   ist. Genau diese Verweigerung ist das Sehenswerte.
+   echt; die Kette endet VOR dem Senden mit ``kein_schreibrecht`` (D1) -- das
+   Terminal wird nie erreicht, ``allow_write`` bleibt obendrein ``False``.
+   Genau diese Verweigerung ist das Sehenswerte.
 
 WAS SIE NICHT IST
 -----------------
@@ -34,7 +35,15 @@ Konsole, sondern der Zustand des Vorhabens: es gibt keine zugelassene Strategie
 
 ``--vorfuehrung`` reicht einen deutlich markierten Platzhalter herein, damit die
 uebrigen elf Sperren sichtbar arbeiten. Am Schreibschutz aendert das nichts — die
-Kette endet dann an der Verweigerung des Schreibpfades statt an der Zulassung.
+Kette endet dann vor dem Senden (``kein_schreibrecht``) statt an der Zulassung.
+
+ZUM ZUSTAND
+-----------
+Die Konsole liest den Risikozustand des Betriebs aus dem Zustandsordner
+(``--zustandsordner``, Vorgabe ``standard_zustandsordner()``; D8, E-005) -- ein
+Halt, der dort steht, wird hier angezeigt. Die Kette bindet den Zustand an das Konto
+und schreibt ihn vereinigt zurueck (Equity-Fenster; ``execution/risiko_zustand.py``,
+„Zwei Schreiber auf einer Datei"). Schwebeakte und Positionsbuch liegen daneben.
 
 Aufruf::
 
@@ -42,6 +51,7 @@ Aufruf::
     python tools/live_konsole.py --symbol EURUSD --takt 2
     python tools/live_konsole.py --takte 1            # ein einzelner Takt
     python tools/live_konsole.py --vorfuehrung        # alle Sperren sichtbar
+    python tools/live_konsole.py --zustandsordner <ordner>   # anderer Zustand
 """
 
 from __future__ import annotations
@@ -64,6 +74,13 @@ from mt5_trading_ai.execution.cost_gate import CostGate  # noqa: E402
 from mt5_trading_ai.execution.freshness import (  # noqa: E402
     MAX_SNAPSHOT_AGE,
     evaluate_account_freshness,
+)
+from mt5_trading_ai.execution.risiko_zustand import (  # noqa: E402
+    DateiZustand,
+    ZustandsortFehler,
+    standard_zustandsdatei,
+    standard_zustandsordner,
+    zustandsordner_waehlen,
 )
 from mt5_trading_ai.execution.risk_manager import RiskManager  # noqa: E402
 from mt5_trading_ai.execution.runner import RunnerConfig, run_signal  # noqa: E402
@@ -165,7 +182,7 @@ def _kette_trocken(
     *,
     vorfuehrung: bool,
 ) -> list[str]:
-    """Die volle Kette durchlassen -- der Schreibschritt scheitert absichtlich."""
+    """Die volle Kette durchlassen -- ohne Schreibrecht endet sie vor dem Senden."""
     config = RunnerConfig(
         cost_gate=CostGate(max_roundturn_cost_fraction=Decimal("0.0005")),
     )
@@ -185,6 +202,9 @@ def _kette_trocken(
             config=config,
             now=now,
             client_order_id=f"trocken-{symbol}-{int(now.timestamp())}",
+            # Diese Konsole hat NIE Schreibrecht: die Kette rechnet bis zum
+            # Margendeckel und endet dort (D1), das Terminal wird nicht erreicht.
+            darf_schreiben=False,
         )
     except VenueError as exc:
         return [f"  [SPERRE] schreibpfad   {exc}"]
@@ -311,6 +331,14 @@ def main() -> int:
         help="Instrument, mehrfach angebbar (Vorgabe: ganzer Katalog)",
     )
     ap.add_argument("--takt", type=float, default=5.0, help="Sekunden je Takt")
+    ap.add_argument(
+        "--zustandsordner",
+        type=Path,
+        default=None,
+        metavar="ORDNER",
+        help="Zustandsordner des Betriebs (Risikozustand, Schwebeakte, "
+        f"Positionsbuch; Vorgabe: {standard_zustandsordner()})",
+    )
     ap.add_argument("--takte", type=int, default=0, help="Anzahl Takte (0 = endlos)")
     ap.add_argument(
         "--leit",
@@ -324,6 +352,11 @@ def main() -> int:
         "sichtbar arbeiten. AENDERT NICHTS am Schreibschutz.",
     )
     args = ap.parse_args()
+    try:
+        ordner = zustandsordner_waehlen(args.zustandsordner)
+    except ZustandsortFehler as exc:
+        print(f"FEHLGESCHLAGEN -- Zustandsordner unbrauchbar: {exc}", file=sys.stderr)
+        return 2
 
     # allow_write ist hier KEIN Schalter. Eine Konsole zum Zusehen darf nicht
     # versehentlich handeln koennen -- auch nicht auf einem Demokonto.
@@ -334,12 +367,14 @@ def main() -> int:
             f"FEHLGESCHLAGEN -- MT5-Terminal nicht erreichbar: {grund}", file=sys.stderr
         )
         return 2
-    manager = RiskManager()
+    # Derselbe Zustand wie im Betrieb (D8): ein Halt auf der Platte ist hier sichtbar.
+    manager = RiskManager(zustand=DateiZustand(standard_zustandsdatei(ordner=ordner)))
     venue = Mt5Venue(
         name="mt5-live-konsole",
         terminal=terminal,
         catalog=load_instrument_catalog(),
         risk_manager=manager,
+        zustandsordner=ordner,
     )
     try:
         venue.connect()

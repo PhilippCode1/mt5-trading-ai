@@ -23,7 +23,10 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
+from mt5_trading_ai.execution.reconcile import FluechtigesPositionsbuch
+from mt5_trading_ai.execution.risiko_zustand import FluechtigerZustand
 from mt5_trading_ai.execution.risk_manager import RiskManager
+from mt5_trading_ai.execution.schwebende_auftraege import FluechtigeSchwebeAkte
 from mt5_trading_ai.venue.mt5 import (
     CatalogEntry,
     Mt5Account,
@@ -58,8 +61,10 @@ def _venue(terminal: FakeMt5Terminal, *, catalog: object | None = None) -> Mt5Ve
         name="mt5-demo",
         terminal=terminal,  # type: ignore[arg-type]
         catalog=catalog if catalog is not None else _catalog(),  # type: ignore[arg-type]
-        risk_manager=RiskManager(),
+        risk_manager=RiskManager(zustand=FluechtigerZustand()),
         clock=lambda: TS,
+        positionsbuch=FluechtigesPositionsbuch(),
+        schwebeakte=FluechtigeSchwebeAkte(),
     )
 
 

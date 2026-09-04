@@ -10,6 +10,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
+from mt5_trading_ai.execution.risiko_zustand import FluechtigerZustand
 from mt5_trading_ai.execution.risk_manager import RiskManager, RiskPolicy
 from mt5_trading_ai.gates.evaluation import ThrottlePolicy
 from mt5_trading_ai.risk.limits import LossLimits
@@ -100,7 +101,7 @@ def _authorize(
 
 
 def test_approves_a_budget_respecting_order() -> None:
-    rm = RiskManager()
+    rm = RiskManager(zustand=FluechtigerZustand())
     auth = _authorize(rm, request=_request(volume="0.01"), account=_account())
     assert auth.approved is True
     assert auth.reason is None
@@ -108,7 +109,7 @@ def test_approves_a_budget_respecting_order() -> None:
 
 def test_rejects_volume_over_risk_budget() -> None:
     # (a) 0.10 Lot auf 10k Equity mit ~91 bps Stop riskiert ~1 % >> 0,25 % Budget.
-    rm = RiskManager()
+    rm = RiskManager(zustand=FluechtigerZustand())
     auth = _authorize(rm, request=_request(volume="0.10"), account=_account())
     assert auth.approved is False
     assert auth.reason == "volume_exceeds_risk_budget"
@@ -117,7 +118,7 @@ def test_rejects_volume_over_risk_budget() -> None:
 def test_rejects_when_stop_floor_exceeds_budget() -> None:
     # (b) safety=100 druckt die Budget-Obergrenze auf ~10 bps; der Tiefe-Floor (15 bps,
     # Tiefe unbekannt) liegt darueber -> stop_floor_exceeds_budget, no_trade.
-    rm = RiskManager(RiskPolicy(safety=Decimal("100")))
+    rm = RiskManager(RiskPolicy(safety=Decimal("100")), zustand=FluechtigerZustand())
     auth = _authorize(rm, request=_request(volume="0.01"), account=_account())
     assert auth.approved is False
     assert auth.reason == "risk_sizing_stop_floor_exceeds_budget"
@@ -125,7 +126,7 @@ def test_rejects_when_stop_floor_exceeds_budget() -> None:
 
 def test_rejects_untradeable_stop_budget() -> None:
     # safety=300 -> Margin-Obergrenze < Kosten-Untergrenze -> Budget untradeable.
-    rm = RiskManager(RiskPolicy(safety=Decimal("300")))
+    rm = RiskManager(RiskPolicy(safety=Decimal("300")), zustand=FluechtigerZustand())
     auth = _authorize(rm, request=_request(volume="0.01"), account=_account())
     assert auth.approved is False
     assert auth.reason == "stop_budget_cost_floor_above_margin_ceiling"
@@ -133,7 +134,7 @@ def test_rejects_untradeable_stop_budget() -> None:
 
 def test_drawdown_halt_latches() -> None:
     # (c) Fenster-Hoechststand 12k, Equity 10k -> Drawdown 16,7 % >= 10 % -> HALT.
-    rm = RiskManager()
+    rm = RiskManager(zustand=FluechtigerZustand())
     rm.observe_equity(NOW - timedelta(hours=1), Decimal("12000"))
     auth = _authorize(rm, request=_request(volume="0.01"), account=_account("10000"))
     assert auth.approved is False
@@ -142,7 +143,7 @@ def test_drawdown_halt_latches() -> None:
 
 
 def test_drawdown_halt_clears_with_manual_release() -> None:
-    rm = RiskManager(manual_release_id="ops-2026-08-13")
+    rm = RiskManager(manual_release_id="ops-2026-08-13", zustand=FluechtigerZustand())
     rm.observe_equity(NOW - timedelta(hours=1), Decimal("12000"))
     auth = _authorize(rm, request=_request(volume="0.01"), account=_account("10000"))
     # Freigabe hebt den Halt: Drawdown bleibt gemeldet, aber kein HALT-Zustand.
@@ -151,7 +152,7 @@ def test_drawdown_halt_clears_with_manual_release() -> None:
 
 def test_daily_loss_blocks_without_latch() -> None:
     # Tagesverlust 3 % >= 2 % -> REDUCE_ONLY (kein Eroeffnen), aber kein Latch-Halt.
-    rm = RiskManager()
+    rm = RiskManager(zustand=FluechtigerZustand())
     rm.observe_equity(NOW, Decimal("10000"))  # Tagesstart
     auth = _authorize(rm, request=_request(volume="0.01"), account=_account("9700"))
     assert auth.approved is False
@@ -161,7 +162,7 @@ def test_daily_loss_blocks_without_latch() -> None:
 
 def test_throttle_blocks_second_trade_in_cooldown() -> None:
     # (d) Nach einem Fill ist dasselbe Instrument im Cooldown/der Mindesthaltedauer.
-    rm = RiskManager()
+    rm = RiskManager(zustand=FluechtigerZustand())
     rm.record_open_fill("EURUSD", NOW)
     auth = _authorize(
         rm,
@@ -174,7 +175,7 @@ def test_throttle_blocks_second_trade_in_cooldown() -> None:
 
 
 def test_concurrent_position_cap_blocks() -> None:
-    rm = RiskManager()
+    rm = RiskManager(zustand=FluechtigerZustand())
     rm.record_open_fill("GBPUSD", NOW - timedelta(hours=2))
     rm.record_open_fill("USDCHF", NOW - timedelta(hours=2))
     rm.record_open_fill("AUDUSD", NOW - timedelta(hours=2))  # 3 offen = Deckel
@@ -184,7 +185,7 @@ def test_concurrent_position_cap_blocks() -> None:
 
 
 def test_record_close_frees_a_slot() -> None:
-    rm = RiskManager()
+    rm = RiskManager(zustand=FluechtigerZustand())
     for sym in ("GBPUSD", "USDCHF", "AUDUSD"):
         rm.record_open_fill(sym, NOW - timedelta(hours=2))
     rm.record_close("AUDUSD")  # ein Platz frei
@@ -193,7 +194,9 @@ def test_record_close_frees_a_slot() -> None:
 
 
 def test_gap_blackout_blocks_opening() -> None:
-    rm = RiskManager(gap_events=(NOW + timedelta(hours=1),))
+    rm = RiskManager(
+        gap_events=(NOW + timedelta(hours=1),), zustand=FluechtigerZustand()
+    )
     auth = _authorize(rm, request=_request(volume="0.01"), account=_account())
     assert auth.approved is False
     assert auth.reason == "risk_gap_blackout"
@@ -201,7 +204,7 @@ def test_gap_blackout_blocks_opening() -> None:
 
 def test_new_day_resets_day_start_equity() -> None:
     # Verlust am Vortag zaehlt am Folgetag nicht mehr gegen das Tageslimit.
-    rm = RiskManager()
+    rm = RiskManager(zustand=FluechtigerZustand())
     rm.observe_equity(NOW, Decimal("10000"))
     next_day = NOW + timedelta(days=1)
     auth = rm.authorize_opening(
@@ -228,7 +231,7 @@ def test_new_day_resets_day_start_equity() -> None:
 
 def test_custom_loss_limits_are_honoured() -> None:
     strict = RiskPolicy(loss_limits=LossLimits(max_daily_loss_fraction=Decimal("0.01")))
-    rm = RiskManager(strict)
+    rm = RiskManager(strict, zustand=FluechtigerZustand())
     rm.observe_equity(NOW, Decimal("10000"))
     auth = _authorize(rm, request=_request(volume="0.01"), account=_account("9850"))
     assert auth.reason == "risk_daily_loss_limit_reached"  # 1,5 % >= 1 %
@@ -239,7 +242,7 @@ def test_custom_loss_limits_are_honoured() -> None:
 
 def test_release_rearms_after_recovery_then_new_episode_halts() -> None:
     # §9 #1: eine Freigabe entwaffnet den Kill-Switch NICHT dauerhaft.
-    rm = RiskManager()
+    rm = RiskManager(zustand=FluechtigerZustand())
     rm.observe_equity(NOW - timedelta(hours=2), Decimal("12000"))
     # Halt-Episode: Drawdown 16,7 % -> HALT.
     a1 = _authorize(rm, request=_request(), account=_account("10000"))
@@ -270,7 +273,7 @@ def test_release_rearms_after_recovery_then_new_episode_halts() -> None:
 
 def test_release_voided_when_drawdown_deepens() -> None:
     # §9 #1: vertieft sich der Drawdown ueber das freigegebene Niveau -> neuer Halt.
-    rm = RiskManager()
+    rm = RiskManager(zustand=FluechtigerZustand())
     rm.observe_equity(NOW - timedelta(hours=2), Decimal("12000"))
     _authorize(rm, request=_request(), account=_account("10600"))  # ~11,7 % -> HALT
     rm.release_drawdown("ops-1")
@@ -290,7 +293,7 @@ def test_release_voided_when_drawdown_deepens() -> None:
 
 def test_rejects_stop_below_cost_floor() -> None:
     # §9 #2: fx_minor Kosten-Floor = 40 bps; ein 25-bps-Stop ist unhandelbar.
-    rm = RiskManager()
+    rm = RiskManager(zustand=FluechtigerZustand())
     inst = _instrument(asset_class=AssetClass.FX_MINOR)
     # stop_loss 1.09725 -> ~25 bps von 1.10000; Tiefe-Floor 15 bps aendert das nicht.
     req = _request(volume="0.01", stop_loss="1.09725")
@@ -302,7 +305,8 @@ def test_rejects_stop_below_cost_floor() -> None:
 def test_daily_account_cap_resets_next_day() -> None:
     # §9 #4: die Tageskappe muss am Folgetag zuruecksetzen (Lesepfad-Reset).
     rm = RiskManager(
-        RiskPolicy(throttle=ThrottlePolicy(max_trades_per_account_per_day=1))
+        RiskPolicy(throttle=ThrottlePolicy(max_trades_per_account_per_day=1)),
+        zustand=FluechtigerZustand(),
     )
     rm.record_open_fill("EURUSD", NOW)
     # Gleicher Tag: Kappe erreicht -> Drossel.
@@ -319,7 +323,7 @@ def test_daily_account_cap_resets_next_day() -> None:
 
 def test_open_positions_are_deduped_per_symbol() -> None:
     # §9 #6: derselbe Symbol zaehlt fuer den Deckel nur einmal (netto je Symbol).
-    rm = RiskManager()
+    rm = RiskManager(zustand=FluechtigerZustand())
     rm.record_open_fill("EURUSD", NOW)
     rm.record_open_fill("EURUSD", NOW)  # kein Doppelzaehlen
     assert rm.open_position_count == 1

@@ -23,11 +23,13 @@ Die Erholung ist dabei der Kern: Lauf 2 fragt mit **wieder vollem Konto** (10.00
 Drawdown ist weg). Genau hier scheitert die naive Fassung -- sie faende nichts mehr zu
 halten und liesse durch.
 
-Was ABSICHTLICH nicht ueberdauert:
-
-* **Das Buch.** Es wird beim Start vom Handelsplatz uebernommen (``adopt_book``). Eine
-  gespeicherte Fassung waere eine zweite Wahrheit neben der des Brokers -- und bei
-  Abweichung gewinnt immer der Broker, weil dort das Geld liegt.
+Seit D8 (E-005) ueberdauert auch das **Positionsbuch** -- die eigene Absicht je
+Eroeffnung (Kennung, Ticket, Symbol, Richtung, Menge, Zeit, Stop). Bis dahin sicherte
+diese Probe das Gegenteil zu („eine gespeicherte Fassung waere eine zweite Wahrheit
+neben der des Brokers"); die Wahrheit ueber Offenes traegt weiterhin der Broker, das
+Buch traegt die Absicht, und beim Start werden beide abgeglichen
+(``Mt5Venue.adopt_book``, D7). Ohne das Buch war nach einem Neustart nicht
+unterscheidbar, ob eine Broker-Position die eigene ist.
 
 Aufruf::
 
@@ -46,7 +48,16 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from mt5_trading_ai.execution.risiko_zustand import DateiZustand  # noqa: E402
+from mt5_trading_ai.execution.reconcile import (  # noqa: E402
+    Buchposition,
+    Positionsbuch,
+)
+from mt5_trading_ai.execution.risiko_zustand import (  # noqa: E402
+    POSITIONSBUCH_DATEI,
+    RISIKOZUSTAND_DATEI,
+    SCHWEBEAKTE_DATEI,
+    DateiZustand,
+)
 from mt5_trading_ai.execution.risk_manager import (  # noqa: E402
     RiskAuthorization,
     RiskManager,
@@ -145,8 +156,9 @@ def _lauf(zustandsdatei: Path) -> RiskManager:
 
 def probe(ordner: Path) -> list[tuple[str, bool, str]]:
     """Faehrt die Probe. Rueckgabe: ``(Name, bestanden, Anmerkung)`` je Pruefung."""
-    zustandsdatei = ordner / "risikozustand.json"
-    schwebedatei = ordner / "schwebende_auftraege.json"
+    zustandsdatei = ordner / RISIKOZUSTAND_DATEI
+    schwebedatei = ordner / SCHWEBEAKTE_DATEI
+    buchdatei = ordner / POSITIONSBUCH_DATEI
     ergebnisse: list[tuple[str, bool, str]] = []
 
     # --- Lauf 1: Zustand setzen, dann hart enden -------------------------------
@@ -166,6 +178,17 @@ def probe(ordner: Path) -> list[tuple[str, bool, str]]:
     akte = SchwebeAkte(schwebedatei)
     akte.vermerken(
         SchwebenderAuftrag("open-EURUSD-probe", "Zeitablauf beim Senden", TS, "EURUSD")
+    )
+    Positionsbuch(buchdatei).eintragen(
+        Buchposition(
+            kennung="open-EURUSD-probe",
+            ticket="4711",
+            symbol="EURUSD",
+            richtung="kauf",
+            menge=Decimal("0.01"),
+            eroeffnet_am=TS,
+            stop=Decimal("1.09000"),
+        )
     )
     # Kein sauberes Herunterfahren: ``erster`` wird schlicht fallengelassen.
     del erster
@@ -237,15 +260,30 @@ def probe(ordner: Path) -> list[tuple[str, bool, str]]:
         )
     )
 
-    # --- Was ABSICHTLICH nicht ueberdauert -------------------------------------
-    liegengeblieben = sorted(p.name for p in ordner.iterdir())
+    # --- Das Positionsbuch (D8) --------------------------------------------------
+    zweites_buch = Positionsbuch(buchdatei)
+    gebucht = zweites_buch.laden()
     ergebnisse.append(
         (
-            "Das Buch wird NICHT persistiert (Absicht, nicht Luecke)",
-            all("buch" not in n for n in liegengeblieben),
-            "es kommt beim Start vom Handelsplatz (adopt_book); eine gespeicherte "
-            "Fassung waere eine zweite Wahrheit neben der des Brokers. "
-            f"Liegt: {liegengeblieben}",
+            "Positionsbuch: dauerhaft, nicht fluechtig",
+            zweites_buch.dauerhaft and buchdatei.is_file(),
+            str(buchdatei),
+        )
+    )
+    ergebnisse.append(
+        (
+            "Positionsbuch: die eigene Eroeffnung ueberdauert mit Ticket und Stop",
+            len(gebucht) == 1
+            and gebucht[0].ticket == "4711"
+            and gebucht[0].stop == Decimal("1.09000"),
+            f"gelesen: {[b.as_dict() for b in gebucht]}",
+        )
+    )
+    ergebnisse.append(
+        (
+            "Keine Nebendatei bleibt liegen (atomares Schreiben)",
+            not any(p.suffix == ".neu" for p in ordner.iterdir()),
+            f"Liegt: {sorted(p.name for p in ordner.iterdir())}",
         )
     )
 

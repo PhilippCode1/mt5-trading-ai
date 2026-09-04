@@ -42,6 +42,7 @@ from typing import Any
 import pytest
 from mt5_trading_ai.execution.schwebende_auftraege import (
     FORMATFASSUNG,
+    FluechtigeSchwebeAkte,
     SchwebeAkte,
     SchwebenderAuftrag,
 )
@@ -129,13 +130,13 @@ def test_fluechtige_akte_ist_als_fluechtig_ablesbar(tmp_path: Path) -> None:
     Dieselbe Begruendung wie bei ``RiskManager.zustand_dauerhaft``. Wer es erst am
     Neustart merkt, merkt es an dem Tag, an dem es zaehlt.
     """
-    assert SchwebeAkte(None).dauerhaft is False
+    assert FluechtigeSchwebeAkte().dauerhaft is False
     assert SchwebeAkte(tmp_path / "a.json").dauerhaft is True
 
 
 def test_fluechtige_akte_haelt_innerhalb_des_prozesses(tmp_path: Path) -> None:
     """Fluechtig heisst nicht wirkungslos: innerhalb des Laufs sperrt sie genauso."""
-    venue, terminal = _venue(is_demo=True, schwebeakte=SchwebeAkte(None))
+    venue, terminal = _venue(is_demo=True, schwebeakte=FluechtigeSchwebeAkte())
     terminal.order_send = _wirft  # type: ignore[method-assign]
     with pytest.raises(RuntimeError):
         venue.submit_order(_order(client_order_id="fl-1"))

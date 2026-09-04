@@ -1,0 +1,40 @@
+# tools/wiederanlaufprobe.py (2026-09-04 02:06 UTC)
+$ python tools/wiederanlaufprobe.py
+==============================================================================
+WIEDERANLAUFPROBE - uebersteht der Zustand einen harten Abbruch?
+==============================================================================
+Probeordner: C:\Users\<konto>\AppData\Local\Temp\wiederanlaufprobe-tb9_kbd5
+
+  ok   Lauf 1: der Einbruch latcht ueberhaupt einen Halt
+        Grund: risk_drawdown_limit_reached
+  ok   Risikozustand: Datei liegt auf der Platte
+        C:\Users\<konto>\AppData\Local\Temp\wiederanlaufprobe-tb9_kbd5\risikozustand.json
+  ok   Risikozustand: dauerhaft, nicht fluechtig
+        eine fluechtige Schicht verhaelt sich bis zum Neustart genau wie eine dauerhafte -- deshalb wird sie hier gefragt
+  ok   Der Halt WIRKT nach dem Neustart -- bei erholtem Konto
+        Konto wieder bei 10.000, Antwort: approved=False, reason=risk_drawdown_halt_gelatcht
+  ok   Der Grund ueberdauert mit, nicht nur das Ja/Nein
+        'risk_drawdown_halt_gelatcht' -- ohne Grund weiss der Mensch am Morgen nicht, wonach er sehen soll
+  ok   Schwebeakte: dauerhaft, nicht fluechtig
+        C:\Users\<konto>\AppData\Local\Temp\wiederanlaufprobe-tb9_kbd5\schwebende_auftraege.json
+  ok   Schwebeakte: der ungeklaerte Sendeversuch ueberdauert
+        gelesen: ['open-EURUSD-probe']
+  ok   Schwebeakte: der Grund ueberdauert unveraendert
+        der Grund sagt, wonach beim Broker zu sehen ist
+  ok   Positionsbuch: dauerhaft, nicht fluechtig
+        C:\Users\<konto>\AppData\Local\Temp\wiederanlaufprobe-tb9_kbd5\positionsbuch.json
+  ok   Positionsbuch: die eigene Eroeffnung ueberdauert mit Ticket und Stop
+        gelesen: [{'kennung': 'open-EURUSD-probe', 'ticket': '4711', 'symbol': 'EURUSD', 'richtung': 'kauf', 'menge': '0.01', 'eroeffnet_am': '2026-08-20T12:00:00+00:00', 'stop': '1.09000'}]
+  ok   Keine Nebendatei bleibt liegen (atomares Schreiben)
+        Liegt: ['positionsbuch.json', 'risikozustand.json', 'schwebende_auftraege.json']
+  ok   Aufloesung MIT Befund raeumt den Eintrag ab
+        und sie ueberdauert ihrerseits: die Akte ist danach leer
+  ok   Aufloesung OHNE Befund wird abgewiesen
+        wer nichts hinschreibt, hat nichts nachgesehen
+  ok   Erst die menschliche Freigabe loest ihn -- und dann wirklich
+        mit Freigabekennung: approved=True, reason=None
+
+14 von 14 Pruefungen bestanden.
+ok - der Wiederanlauf haelt.
+
+[exit=0]

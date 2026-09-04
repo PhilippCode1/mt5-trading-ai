@@ -27,6 +27,7 @@ import pytest
 from mt5_trading_ai.backtest.engine import Signal
 from mt5_trading_ai.execution import runner as runner_modul
 from mt5_trading_ai.execution.cost_gate import CostGate, CostGateDecision
+from mt5_trading_ai.execution.risiko_zustand import FluechtigerZustand
 from mt5_trading_ai.execution.risk_manager import (
     MEASURED_COST_BPS_META_KEY,
     RiskAuthorization,
@@ -276,7 +277,9 @@ def test_uebergebene_messung_hebt_die_untergrenze_am_orderpfad() -> None:
     Und selbst wenn: es befragte allein ``policy.measured_cost_bps``, das kein
     Aufrufer je fuellte -> Untergrenze 6,5 statt 15,54 bp.
     """
-    auth = _autorisiere(RiskManager(), measured_cost_bps=GEMESSEN_BPS)
+    auth = _autorisiere(
+        RiskManager(zustand=FluechtigerZustand()), measured_cost_bps=GEMESSEN_BPS
+    )
     assert auth.budget is not None
     assert auth.budget.cost_is_measured is True
     assert auth.budget.lower_bps == Decimal("15.54")
@@ -289,7 +292,10 @@ def test_messung_reist_im_meta_zur_zweiten_pruefung_mit() -> None:
     Argument. Ohne diesen Kanal rechnete die zweite Pruefung gegen die Annahmetabelle
     -- also milder als die erste, die sie absichern soll.
     """
-    auth = _autorisiere(RiskManager(), meta={MEASURED_COST_BPS_META_KEY: GEMESSEN_BPS})
+    auth = _autorisiere(
+        RiskManager(zustand=FluechtigerZustand()),
+        meta={MEASURED_COST_BPS_META_KEY: GEMESSEN_BPS},
+    )
     assert auth.budget is not None
     assert auth.budget.cost_is_measured is True
     assert auth.budget.lower_bps == Decimal("15.54")
@@ -309,12 +315,13 @@ def test_auftragsdaten_koennen_die_politik_nicht_unterbieten() -> None:
     nicht still: die verworfene Zahl steht mit ihrem Grund in der Akte.
     """
     politik = RiskPolicy(measured_cost_bps={"fx_major": Decimal("5.0")})
-    ohne = _autorisiere(RiskManager(politik))
+    ohne = _autorisiere(RiskManager(politik, zustand=FluechtigerZustand()))
     assert ohne.budget is not None
     assert ohne.budget.lower_bps == Decimal("50")
 
     unterbietung = _autorisiere(
-        RiskManager(politik), meta={MEASURED_COST_BPS_META_KEY: Decimal("0.001")}
+        RiskManager(politik, zustand=FluechtigerZustand()),
+        meta={MEASURED_COST_BPS_META_KEY: Decimal("0.001")},
     )
     assert unterbietung.budget is not None
     assert unterbietung.budget.lower_bps == Decimal("50")
@@ -337,7 +344,8 @@ def test_auftragsdaten_koennen_den_plausibilitaetsboden_nicht_unterbieten() -> N
     ist davon unberuehrt -- 0,001 bp liegt auch unter dem Boden und wird verworfen.
     """
     auth = _autorisiere(
-        RiskManager(), meta={MEASURED_COST_BPS_META_KEY: Decimal("0.001")}
+        RiskManager(zustand=FluechtigerZustand()),
+        meta={MEASURED_COST_BPS_META_KEY: Decimal("0.001")},
     )
     assert auth.budget is not None
     assert auth.budget.lower_bps == Decimal("6.5")
@@ -357,7 +365,8 @@ def test_eine_wirklich_bessere_ausfuehrung_wird_jetzt_erkannt() -> None:
     erkennbar. Jetzt gilt die Messung.
     """
     auth = _autorisiere(
-        RiskManager(), meta={MEASURED_COST_BPS_META_KEY: Decimal("0.30")}
+        RiskManager(zustand=FluechtigerZustand()),
+        meta={MEASURED_COST_BPS_META_KEY: Decimal("0.30")},
     )
     assert auth.budget is not None
     assert auth.detail["cost_basis"].startswith("auftrag 0.30 bp")
@@ -376,20 +385,26 @@ def test_die_herkunft_der_kostenzahl_steht_im_protokoll() -> None:
     Messkampagne des Betreibers (``kampagne``). Nachgemessen an der Vorfassung: der
     ``meta``- und der Kampagnen-Kanal lieferten beide 'gemessen ... bp'.
     """
-    gemessen = _autorisiere(RiskManager(), measured_cost_bps=GEMESSEN_BPS)
+    gemessen = _autorisiere(
+        RiskManager(zustand=FluechtigerZustand()), measured_cost_bps=GEMESSEN_BPS
+    )
     assert gemessen.detail["cost_basis"] == f"gemessen {GEMESSEN_BPS} bp"
 
     auftrag = _autorisiere(
-        RiskManager(), meta={MEASURED_COST_BPS_META_KEY: GEMESSEN_BPS}
+        RiskManager(zustand=FluechtigerZustand()),
+        meta={MEASURED_COST_BPS_META_KEY: GEMESSEN_BPS},
     )
     assert auftrag.detail["cost_basis"] == f"auftrag {GEMESSEN_BPS} bp"
 
     kampagne = _autorisiere(
-        RiskManager(RiskPolicy(measured_cost_bps={"fx_major": Decimal("5.0")}))
+        RiskManager(
+            RiskPolicy(measured_cost_bps={"fx_major": Decimal("5.0")}),
+            zustand=FluechtigerZustand(),
+        )
     )
     assert kampagne.detail["cost_basis"] == "kampagne 5.0 bp"
 
-    annahme = _autorisiere(RiskManager())
+    annahme = _autorisiere(RiskManager(zustand=FluechtigerZustand()))
     assert annahme.detail["cost_basis"] == f"annahme {ANGENOMMEN_BPS} bp"
 
 
@@ -402,7 +417,10 @@ def test_die_praemisse_klammert_nur_nach_unten() -> None:
     zaehlt deshalb unveraendert weiter -- das ist der Regelfall am Live-Bid/Ask, wo
     gemessen fast immer teurer ist als die schmeichelnde Annahme.
     """
-    auth = _autorisiere(RiskManager(), meta={MEASURED_COST_BPS_META_KEY: GEMESSEN_BPS})
+    auth = _autorisiere(
+        RiskManager(zustand=FluechtigerZustand()),
+        meta={MEASURED_COST_BPS_META_KEY: GEMESSEN_BPS},
+    )
     assert auth.budget is not None
     assert auth.budget.lower_bps == Decimal("15.54")
     assert "verworfen" not in auth.detail["cost_basis"]
@@ -411,7 +429,10 @@ def test_die_praemisse_klammert_nur_nach_unten() -> None:
 def test_falscher_typ_im_meta_wirft_statt_zurueckzufallen() -> None:
     """Ein Float ist keine gepruefte Messung. Defekt wirft, kein stiller Rueckfall."""
     with pytest.raises(ValueError, match=MEASURED_COST_BPS_META_KEY):
-        _autorisiere(RiskManager(), meta={MEASURED_COST_BPS_META_KEY: 1.554})
+        _autorisiere(
+            RiskManager(zustand=FluechtigerZustand()),
+            meta={MEASURED_COST_BPS_META_KEY: 1.554},
+        )
 
 
 @pytest.mark.parametrize("unbrauchbar", ["0", "-1.554", "NaN", "-Infinity"])
@@ -430,7 +451,8 @@ def test_unbrauchbare_zahl_im_meta_wirft_und_wird_nicht_weggeklammert(
     """
     with pytest.raises(ValueError, match=MEASURED_COST_BPS_META_KEY):
         _autorisiere(
-            RiskManager(), meta={MEASURED_COST_BPS_META_KEY: Decimal(unbrauchbar)}
+            RiskManager(zustand=FluechtigerZustand()),
+            meta={MEASURED_COST_BPS_META_KEY: Decimal(unbrauchbar)},
         )
 
 
@@ -440,10 +462,12 @@ def test_annahmebasis_steht_sichtbar_in_jeder_autorisierung() -> None:
     Wenn schon Tabelle, dann sichtbar: der Aufrufer bekommt die Basis mit dem
     Ergebnis, nicht als Fussnote in einer Datei, die er nicht liest.
     """
-    angenommen = _autorisiere(RiskManager())
+    angenommen = _autorisiere(RiskManager(zustand=FluechtigerZustand()))
     assert angenommen.approved is True
     assert angenommen.detail["cost_basis"] == f"annahme {ANGENOMMEN_BPS} bp"
-    gemessen = _autorisiere(RiskManager(), measured_cost_bps=GEMESSEN_BPS)
+    gemessen = _autorisiere(
+        RiskManager(zustand=FluechtigerZustand()), measured_cost_bps=GEMESSEN_BPS
+    )
     assert gemessen.detail["cost_basis"] == f"gemessen {GEMESSEN_BPS} bp"
 
 
@@ -453,7 +477,11 @@ def test_policy_schalter_sperrt_den_ungemessenen_orderpfad() -> None:
     Der Betreiber, der nicht auf Annahmen handeln will, bekommt eine Sperre mit Grund
     statt einer Tabelle mit Schweigen.
     """
-    auth = _autorisiere(RiskManager(RiskPolicy(require_measured_cost=True)))
+    auth = _autorisiere(
+        RiskManager(
+            RiskPolicy(require_measured_cost=True), zustand=FluechtigerZustand()
+        )
+    )
     assert auth.approved is False
     assert auth.reason == "stop_budget_cost_not_measured"
     assert auth.detail["cost_basis"] == "annahme 0 bp"
@@ -466,11 +494,15 @@ def test_stop_auf_der_alten_annahmegrenze_wird_jetzt_gesperrt() -> None:
     reisst gegen die gemessenen 1,554 bp (Untergrenze 15,54 bp) die Zusage
     ``max_cost_drag``. Die Sperre loest aus; die Zusage wird nicht gesenkt.
     """
-    ohne_messung = _autorisiere(RiskManager(), stop_loss="1.09850")
+    ohne_messung = _autorisiere(
+        RiskManager(zustand=FluechtigerZustand()), stop_loss="1.09850"
+    )
     assert ohne_messung.approved is True  # so lief der scharfe Lauf
 
     mit_messung = _autorisiere(
-        RiskManager(), stop_loss="1.09850", measured_cost_bps=GEMESSEN_BPS
+        RiskManager(zustand=FluechtigerZustand()),
+        stop_loss="1.09850",
+        measured_cost_bps=GEMESSEN_BPS,
     )
     assert mit_messung.approved is False
     assert mit_messung.reason == "stop_budget_below_cost_floor"
@@ -498,7 +530,7 @@ def _schritt(report: Any, name: str) -> Any:
     return treffer[0]
 
 
-def test_runner_setzt_den_stop_auf_die_gemessene_untergrenze() -> None:
+def test_runner_setzt_den_stop_auf_die_gemessene_untergrenze(tmp_path: Path) -> None:
     """ROTER EICHFALL: alt stand hier ``15.0bps -> stop=1.09835`` bei 0,15 Lot.
 
     Das synthetische Demo-Terminal stellt EURUSD 1,09990/1,10000 bei 7 USD Kommission
@@ -506,7 +538,7 @@ def test_runner_setzt_den_stop_auf_die_gemessene_untergrenze() -> None:
     Tiefe-Floor (15 bp), weil die angenommenen 0,65 bp nur 6,5 bp verlangten: der Stop
     lag zu eng und die Position war entsprechend zu gross.
     """
-    report, _halt = _paper_run().run_paper("EURUSD")
+    report, _halt = _paper_run().run_paper("EURUSD", zustandsordner=tmp_path)
     assert report.opened, [s for s in report.steps if not s.ok]
     assert _schritt(report, "stop-preis").detail == "24.5bps -> stop=1.09730"
     assert "gemessen" in _schritt(report, "kostentor").detail
@@ -516,18 +548,18 @@ def test_runner_setzt_den_stop_auf_die_gemessene_untergrenze() -> None:
     assert _schritt(report, "sizing").detail == "volume=0.09"
 
 
-def test_kostentor_steht_vor_dem_stop_preis() -> None:
+def test_kostentor_steht_vor_dem_stop_preis(tmp_path: Path) -> None:
     """ROTER EICHFALL: alt lag das Kostentor HINTER dem Stop-Preis.
 
     Genau daher stammte der Befund: die Messung lag dreissig Zeilen zu spaet vor, und
     das Budget griff derweil zur Tabelle. Die Reihenfolge ist hier die Sperre.
     """
-    report, _halt = _paper_run().run_paper("EURUSD")
+    report, _halt = _paper_run().run_paper("EURUSD", zustandsordner=tmp_path)
     namen = [s.name for s in report.steps]
     assert namen.index("kostentor") < namen.index("stop-preis")
 
 
-def test_strikte_politik_laesst_die_volle_kette_trotzdem_durch() -> None:
+def test_strikte_politik_laesst_die_volle_kette_trotzdem_durch(tmp_path: Path) -> None:
     """ROTER EICHFALL fuer den ``meta``-Kanal ueber die Venue-Grenze hinweg.
 
     Mit ``require_measured_cost=True`` handelt nur noch, wer misst -- und
@@ -536,8 +568,10 @@ def test_strikte_politik_laesst_die_volle_kette_trotzdem_durch() -> None:
     die zweite Pruefung gereist. Alt gab es weder Schalter noch Kanal.
     """
     modul = _paper_run()
-    rm = RiskManager(RiskPolicy(require_measured_cost=True))
-    venue = modul.build_paper_venue(rm)
+    rm = RiskManager(
+        RiskPolicy(require_measured_cost=True), zustand=FluechtigerZustand()
+    )
+    venue = modul.build_paper_venue(rm, zustandsordner=tmp_path)
     venue.adopt_book()
     report = run_signal(
         venue=venue,
@@ -550,12 +584,15 @@ def test_strikte_politik_laesst_die_volle_kette_trotzdem_durch() -> None:
         ),
         now=modul._TS,
         client_order_id="k3-strikt",
+        darf_schreiben=True,
     )
     assert report.opened, report.reject_reason
     assert _schritt(report, "stop-budget").detail.endswith("gemessen)")
 
 
-def test_der_runner_rechnet_die_spanne_mit_der_politik_des_managers() -> None:
+def test_der_runner_rechnet_die_spanne_mit_der_politik_des_managers(
+    tmp_path: Path,
+) -> None:
     """ROTER EICHFALL: der Runner rechnete die Untergrenze mit den Vorgabewerten.
 
     Dieselbe Rechnung stand an zwei Stellen: ``execution/runner.py`` rief
@@ -576,8 +613,10 @@ def test_der_runner_rechnet_die_spanne_mit_der_politik_des_managers() -> None:
     gleichgezogener Politik zu.
     """
     modul = _paper_run()
-    rm = RiskManager(RiskPolicy(max_cost_drag=Decimal("0.02")))
-    venue = modul.build_paper_venue(rm)
+    rm = RiskManager(
+        RiskPolicy(max_cost_drag=Decimal("0.02")), zustand=FluechtigerZustand()
+    )
+    venue = modul.build_paper_venue(rm, zustandsordner=tmp_path)
     venue.adopt_book()
     report = run_signal(
         venue=venue,
@@ -590,6 +629,7 @@ def test_der_runner_rechnet_die_spanne_mit_der_politik_des_managers() -> None:
         ),
         now=modul._TS,
         client_order_id="k3-politik",
+        darf_schreiben=True,
     )
     assert report.opened, report.reject_reason
     assert _schritt(report, "stop-budget").detail == (
@@ -610,7 +650,9 @@ def test_der_runner_rechnet_die_spanne_mit_der_politik_des_managers() -> None:
     assert budget.allows(wirksam)
 
 
-def test_freigabe_ohne_kostenquote_wirft(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_freigabe_ohne_kostenquote_wirft(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """ROTER EICHFALL: alt gab es diese Pruefung nicht -- der Lauf eroeffnete weiter.
 
     Ein freigegebenes Kostentor ohne Zahl ist ein Widerspruch im Werkzeug, kein
@@ -623,4 +665,4 @@ def test_freigabe_ohne_kostenquote_wirft(monkeypatch: pytest.MonkeyPatch) -> Non
         lambda **_kwargs: CostGateDecision(True, None, None),
     )
     with pytest.raises(ValueError, match="Kostenquote"):
-        _paper_run().run_paper("EURUSD")
+        _paper_run().run_paper("EURUSD", zustandsordner=tmp_path)

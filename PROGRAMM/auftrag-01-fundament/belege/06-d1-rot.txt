@@ -1,0 +1,21 @@
+# Eichfall D1, ROT gegen 306bbaa (Worktree C:\Users\<konto>\nachstellung-306bbaa, 2026-09-04 02:07 UTC): tests/eichfall_d1.py dort hineinkopiert, ausgefuehrt, entfernt
+$ python -m pytest -q -p no:cacheprovider --tb=line tests/eichfall_d1.py
+FFFFFF                                                                   [100%]
+================================== FAILURES ===================================
+C:\Users\<konto>\nachstellung-306bbaa\tests\eichfall_d1.py:164: AssertionError: assert 'submit_rejected' == 'strategy_not_admitted'
+C:\Users\<konto>\nachstellung-306bbaa\tests\eichfall_d1.py:187: AssertionError: submit_rejected
+C:\Users\<konto>\nachstellung-306bbaa\tests\eichfall_d1.py:268: ModuleNotFoundError: No module named 'tools.zustand'
+C:\Users\<konto>\nachstellung-306bbaa\tests\eichfall_d1.py:282: ModuleNotFoundError: No module named 'tools.zustand'
+C:\Users\<konto>\nachstellung-306bbaa\tests\eichfall_d1.py:302: ModuleNotFoundError: No module named 'tools.zustand'
+C:\Users\<konto>\nachstellung-306bbaa\tests\eichfall_d1.py:322: AssertionError: tools/zustand.py fehlt
+=========================== short test summary info ===========================
+FAILED tests/eichfall_d1.py::test_trockenlauf_ohne_zulassung_erkundet_nicht_und_latcht_nichts
+FAILED tests/eichfall_d1.py::test_trockenlauf_mit_zulassung_endet_vor_dem_senden
+FAILED tests/eichfall_d1.py::test_zustand_zeigen_nennt_halt_akte_und_buch_ohne_kontonummer
+FAILED tests/eichfall_d1.py::test_halt_freigeben_loest_nur_mit_passendem_konto
+FAILED tests/eichfall_d1.py::test_schwebeakte_aufloesen_verlangt_einen_befund
+FAILED tests/eichfall_d1.py::test_zustand_werkzeug_als_prozess - AssertionErr...
+6 failed in 0.56s
+[exit=1, 1.7 s]
+$ git status --porcelain   (im Referenz-Worktree, danach)
+(sauber)

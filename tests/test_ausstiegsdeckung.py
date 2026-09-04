@@ -93,7 +93,7 @@ def test_rot_der_gemessene_fall_wird_jetzt_abgewiesen() -> None:
     # von Hand schliessen soll.
     assert "EURUSD" in grund and "XAUUSD" in grund
     # Und sie muss alle drei Auswege nennen; ein Riegel ohne Ausweg wird umgangen.
-    assert "--scharf" in grund
+    assert "--demo-schreiben" in grund
     assert "--am-ende-offen-lassen" in grund
     assert "von Hand" in grund
 

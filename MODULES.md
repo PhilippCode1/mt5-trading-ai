@@ -25,7 +25,7 @@ Das Sechs-Bedingungen-Tor des Edge-Tests (Paket 4, §7.2).
 ## `mt5_trading_ai/backtest/engine.py`
 
 Zeilen: 731
-Aufrufer: Paket 2 · Werkzeuge 5 · Tests 9
+Aufrufer: Paket 2 · Werkzeuge 5 · Tests 10
 
 Backtest-Maschine: fuehrt Splits, Daten und Kostenmodell zusammen.
 
@@ -254,7 +254,7 @@ Datenqualitaet als Gate (Phase 7.2).
 ## `mt5_trading_ai/execution/cost_gate.py`
 
 Zeilen: 137
-Aufrufer: Paket 2 · Werkzeuge 3 · Tests 5
+Aufrufer: Paket 2 · Werkzeuge 3 · Tests 6
 
 Pre-Trade-Kostentor am Order-Pfad.
 
@@ -295,8 +295,8 @@ Private Ereignis-Synchronisation: der Kontostrom haelt das Buch aktuell.
 
 ## `mt5_trading_ai/execution/reconcile.py`
 
-Zeilen: 111
-Aufrufer: Paket 3 · Werkzeuge 0 · Tests 1
+Zeilen: 321
+Aufrufer: Paket 3 · Werkzeuge 2 · Tests 19
 
 Order-Lebenszyklus und Reconcile: Konto gegen Buch.
 
@@ -305,28 +305,36 @@ Order-Lebenszyklus und Reconcile: Konto gegen Buch.
 - `class SymbolDrift`
 - `class ReconcileResult`
 - `def reconcile_positions`
+- `class PositionsbuchDefekt`
+- `class Buchposition`
+- `class Positionsbuch`
+- `class FluechtigesPositionsbuch`
 
 ## `mt5_trading_ai/execution/release.py`
 
-Zeilen: 128
-Aufrufer: Paket 1 · Werkzeuge 0 · Tests 1
+Zeilen: 203
+Aufrufer: Paket 1 · Werkzeuge 0 · Tests 3
 
 Mehrteilige Freigabe fuer Order-Submit an einen echten Markt.
 
+- `class LiveFreigabe`
+- `def lies_live_freigabe`
 - `class LiveReleaseDecision`
 - `def evaluate_live_release`
 - `def live_release_blocks_opening_order`
 
 ## `mt5_trading_ai/execution/risiko_zustand.py`
 
-Zeilen: 1596
-Aufrufer: Paket 3 · Werkzeuge 1 · Tests 10
+Zeilen: 1722
+Aufrufer: Paket 4 · Werkzeuge 7 · Tests 35
 
 Der Risikozustand, der einen Neustart ueberdauert -- und wie er fail-closed liest.
 
 - `class ZustandsortFehler`
 - `def verbotene_baeume`
 - `def standard_zustandsordner`
+- `def zustandsordner_pruefen`
+- `def zustandsordner_waehlen`
 - `def standard_zustandsdatei`
 - `def korb_start`
 - `def fenster_fortschreiben`
@@ -335,11 +343,13 @@ Der Risikozustand, der einen Neustart ueberdauert -- und wie er fail-closed lies
 - `def lage_vereinen`
 - `class Zustandsbefund`
 - `class DateiZustand`
+- `class Risikozustand`
+- `class FluechtigerZustand`
 
 ## `mt5_trading_ai/execution/risk_manager.py`
 
-Zeilen: 1192
-Aufrufer: Paket 3 · Werkzeuge 5 · Tests 23
+Zeilen: 1203
+Aufrufer: Paket 3 · Werkzeuge 6 · Tests 28
 
 Risikoschicht am Order-Pfad: die vier Grenzen als letzte Verteidigungslinie.
 
@@ -351,8 +361,8 @@ Risikoschicht am Order-Pfad: die vier Grenzen als letzte Verteidigungslinie.
 
 ## `mt5_trading_ai/execution/runner.py`
 
-Zeilen: 524
-Aufrufer: Paket 0 · Werkzeuge 3 · Tests 3
+Zeilen: 568
+Aufrufer: Paket 0 · Werkzeuge 3 · Tests 4
 
 Integrierender Paper/Dry-Run-Runner (Paket 7): die eine beweisbare Kette.
 
@@ -364,7 +374,7 @@ Integrierender Paper/Dry-Run-Runner (Paket 7): die eine beweisbare Kette.
 ## `mt5_trading_ai/execution/scheduler.py`
 
 Zeilen: 121
-Aufrufer: Paket 0 · Werkzeuge 2 · Tests 4
+Aufrufer: Paket 0 · Werkzeuge 2 · Tests 5
 
 Treiber-Loop/Scheduler (Paket 7): Frische, Drift und Drawdown-Peak getaktet pruefen.
 
@@ -373,8 +383,8 @@ Treiber-Loop/Scheduler (Paket 7): Frische, Drift und Drawdown-Peak getaktet prue
 
 ## `mt5_trading_ai/execution/schwebende_auftraege.py`
 
-Zeilen: 305
-Aufrufer: Paket 1 · Werkzeuge 1 · Tests 4
+Zeilen: 423
+Aufrufer: Paket 1 · Werkzeuge 2 · Tests 25
 
 Auftraege, deren Sendeversuch ohne Antwort endete -- „koennte beim Broker leben".
 
@@ -382,11 +392,12 @@ Auftraege, deren Sendeversuch ohne Antwort endete -- „koennte beim Broker lebe
 - `class SchwebenderAuftrag`
 - `class Schwebebefund`
 - `class SchwebeAkte`
+- `class FluechtigeSchwebeAkte`
 
 ## `mt5_trading_ai/gates/criteria.py`
 
 Zeilen: 393
-Aufrufer: Paket 4 · Werkzeuge 5 · Tests 9
+Aufrufer: Paket 4 · Werkzeuge 5 · Tests 11
 
 Vorregistrierte Kriterien und ihre Auswertung (Phase 9.3).
 
@@ -402,8 +413,8 @@ Vorregistrierte Kriterien und ihre Auswertung (Phase 9.3).
 
 ## `mt5_trading_ai/gates/erkundung.py`
 
-Zeilen: 232
-Aufrufer: Paket 1 · Werkzeuge 1 · Tests 1
+Zeilen: 245
+Aufrufer: Paket 1 · Werkzeuge 1 · Tests 2
 
 Kaltstart: den Kreis aufbrechen, ohne die Sperren aufzuweichen.
 
@@ -550,10 +561,19 @@ Paket 5: Registrierung und Fortschritts-Tor des Demo-Betriebs (§8.5).
 - `def pruefe_demo_beleg`
 - `def evaluate_demo_progress`
 
+## `mt5_trading_ai/venue/fake.py`
+
+Zeilen: 218
+Aufrufer: Paket 0 · Werkzeuge 1 · Tests 2
+
+Ein Terminal ohne MetaTrader: die Betriebsattrappe fuer Trockenlauf und Eichfaelle.
+
+- `class FakeMt5Terminal`
+
 ## `mt5_trading_ai/venue/mt5.py`
 
-Zeilen: 2785
-Aufrufer: Paket 3 · Werkzeuge 7 · Tests 35
+Zeilen: 3045
+Aufrufer: Paket 4 · Werkzeuge 7 · Tests 40
 
 MT5-Anbindung an das ``TradingVenue``-Protokoll.
 
@@ -566,6 +586,7 @@ MT5-Anbindung an das ``TradingVenue``-Protokoll.
 - `class Mt5SendResult`
 - `class Mt5Terminal`
 - `def stop_level_in_tickschritten`
+- `class Startabgleich`
 - `def konto_maengel`
 - `class Mt5Venue`
 - `def kennmarke`
@@ -574,7 +595,7 @@ MT5-Anbindung an das ``TradingVenue``-Protokoll.
 ## `mt5_trading_ai/venue/protocol.py`
 
 Zeilen: 547
-Aufrufer: Paket 12 · Werkzeuge 8 · Tests 46
+Aufrufer: Paket 13 · Werkzeuge 9 · Tests 51
 
 Plattformunabhaengiger Handelsplatz-Vertrag.
 

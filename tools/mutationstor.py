@@ -120,15 +120,18 @@ KATALOG: tuple[Sonde, ...] = (
         bedeutet="Nach einem Sendeversuch ohne Antwort wird weiter eroeffnet.",
     ),
     Sonde(
+        # Seit D8 (E-005) gibt es in ``laden`` keinen fluechtigen Zweig mehr, der sich
+        # erzwingen liesse; die Sonde nimmt darum den Schreibvorgang selbst: die
+        # Nebendatei wird verworfen statt an ihren Platz gesetzt -- die Akte ueberlebt
+        # den Prozess nicht.
         name="schwebeakte-fluechtig",
         datei="mt5_trading_ai/execution/schwebende_auftraege.py",
         alt=(
-            "        if self._pfad is None:\n"
-            "            return Schwebebefund(eintraege=self._speicher)"
+            '        neben.write_text(inhalt, encoding="utf-8")\n'
+            "        os.replace(neben, self._pfad)"
         ),
         neu=(
-            "        if True:\n"
-            "            return Schwebebefund(eintraege=self._speicher)"
+            '        neben.write_text(inhalt, encoding="utf-8")\n        neben.unlink()'
         ),
         tests=("tests/test_stufe5_ausfuehrung.py",),
         bedeutet="Ein ungeklaerter Auftrag ueberlebt den Neustart nicht mehr.",

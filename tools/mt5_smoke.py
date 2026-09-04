@@ -22,6 +22,10 @@ Rueckgabewerte:
   beide Ausgaenge von ``RealMt5Terminal.initialize`` ab: die Ausnahme
   ``VenueUnavailableError`` (Paket fehlt) und ``False`` (Terminal nicht gestartet).
 
+Risikozustand, Schwebeakte und Positionsbuch der Probe liegen im Zustandsordner
+(``--zustandsordner``, Vorgabe ``standard_zustandsordner()``; D8, E-005) -- die
+Schreib-Probe faehrt unter denselben Grenzen und demselben Zustand wie der Betrieb.
+
 Beispiele::
 
     python tools/mt5_smoke.py                 # nur lesend, Symbol EURUSD
@@ -37,9 +41,17 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from mt5_trading_ai.execution.risiko_zustand import (  # noqa: E402
+    DateiZustand,
+    ZustandsortFehler,
+    standard_zustandsdatei,
+    standard_zustandsordner,
+    zustandsordner_waehlen,
+)
 from mt5_trading_ai.execution.risk_manager import RiskManager  # noqa: E402
 from mt5_trading_ai.venue.catalog import load_instrument_catalog  # noqa: E402
 from mt5_trading_ai.venue.mt5 import Mt5Venue, RealMt5Terminal  # noqa: E402
+from mt5_trading_ai.venue.protocol import VenueUnavailableError  # noqa: E402
 from mt5_trading_ai.venue.smoke import run_smoke  # noqa: E402
 
 #: Rueckgabewert, wenn das Terminal nicht erreichbar ist (A12).
@@ -57,7 +69,20 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--login", type=int, default=None, help="Kontonummer")
     parser.add_argument("--server", default=None)
     parser.add_argument("--path", default=None, help="Pfad zur terminal64.exe")
+    parser.add_argument(
+        "--zustandsordner",
+        type=Path,
+        default=None,
+        metavar="ORDNER",
+        help="Zustandsordner (Risikozustand, Schwebeakte, Positionsbuch; "
+        f"Vorgabe: {standard_zustandsordner()})",
+    )
     args = parser.parse_args(argv)
+    try:
+        ordner = zustandsordner_waehlen(args.zustandsordner)
+    except ZustandsortFehler as exc:
+        print(f"FEHLGESCHLAGEN -- Zustandsordner unbrauchbar: {exc}", file=sys.stderr)
+        return EXIT_KEIN_TERMINAL
 
     terminal = RealMt5Terminal(
         login=args.login,
@@ -65,6 +90,21 @@ def main(argv: list[str] | None = None) -> int:
         path=args.path,
         allow_write=args.allow_write,
     )
+    # Das Terminal ZUERST (A12): ohne Terminal wird kein Zustand angefasst.
+    try:
+        verbunden = terminal.initialize()
+    except VenueUnavailableError as exc:
+        print(
+            f"FEHLGESCHLAGEN -- MT5-Terminal nicht erreichbar: {exc}", file=sys.stderr
+        )
+        return EXIT_KEIN_TERMINAL
+    if not verbunden:
+        print(
+            "FEHLGESCHLAGEN -- MT5-Terminal nicht erreichbar: initialize() lieferte "
+            "False (laeuft terminal64.exe, und ist ein Demokonto angemeldet?)",
+            file=sys.stderr,
+        )
+        return EXIT_KEIN_TERMINAL
     katalog = load_instrument_catalog()
     # Die Risikoschicht ist seit Paket 2 fuer JEDE eroeffnende Order Pflicht -- auch
     # auf dem Demokonto. Ohne Manager lehnt der Order-Pfad fail-closed ab; die
@@ -74,7 +114,10 @@ def main(argv: list[str] | None = None) -> int:
         name="mt5",
         terminal=terminal,
         catalog=katalog,
-        risk_manager=RiskManager(),
+        risk_manager=RiskManager(
+            zustand=DateiZustand(standard_zustandsdatei(ordner=ordner))
+        ),
+        zustandsordner=ordner,
     )
 
     report = run_smoke(

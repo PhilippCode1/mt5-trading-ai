@@ -1,0 +1,29 @@
+# Tore der Familie Zustand und Halt im Worktree (2026-09-04 02:08 UTC); PYTHONDONTWRITEBYTECODE=1, PYTHONIOENCODING=utf-8. Last: mehrere Agenten parallel auf diesem Rechner -- Laufzeiten sind nicht mit anderen Laeufen vergleichbar.
+
+$ -m ruff format --check .
+181 files already formatted
+[exit=0, 0 s]
+
+$ -m ruff check .
+All checks passed!
+[exit=0, 0 s]
+
+$ -m mypy --strict mt5_trading_ai tools PROGRAMM/hooks
+Success: no issues found in 84 source files
+[exit=0, 1 s]
+
+$ -m pytest -q -p no:cacheprovider --tb=line tests/eichfall_d1.py tests/eichfall_d4_d5_d6.py tests/eichfall_d7.py tests/eichfall_d8.py tests/eichfall_z.py
+..................................                                       [100%]
+34 passed in 10.91s
+[exit=0, 16 s]
+
+$ -m pytest -q -p no:cacheprovider -m not slow --tb=line
+FAILED tests/eichfall_werkzeuge.py::test_help_antwortet_mit_exit_0_und_usage[check_doc_numbers.py]
+FAILED tests/eichfall_werkzeuge.py::test_help_antwortet_mit_exit_0_und_usage[check_docs_claims.py]
+FAILED tests/eichfall_werkzeuge.py::test_help_antwortet_mit_exit_0_und_usage[geheimnis_scan.py]
+FAILED tests/test_readme_numbers.py::test_readme_module_count_matches_code - ...
+FAILED tests/test_readme_numbers.py::test_readme_test_function_count_matches_code
+FAILED tests/test_readme_numbers.py::test_readme_source_lines_matches_code - ...
+FAILED tests/test_readme_numbers.py::test_zeilenzahl_je_modul_lebt_nur_in_modules_md
+7 failed, 1622 passed, 1 deselected in 256.04s (0:04:16)
+[exit=1, 257 s]

@@ -70,7 +70,7 @@ from mt5_trading_ai.data.loader import (
     load_verified_csv,
     to_csv,
 )
-from mt5_trading_ai.execution.risiko_zustand import DateiZustand
+from mt5_trading_ai.execution.risiko_zustand import DateiZustand, FluechtigerZustand
 from mt5_trading_ai.execution.risk_manager import RiskManager
 from mt5_trading_ai.venue.protocol import OrderRejectedError, OrderSide
 
@@ -715,14 +715,18 @@ def test_rot_ein_fluechtiger_zustand_verliert_den_halt() -> None:
     das im Test zufaellig weiterlebt.
     """
     ts = datetime(2026, 8, 20, 12, 0, tzinfo=UTC)
-    erster = RiskManager(konto_id="50123456", waehrung="USD")  # kein ``zustand=``
+    erster = RiskManager(  # der fluechtige Testtyp, ausdruecklich (D8)
+        zustand=FluechtigerZustand(), konto_id="50123456", waehrung="USD"
+    )
     assert erster.zustand_dauerhaft is False
     erster.observe_equity(ts, Decimal("10000"))
     assert _rm_autorisiere(
         erster, _rm_konto("8000"), ts + timedelta(minutes=1)
     ).latch_halt
 
-    zweiter = RiskManager(konto_id="50123456", waehrung="USD")
+    zweiter = RiskManager(
+        zustand=FluechtigerZustand(), konto_id="50123456", waehrung="USD"
+    )
     zweiter.observe_equity(ts + timedelta(hours=2), Decimal("10000"))
     erholt = _rm_autorisiere(zweiter, _rm_konto("10000"), ts + timedelta(hours=2))
     assert erholt.approved is True, (

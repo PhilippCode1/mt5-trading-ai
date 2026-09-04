@@ -1,0 +1,29 @@
+# Eichfall D8, ROT gegen 306bbaa (Worktree C:\Users\<konto>\nachstellung-306bbaa, 2026-09-04 02:07 UTC): tests/eichfall_d8.py dort hineinkopiert, ausgefuehrt, entfernt
+$ python -m pytest -q -p no:cacheprovider --tb=line tests/eichfall_d8.py
+FFFFFFFFFF                                                               [100%]
+================================== FAILURES ===================================
+C:\Users\<konto>\nachstellung-306bbaa\tests\eichfall_d8.py:72: Failed: DID NOT RAISE <class 'TypeError'>
+C:\Users\<konto>\nachstellung-306bbaa\tests\eichfall_d8.py:87: Failed: DID NOT RAISE <class 'ValueError'>
+C:\Users\<konto>\nachstellung-306bbaa\tests\eichfall_d8.py:96: ImportError: cannot import name 'Buchposition' from 'mt5_trading_ai.execution.reconcile' (C:\Users\<konto>\nachstellung-306bbaa\mt5_trading_ai\execution\reconcile.py)
+C:\Users\<konto>\nachstellung-306bbaa\tests\eichfall_d8.py:144: Failed: DID NOT RAISE <class 'ValueError'>
+C:\Users\<konto>\nachstellung-306bbaa\tests\eichfall_d8.py:158: TypeError: Mt5Venue.__init__() got an unexpected keyword argument 'zustandsordner'
+C:\Users\<konto>\nachstellung-306bbaa\tests\eichfall_d8.py:189: AssertionError: UMGEBUNG_ZUSTANDSDATEI existiert noch
+C:\Users\<konto>\nachstellung-306bbaa\tests\eichfall_d8.py:218: ImportError: cannot import name 'FluechtigesPositionsbuch' from 'mt5_trading_ai.execution.reconcile' (C:\Users\<konto>\nachstellung-306bbaa\mt5_trading_ai\execution\reconcile.py)
+C:\Users\<konto>\nachstellung-306bbaa\tests\eichfall_d8.py:291: AssertionError: Stoppdatei fest im Arbeitsbaum
+C:\Users\<konto>\nachstellung-306bbaa\tests\eichfall_d8.py:352: AttributeError: module 'mt5_trading_ai.execution.risiko_zustand' has no attribute 'STOPPDATEI_NAME'
+C:\Users\<konto>\nachstellung-306bbaa\tests\eichfall_d8.py:386: ImportError: cannot import name 'fake' from 'mt5_trading_ai.venue' (C:\Users\<konto>\nachstellung-306bbaa\mt5_trading_ai\venue\__init__.py)
+=========================== short test summary info ===========================
+FAILED tests/eichfall_d8.py::test_riskmanager_ohne_zustand_ist_nicht_konstruierbar
+FAILED tests/eichfall_d8.py::test_schwebeakte_ohne_pfad_ist_nicht_konstruierbar
+FAILED tests/eichfall_d8.py::test_positionsbuch_persistiert_sieben_felder_atomar
+FAILED tests/eichfall_d8.py::test_venue_ohne_ablage_ist_nicht_konstruierbar
+FAILED tests/eichfall_d8.py::test_venue_bucht_die_eigene_eroeffnung_in_den_zustandsordner
+FAILED tests/eichfall_d8.py::test_keine_umgebungsvariable_schaltet_den_ort - ...
+FAILED tests/eichfall_d8.py::test_live_betrieb_weist_fluechtigen_zustand_ab
+FAILED tests/eichfall_d8.py::test_trockenlauf_gegen_das_fake_terminal_laesst_den_arbeitsbaum_unveraendert
+FAILED tests/eichfall_d8.py::test_die_stoppdatei_beendet_den_lauf_aus_dem_zustandsordner
+FAILED tests/eichfall_d8.py::test_das_fake_terminal_importiert_kein_metatrader5
+10 failed in 0.27s
+[exit=1, 1.2 s]
+$ git status --porcelain   (im Referenz-Worktree, danach)
+(sauber)

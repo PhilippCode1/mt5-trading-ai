@@ -45,7 +45,10 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
+from mt5_trading_ai.execution.reconcile import FluechtigesPositionsbuch
+from mt5_trading_ai.execution.risiko_zustand import FluechtigerZustand
 from mt5_trading_ai.execution.risk_manager import RiskManager
+from mt5_trading_ai.execution.schwebende_auftraege import FluechtigeSchwebeAkte
 from mt5_trading_ai.venue.mt5 import CatalogEntry, Mt5Tick, Mt5Venue
 from mt5_trading_ai.venue.protocol import AssetClass
 from mt5_trading_ai.venue.smoke import run_smoke
@@ -497,8 +500,10 @@ def _venue(terminal: FakeMt5Terminal, katalog: dict[str, CatalogEntry]) -> Mt5Ve
         name="mt5-demo",
         terminal=terminal,  # type: ignore[arg-type]
         catalog=katalog,
-        risk_manager=RiskManager(),
+        risk_manager=RiskManager(zustand=FluechtigerZustand()),
         clock=lambda: TS,
+        positionsbuch=FluechtigesPositionsbuch(),
+        schwebeakte=FluechtigeSchwebeAkte(),
     )
 
 

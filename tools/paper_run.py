@@ -12,13 +12,20 @@ Die **Zulassung** (§9.3) ist hier ein deutlich markierter DEMO-Platzhalter: im 
 Betrieb kommt sie aus ``evaluate_criteria`` eines realen OoS-Laufs (``edge_test``) --
 ohne bestandene Zulassung handelt keine Strategie.
 
-Aufruf:  python tools/paper_run.py [--symbol EURUSD]
+Der Zustand des Laufs (Risikozustand, Schwebeakte, Positionsbuch) liegt in
+``--zustandsordner``; ohne Angabe in einem Wegwerfordner, der nach dem Lauf
+geloescht wird -- eine Nachweisfahrt gegen ein synthetisches Terminal hat im
+Zustandsordner des Betriebs nichts verloren (D8, E-005).
+
+Aufruf:  python tools/paper_run.py [--symbol EURUSD] [--zustandsordner ORDNER]
 """
 
 from __future__ import annotations
 
 import argparse
+import shutil
 import sys
+import tempfile
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
@@ -31,6 +38,10 @@ from mt5_trading_ai.execution.private_sync import (  # noqa: E402
     PrivateEvent,
     PrivateEventKind,
     PrivateSync,
+)
+from mt5_trading_ai.execution.risiko_zustand import (  # noqa: E402
+    DateiZustand,
+    standard_zustandsdatei,
 )
 from mt5_trading_ai.execution.risk_manager import RiskManager  # noqa: E402
 from mt5_trading_ai.execution.runner import (  # noqa: E402
@@ -166,7 +177,9 @@ def _catalog() -> dict[str, CatalogEntry]:
     return {"EURUSD": CatalogEntry(AssetClass.FX_MAJOR, fees, sessions)}
 
 
-def build_paper_venue(risk_manager: RiskManager, *, now: datetime = _TS) -> Mt5Venue:
+def build_paper_venue(
+    risk_manager: RiskManager, *, now: datetime = _TS, zustandsordner: Path
+) -> Mt5Venue:
     """Ein verbundenes Demo-Venue mit verdrahteter Risikoschicht.
 
     Der Manager wird von aussen hereingereicht und ist **derselbe**, den der Runner
@@ -175,7 +188,9 @@ def build_paper_venue(risk_manager: RiskManager, *, now: datetime = _TS) -> Mt5V
     Venue bucht, der Runner quittiert).
 
     ``now`` setzt die Uhr des Frische-Latches auf die Zeitbasis des Laufs -- das
-    synthetische Terminal stempelt einen festen Kontozustand.
+    synthetische Terminal stempelt einen festen Kontozustand. ``zustandsordner``
+    traegt Schwebeakte und Positionsbuch (D8): auch ein Paper-Venue ist ohne Ort
+    nicht konstruierbar.
     """
     venue = Mt5Venue(
         name="paper",
@@ -185,6 +200,7 @@ def build_paper_venue(risk_manager: RiskManager, *, now: datetime = _TS) -> Mt5V
         max_notional_drift=Decimal("0"),
         risk_manager=risk_manager,
         clock=lambda: now,
+        zustandsordner=zustandsordner,
     )
     venue.connect()
     return venue
@@ -196,11 +212,19 @@ def _demo_admission() -> CriteriaVerdict:
     return CriteriaVerdict(passed=True, results=())
 
 
-def run_paper(symbol: str, *, now: datetime | None = None) -> tuple[RunnerReport, bool]:
-    """Fahre einen Paper-Lauf: volle Kette + ein Scheduler-Takt -> (Report, halt)."""
+def run_paper(
+    symbol: str, *, now: datetime | None = None, zustandsordner: Path
+) -> tuple[RunnerReport, bool]:
+    """Fahre einen Paper-Lauf: volle Kette + ein Scheduler-Takt -> (Report, halt).
+
+    ``zustandsordner`` ist Pflicht (D8): der Risikozustand des Laufs liegt dort als
+    Datei, nie fluechtig -- ``main`` legt ohne Angabe einen Wegwerfordner an.
+    """
     at = now if now is not None else _TS
-    risk_manager = RiskManager()
-    venue = build_paper_venue(risk_manager, now=at)
+    risk_manager = RiskManager(
+        zustand=DateiZustand(standard_zustandsdatei(ordner=zustandsordner))
+    )
+    venue = build_paper_venue(risk_manager, now=at, zustandsordner=zustandsordner)
     venue.adopt_book()  # Buch = Meldung -> ein sauberer erster Reconcile
     config = RunnerConfig(
         cost_gate=CostGate(max_roundturn_cost_fraction=Decimal("0.0005")),
@@ -214,6 +238,9 @@ def run_paper(symbol: str, *, now: datetime | None = None) -> tuple[RunnerReport
         config=config,
         now=at,
         client_order_id=f"paper-{symbol}-{int(at.timestamp())}",
+        # Die Nachweisfahrt sendet an das synthetische Terminal -- mit Schreibrecht,
+        # sonst endete die Kette vor dem Senden (D1).
+        darf_schreiben=True,
     )
     # Ein Scheduler-Takt mit einem Startup-Heartbeat: Frische/Drift getaktet geprueft.
     scheduler = SyncScheduler(venue, max_silence=timedelta(minutes=5), started_at=at)
@@ -223,14 +250,30 @@ def run_paper(symbol: str, *, now: datetime | None = None) -> tuple[RunnerReport
     return report, tick.halted
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser(description="Paper-Run: volle Kette + Checkliste")
     ap.add_argument("--symbol", default="EURUSD")
-    args = ap.parse_args()
+    ap.add_argument(
+        "--zustandsordner",
+        type=Path,
+        default=None,
+        metavar="ORDNER",
+        help="Ordner fuer den Zustand des Laufs (Vorgabe: Wegwerfordner, wird "
+        "danach geloescht)",
+    )
+    args = ap.parse_args(argv)
 
-    report, halted = run_paper(args.symbol)
+    wegwerf = args.zustandsordner is None
+    ordner = (
+        Path(tempfile.mkdtemp(prefix="paper_run-")) if wegwerf else args.zustandsordner
+    )
+    try:
+        report, halted = run_paper(args.symbol, zustandsordner=ordner)
+    finally:
+        if wegwerf:
+            shutil.rmtree(ordner, ignore_errors=True)
 
     print("=== ABNAHME-CHECKLISTE (Signal -> ... -> Order, Paper) ===")
     for step in report.steps:

@@ -46,7 +46,9 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from mt5_trading_ai.execution.reconcile import FluechtigesPositionsbuch
 from mt5_trading_ai.execution.risk_manager import RiskManager  # noqa: E402
+from mt5_trading_ai.execution.schwebende_auftraege import FluechtigeSchwebeAkte
 from mt5_trading_ai.venue.mt5 import (  # noqa: E402
     Mt5Account,
     Mt5Tick,
@@ -138,6 +140,8 @@ def _venue_mit(
         catalog=_catalog(),
         risk_manager=risk_manager if risk_manager is not None else _fresh_risk(),
         clock=_uhr,
+        positionsbuch=FluechtigesPositionsbuch(),
+        schwebeakte=FluechtigeSchwebeAkte(),
     )
     venue.connect()
     return venue, terminal
@@ -264,6 +268,8 @@ def test_reduce_only_haengt_nicht_am_kursstempel() -> None:
         catalog=_catalog(),
         risk_manager=_fresh_risk(),
         clock=_uhr,
+        positionsbuch=FluechtigesPositionsbuch(),
+        schwebeakte=FluechtigeSchwebeAkte(),
     )
     venue.connect()
     ergebnis = venue.submit_order(
@@ -299,6 +305,8 @@ def test_die_frist_ist_die_konfigurierte_und_nicht_die_uhr() -> None:
             catalog=_catalog(),
             risk_manager=_fresh_risk(),
             clock=_uhr,
+            positionsbuch=FluechtigesPositionsbuch(),
+            schwebeakte=FluechtigeSchwebeAkte(),
         )
         venue.connect()
         if erwartet_gruen:

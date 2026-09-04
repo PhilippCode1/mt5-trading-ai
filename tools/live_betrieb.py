@@ -32,21 +32,52 @@ absichtlich und nur dann, wenn die Order eine tatsaechlich offene Gegenposition 
 (``Mt5Venue._reduces_position``). Eine Sperre, die das Schliessen verhindert, waere
 gefaehrlicher als das Schliessen selbst.
 
-DIE ZULASSUNG -- WAS ``--scharf`` WIRKLICH TUT
------------------------------------------------
+ZULASSUNG UND SCHREIBRECHT SIND ZWEI DINGE (Z, E-010)
+-----------------------------------------------------
 Der Orderpfad prueft als Erstes die §9.3-Zulassung: ohne bestandenes Bewertungstor
 handelt keine Strategie. **Es gibt keine bestandene Zulassung** -- alle sieben Studien
-aus Paket 3a sind gescheitert (``archiv/ABSCHLUSS-3a/05-URTEIL.md``), und
-``archiv/ABBRUCH.md``
-Bedingung 6 ist ausgeloest.
+aus Paket 3a sind gescheitert (``archiv/ABSCHLUSS-3a/05-URTEIL.md``).
 
-``--scharf "<Begruendung>"`` uebergeht dieses eine Tor. Es tut das **sichtbar**: mit
-Banner, mit der Begruendung im Journal, und mit einem Eintrag, der festhaelt, dass zum
-Zeitpunkt des Laufs keine Strategie zugelassen war. Alle anderen Sperren bleiben scharf
--- Frische, Hebel, Kostentor, Kill-Switch, Drossel, Stop-Budget, Sizing.
+Bis 306bbaa setzte ``--scharf "<Text>"`` beides zugleich: das Schreibrecht am Terminal
+UND ein bestandenes Zulassungsurteil -- ein Freitext ersetzte ein Tor (15 von 21
+Demolaeufen liefen so, Bewertung §3.5). Das Argument gibt es nicht mehr; ``argparse``
+weist es mit Exit 2 ab. An seine Stelle treten zwei getrennte Schalter:
 
-Ohne ``--scharf`` laeuft alles gleich, nur bleibt die Kette an der Zulassung stehen und
-es wird nichts gesendet. Das ist die Vorgabe.
+* ``--demo-schreiben`` gibt dem Terminal das Schreibrecht (``allow_write``);
+  ``require_demo`` bleibt ``True``, das Terminal schreibt nur auf ein Demokonto.
+* ``--zulassung <datei>`` verweist auf einen Registereintrag (JSON mit ``strategie``,
+  ``torurteil_hash``, ``datum``, ``kennung``). Fehlt die Datei oder ein Feld, ist
+  nichts zugelassen -- die Kette haelt an der Zulassung (``zulassung_lesen``).
+
+Ohne Schreibrecht erreicht die Kette das Terminal nie (D1): sie wird nicht erkundet,
+und auch eine zugelassene Strategie endet vor dem Senden mit ``kein_schreibrecht``
+(``execution/runner.py``). Alle uebrigen Sperren bleiben scharf -- Frische, Hebel,
+Kostentor, Kill-Switch, Drossel, Stop-Budget, Sizing.
+
+DER ZUSTAND LIEGT IM ZUSTANDSORDNER (D8, A18)
+---------------------------------------------
+Risikozustand, Schwebeakte, Positionsbuch, Stoppdatei und Journale liegen in EINEM
+Ordner ausserhalb des Arbeitsbaums: ``--zustandsordner`` (Vorgabe
+``standard_zustandsordner()``, unter Windows
+``%LOCALAPPDATA%\mt5_trading_ai\risiko``).
+Keine Umgebungsvariable schaltet das ein oder aus; ``RiskManager``, ``SchwebeAkte``
+und ``Positionsbuch`` sind ohne Ort nicht konstruierbar, und ein fluechtiger Zustand
+(die Testtypen ``FluechtigerZustand`` usw.) wird hier abgewiesen
+(``zustand_abweisen``). Gemessen gegen 306bbaa: der Betrieb baute ``RiskManager()``
+ohne Zustand -- 21 Laeufe, kein Halt ueberdauerte einen Neustart.
+
+Beim Start gleicht ``Mt5Venue.adopt_book`` Risikozaehler und Positionsbuch gegen
+``positions_get()`` ab (D7); Geister werden ausgetragen und als ``startabgleich``-Satz
+journalisiert. Ein Halt-Grund wird nie ueberschrieben (D4): dieser Lauf loest nur den
+Anteil, den er selbst erklaeren kann (``halt_grund_loesen``), nie die Notbremse.
+
+DAS TERMINAL
+------------
+``--terminal real`` (Vorgabe) bindet MetaTrader 5 auf diesem Rechner; ist es nicht
+erreichbar, endet der Lauf mit genau einer Zeile ``FEHLGESCHLAGEN -- MT5-Terminal nicht
+erreichbar: <Grund>`` und Exit 2 (A12). ``--terminal fake`` faehrt die Betriebsattrappe
+``venue/fake.py`` -- kein MetaTrader5-Import, kein Broker; das ist der Trockenlauf der
+Eichfaelle und der Startpunkt des ``kill``-Eichfalls (A6).
 
 AUF WELCHER KERZE GERECHNET WIRD
 ---------------------------------
@@ -72,7 +103,8 @@ tut genau das, wogegen die Deflation in diesem Repo gebaut ist.
 Aufruf::
 
     python tools/live_betrieb.py --dauer 1 --takt 60
-    python tools/live_betrieb.py --dauer 24 --scharf "Maschinenprobe Demo 2026-08-18"
+    python tools/live_betrieb.py --terminal fake --zustandsordner <ordner> --dauer 0.01
+    python tools/live_betrieb.py --dauer 24 --demo-schreiben --zulassung <register.json>
 """
 
 from __future__ import annotations
@@ -99,28 +131,43 @@ from mt5_trading_ai.backtest.kalender import SERVER_TZ_NAME  # noqa: E402
 from mt5_trading_ai.backtest.strategies import moving_average_crossover  # noqa: E402
 from mt5_trading_ai.data.quality import BarRow  # noqa: E402
 from mt5_trading_ai.execution.cost_gate import CostGate  # noqa: E402
+from mt5_trading_ai.execution.risiko_zustand import (  # noqa: E402
+    JOURNALORDNER_NAME,
+    STOPPDATEI_NAME,
+    DateiZustand,
+    ZustandsortFehler,
+    standard_zustandsdatei,
+    standard_zustandsordner,
+    zustandsordner_waehlen,
+)
 from mt5_trading_ai.execution.risk_manager import RiskManager  # noqa: E402
 from mt5_trading_ai.execution.runner import RunnerConfig, run_signal  # noqa: E402
 from mt5_trading_ai.execution.scheduler import SyncScheduler  # noqa: E402
 from mt5_trading_ai.gates.criteria import CriteriaVerdict  # noqa: E402
 from mt5_trading_ai.venue.catalog import load_instrument_catalog  # noqa: E402
-from mt5_trading_ai.venue.mt5 import Mt5Venue, RealMt5Terminal  # noqa: E402
+from mt5_trading_ai.venue.fake import FakeMt5Terminal  # noqa: E402
+from mt5_trading_ai.venue.mt5 import (  # noqa: E402
+    Mt5Terminal,
+    Mt5Venue,
+    RealMt5Terminal,
+)
 from mt5_trading_ai.venue.protocol import (  # noqa: E402
     OrderRequest,
     OrderSide,
     OrderType,
     Timeframe,
     VenueError,
+    VenueUnavailableError,
 )
 
 REPO = Path(__file__).resolve().parents[1]
-JOURNALE = REPO / "betrieb"
-#: Wer diese Datei anlegt, beendet den Lauf geordnet. Unter Windows gibt es fuer
-#: einen abgekoppelten Prozess kein zuverlaessiges Signal: Strg-C braucht ein
-#: Konsolenfenster, und ``taskkill /F`` toetet hart -- der finally-Block liefe nicht,
-#: und die Positionen blieben offen. Eine Datei ist plattformunabhaengig, braucht
-#: keine Rechte und kann nicht danebengehen.
-STOPPDATEI = JOURNALE / "STOP"
+#: Die Stoppdatei liegt im Zustandsordner (``STOPPDATEI_NAME``), nicht mehr unter
+#: ``betrieb/`` im Arbeitsbaum (A18). Wer sie anlegt, beendet den Lauf geordnet. Unter
+#: Windows gibt es fuer einen abgekoppelten Prozess kein zuverlaessiges Signal: Strg-C
+#: braucht ein Konsolenfenster, und ``taskkill /F`` toetet hart -- der finally-Block
+#: liefe nicht, und die Positionen blieben offen. Eine Datei ist plattformunabhaengig,
+#: braucht keine Rechte und kann nicht danebengehen.
+TERMINALARTEN: tuple[str, ...] = ("real", "fake")
 
 #: Trendfolge, Parameter per Konvention. NICHT auf Daten optimiert und nicht als
 #: Vorschlag gemeint -- diese Logik hat nie ein Bewertungstor bestanden.
@@ -446,6 +493,8 @@ def _eroeffne(
     jetzt: datetime,
     zulassung: CriteriaVerdict,
     journal: Journal,
+    *,
+    darf_schreiben: bool,
 ) -> None:
     config = RunnerConfig(
         cost_gate=CostGate(max_roundturn_cost_fraction=Decimal("0.0005")),
@@ -460,6 +509,9 @@ def _eroeffne(
             config=config,
             now=jetzt,
             client_order_id=f"open-{symbol}-{uuid.uuid4().hex[:10]}",
+            # D1: ohne Schreibrecht endet die Kette vor dem Terminal -- keine
+            # Erkundung, kein Sendeversuch, kein Akteneintrag, kein Halt.
+            darf_schreiben=darf_schreiben,
         )
     except VenueError as exc:
         journal.schreib("eroeffnen_fehlgeschlagen", symbol=symbol, fehler=str(exc))
@@ -509,8 +561,30 @@ def _eroeffne(
         print(f"  --   {symbol} {sig.name}: {bericht.reject_reason} (bei {wo})")
 
 
+def _startabgleich_journalisieren(venue: Mt5Venue, journal: Journal) -> None:
+    """Was ``adopt_book`` gegen ``positions_get()`` fand, gehoert ins Journal (D7).
+
+    Geister -- Positionen im eigenen Zustand, die der Broker nicht mehr fuehrt -- sind
+    beim Abgleich bereits ausgetragen; hier steht, WELCHE es waren. Ein Buch, das
+    stillschweigend schrumpft, waere so wenig nachvollziehbar wie eines, das ewig
+    waechst.
+    """
+    abgleich = venue.startabgleich
+    if abgleich is None:
+        return
+    journal.schreib("startabgleich", **abgleich.as_dict())
+    for symbol, seit in abgleich.geister_zaehler:
+        print(
+            f"  GEIST {symbol} (Risikozaehler, seit {seit}) -- beim Broker nicht offen"
+        )
+    for buch in abgleich.geister_buch:
+        print(f"  GEIST {buch.symbol} #{buch.ticket} (Positionsbuch) -- ausgetragen")
+    if abgleich.defekt is not None:
+        print(f"  !!   Positionsbuch defekt: {abgleich.defekt} -- Halt steht")
+
+
 def _verbindung_sichern(
-    venue: Mt5Venue, terminal: RealMt5Terminal, journal: Journal, *, versuche: int = 10
+    venue: Mt5Venue, terminal: Mt5Terminal, journal: Journal, *, versuche: int = 10
 ) -> bool:
     """Nach einer Stoerung neu verbinden. Gibt False, wenn es endgueltig aus ist.
 
@@ -534,18 +608,21 @@ def _verbindung_sichern(
         except (VenueError, OSError) as exc:
             journal.schreib("reconnect_fehler", nr=i + 1, fehler=str(exc))
             continue
+        _startabgleich_journalisieren(venue, journal)
         # Nur Halts loesen, die von der Stoerung SELBST kommen. Ein Drawdown-,
         # Desync- oder Notbremsen-Halt bleibt stehen -- er hat einen anderen Grund.
         #
-        # Der Grund wird VOR dem Loesen festgehalten. ``clear_halt()`` setzt
-        # ``_halt_reason`` auf ``None``; die Zeile las den Grund danach und schrieb
-        # darum dauerhaft ``"grund": null`` ins Journal. Damit war ausgerechnet die
-        # Auskunft weg, wozu der Satz da ist: WARUM ein Halt endete. Ein Journal, das
-        # das Loesen einer Sperre ohne Grund vermerkt, belegt nur, dass geloest wurde.
-        vorheriger_grund = venue.halt_reason
-        if vorheriger_grund in ("reconcile_unavailable", "account_unavailable"):
-            venue.clear_halt()
-            journal.schreib("halt_geloest", grund=vorheriger_grund)
+        # ``halt_grund_loesen`` nimmt genau die eigenen Anteile aus der Kette (D4)
+        # und gibt sie zurueck; der Halt faellt erst, wenn kein Grund mehr steht.
+        # Frueher las diese Stelle ``halt_reason`` und rief ``clear_halt()`` -- das
+        # loeschte jeden Grund mit, auch den der Notbremse, und der Journalsatz trug
+        # ``null``, weil der Grund NACH dem Loeschen gelesen wurde.
+        geloest = (
+            *venue.halt_grund_loesen("reconcile_unavailable"),
+            *venue.halt_grund_loesen("account_unavailable"),
+        )
+        for grund in geloest:
+            journal.schreib("halt_geloest", grund=grund)
         journal.schreib("reconnect_ok", nr=i + 1)
         print("  OK   Verbindung wieder da")
         return True
@@ -691,7 +768,10 @@ def takt(
     bekannt: dict[str, Lage],
     equity_start: Decimal,
     verlustgrenze: Decimal,
+    darf_schreiben: bool = False,
 ) -> tuple[dict[str, Lage], bool]:
+    """Ein Takt. ``darf_schreiben`` ist die Vorgabe ``False``: ein fehlender Wert
+    sperrt, der Takt rechnet dann trocken (D1)."""
     jetzt = datetime.now(UTC)
 
     # 1) Herzschlag. Der Scheduler beobachtet die Equity (ohne das feuert die
@@ -761,17 +841,20 @@ def takt(
     # Aufgeloest wird NUR dieser eine Fall: ein Reconcile-Halt, fuer den in DEMSELBEN
     # Takt eine erkannte Schliessung vorliegt. Jeder andere Halt -- Drawdown, Desync,
     # Notbremse -- bleibt stehen. Eine Sperre, die sich selbst aufhebt, waere keine.
-    if (
-        erklaert
-        and tick.halted
-        and str(venue.halt_reason or "").startswith("reconcile_drift")
-    ):
-        grund_vorher = venue.halt_reason
+    #
+    # Geloest wird der ANTEIL ``reconcile_drift`` der Halt-Kette, nicht der Halt als
+    # Ganzes (D4): ``clear_halt()`` nahm frueher jeden Grund mit -- gemessen gegen
+    # 306bbaa (V4) hatte ``reconcile()`` den Grund ``tagesverlust`` zuvor sogar
+    # ueberschrieben, die Notbremse war also schon vor dem Loesen unsichtbar.
+    geloest = (
+        venue.halt_grund_loesen("reconcile_drift") if erklaert and tick.halted else ()
+    )
+    if geloest:
+        grund_vorher = ", ".join(geloest)
         print(
             f"  ..   Halt aufgeloest: {grund_vorher} "
             f"war eine erkannte Broker-Schliessung"
         )
-        venue.clear_halt()
         tick = scheduler.tick(jetzt)
         # ``weiter_gesperrt`` ist der Zustand, der die Eintritte unter 4) WIRKLICH
         # regiert -- der ``takt``-Satz oben kann ihn nicht tragen, weil er vor dieser
@@ -853,7 +936,16 @@ def takt(
                 detail=basis.detail,
                 kerze_ts=basis.kerze_ts,
             )
-            _eroeffne(venue, manager, symbol, basis.signal, jetzt, zulassung, journal)
+            _eroeffne(
+                venue,
+                manager,
+                symbol,
+                basis.signal,
+                jetzt,
+                zulassung,
+                journal,
+                darf_schreiben=darf_schreiben,
+            )
     return _lage_lesen(venue), False
 
 
@@ -908,7 +1000,8 @@ def ausstiegszusage_pruefen(
     -----------------------------
     Gemessen an den Betriebsjournalen vom 2026-08-17: **zwei Laeufe endeten mit offenen
     Positionen am Broker** (``['EURUSD','GBPUSD','XAUUSD']`` und
-    ``['EURUSD','GBPUSD']``). Beide liefen ohne ``--scharf``, also ohne Schreibrecht.
+    ``['EURUSD','GBPUSD']``). Beide liefen ohne Schreibrecht (damals: ohne
+    ``--scharf``).
     Beide haben beim Start ueber ``adopt_book()`` fremde Positionen uebernommen, einen
     Takt lang beaufsichtigt -- und **erst beim Herunterfahren** gemerkt, dass sie den
     zugesagten Ausstieg nicht fahren koennen. Fuenf der sieben misslungenen
@@ -925,7 +1018,7 @@ def ausstiegszusage_pruefen(
 
     Drei Wege heraus, alle ausdruecklich:
 
-    * ``--scharf`` -- der Lauf bekommt das Schreibrecht und kann schliessen.
+    * ``--demo-schreiben`` -- der Lauf bekommt das Schreibrecht und kann schliessen.
     * ``--am-ende-offen-lassen`` -- der Lauf sagt gar kein Glattstellen zu; die
       Verantwortung fuer die offenen Positionen bleibt beim Menschen, und er hat es
       hingeschrieben.
@@ -938,17 +1031,132 @@ def ausstiegszusage_pruefen(
         return None
     return (
         "Dieser Lauf sagt ein Glattstellen am Ende zu, kann es aber nicht halten: "
-        "der Schreibpfad ist gesperrt (ohne --scharf), und am Broker stehen bereits "
-        f"Positionen offen: {sorted(offene_symbole)}.\n"
+        "der Schreibpfad ist gesperrt (ohne --demo-schreiben), und am Broker stehen "
+        f"bereits Positionen offen: {sorted(offene_symbole)}.\n"
         "Gemessen: genau so sind am 2026-08-17 zwei Laeufe mit offenen Positionen "
         "geendet -- das Geld blieb am Markt, ohne beaufsichtigenden Prozess.\n"
-        "Entweder --scharf (mit Begruendung), oder --am-ende-offen-lassen (dann "
-        "bleibt die Verantwortung ausdruecklich beim Menschen), oder die Positionen "
-        "vorher von Hand schliessen."
+        "Entweder --demo-schreiben, oder --am-ende-offen-lassen (dann bleibt die "
+        "Verantwortung ausdruecklich beim Menschen), oder die Positionen vorher von "
+        "Hand schliessen."
     )
 
 
-def main() -> int:
+# --- Zulassung, Zustand, Terminal (Z, D8, D1) --------------------------------------
+
+#: Die vier Pflichtfelder eines Registereintrags fuer ``--zulassung`` (E-010).
+ZULASSUNGSFELDER: tuple[str, ...] = ("strategie", "torurteil_hash", "datum", "kennung")
+
+
+@dataclass(frozen=True)
+class Zulassung:
+    """Was ``--zulassung <datei>`` hergab: das Urteil fuer die Kette und der Befund
+    fuer das Journal (Datei, Felder oder Mangel)."""
+
+    urteil: CriteriaVerdict
+    befund: dict[str, Any]
+
+
+def zulassung_lesen(pfad: Path | None) -> Zulassung:
+    """Die §9.3-Zulassung aus dem Registereintrag. Fehlt etwas, ist nichts zugelassen.
+
+    Fail-closed in jeder Richtung: keine Datei, keine lesbare Datei, kein Objekt,
+    ein fehlendes oder leeres Feld -- jedes davon ist ``passed=False`` mit benanntem
+    Mangel. Ein Freitext kann diese Funktion nicht ueberreden (Z, E-010).
+    """
+    nicht = CriteriaVerdict(passed=False, results=(), unmet=("registereintrag",))
+    if pfad is None:
+        return Zulassung(
+            nicht, {"datei": None, "gueltig": False, "mangel": "keine_zulassungsdatei"}
+        )
+    try:
+        daten: Any = json.loads(Path(pfad).read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        mangel = "zulassungsdatei_fehlt"
+    except (OSError, ValueError) as exc:
+        mangel = f"zulassungsdatei_unlesbar: {type(exc).__name__}"
+    else:
+        if not isinstance(daten, dict):
+            mangel = "zulassungsdatei_kein_objekt"
+        else:
+            fehlend = [
+                feld
+                for feld in ZULASSUNGSFELDER
+                if not (isinstance(daten.get(feld), str) and daten[feld].strip())
+            ]
+            if not fehlend:
+                return Zulassung(
+                    CriteriaVerdict(passed=True, results=()),
+                    {
+                        "datei": str(pfad),
+                        "gueltig": True,
+                        **{feld: daten[feld] for feld in ZULASSUNGSFELDER},
+                    },
+                )
+            mangel = f"zulassung_unvollstaendig: {', '.join(fehlend)}"
+    return Zulassung(nicht, {"datei": str(pfad), "gueltig": False, "mangel": mangel})
+
+
+def zustand_abweisen(manager: RiskManager, venue: Mt5Venue) -> str | None:
+    """Der Betrieb faehrt nur mit dauerhaftem Zustand (D8, E-005).
+
+    ``None`` heisst: Risikozustand, Schwebeakte und Positionsbuch ueberdauern einen
+    Neustart. Sonst der Grund -- ein fluechtiger Zustand (die Testtypen
+    ``FluechtigerZustand``, ``FluechtigeSchwebeAkte``, ``FluechtigesPositionsbuch``)
+    verhaelt sich bis zum Neustart genau wie ein dauerhafter und verliert dann den
+    Halt. Genau so liefen die 21 Betriebslaeufe des Standes 306bbaa.
+    """
+    maengel: list[str] = []
+    if not manager.zustand_dauerhaft:
+        maengel.append(f"Risikozustand fluechtig ({manager.zustandsort})")
+    if not venue.zustand_dauerhaft:
+        maengel.append("Schwebeakte oder Positionsbuch fluechtig")
+    if not maengel:
+        return None
+    return (
+        "fluechtiger Zustand: "
+        + "; ".join(maengel)
+        + " -- ein Halt endete mit dem Prozess (Befund D8). Der Betrieb verlangt "
+        "den Zustandsordner (--zustandsordner)."
+    )
+
+
+def _terminal_bauen(art: str, *, darf_schreiben: bool) -> Mt5Terminal:
+    """``real`` bindet MetaTrader 5 (Schreibrecht nur mit ``--demo-schreiben``,
+    ``require_demo`` bleibt ``True``); ``fake`` ist die Betriebsattrappe ohne
+    MetaTrader5-Import (``venue/fake.py``)."""
+    if art == "fake":
+        return FakeMt5Terminal()
+    # server_tz: das Terminal dreht seine Zeitstempel selbst in echtes UTC.
+    # Ohne das rechnet jede Haltedauer und jede Uhrzeit 2-3 Stunden daneben.
+    return RealMt5Terminal(allow_write=darf_schreiben, server_tz=SERVER_TZ_NAME)
+
+
+def _terminal_grund(terminal: Mt5Terminal) -> str | None:
+    """Warum das Terminal nicht erreichbar ist -- oder ``None``, wenn es das ist.
+
+    ``RealMt5Terminal.initialize`` hat zwei Fehlausgaenge: ``VenueUnavailableError``
+    (das Paket ``MetaTrader5`` fehlt) und ``False`` (Terminal nicht gestartet, kein
+    Konto). Beide enden in **einer** benannten Zeile und Exit 2 statt in einem
+    Traceback (Abnahmekatalog A12).
+    """
+    try:
+        verbunden = terminal.initialize()
+    except VenueUnavailableError as exc:
+        return str(exc)
+    if not verbunden:
+        return (
+            "initialize() lieferte False -- Terminal nicht initialisierbar (laeuft "
+            "terminal64.exe, und ist ein Demokonto angemeldet?)"
+        )
+    return None
+
+
+def _kein_terminal(grund: str) -> int:
+    print(f"FEHLGESCHLAGEN -- MT5-Terminal nicht erreichbar: {grund}", file=sys.stderr)
+    return 2
+
+
+def main(argv: Sequence[str] | None = None) -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser(description="Demo-Handelsbetrieb (nur Demokonto)")
@@ -962,11 +1170,34 @@ def main() -> int:
         help="Hoechste Haltedauer je Position in Stunden",
     )
     ap.add_argument(
-        "--scharf",
+        "--terminal",
+        choices=TERMINALARTEN,
+        default="real",
+        help="real: MetaTrader 5 auf diesem Rechner (Vorgabe); fake: Betriebsattrappe "
+        "ohne Terminal fuer Trockenlauf und Eichfaelle",
+    )
+    ap.add_argument(
+        "--zustandsordner",
+        type=Path,
         default=None,
-        metavar="BEGRUENDUNG",
-        help="Die §9.3-Zulassung uebergehen und WIRKLICH handeln. "
-        "Begruendung ist Pflicht und geht ins Journal.",
+        metavar="ORDNER",
+        help="Ordner fuer Risikozustand, Schwebeakte, Positionsbuch, Stoppdatei und "
+        f"Journale -- absolut, ausserhalb des Arbeitsbaums (Vorgabe: "
+        f"{standard_zustandsordner()})",
+    )
+    ap.add_argument(
+        "--demo-schreiben",
+        action="store_true",
+        help="Schreibrecht am Demokonto (allow_write). Ohne: Trockenlauf, der das "
+        "Terminal nie erreicht.",
+    )
+    ap.add_argument(
+        "--zulassung",
+        type=Path,
+        default=None,
+        metavar="DATEI",
+        help="Registereintrag der §9.3-Zulassung (JSON mit strategie, torurteil_hash, "
+        "datum, kennung). Fehlt er oder ein Feld, ist nichts zugelassen.",
     )
     ap.add_argument(
         "--verlustgrenze",
@@ -981,15 +1212,24 @@ def main() -> int:
         action="store_true",
         help="Positionen am Ende NICHT glattstellen (Vorgabe: schliessen)",
     )
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
 
-    # server_tz: das Terminal dreht seine Zeitstempel selbst in echtes UTC.
-    # Ohne das rechnet jede Haltedauer und jede Uhrzeit 2-3 Stunden daneben.
-    terminal = RealMt5Terminal(allow_write=bool(args.scharf), server_tz=SERVER_TZ_NAME)
-    if not terminal.initialize():
-        print("FEHLGESCHLAGEN — MT5-Terminal nicht erreichbar.", file=sys.stderr)
+    try:
+        ordner = zustandsordner_waehlen(args.zustandsordner)
+    except ZustandsortFehler as exc:
+        print(f"FEHLGESCHLAGEN -- Zustandsordner unbrauchbar: {exc}", file=sys.stderr)
         return 2
-    manager = RiskManager()
+    darf_schreiben = bool(args.demo_schreiben)
+    zulassung = zulassung_lesen(args.zulassung)
+
+    # Das Terminal ZUERST: ohne Terminal wird kein Zustand angefasst und keine Zeile
+    # ausser der einen benannten geschrieben (A12).
+    terminal = _terminal_bauen(args.terminal, darf_schreiben=darf_schreiben)
+    grund = _terminal_grund(terminal)
+    if grund is not None:
+        return _kein_terminal(grund)
+
+    manager = RiskManager(zustand=DateiZustand(standard_zustandsdatei(ordner=ordner)))
     # KEIN PrivateSync: es gibt im Repo keine Quelle, die FILL-Ereignisse erzeugt.
     # Mit konfiguriertem Strom bucht ``submit_order`` den eigenen Fill NICHT (es
     # wartet auf den autoritativen Strom, der nie kommt), der naechste ``reconcile``
@@ -1000,9 +1240,19 @@ def main() -> int:
         terminal=terminal,
         catalog=load_instrument_catalog(),
         risk_manager=manager,
+        zustandsordner=ordner,
     )
-    venue.connect()
-    konto = venue.get_account()
+    fluechtig = zustand_abweisen(manager, venue)
+    if fluechtig is not None:
+        print(f"ABBRUCH — {fluechtig}", file=sys.stderr)
+        terminal.shutdown()
+        return 2
+    try:
+        venue.connect()
+        konto = venue.get_account()
+    except VenueUnavailableError as exc:
+        terminal.shutdown()
+        return _kein_terminal(str(exc))
     if not konto.is_demo:
         print(
             "ABBRUCH — kein Demokonto. Dieses Werkzeug laeuft nur auf Demo.",
@@ -1014,7 +1264,7 @@ def main() -> int:
     # Lauf auch wieder loswerden kann. Begruendung und Messung in
     # ``ausstiegszusage_pruefen``.
     hindernis = ausstiegszusage_pruefen(
-        kann_schreiben=bool(args.scharf),
+        kann_schreiben=darf_schreiben,
         schliesst_am_ende=not args.am_ende_offen_lassen,
         offene_symbole=[p.symbol for p in venue.get_positions()],
     )
@@ -1027,13 +1277,11 @@ def main() -> int:
         terminal.shutdown()
         return 2
 
-    venue.adopt_book()
-
     # Vorpruefung: der AutoTrading-Knopf des Terminals. Ohne ihn lehnt MT5 JEDE
     # algorithmische Order ab ("AutoTrading disabled by client") -- und zwar erst beim
     # Senden, also nachdem die ganze Kette gruen gerechnet hat. Das faellt sonst erst
     # nach dem ersten Signal auf und sieht dann aus wie ein Fehler der Software.
-    if args.scharf and not _autotrading_an():
+    if darf_schreiben and args.terminal == "real" and not _autotrading_an():
         print("=" * 78, file=sys.stderr)
         print("ABBRUCH — AutoTrading ist im Terminal ausgeschaltet.", file=sys.stderr)
         print(
@@ -1057,10 +1305,13 @@ def main() -> int:
     start = datetime.now(UTC)
     lauf = uuid.uuid4().hex
     journal = Journal(
-        JOURNALE / f"journal-{start.strftime('%Y%m%dT%H%M%S')}.jsonl",
+        ordner
+        / JOURNALORDNER_NAME
+        / f"journal-{start.strftime('%Y%m%dT%H%M%S')}.jsonl",
         lauf=lauf,
         version=_codestand(),
     )
+    stoppdatei = ordner / STOPPDATEI_NAME
     # Nur Symbole, die dieser Broker wirklich fuehrt. Der Katalog ist breiter als
     # das Angebot eines einzelnen Brokers; ein unbekanntes Symbol wuerde sonst in
     # JEDEM Takt einen Fehler ins Protokoll schreiben und es unlesbar machen.
@@ -1084,16 +1335,24 @@ def main() -> int:
     max_halt = timedelta(hours=args.max_haltedauer)
     verlustgrenze = Decimal(str(args.verlustgrenze)) / Decimal("100")
 
-    if args.scharf:
-        print("=" * 78)
-        print("SCHARF. Es werden echte Orders an das Demokonto gesendet.")
-        print("Die §9.3-Zulassung wird UEBERGANGEN — keine Strategie ist zugelassen.")
-        print(f"Begruendung: {args.scharf}")
-        print("Alle anderen Sperren bleiben aktiv.")
-        print("=" * 78)
+    print("=" * 78)
+    if darf_schreiben:
+        print("SCHREIBRECHT (--demo-schreiben): Orders gehen an das Demokonto.")
     else:
-        print("TROCKEN. Die Kette haelt an der Zulassung. Mit --scharf wird gehandelt.")
-    zulassung = CriteriaVerdict(passed=bool(args.scharf), results=())
+        print("TROCKEN: kein Schreibrecht, die Kette erreicht das Terminal nie.")
+    if zulassung.urteil.passed:
+        print(
+            f"Zulassung: {zulassung.befund['strategie']} "
+            f"(Kennung {zulassung.befund['kennung']}, {zulassung.befund['datum']}, "
+            f"Torurteil {zulassung.befund['torurteil_hash']})"
+        )
+    else:
+        print(
+            f"KEINE Zulassung ({zulassung.befund['mangel']}): die Kette haelt an der "
+            "Zulassung; ohne Schreibrecht wird auch nicht erkundet."
+        )
+    print("Alle uebrigen Sperren bleiben aktiv.")
+    print("=" * 78)
 
     journal.schreib(
         "start",
@@ -1107,18 +1366,24 @@ def main() -> int:
         takt_sekunden=args.takt,
         max_haltedauer_stunden=args.max_haltedauer,
         verlustgrenze_prozent=args.verlustgrenze,
-        scharf=bool(args.scharf),
-        zulassung_uebergangen=args.scharf,
-        hinweis=(
-            "Zum Zeitpunkt dieses Laufs war KEINE Strategie nach §9.3 "
-            "zugelassen. Siehe archiv/ABSCHLUSS-3a/05-URTEIL.md."
-        ),
+        terminal=args.terminal,
+        zustandsordner=str(ordner),
+        # ``scharf`` heisst seit Z nur noch: dieser Lauf hat das Schreibrecht. Die
+        # Zulassung steht getrennt daneben und wird nie uebergangen.
+        scharf=darf_schreiben,
+        demo_schreiben=darf_schreiben,
+        zulassung=zulassung.befund,
+        zulassung_uebergangen=False,
         strategie=f"moving_average_crossover({SCHNELL},{LANGSAM})",
     )
+    # Startabgleich (D7): was Risikozaehler und Positionsbuch fuehrten, gegen den
+    # Broker gehalten -- Geister sind ausgetragen und stehen hier mit Namen.
+    venue.adopt_book()
+    _startabgleich_journalisieren(venue, journal)
     print(f"Journal: {journal.pfad}")
     # Eine Stoppdatei aus einem frueheren Lauf wuerde diesen sofort beenden.
-    STOPPDATEI.unlink(missing_ok=True)
-    print(f"Geordnet beenden: diese Datei anlegen -> {STOPPDATEI}")
+    stoppdatei.unlink(missing_ok=True)
+    print(f"Geordnet beenden: diese Datei anlegen -> {stoppdatei}")
     print(
         f"Laufzeit {args.dauer} h, Takt {args.takt:g} s, {len(symbole)} Instrumente, "
         f"Hoechsthaltedauer {args.max_haltedauer} h, "
@@ -1154,9 +1419,9 @@ def main() -> int:
     gestoppt = False
     try:
         while datetime.now(UTC) < ende and not abbruch["jetzt"] and not gestoppt:
-            if STOPPDATEI.exists():
-                print(f"\nStoppdatei {STOPPDATEI.name} gefunden — geordnet beenden.")
-                journal.schreib("stoppdatei", pfad=str(STOPPDATEI))
+            if stoppdatei.exists():
+                print(f"\nStoppdatei {stoppdatei.name} gefunden — geordnet beenden.")
+                journal.schreib("stoppdatei", pfad=str(stoppdatei))
                 break
             nr += 1
             if not _verbindung_sichern(venue, terminal, journal):
@@ -1167,13 +1432,14 @@ def main() -> int:
                     manager,
                     scheduler,
                     symbole,
-                    zulassung,
+                    zulassung.urteil,
                     journal,
                     nr=nr,
                     max_haltedauer=max_halt,
                     bekannt=bekannt,
                     equity_start=konto.equity,
                     verlustgrenze=verlustgrenze,
+                    darf_schreiben=darf_schreiben,
                 )
             except VenueError as exc:
                 # Ein Defekt am Handelsplatz beendet den Lauf NICHT -- er wird
@@ -1238,12 +1504,12 @@ def main() -> int:
                 file=sys.stderr,
             )
         print(f"Journal: {journal.pfad}")
-        print(f"Auswertung: python tools/betrieb_auswerten.py {journal.pfad.name}")
+        print(f"Auswertung: python tools/betrieb_auswerten.py {journal.pfad}")
         try:
             terminal.shutdown()
         except Exception:  # noqa: BLE001 - Aufraeumen darf nichts mehr werfen
             pass
-        STOPPDATEI.unlink(missing_ok=True)
+        stoppdatei.unlink(missing_ok=True)
     return 4 if offen_geblieben else 0
 
 

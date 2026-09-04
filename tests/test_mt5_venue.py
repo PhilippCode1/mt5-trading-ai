@@ -10,18 +10,24 @@ Es laeuft ohne echtes MT5-Terminal: das Fake-Terminal unten liefert die Rohwerte
 from __future__ import annotations
 
 import inspect
+import json
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from types import SimpleNamespace
+from pathlib import Path
 
 import pytest
 from mt5_trading_ai.backtest.edge import EdgeVerdict
 from mt5_trading_ai.execution.cost_gate import CostGate
 from mt5_trading_ai.execution.leverage_preflight import evaluate_leverage_preflight
 from mt5_trading_ai.execution.private_sync import PrivateSync
+from mt5_trading_ai.execution.reconcile import FluechtigesPositionsbuch
+from mt5_trading_ai.execution.risiko_zustand import FluechtigerZustand
 from mt5_trading_ai.execution.risk_manager import RiskManager, RiskPolicy
-from mt5_trading_ai.execution.schwebende_auftraege import SchwebeAkte
+from mt5_trading_ai.execution.schwebende_auftraege import (
+    FluechtigeSchwebeAkte,
+    SchwebeAkte,
+)
 from mt5_trading_ai.venue.demo_run import (
     MIN_DEMO_DAYS,
     DemoAccount,
@@ -115,14 +121,25 @@ def _catalog() -> dict[str, CatalogEntry]:
     }
 
 
-def _released_settings() -> SimpleNamespace:
-    return SimpleNamespace(
-        live_release_owner_ack=True,
-        live_release_strategy_approved=True,
-        live_release_risk_limits_configured=True,
-        live_release_venue_demo_verified=True,
-        live_release_id="2026-08-11/eurusd/v1",
+def _freigabedatei(tmp_path: Path) -> Path:
+    """Eine Live-Freigabe mit allen vier Schaltern und Kennung -- als Datei in
+    ``tmp_path``, weil ``Mt5Venue`` die Schalter nur noch aus einer Datei liest
+    (Z, E-010; ``execution/release.py::lies_live_freigabe``). Die eingecheckte
+    ``config/live_freigabe.json`` hat alle Schalter aus."""
+    datei = tmp_path / "live_freigabe_test.json"
+    datei.write_text(
+        json.dumps(
+            {
+                "live_release_owner_ack": True,
+                "live_release_strategy_approved": True,
+                "live_release_risk_limits_configured": True,
+                "live_release_venue_demo_verified": True,
+                "live_release_id": "2026-08-11/eurusd/v1",
+            }
+        ),
+        encoding="utf-8",
     )
+    return datei
 
 
 #: Das Demokonto, auf dem der Demo-Betrieb der Live-Happy-Paths gelaufen ist.
@@ -308,7 +325,7 @@ _LENIENT_COST_GATE = CostGate(max_roundturn_cost_fraction=Decimal("0.0005"))
 def _fresh_risk() -> RiskManager:
     """Ein RiskManager mit Standard-Politik -- laesst eine budget-treue Order (0,01 Lot,
     10k Equity, ~91 bps Stop -> Budget 0,02 Lot) durch."""
-    return RiskManager()
+    return RiskManager(zustand=FluechtigerZustand())
 
 
 def _krypto_risk() -> RiskManager:
@@ -320,13 +337,15 @@ def _krypto_risk() -> RiskManager:
     im Budget liegt. Sonst faellt der Fall an ``below_volume_min`` -- was richtig waere,
     aber nicht das ist, was diese Tests belegen sollen.
     """
-    return RiskManager(RiskPolicy(risk_fraction=Decimal("0.005")))
+    return RiskManager(
+        RiskPolicy(risk_fraction=Decimal("0.005")), zustand=FluechtigerZustand()
+    )
 
 
 def _venue(
     *,
     is_demo: bool,
-    settings: object = None,
+    freigabedatei: Path | None = None,
     margin_free: Decimal = Decimal("10000"),
     positions: tuple[Mt5Position, ...] = (),
     cost_gate: CostGate | None = None,
@@ -373,14 +392,17 @@ def _venue(
         name="mt5-demo",
         terminal=terminal,
         catalog=_catalog(),
-        settings=settings,
+        freigabedatei=freigabedatei,
         cost_gate=cost_gate,
         risk_manager=gewaehlt,
         sync=sync,
         demo_registration=demo_registration,
         demo_live_verdict=demo_live_verdict,
         clock=clock if clock is not None else (lambda: jetzt),
-        schwebeakte=schwebeakte,
+        schwebeakte=(
+            schwebeakte if schwebeakte is not None else FluechtigeSchwebeAkte()
+        ),
+        positionsbuch=FluechtigesPositionsbuch(),
     )
     venue.connect()
     return venue, terminal
@@ -420,7 +442,13 @@ def test_venue_satisfies_trading_venue_protocol() -> None:
 
 def test_health_requires_connect() -> None:
     terminal = FakeMt5Terminal(is_demo=True)
-    venue = Mt5Venue(name="v", terminal=terminal, catalog=_catalog())
+    venue = Mt5Venue(
+        name="v",
+        terminal=terminal,
+        catalog=_catalog(),
+        positionsbuch=FluechtigesPositionsbuch(),
+        schwebeakte=FluechtigeSchwebeAkte(),
+    )
     assert venue.is_healthy() is False
     with pytest.raises(VenueUnavailableError):
         venue.get_quote("EURUSD")
@@ -480,7 +508,7 @@ def test_is_trading_open_respects_sessions() -> None:
 
 
 def test_demo_opening_order_is_accepted_without_release() -> None:
-    venue, terminal = _venue(is_demo=True, settings=None)
+    venue, terminal = _venue(is_demo=True)
     result = venue.submit_order(_order())
     assert result.accepted is True
     assert result.venue_order_id == "V-1"
@@ -488,17 +516,17 @@ def test_demo_opening_order_is_accepted_without_release() -> None:
 
 
 def test_live_opening_order_blocked_without_release() -> None:
-    venue, terminal = _venue(is_demo=False, settings=None)
+    venue, terminal = _venue(is_demo=False)
     with pytest.raises(OrderRejectedError) as excinfo:
         venue.submit_order(_order())
     assert excinfo.value.reason == "live_release_incomplete"
     assert terminal.order_send_calls == 0  # nichts gesendet
 
 
-def test_live_opening_order_allowed_with_full_release() -> None:
+def test_live_opening_order_allowed_with_full_release(tmp_path: Path) -> None:
     venue, terminal = _venue(
         is_demo=False,
-        settings=_released_settings(),
+        freigabedatei=_freigabedatei(tmp_path),
         cost_gate=_LENIENT_COST_GATE,
         risk_manager=_fresh_risk(),
         demo_registration=_reifer_demo_beleg(),
@@ -508,11 +536,11 @@ def test_live_opening_order_allowed_with_full_release() -> None:
     assert terminal.order_send_calls == 1
 
 
-def test_live_opening_rejected_when_cost_gate_unconfigured() -> None:
+def test_live_opening_rejected_when_cost_gate_unconfigured(tmp_path: Path) -> None:
     # Kein Kostentor auf einem Live-Konto -> fail-closed, keine Order gesendet.
     venue, terminal = _venue(
         is_demo=False,
-        settings=_released_settings(),
+        freigabedatei=_freigabedatei(tmp_path),
         demo_registration=_reifer_demo_beleg(),
     )
     with pytest.raises(OrderRejectedError) as excinfo:
@@ -521,12 +549,12 @@ def test_live_opening_rejected_when_cost_gate_unconfigured() -> None:
     assert terminal.order_send_calls == 0
 
 
-def test_live_opening_rejected_when_cost_exceeds_threshold() -> None:
+def test_live_opening_rejected_when_cost_exceeds_threshold(tmp_path: Path) -> None:
     # Reale Roundturn-Kosten ~2,45 bp; Schwelle 1 bp -> Ablehnung vor dem Send.
     tight = CostGate(max_roundturn_cost_fraction=Decimal("0.0001"))
     venue, terminal = _venue(
         is_demo=False,
-        settings=_released_settings(),
+        freigabedatei=_freigabedatei(tmp_path),
         cost_gate=tight,
         demo_registration=_reifer_demo_beleg(),
     )
@@ -536,12 +564,12 @@ def test_live_opening_rejected_when_cost_exceeds_threshold() -> None:
     assert terminal.order_send_calls == 0
 
 
-def test_live_opening_allowed_when_cost_within_threshold() -> None:
+def test_live_opening_allowed_when_cost_within_threshold(tmp_path: Path) -> None:
     # Schwelle 5 bp deckt die realen ~2,45 bp -> Order laeuft durch (Kostenquote ist
     # volumenunabhaengig, 0,01 Lot passt zusaetzlich ins Risikobudget).
     venue, terminal = _venue(
         is_demo=False,
-        settings=_released_settings(),
+        freigabedatei=_freigabedatei(tmp_path),
         cost_gate=_LENIENT_COST_GATE,
         risk_manager=_fresh_risk(),
         demo_registration=_reifer_demo_beleg(),
@@ -563,11 +591,14 @@ def test_demo_opening_skips_cost_gate() -> None:
 
 
 def _live_risk_venue(
-    risk_manager: RiskManager, *, positions: tuple[Mt5Position, ...] = ()
+    risk_manager: RiskManager,
+    tmp_path: Path,
+    *,
+    positions: tuple[Mt5Position, ...] = (),
 ) -> tuple[Mt5Venue, FakeMt5Terminal]:
     return _venue(
         is_demo=False,
-        settings=_released_settings(),
+        freigabedatei=_freigabedatei(tmp_path),
         cost_gate=_LENIENT_COST_GATE,
         risk_manager=risk_manager,
         demo_registration=_reifer_demo_beleg(),
@@ -585,29 +616,32 @@ def _risk_order(**over: object) -> OrderRequest:
     return _order(**base)
 
 
-def test_live_opening_rejected_when_volume_over_risk_budget() -> None:
+def test_live_opening_rejected_when_volume_over_risk_budget(tmp_path: Path) -> None:
     # (a) 0,10 Lot riskiert ~1 % >> 0,25 % Budget -> Ablehnung vor dem Send.
-    venue, terminal = _live_risk_venue(_fresh_risk())
+    venue, terminal = _live_risk_venue(_fresh_risk(), tmp_path)
     with pytest.raises(OrderRejectedError) as ex:
         venue.submit_order(_risk_order(volume=Decimal("0.10")))
     assert ex.value.reason == "volume_exceeds_risk_budget"
     assert terminal.order_send_calls == 0
 
 
-def test_live_opening_rejected_when_stop_floor_exceeds_budget() -> None:
+def test_live_opening_rejected_when_stop_floor_exceeds_budget(tmp_path: Path) -> None:
     # (b) safety=100 -> Budget-Obergrenze ~10 bps < Tiefe-Floor 15 bps -> no_trade.
-    venue, terminal = _live_risk_venue(RiskManager(RiskPolicy(safety=Decimal("100"))))
+    venue, terminal = _live_risk_venue(
+        RiskManager(RiskPolicy(safety=Decimal("100")), zustand=FluechtigerZustand()),
+        tmp_path,
+    )
     with pytest.raises(OrderRejectedError) as ex:
         venue.submit_order(_risk_order())
     assert ex.value.reason == "risk_sizing_stop_floor_exceeds_budget"
     assert terminal.order_send_calls == 0
 
 
-def test_drawdown_limit_latches_halt_and_blocks_further_opening() -> None:
+def test_drawdown_limit_latches_halt_and_blocks_further_opening(tmp_path: Path) -> None:
     # (c) Fenster-Hoechststand 12k, Equity 10k -> Drawdown 16,7 % -> HALT-Latch.
     rm = _fresh_risk()
     rm.observe_equity(TS - timedelta(hours=1), Decimal("12000"))
-    venue, terminal = _live_risk_venue(rm)
+    venue, terminal = _live_risk_venue(rm, tmp_path)
     with pytest.raises(OrderRejectedError) as ex:
         venue.submit_order(_risk_order(client_order_id="dd-1"))
     assert ex.value.reason == "risk_drawdown_limit_reached"
@@ -618,9 +652,9 @@ def test_drawdown_limit_latches_halt_and_blocks_further_opening() -> None:
     assert ex2.value.reason == "global_halt"
 
 
-def test_throttle_blocks_too_fast_second_trade() -> None:
+def test_throttle_blocks_too_fast_second_trade(tmp_path: Path) -> None:
     # (d) Nach einem akzeptierten Fill sperrt Cooldown/Mindesthaltedauer den zweiten.
-    venue, terminal = _live_risk_venue(_fresh_risk())
+    venue, terminal = _live_risk_venue(_fresh_risk(), tmp_path)
     first = venue.submit_order(_risk_order(client_order_id="t-1"))
     assert first.accepted is True
     with pytest.raises(OrderRejectedError) as ex:
@@ -636,12 +670,12 @@ def test_demo_opening_skips_risk_gate() -> None:
     assert result.accepted is True
 
 
-def test_reduce_only_close_records_close_at_risk_manager() -> None:
+def test_reduce_only_close_records_close_at_risk_manager(tmp_path: Path) -> None:
     # §9 #5: ein reduce_only-Fill, der das Symbol netto glattstellt, gibt den
     # Positionsdeckel am RiskManager frei (record_close verdrahtet). Das Terminal meldet
     # die offene Long-Position autoritativ (wie ein echter Broker nach der Eroeffnung).
     rm = _fresh_risk()
-    venue, terminal = _live_risk_venue(rm)
+    venue, terminal = _live_risk_venue(rm, tmp_path)
     venue.submit_order(_risk_order(client_order_id="open-1"))
     # Erst JETZT meldet der Broker die Position -- vorher gab es sie nicht. Die alte
     # Reihenfolge (Bestand schon vor der Eroeffnung) bildete eine Lage ab, in der die
@@ -663,7 +697,7 @@ def test_reduce_only_close_records_close_at_risk_manager() -> None:
     assert rm.open_position_count == 0
 
 
-def test_reduce_only_close_records_close_in_sync_mode() -> None:
+def test_reduce_only_close_records_close_in_sync_mode(tmp_path: Path) -> None:
     # §9-Fix-Re-Check: mit PrivateSync mutiert submit_order das Buch NICHT (der Strom
     # bucht nachlaufend). record_close darf trotzdem korrekt feuern -- der resultierende
     # Netto-Stand wird aus pre_net + diesem Fill gerechnet, nicht aus dem lahmen Buch.
@@ -676,7 +710,7 @@ def test_reduce_only_close_records_close_in_sync_mode() -> None:
     rm.record_open_fill("EURUSD", TS)
     venue, terminal = _venue(
         is_demo=False,
-        settings=_released_settings(),
+        freigabedatei=_freigabedatei(tmp_path),
         cost_gate=_LENIENT_COST_GATE,
         risk_manager=rm,
         sync=sync,
@@ -697,11 +731,11 @@ def test_reduce_only_close_records_close_in_sync_mode() -> None:
     assert rm.open_position_count == 0  # record_close feuerte trotz nachlaufendem Buch
 
 
-def test_live_opening_rejected_when_risk_unconfigured() -> None:
+def test_live_opening_rejected_when_risk_unconfigured(tmp_path: Path) -> None:
     # Live ohne Risiko-Manager -> fail-closed (auch wenn das Kostentor sitzt).
     venue, terminal = _venue(
         is_demo=False,
-        settings=_released_settings(),
+        freigabedatei=_freigabedatei(tmp_path),
         cost_gate=_LENIENT_COST_GATE,
         demo_registration=_reifer_demo_beleg(),
         ohne_risiko=True,
@@ -715,12 +749,12 @@ def test_live_opening_rejected_when_risk_unconfigured() -> None:
 # --- Compliance-Tore am Order-Pfad (Paket 5) -----------------------------
 
 
-def test_demo_not_ready_blocks_live_opening() -> None:
+def test_demo_not_ready_blocks_live_opening(tmp_path: Path) -> None:
     # < 180 Tage Demo -> keine Live-Eroeffnung (Demo-Reife-Tor). Die Zahl im Grund
     # ist GERECHNET (Uhr des Venues minus Registrierungsdatum), nicht behauptet.
     venue, terminal = _venue(
         is_demo=False,
-        settings=_released_settings(),
+        freigabedatei=_freigabedatei(tmp_path),
         cost_gate=_LENIENT_COST_GATE,
         risk_manager=_fresh_risk(),
         demo_registration=_reifer_demo_beleg(tage=10),
@@ -732,13 +766,13 @@ def test_demo_not_ready_blocks_live_opening() -> None:
     assert terminal.order_send_calls == 0
 
 
-def test_ein_tag_vor_der_frist_blockt_die_live_eroeffnung() -> None:
+def test_ein_tag_vor_der_frist_blockt_die_live_eroeffnung(tmp_path: Path) -> None:
     """Die Kante am Order-Pfad, nicht nur in der Rechenfunktion: 179 Tage sind nein,
     180 sind ja. Ohne beide Seiten waere das Tor nicht als Melder belegt."""
     for tage, geht in ((MIN_DEMO_DAYS - 1, False), (MIN_DEMO_DAYS, True)):
         venue, terminal = _venue(
             is_demo=False,
-            settings=_released_settings(),
+            freigabedatei=_freigabedatei(tmp_path),
             cost_gate=_LENIENT_COST_GATE,
             risk_manager=_fresh_risk(),
             demo_registration=_reifer_demo_beleg(tage=tage),
@@ -752,14 +786,14 @@ def test_ein_tag_vor_der_frist_blockt_die_live_eroeffnung() -> None:
             assert terminal.order_send_calls == 0
 
 
-def test_derselbe_beleg_reift_erst_mit_der_uhr_des_tores() -> None:
+def test_derselbe_beleg_reift_erst_mit_der_uhr_des_tores(tmp_path: Path) -> None:
     """Der Kern der Reparatur: EIN Beleg, zwei Venues, zwei verschiedene Uhren --
     zwei verschiedene Antworten. Die Reife ist damit eine Eigenschaft der
     verstrichenen Zeit und nicht des uebergebenen Objekts."""
     beleg = _reifer_demo_beleg(tage=MIN_DEMO_DAYS)  # reif genau bei TS
     frueh, terminal = _venue(
         is_demo=False,
-        settings=_released_settings(),
+        freigabedatei=_freigabedatei(tmp_path),
         cost_gate=_LENIENT_COST_GATE,
         risk_manager=_fresh_risk(),
         demo_registration=beleg,
@@ -773,7 +807,7 @@ def test_derselbe_beleg_reift_erst_mit_der_uhr_des_tores() -> None:
 
     spaet, _ = _venue(
         is_demo=False,
-        settings=_released_settings(),
+        freigabedatei=_freigabedatei(tmp_path),
         cost_gate=_LENIENT_COST_GATE,
         risk_manager=_fresh_risk(),
         demo_registration=beleg,
@@ -782,11 +816,11 @@ def test_derselbe_beleg_reift_erst_mit_der_uhr_des_tores() -> None:
     assert spaet.submit_order(_order(volume=Decimal("0.01"))).accepted is True
 
 
-def test_demo_beleg_fehlt_blockt_live_opening() -> None:
+def test_demo_beleg_fehlt_blockt_live_opening(tmp_path: Path) -> None:
     # Kein Registrierungsbeleg hinterlegt -> fail-closed.
     venue, terminal = _venue(
         is_demo=False,
-        settings=_released_settings(),
+        freigabedatei=_freigabedatei(tmp_path),
         cost_gate=_LENIENT_COST_GATE,
         risk_manager=_fresh_risk(),
     )
@@ -798,11 +832,11 @@ def test_demo_beleg_fehlt_blockt_live_opening() -> None:
     assert terminal.order_send_calls == 0
 
 
-def test_beleg_ohne_edge_im_demo_blockt_trotz_langer_laufzeit() -> None:
+def test_beleg_ohne_edge_im_demo_blockt_trotz_langer_laufzeit(tmp_path: Path) -> None:
     # Frist voll, aber der Edge ist im Demo verloren gegangen -> nein.
     venue, terminal = _venue(
         is_demo=False,
-        settings=_released_settings(),
+        freigabedatei=_freigabedatei(tmp_path),
         cost_gate=_LENIENT_COST_GATE,
         risk_manager=_fresh_risk(),
         demo_registration=_reifer_demo_beleg(tage=400),
@@ -815,7 +849,7 @@ def test_beleg_ohne_edge_im_demo_blockt_trotz_langer_laufzeit() -> None:
     assert terminal.order_send_calls == 0
 
 
-def test_demo_beleg_darf_nicht_das_livekonto_nennen() -> None:
+def test_demo_beleg_darf_nicht_das_livekonto_nennen(tmp_path: Path) -> None:
     """Ein Demo-Beleg, der die Nummer eben dieses Livekontos traegt, ist ein
     Widerspruch -- und der naechstliegende Griff, wenn jemand einen Beleg passend
     machen will. Das Konto kommt frisch aus dem Terminal, nicht aus dem Beleg."""
@@ -829,7 +863,7 @@ def test_demo_beleg_darf_nicht_das_livekonto_nennen() -> None:
     )
     venue, terminal = _venue(
         is_demo=False,
-        settings=_released_settings(),
+        freigabedatei=_freigabedatei(tmp_path),
         cost_gate=_LENIENT_COST_GATE,
         risk_manager=_fresh_risk(),
         demo_registration=beleg,
@@ -859,7 +893,7 @@ def test_demo_opening_skips_compliance_gates() -> None:
     assert result.accepted is True
 
 
-def test_demo_registration_flow_unblocks_live_opening() -> None:
+def test_demo_registration_flow_unblocks_live_opening(tmp_path: Path) -> None:
     """Die Naht §8.5->§7, umgeschrieben auf das, was jetzt gilt.
 
     Vorher fuhr dieser Test ``register_for_demo(registered_on=...)`` und
@@ -886,7 +920,7 @@ def test_demo_registration_flow_unblocks_live_opening() -> None:
     assert registration.registered_on == stand.date()  # aus der Uhr, nicht gesetzt
     venue, terminal = _venue(
         is_demo=False,
-        settings=_released_settings(),
+        freigabedatei=_freigabedatei(tmp_path),
         cost_gate=_LENIENT_COST_GATE,
         risk_manager=_fresh_risk(),
         demo_registration=registration,
@@ -901,7 +935,6 @@ def test_live_reduce_only_passes_without_release() -> None:
     # Gegenposition abbaut. Die Boerse haelt long; ein SELL schliesst sie.
     venue, terminal = _venue(
         is_demo=False,
-        settings=None,
         positions=(_mt5_position("EURUSD", is_buy=True, volume=Decimal("0.50")),),
     )
     result = venue.submit_order(
@@ -919,7 +952,7 @@ def test_live_reduce_only_passes_without_release() -> None:
 def test_live_reduce_only_without_position_is_gated_as_opening() -> None:
     # §9 Paket 5: ein reduce_only-Flag OHNE Gegenposition ist eine Eroeffnung und faellt
     # durch die Live-Freigabe (kein Umgehen der Compliance-Tore).
-    venue, terminal = _venue(is_demo=False, settings=None)  # keine Positionen
+    venue, terminal = _venue(is_demo=False)  # keine Positionen
     with pytest.raises(OrderRejectedError) as ex:
         venue.submit_order(
             _order(
@@ -938,7 +971,6 @@ def test_reduce_only_over_fill_is_gated_as_opening() -> None:
     # -> der Ueberschuss ist eine Eroeffnung und faellt durch die Live-Freigabe.
     venue, terminal = _venue(
         is_demo=False,
-        settings=None,  # keine Freigabe
         positions=(_mt5_position("EURUSD", is_buy=True, volume=Decimal("0.50")),),
     )
     with pytest.raises(OrderRejectedError) as ex:

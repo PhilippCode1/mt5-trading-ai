@@ -1,0 +1,21 @@
+# Eichfall D4-D5-D6, ROT gegen 306bbaa (Worktree C:\Users\<konto>\nachstellung-306bbaa, 2026-09-04 02:07 UTC): tests/eichfall_d4_d5_d6.py dort hineinkopiert, ausgefuehrt, entfernt
+$ python -m pytest -q -p no:cacheprovider --tb=line tests/eichfall_d4_d5_d6.py
+FFFFFF                                                                   [100%]
+================================== FAILURES ===================================
+C:\Users\<konto>\nachstellung-306bbaa\tests\eichfall_d4_d5_d6.py:130: AssertionError: der erste Grund ist weg: reconcile_drift:notional_drift_exceeds_limit
+C:\Users\<konto>\nachstellung-306bbaa\tests\eichfall_d4_d5_d6.py:144: AttributeError: 'Mt5Venue' object has no attribute 'halt_grund_loesen'
+C:\Users\<konto>\nachstellung-306bbaa\tests\eichfall_d4_d5_d6.py:205: assert False is True
+C:\Users\<konto>\nachstellung-306bbaa\tests\eichfall_d4_d5_d6.py:215: OSError: [Errno 28] No space left on device
+C:\Users\<konto>\nachstellung-306bbaa\tests\eichfall_d4_d5_d6.py:286: AssertionError: schon das Lesen laesst open-C hinter dem Defekt fallen
+C:\Users\<konto>\nachstellung-306bbaa\tests\eichfall_d4_d5_d6.py:310: AssertionError: die unlesbaren Bytes sind nicht zur Seite gelegt
+=========================== short test summary info ===========================
+FAILED tests/eichfall_d4_d5_d6.py::test_reconcile_ergaenzt_den_halt_grund_und_ueberschreibt_nicht
+FAILED tests/eichfall_d4_d5_d6.py::test_nur_der_eigene_anteil_wird_geloest - ...
+FAILED tests/eichfall_d4_d5_d6.py::test_live_betrieb_loest_im_takt_nur_die_erklaerte_drift
+FAILED tests/eichfall_d4_d5_d6.py::test_halt_steht_auch_wenn_die_akte_nicht_schreibbar_ist
+FAILED tests/eichfall_d4_d5_d6.py::test_vermerken_auf_defekter_akte_verwirft_keinen_eintrag
+FAILED tests/eichfall_d4_d5_d6.py::test_eine_unlesbare_akte_wird_geborgen_nicht_ueberschrieben
+6 failed in 0.48s
+[exit=1, 1.5 s]
+$ git status --porcelain   (im Referenz-Worktree, danach)
+(sauber)

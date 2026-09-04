@@ -177,9 +177,7 @@ def test_der_dateiname_traegt_die_kontonummer_nicht(tmp_path, monkeypatch) -> No
     """
     from mt5_trading_ai.execution.risiko_zustand import standard_zustandsdatei
 
-    monkeypatch.delenv("MT5_RISIKO_ZUSTAND", raising=False)
-    monkeypatch.setenv("MT5_RISIKO_ZUSTAND_ORDNER", str(tmp_path))
-    pfad = standard_zustandsdatei()
+    pfad = standard_zustandsdatei(ordner=tmp_path)
     _zustandsdatei(pfad, "50123456")
     for datei in tmp_path.iterdir():
         assert "50123456" not in datei.name

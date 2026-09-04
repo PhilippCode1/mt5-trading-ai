@@ -22,10 +22,13 @@ from __future__ import annotations
 
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
+from pathlib import Path
 from typing import Any
 
 import pytest
 from mt5_trading_ai.backtest.edge import EdgeVerdict
+from mt5_trading_ai.execution.reconcile import FluechtigesPositionsbuch
+from mt5_trading_ai.execution.schwebende_auftraege import FluechtigeSchwebeAkte
 from mt5_trading_ai.venue.demo_run import (
     MIN_DEMO_DAYS,
     DemoAccount,
@@ -40,9 +43,9 @@ from test_mt5_venue import (
     TS,
     FakeMt5Terminal,
     _catalog,
+    _freigabedatei,
     _fresh_risk,
     _order,
-    _released_settings,
 )
 
 #: Kontonummer des Fake-Terminals. Ein Demo-Beleg auf DIESE Nummer waere ein
@@ -77,18 +80,20 @@ def _selbst_gebaut(registered_on: Any, *, konto: str = "demo-9001") -> Any:
     )
 
 
-def _live_venue(beleg: Any) -> tuple[Mt5Venue, FakeMt5Terminal]:
+def _live_venue(beleg: Any, tmp_path: Path) -> tuple[Mt5Venue, FakeMt5Terminal]:
     terminal = FakeMt5Terminal(is_demo=False)
     venue = Mt5Venue(
         name="mt5-live",
         terminal=terminal,  # type: ignore[arg-type]
         catalog=_catalog(),
-        settings=_released_settings(),
+        freigabedatei=_freigabedatei(tmp_path),
         cost_gate=_LENIENT_COST_GATE,
         risk_manager=_fresh_risk(),
         demo_registration=beleg,
         demo_live_verdict=_bestanden(),
         clock=lambda: TS,
+        positionsbuch=FluechtigesPositionsbuch(),
+        schwebeakte=FluechtigeSchwebeAkte(),
     )
     venue.connect()
     return venue, terminal
@@ -104,7 +109,7 @@ def test_die_vorgerechneten_daten_stimmen() -> None:
     assert (TS.date() - VOR_180_TAGEN).days == MIN_DEMO_DAYS == 180
 
 
-def test_ein_selbst_gebauter_beleg_oeffnet_die_live_order() -> None:
+def test_ein_selbst_gebauter_beleg_oeffnet_die_live_order(tmp_path: Path) -> None:
     """DIE GRENZE, ausgesprochen: zwei Konstruktorzeilen reichen.
 
     Kein ``register_for_demo``, keine verstrichene Zeit, nur ein Datum. Das Tor laesst
@@ -115,7 +120,7 @@ def test_ein_selbst_gebauter_beleg_oeffnet_die_live_order() -> None:
     ``venue/demo_run.py`` (Abschnitt "DIE GRENZE DIESER STUFE") falsch geworden und
     gehoert umgeschrieben -- der Test ist die Meldung, nicht der Fehler.
     """
-    venue, terminal = _live_venue(_selbst_gebaut(VOR_400_TAGEN))
+    venue, terminal = _live_venue(_selbst_gebaut(VOR_400_TAGEN), tmp_path)
     ergebnis = venue.submit_order(_order(volume=Decimal("0.01")))
     assert ergebnis.accepted is True
     assert terminal.order_send_calls == 1, (
@@ -124,7 +129,7 @@ def test_ein_selbst_gebauter_beleg_oeffnet_die_live_order() -> None:
     )
 
 
-def test_ein_zeitpunkt_statt_eines_tages_ist_kein_beleg() -> None:
+def test_ein_zeitpunkt_statt_eines_tages_ist_kein_beleg(tmp_path: Path) -> None:
     """Ein ``datetime`` in ``registered_on`` wird abgelehnt, nicht durchgereicht.
 
     ``datetime`` ist eine Unterklasse von ``date``; der Typ haelt das nicht ab. Vorher
@@ -138,7 +143,7 @@ def test_ein_zeitpunkt_statt_eines_tages_ist_kein_beleg() -> None:
     """
     zeitpunkt = datetime(2025, 7, 7, 12, 0, tzinfo=UTC)
     assert (TS.date() - zeitpunkt.date()).days == 400  # als Tag waere er reif
-    venue, terminal = _live_venue(_selbst_gebaut(zeitpunkt))
+    venue, terminal = _live_venue(_selbst_gebaut(zeitpunkt), tmp_path)
     with pytest.raises(OrderRejectedError) as ex:
         venue.submit_order(_order(volume=Decimal("0.01")))
     assert ex.value.reason == "demo_not_ready"
@@ -146,27 +151,27 @@ def test_ein_zeitpunkt_statt_eines_tages_ist_kein_beleg() -> None:
     assert terminal.order_send_calls == 0
 
 
-def test_der_kalendertag_melder_ist_keine_dauerbremse() -> None:
+def test_der_kalendertag_melder_ist_keine_dauerbremse(tmp_path: Path) -> None:
     """Gegenprobe zum Fall darueber: derselbe Tag als ``date`` kommt durch.
 
     Ein Melder, der immer ausloest, sagt so wenig wie einer, der nie ausloest.
     """
-    venue, terminal = _live_venue(_selbst_gebaut(date(2025, 7, 7)))
+    venue, terminal = _live_venue(_selbst_gebaut(date(2025, 7, 7)), tmp_path)
     assert venue.submit_order(_order(volume=Decimal("0.01"))).accepted is True
     assert terminal.order_send_calls == 1
 
 
-def test_die_frist_faellt_genau_zwischen_179_und_180_tagen() -> None:
+def test_die_frist_faellt_genau_zwischen_179_und_180_tagen(tmp_path: Path) -> None:
     """Die Kante, von Hand gerechnet -- an beiden Seiten gemessen.
 
     180 Tage vor dem 2026-08-11 ist der 2026-02-12 (Rechnung oben bei
     ``VOR_180_TAGEN``); einen Tag spaeter, am 2026-02-13, sind es 179.
     """
-    reif, reif_terminal = _live_venue(_selbst_gebaut(VOR_180_TAGEN))
+    reif, reif_terminal = _live_venue(_selbst_gebaut(VOR_180_TAGEN), tmp_path)
     assert reif.submit_order(_order(volume=Decimal("0.01"))).accepted is True
     assert reif_terminal.order_send_calls == 1
 
-    knapp, knapp_terminal = _live_venue(_selbst_gebaut(date(2026, 2, 13)))
+    knapp, knapp_terminal = _live_venue(_selbst_gebaut(date(2026, 2, 13)), tmp_path)
     with pytest.raises(OrderRejectedError) as ex:
         knapp.submit_order(_order(volume=Decimal("0.01")))
     assert ex.value.reason == "demo_not_ready"

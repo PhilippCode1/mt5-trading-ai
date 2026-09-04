@@ -46,6 +46,9 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from mt5_trading_ai.execution.reconcile import FluechtigesPositionsbuch
+from mt5_trading_ai.execution.risiko_zustand import FluechtigerZustand
+from mt5_trading_ai.execution.schwebende_auftraege import FluechtigeSchwebeAkte
 from mt5_trading_ai.venue.protocol import (  # noqa: E402
     OrderRejectedError,
     OrderRequest,
@@ -347,20 +350,20 @@ def test_demo_eroeffnung_faehrt_alle_fuenf_sperren(
 
 
 def test_live_eroeffnung_faehrt_alle_fuenf_sperren(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     """Derselbe Nachweis am **Live**-Konto mit vollstaendiger Freigabe."""
     from test_mt5_venue import (
         _LENIENT_COST_GATE,
+        _freigabedatei,
         _fresh_risk,
         _reifer_demo_beleg,
-        _released_settings,
     )
 
     zaehler = _spitzel(monkeypatch)
     venue, terminal = _venue(
         is_demo=False,
-        settings=_released_settings(),
+        freigabedatei=_freigabedatei(tmp_path),
         cost_gate=_LENIENT_COST_GATE,
         risk_manager=_fresh_risk(),
         demo_registration=_reifer_demo_beleg(),
@@ -389,6 +392,8 @@ def test_ohne_risikoschicht_keine_eroeffnung_auch_auf_demo() -> None:
         catalog=_catalog(),
         risk_manager=None,
         clock=lambda: TS,
+        positionsbuch=FluechtigesPositionsbuch(),
+        schwebeakte=FluechtigeSchwebeAkte(),
     )
     venue.connect()
     with pytest.raises(OrderRejectedError) as ex:
@@ -559,6 +564,8 @@ def test_roter_eichfall_frische_gegen_den_brokerstempel() -> None:
         catalog=_catalog(),
         risk_manager=_fresh_risk(),
         clock=lambda: TS,
+        positionsbuch=FluechtigesPositionsbuch(),
+        schwebeakte=FluechtigeSchwebeAkte(),
     )
     venue.connect()
     # Vorbedingung: nach der ALTEN Rechnung waere hier alles gruen gewesen.
@@ -662,7 +669,7 @@ def test_roter_eichfall_verlustgrenzen() -> None:
     """Sperre 2 rot: Drawdown ueber der Grenze -> Halt, mit Latch."""
     from mt5_trading_ai.execution.risk_manager import RiskManager
 
-    rm = RiskManager()
+    rm = RiskManager(zustand=FluechtigerZustand())
     rm.observe_equity(TS - timedelta(hours=1), Decimal("12000"))
     venue, terminal = _venue(is_demo=True, risk_manager=rm)
     with pytest.raises(OrderRejectedError) as ex:
@@ -677,7 +684,10 @@ def test_roter_eichfall_stop_budget() -> None:
     from mt5_trading_ai.execution.risk_manager import RiskManager, RiskPolicy
 
     venue, terminal = _venue(
-        is_demo=True, risk_manager=RiskManager(RiskPolicy(safety=Decimal("100")))
+        is_demo=True,
+        risk_manager=RiskManager(
+            RiskPolicy(safety=Decimal("100")), zustand=FluechtigerZustand()
+        ),
     )
     with pytest.raises(OrderRejectedError) as ex:
         venue.submit_order(_eroeffnende_order())

@@ -1,0 +1,25 @@
+# Eichfall Z, ROT gegen 306bbaa (Worktree C:\Users\<konto>\nachstellung-306bbaa, 2026-09-04 02:07 UTC): tests/eichfall_z.py dort hineinkopiert, ausgefuehrt, entfernt
+$ python -m pytest -q -p no:cacheprovider --tb=line tests/eichfall_z.py
+FFFFFFFF                                                                 [100%]
+================================== FAILURES ===================================
+C:\Users\<konto>\nachstellung-306bbaa\tests\eichfall_z.py:113: AssertionError: Traceback (most recent call last):
+C:\Users\<konto>\nachstellung-306bbaa\tests\eichfall_z.py:124: AssertionError: assert '--demo-schreiben' in 'usage: live_betrieb.py [-h] [--dauer DAUER] [--takt TAKT] [--symbol SYMBOL]\n                       [--max-haltedauer...lassen\n                        Positionen am Ende NICHT glattstellen (Vorgabe:\n                        schliessen)\n'
+C:\Users\<konto>\nachstellung-306bbaa\tests\eichfall_z.py:135: ModuleNotFoundError: No module named 'mt5_trading_ai.venue.fake'
+C:\Users\<konto>\nachstellung-306bbaa\tests\eichfall_z.py:161: ImportError: cannot import name 'ZULASSUNGSFELDER' from 'tools.live_betrieb' (C:\Users\<konto>\nachstellung-306bbaa\tools\live_betrieb.py)
+C:\Users\<konto>\AppData\Local\Programs\Python\Python311\Lib\pathlib.py:1044: FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\<konto>\\nachstellung-306bbaa\\config\\live_freigabe.json'
+C:\Users\<konto>\nachstellung-306bbaa\tests\eichfall_z.py:70: AssertionError: release.lies_live_freigabe fehlt -- keine Datei-Freigabe
+C:\Users\<konto>\nachstellung-306bbaa\tests\eichfall_z.py:257: TypeError: Mt5Venue.__init__() got an unexpected keyword argument 'freigabedatei'
+C:\Users\<konto>\nachstellung-306bbaa\tests\eichfall_z.py:257: TypeError: Mt5Venue.__init__() got an unexpected keyword argument 'freigabedatei'
+=========================== short test summary info ===========================
+FAILED tests/eichfall_z.py::test_scharf_ist_kein_argument_mehr - AssertionErr...
+FAILED tests/eichfall_z.py::test_die_hilfe_kennt_schreibrecht_und_zulassung_aber_keine_freigabe
+FAILED tests/eichfall_z.py::test_demo_schreiben_setzt_nur_das_schreibrecht - ...
+FAILED tests/eichfall_z.py::test_zulassung_kommt_nur_aus_einem_vollstaendigen_registereintrag
+FAILED tests/eichfall_z.py::test_die_eingecheckte_freigabedatei_hat_alle_schalter_aus
+FAILED tests/eichfall_z.py::test_fehlende_datei_oder_schluessel_heisst_nicht_freigegeben
+FAILED tests/eichfall_z.py::test_eroeffnung_am_livekonto_mit_eingecheckter_datei_gesperrt
+FAILED tests/eichfall_z.py::test_eroeffnung_am_livekonto_mit_testdatei_nicht_gesperrt
+8 failed in 0.92s
+[exit=1, 1.8 s]
+$ git status --porcelain   (im Referenz-Worktree, danach)
+(sauber)

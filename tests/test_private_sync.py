@@ -15,7 +15,10 @@ from mt5_trading_ai.execution.private_sync import (
     PrivateEventKind,
     PrivateSync,
 )
+from mt5_trading_ai.execution.reconcile import FluechtigesPositionsbuch
+from mt5_trading_ai.execution.risiko_zustand import FluechtigerZustand
 from mt5_trading_ai.execution.risk_manager import RiskManager
+from mt5_trading_ai.execution.schwebende_auftraege import FluechtigeSchwebeAkte
 from mt5_trading_ai.venue.mt5 import Mt5Venue
 from mt5_trading_ai.venue.protocol import OrderRejectedError, OrderSide
 
@@ -116,8 +119,10 @@ def _synced_venue(
         sync=sync,
         # Seit A3 Pflicht auf jedem Konto: Risikoschicht + Frische-Latch. Die feste
         # Uhr entspricht dem Zeitstempel des Fake-Kontostands.
-        risk_manager=RiskManager(),
+        risk_manager=RiskManager(zustand=FluechtigerZustand()),
         clock=lambda: TS,
+        positionsbuch=FluechtigesPositionsbuch(),
+        schwebeakte=FluechtigeSchwebeAkte(),
     )
     venue.connect()
     return venue, sync

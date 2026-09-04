@@ -40,6 +40,7 @@ from typing import Any
 import pytest
 from mt5_trading_ai.backtest.engine import Signal
 from mt5_trading_ai.betrieb.journal import lies_alle, lies_journal
+from mt5_trading_ai.execution.risiko_zustand import FluechtigerZustand
 from mt5_trading_ai.execution.risk_manager import RiskManager
 from mt5_trading_ai.execution.scheduler import TickResult
 from mt5_trading_ai.gates.criteria import CriteriaVerdict
@@ -163,6 +164,10 @@ class TaktVenue:
     def submit_order(self, anfrage: Any) -> _Angenommen:
         self.gesendet.append(anfrage.client_order_id)
         return _Angenommen()
+
+    def halt_grund_loesen(self, praefix: str) -> tuple[str, ...]:
+        """Diese Attrappe fuehrt keinen Halt -- es gibt nichts zu loesen (D4)."""
+        return ()
 
 
 @dataclass
@@ -362,7 +367,7 @@ def _takt(tmp_path: Path, venue: TaktVenue) -> tuple[Journal, dict[str, Lage], b
     j = _journal(tmp_path)
     lage, gestoppt = takt(
         venue,
-        RiskManager(),
+        RiskManager(zustand=FluechtigerZustand()),
         FakeScheduler(),
         ["EURUSD", "XAUUSD"],
         CriteriaVerdict(passed=False, results=()),
@@ -443,7 +448,7 @@ def _broker_schluss(tmp_path: Path, unrealisiert: str = "-2.68") -> Journal:
     )
     _buch_abgleichen(
         FakeVenue(),
-        RiskManager(),
+        RiskManager(zustand=FluechtigerZustand()),
         {weg.symbol: weg},
         {},
         j,
@@ -552,7 +557,7 @@ def test_auch_der_eigene_schluss_traegt_ein_geldergebnis(tmp_path: Path) -> None
     assert (
         _schliesse(
             Sendend(),
-            RiskManager(),
+            RiskManager(zustand=FluechtigerZustand()),
             _lage("+4.82"),
             T0,
             "signalwechsel",
@@ -795,7 +800,7 @@ def _lauf_mit_geld(tmp_path: Path, name: str, *, waehrung: str, betrag: str) -> 
     j.schreib("takt", nr=1, equity="50000")
     _buch_abgleichen(
         FakeVenue(),
-        RiskManager(),
+        RiskManager(zustand=FluechtigerZustand()),
         {weg.symbol: weg},
         {},
         j,

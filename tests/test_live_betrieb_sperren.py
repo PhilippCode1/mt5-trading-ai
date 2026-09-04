@@ -40,6 +40,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from mt5_trading_ai.execution.risiko_zustand import FluechtigerZustand
 from mt5_trading_ai.execution.risk_manager import RiskManager
 from mt5_trading_ai.execution.scheduler import TickResult
 from mt5_trading_ai.gates.criteria import CriteriaVerdict
@@ -152,6 +153,15 @@ class HaltVenue:
         self.halt_reason = None
         self.geloest += 1
 
+    def halt_grund_loesen(self, praefix: str) -> tuple[str, ...]:
+        """Wie ``Mt5Venue.halt_grund_loesen`` (D4): nur der eigene Anteil faellt."""
+        if self.halt_reason is None or not self.halt_reason.startswith(praefix):
+            return ()
+        geloest = (self.halt_reason,)
+        self.halt_reason = None
+        self.geloest += 1
+        return geloest
+
 
 @dataclass
 class SpiegelScheduler:
@@ -201,6 +211,8 @@ class ReconnectVenue:
     verbunden: int = 0
     uebernommen: int = 0
     geloest: int = 0
+    #: Ergebnis von ``adopt_book`` (D7); die Attrappe fuehrt kein Buch, also keines.
+    startabgleich: Any = None
 
     def is_healthy(self) -> bool:
         return self.gesund
@@ -216,6 +228,15 @@ class ReconnectVenue:
     def clear_halt(self) -> None:
         self.halt_reason = None
         self.geloest += 1
+
+    def halt_grund_loesen(self, praefix: str) -> tuple[str, ...]:
+        """Wie ``Mt5Venue.halt_grund_loesen`` (D4): nur der eigene Anteil faellt."""
+        if self.halt_reason is None or not self.halt_reason.startswith(praefix):
+            return ()
+        geloest = (self.halt_reason,)
+        self.halt_reason = None
+        self.geloest += 1
+        return geloest
 
 
 def _journal(tmp_path: Path) -> Journal:
@@ -285,8 +306,8 @@ def test_der_geloeste_halt_nennt_seinen_grund(
         venue.clear_halt()
         journal.schreib("halt_geloest", grund=venue.halt_reason)
 
-    ``clear_halt`` setzt ``_halt_reason`` auf ``None`` (``venue/mt5.py:1416``), der
-    Grund wurde also NACH dem Loeschen gelesen. Im Journal stand darum bei jedem
+    ``clear_halt`` setzte ``_halt_reason`` auf ``None`` (``venue/mt5.py:1416`` am
+    Stand 306bbaa), der Grund wurde also NACH dem Loeschen gelesen. Im Journal stand darum bei jedem
     einzelnen dieser Saetze ``null`` -- und damit war nicht mehr feststellbar, ob ein
     Reconcile-Ausfall oder ein Kontoausfall geendet hatte. Der Satz existierte nur
     noch, um zu belegen, dass geloest wurde.
@@ -395,7 +416,7 @@ def test_die_notbremse_greift_genau_auf_der_grenze(tmp_path: Path) -> None:
     assert (
         _notbremse(
             venue,
-            RiskManager(),
+            RiskManager(zustand=FluechtigerZustand()),
             j,
             equity_jetzt=Decimal("49000"),
             equity_start=Decimal("50000"),
@@ -423,7 +444,7 @@ def test_knapp_unter_der_grenze_greift_die_notbremse_nicht(tmp_path: Path) -> No
     assert (
         _notbremse(
             venue,
-            RiskManager(),
+            RiskManager(zustand=FluechtigerZustand()),
             j,
             equity_jetzt=Decimal("49000.50"),
             equity_start=Decimal("50000"),
@@ -451,7 +472,7 @@ def test_die_notbremse_stellt_wirklich_glatt(tmp_path: Path) -> None:
     assert (
         _notbremse(
             venue,
-            RiskManager(),
+            RiskManager(zustand=FluechtigerZustand()),
             j,
             equity_jetzt=Decimal("48000"),
             equity_start=Decimal("50000"),
@@ -483,7 +504,7 @@ def test_ohne_startequity_rechnet_die_notbremse_nicht(tmp_path: Path) -> None:
     assert (
         _notbremse(
             HaltVenue(),
-            RiskManager(),
+            RiskManager(zustand=FluechtigerZustand()),
             j,
             equity_jetzt=Decimal("-10"),
             equity_start=Decimal("0"),
@@ -508,7 +529,7 @@ def _takt(
     j = _journal(tmp_path)
     lage, gestoppt = takt(
         venue,
-        RiskManager(),
+        RiskManager(zustand=FluechtigerZustand()),
         SpiegelScheduler(venue),
         ["EURUSD", "XAUUSD"],
         CriteriaVerdict(passed=False, results=()),
@@ -768,7 +789,7 @@ def test_ein_misslungener_schluss_wird_nicht_als_schluss_verbucht(
         def submit_order(self, anfrage: Any) -> _Angenommen:
             raise VenueUnavailableError("Handelsserver antwortet nicht")
 
-    manager = RiskManager()
+    manager = RiskManager(zustand=FluechtigerZustand())
     manager.record_open_fill("XAUUSD", T0)
     j = _journal(tmp_path)
     assert (
