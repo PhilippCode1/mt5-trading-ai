@@ -1,0 +1,26 @@
+# Zweigdeckung je Geldpfad-Datei nach den Nachbesserungen der Gegenlese (Stand 3822bf7, 2026-09-04).
+# Schwelle 0,90 je Datei (A15), 14 Dateien (E-020). Ohne fremde Last gemessen; Kontoname redigiert.
+# Vorher (06-zweigdeckung-nach-t6.txt): venue/mt5.py 83,0 %, risk/waehrung.py 72,2 %, execution/reconcile.py 79,4 %.
+$ python tools/zweigdeckung.py --messen
+ZWEIGDECKUNG JE DATEI DES GELDPFADS
+==========================================================================
+Schwelle je Datei: 90% (Katalog A15)
+Datei                                      Zeilen   Zweige  fehlend
+venue/mt5.py                                99.8%   100.0%        0
+venue/protocol.py                          100.0%   100.0%        0
+execution/risk_manager.py                   99.7%    99.0%        1
+execution/schwebende_auftraege.py           96.3%    92.5%        3
+execution/cost_gate.py                     100.0%   100.0%        0
+risk/sizing.py                              94.6%    90.0%        4
+risk/stop_budget.py                         97.4%    94.4%        1
+risk/limits.py                             100.0%   100.0%        0
+risk/leverage.py                           100.0%   100.0%        0
+costs/model.py                             100.0%   100.0%        0
+gates/erkundung.py                          97.4%    93.8%        1
+risk/waehrung.py                           100.0%   100.0%        0
+execution/handelspause.py                   94.3%    90.6%        3
+execution/reconcile.py                     100.0%   100.0%        0
+Paket gesamt: Zeilen 95.0 %, Zweige 91.3 %
+ok — jede Datei des Geldpfads ueber der Schwelle.
+[rc=0]
+[exited with code 0]
