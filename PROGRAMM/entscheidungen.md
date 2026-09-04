@@ -300,3 +300,34 @@ ersetzt den Zählsatz von E-012 ausdrücklich.
 **Messung.** `python tools/check_docs_claims.py` vor dieser Änderung: 13/32; danach: 12/32
 (`PROGRAMM/vorregistrierung/00-HINWEIS.md` ist gesichert statt lebend); `python
 tools/archiv_manifest.py --pruefen` nennt vier Ordner. Tests: `tests/test_doku_menge.py`.
+
+## E-019 — Ein Katalogsymbol, das der Broker nicht führt, wird im Katalog als „nicht angeboten“ geführt, mit Messung; Adapter und Smoke lassen es benannt durch (2026-09-04)
+
+**Anlass (gemessen, T9 Lauf 1, `belege/09-smoke-lauf1.txt`).** Der lesende Smoke-Test am Demo-Terminal
+(Server MetaQuotes-Demo) löst sechs von sieben Katalogsymbolen auf; `BTCUSD` (Klasse crypto) nicht.
+Lesend geprüft: 12.455 Symbole in den Gruppen Forex, Indexes, Metals, Nasdaq; kein Krypto-CFD; `BTC`
+ist dort ein Nasdaq-ETF (Grayscale Bitcoin Mini Trust). `Mt5Venue.list_instruments` wirft laut Vertrag
+bei einem nicht auflösbaren Katalogsymbol (`UnknownInstrumentError`), der Smoke endet mit Exit 1 — A9
+ist an diesem Broker so nicht erreichbar.
+
+**Kriterium.** Der Katalog ist die belegte Quelle des Universums; ein Symbol still wegzulassen ist
+verboten (Vertragstext in `venue/mt5.py`). Die Datenlage muss aber die Wahrheit tragen: welche
+Katalogsymbole dieser Broker führt, ist eine Messung, kein Wunsch. Die Schwelle (jedes Katalogsymbol
+muss auflösbar sein) bleibt für alle Symbole, die als angeboten gelten.
+
+**Entscheidung.** Der Katalogeintrag bekommt das Feld `angebot`: `{"angeboten": false, "broker":
+"MetaQuotes-Demo", "gemessen_am": "2026-09-04", "beleg": "PROGRAMM/auftrag-01-fundament/belege/09-smoke-lauf1.txt"}`
+— nur für `BTCUSD`. `venue/catalog.py` liest das Feld (`CatalogEntry.angeboten`, Vorgabe `true`);
+`Mt5Venue.list_instruments` und der Smoke führen ein als nicht angeboten gemessenes Symbol als benannten
+Schritt „laut Katalog bei diesem Broker nicht angeboten (gemessen <Datum>)“ statt als Fehler; ein
+Symbol OHNE dieses Feld, das das Terminal nicht auflöst, bleibt ein Fehler (Vertrag unverändert).
+Ein Symbol mit `angeboten: false`, das das Terminal DOCH auflöst, ist ebenfalls ein Fehler (die Messung
+ist dann veraltet). Kosten-, Hebel- und ATR-Daten von `BTCUSD` bleiben im Katalog (Auftrag 3 entscheidet
+über das Universum).
+
+**Verworfen.** (a) `BTCUSD` löschen — greift in das Universum ein (Auftrag 3) und in eingefrorene
+Belege (Kostentor-Ausgabe). (b) Den Smoke das Symbol still überspringen lassen — genau das verbietet der
+Vertrag. (c) Anderen Broker/Server wählen — Haltepunkt (Broker/Klasse), nicht meine Entscheidung.
+
+**Umsetzung.** Nach dem Einspielen der T6-Familien (berührt `venue/mt5.py`), mit Eichfall rot/grün
+(`tests/eichfall_katalog_angebot.py`) und Smoke-Lauf 2 (`belege/09-smoke.txt`). Bis dahin ist A9 rot.
