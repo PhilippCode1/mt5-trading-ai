@@ -10,6 +10,9 @@ Genau dort entscheidet sich, ob eine Order bei *exakt* dem Grenzwert noch durchg
 die Stelle, an der ein Fehler auf einem Handelskonto Geld kostet und beim Testen mit
 runden Zahlen nie auffaellt.
 
+Ein dreizehnter Fall kam aus dem Lauf danach dazu (``risk_manager.py:605``: das
+Nachziehen des juengeren Zeitstempels).
+
 Jeder Fall hier setzt den Wert **auf** die Grenze und sichert die Antwort zu, die nur
 das unveraenderte Programm gibt. Belegt: jede Zusicherung wurde gegen ihren Mutanten
 gefahren (Beleg ``06-mutationsgrenzen.txt``); ohne sie bleibt die Sonde gruen.
@@ -40,7 +43,7 @@ from typing import Any
 import pytest
 from mt5_trading_ai.execution.handelspause import wochenbloecke
 from mt5_trading_ai.execution.reconcile import PositionBook
-from mt5_trading_ai.execution.risiko_zustand import FluechtigerZustand
+from mt5_trading_ai.execution.risiko_zustand import FluechtigerZustand, RisikoLage
 from mt5_trading_ai.execution.risk_manager import RiskManager, RiskPolicy
 from mt5_trading_ai.gates.erkundung import entscheide_erkundung
 from mt5_trading_ai.risk.limits import AccountSnapshot, LossLimits, evaluate_limits
@@ -336,3 +339,36 @@ def test_der_spread_eines_symbols_unter_eins_erreicht_die_risikoschicht() -> Non
     assert gesehen[0] == pytest.approx(Decimal("2.3529"), abs=Decimal("0.001")), (
         f"Spread bei mid 0,85: {gesehen[0]} -- mit dem Mutanten waere er 0"
     )
+
+
+# --------------------------------------------------------------------------- #
+# execution/risk_manager.py:605 -- 'not' davor: der juengere Zeitstempel gewinnt #
+# --------------------------------------------------------------------------- #
+def test_der_juengere_letzte_trade_gewinnt_beim_nachziehen() -> None:
+    """``_nachziehen`` holt den Stand eines zweiten Prozesses in den Speicher --
+    ausschliesslich in die strenge Richtung. Fuer den letzten Trade heisst streng:
+    der JUENGERE Zeitstempel, denn er haelt die Drossel laenger geschlossen.
+
+    Mit einem ``not`` vor der Bedingung uebernaehme der Lauf den AELTEREN Stempel und
+    liesse ein Symbol ohne Eintrag ganz aus -- die Abkuehlzeit liefe dann zu frueh ab,
+    und der naechste Auftrag ginge vor der Zeit raus.
+    """
+    kern = RiskManager(zustand=FluechtigerZustand(), policy=RiskPolicy())
+    kern._last_trade_at["EURUSD"] = JETZT
+    kern._last_trade_at["XAUUSD"] = JETZT
+
+    kern._nachziehen(
+        RisikoLage(
+            letzter_trade_at={
+                "EURUSD": JETZT + timedelta(minutes=5),  # juenger: gewinnt
+                "XAUUSD": JETZT - timedelta(minutes=5),  # aelter: verliert
+                "US500": JETZT,  # noch unbekannt: wird uebernommen
+            }
+        )
+    )
+
+    assert kern._last_trade_at == {
+        "EURUSD": JETZT + timedelta(minutes=5),
+        "XAUUSD": JETZT,
+        "US500": JETZT,
+    }

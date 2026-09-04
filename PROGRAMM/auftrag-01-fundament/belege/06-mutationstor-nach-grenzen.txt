@@ -1,0 +1,18 @@
+# Mutationstor nach den Grenzfaellen (Stand fbcdbdd + elfter Fall, 2026-09-04).
+# Schwellen: Katalog 1,0 -- Gesamt 0,90 bei >= 50 Sonden (A4, A17). 73 Sonden ueber 14 Geldpfad-Dateien (E-020).
+# Vorher (Lauf vom selben Tag): Gesamt 0,836 -- Katalog 13/13, erzeugt 48/60, zwoelf Ueberlebende.
+$ python tools/mutationstor.py --parallel 3
+   28/73  execution/risk_manager.py:605:15:not-ergaenzt UEBERLEBT  542.0 s  [21 Testdateien (Deckung)]
+           UEBERLEBT -- kein Test hat es bemerkt
+Katalog:  13/13 getoetet, Toetungsrate: 1.000 (Schwelle 1.0)
+Erzeugt:  59/60 getoetet, Toetungsrate: 0.983
+Gesamt:   72/73 getoetet, Toetungsrate: 0.986 (Schwelle 0.9 bei >= 50 Sonden)
+ok — jede Schwelle gehalten.
+
+# Die eine Ueberlebende ist danach geschlossen: risk_manager.py:605 zieht beim Nachziehen
+# den JUENGEREN Zeitstempel des letzten Trades nach (die Drossel bleibt laenger zu). Mit dem
+# 'not' davor uebernaehme der Lauf den aelteren und liesse ein unbekanntes Symbol ganz aus.
+# tests/test_mutationsgrenzen.py::test_der_juengere_letzte_trade_gewinnt_beim_nachziehen;
+# gegen den Mutanten gefahren: '2 failed, 9 passed' -- getoetet.
+# Erwartung fuer den naechsten vollen Lauf: 73/73 = 1,000. Der Lauf dauert unter Last rund
+# 45 min; er steht als naechste Messung an und wird hier nachgetragen.
