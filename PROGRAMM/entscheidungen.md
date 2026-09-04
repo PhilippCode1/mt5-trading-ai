@@ -8,11 +8,11 @@ Altstands (`archiv/`).
 
 ## E-001 — Das Programm läuft im bestehenden Repository `PhilippCode1/mt5-trading-ai`, Zweig `master` (2026-09-03)
 
-**Entscheidung.** Auftrag 1 und alle folgenden arbeiten in `C:\Users\Acer\mt5_trading_ai`
+**Entscheidung.** Auftrag 1 und alle folgenden arbeiten in `C:\Users\<konto>\mt5_trading_ai`
 (origin PhilippCode1/mt5-trading-ai, master, Bewertungsstand 306bbaa). Kein neues
 Repository, keine importierte Historie.
 
-**Messung.** Die Sitzung startete in `C:\Users\Acer\OneDrive\Documents\Cursor1\mt5-trading-ai`;
+**Messung.** Die Sitzung startete in `C:\Users\<konto>\OneDrive\Documents\Cursor1\mt5-trading-ai`;
 das ist der Altbestand `bitget-btc-ai` (Zweig `main`, Remote PhisoLive/bitget-btc-ai,
 122 Commits, kein gemeinsamer Vorfahr mit 306bbaa — `git merge-base` leer). Jeder Befund
 D1–D8 der Bewertung verweist auf Dateien, die nur unter `mt5_trading_ai/` existieren.

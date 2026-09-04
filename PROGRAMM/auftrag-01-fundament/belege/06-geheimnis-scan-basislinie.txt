@@ -1,0 +1,65 @@
+# Geheimnis-Scan (Katalog A5): Basislinie .secrets.baseline -- Herkunft, Einordnung, Pruefung je Klasse. Stand 1c272fe, Index mit dem Patch dieser Familie.
+# Vorarbeit (97ee206): 125 Eintraege. Dieser Stand: 133 Eintraege (8 neu, 0 weggefallen), erzeugt mit
+#   git add -A && python tools/geheimnis_scan.py --basislinie-schreiben   -> "125 Eintraege uebernommen, 8 neu als 'ungeprueft'"
+#   python PROGRAMM/auftrag-01-fundament/belege/06-geheimnis-scan-basislinie.py -> "Eintraege: 133; eingeordnet: 133; offen: 0"
+# Ein Eintrag = (Blob-SHA des Objekts, Gattung, Abdruck des Fundtextes). Er gilt nur fuer genau dieses Objekt; aendert sich die Datei,
+# ist das ein neues Objekt, und der Fund ist neu (rot; Eichfall test_basislinie_deckt_genau_dieses_objekt und 06-geheimnis-scan-rot.txt Teil B).
+
+## 1) Zaehlung: Fundstellen gegen Eintraege (Triage-Skript im Scratchpad, dieselben Funktionen wie das Werkzeug; Fundtexte nur dort gelesen)
+Objekte 1551 (1529 Blobs im Verlauf + 22 eigene Objekte des Index); Fundstellen 181 = 84 detect-secrets + 97 Muster; Schluessel 133 = Eintraege 133.
+  Klasse         Eintraege  Fundstellen   (Fundstellen > Eintraege, weil derselbe Fundtext im selben Objekt mehrfach steht:
+  pruefsumme        74         74          eine Kontonummer auf 6 Zeilen einer Testdatei ist EIN Schluessel; die Ausgabe des
+  testdatum         47         88          Werkzeugs "bekannte Funde je Klasse: testdatum 88" zaehlt Fundstellen, die Basislinie Schluessel)
+  adresse-lokal     12         19
+Werkzeug (Lauf B in 06-geheimnis-scan-laufzeit.txt, vor der Umordnung von LAUF_ROH nach testdatum): "Basislinie .secrets.baseline:
+133 Eintraege, 133 verwendet, 0 ohne Fund im Repo; bekannte Funde je Klasse: adresse-lokal 19, pruefsumme 75, testdatum 87" --
+kein Eintrag verwaist, kein Fund ungedeckt. Im --single-branch-Klon (Eichfall) sind 2 der 133 Eintraege "ohne Fund im Repo":
+zwei Blob-Versionen von tests/test_stufe10_betrieb.py liegen nur auf Zweigen paralleler Worktrees, die rev-list --all im
+geteilten Objektlager sieht, der Klon nicht. Ein verwaister Eintrag deckt nichts und schwaecht das Tor nicht.
+
+## 2) Was in jeder Klasse gemeldet wird (jede der 181 Fundstellen gelesen; Fundtexte liegen nicht im Repo)
+pruefsumme (74 Eintraege = 74 Fundstellen, alle Gattung "detect-secrets: Hex High Entropy String", d. h. ein in Anfuehrungszeichen
+  stehender Hex-String mit Entropie > 3,0):
+  34 x Feld checksum/bars_checksum (SHA-256, 64 Hex) in config/reihen/*.manifest.json (15 Dateien x 2 Blob-Versionen),
+       config/reihen_unabhaengig/*.manifest.json (2), tests/fixtures/*.manifest.json (2);
+  27 x code_commit (Git-SHA-1, 40 Hex) und data_checksum (SHA-256) in Versuchsregister-Abzuegen (AUFTRAG/stufen/03-simulator/belege/
+       06-trials-abzug.jsonl nur im Verlauf 11, archiv/AUFTRAG/... 12, archiv/ABSCHLUSS-3a/07-AUSGABEN/trials.jsonl 4);
+  13 x in Tests festgenagelte Pruefsummen: PINNED_CHECKSUM in test_e2e_smoke.py (2 Versionen), test_edge_test_cli.py (2),
+       test_multi_instrument_edge.py (3), SHA-256-Erwartungswerte in test_aufloesung_werkzeug.py (6).
+  Urteil: Pruefsummen und Kennungen oeffnen keinen Zugang; die Daten dazu liegen selbst im Repo.
+testdatum (47 Eintraege = 88 Fundstellen):
+   1 Eintrag / 1 Fundstelle: LAUF_ROH in tests/test_stufe5_ausfuehrung.py:443 (32 Hex, die Ziffernfolge 0-9 a-f zweimal, Platzhalter des
+       Redaktionstests; von der Vorarbeit-Regel als pruefsumme gefuehrt, hier mit eigener Regel als testdatum eingeordnet).
+  32 Eintraege / 73 Fundstellen Gattung "Muster: Kontonummer (account/konto = 6-12 Ziffern)": genau drei Zahlen, 50123456 (KONTO-Konstante,
+       account_id=, konto_id=), 99887766 und 11223344 (konto= in test_risiko_zustand.py), in tests/test_risiko_zustand*.py,
+       tests/test_risikozustand_eichfaelle.py, tests/test_stufe10_betrieb.py (7 Blob-Versionen), tools/wiederanlaufprobe.py (2 Versionen);
+       Waehrung dort USD (Demokonto: EUR); tests/test_risiko_zustand_geheimnis.py fuehrt 50123456 ausdruecklich als Beispiel-Login.
+   5 Eintraege / 5 Fundstellen: dieselben Testzeilen zitiert im Messprotokoll der Bewertung (PROGRAMM/eingang/pruef_ausgaben/
+       05_tool_geheimnis_scan_mit_detect_secrets.txt, ein Objekt, 26 Fundzeilen mit denselben drei Zahlen -> 5 Schluessel).
+   5 Eintraege / 5 Fundstellen: erfundene Commit-Kennung (16 Hex, Wortspiel c0ffee...) in tests/test_ereignisstudie_werkzeug.py:137 (monkeypatch
+       von _code_commit; 5 Blob-Versionen).
+   4 Eintraege / 4 Fundstellen: PBKDF2-Abdruck (64 Hex) und Salz (32 Hex) der Kontobindung in risikozustand.json (belege/03-nachstellung
+       und PROGRAMM/eingang/.../nachproben), erzeugt von pruefung.py gegen ein Fake-Terminal mit login=1 -- Abdruck des Beispiel-Logins 1.
+  Urteil: erfunden. Gegenprobe gegen die Betriebsjournale (C:\Users\<konto>\mt5_trading_ai\betrieb\, 27 Dateien, nur gelesen, nichts
+  zitiert; Scratch-Skript): keine der drei Zahlen kommt in irgendeiner der 27 Dateien vor (0 Vorkommen). Die Journale tragen die
+  Kontonummer nicht im Klartext (0 Treffer des Kontonummern-Musters), also bleibt der letzte Abgleich mit der Nummer im Terminal
+  Philipps Blick -- die Vorarbeit hatte ihn als offen gefuehrt; die Belegung "nicht in den Journalen" ist neu.
+adresse-lokal (12 Eintraege = 19 Fundstellen, Gattung "Muster: IP-Adresse mit Port"): Loopback 127.0.0.1 mit Port 8765 in
+  tools/oberflaeche.py:32 (9 Blob-Versionen, Werkzeug in T5 geloescht), mit Port 18765 in zwei Protokollen der Bewertung, und 7 Zitate im Scan-Protokoll der
+  Bewertung (ein Objekt). Urteil: Loopback, kein erreichbarer Dienst.
+Keine Fundstelle der Gattungen Passwort, API-Schluessel/Token, PEM, Broker-Server, AWS, Slack/GitHub, MT5-Login in 1551 Objekten.
+
+## 3) Die 8 neuen Eintraege gegenueber der Vorarbeit (Objekte, die seit 97ee206 dazukamen; Skript neue_eintraege.py im Scratchpad)
+  testdatum   tests/test_risiko_zustand.py:52, :476, :505 (neue Blob-Version b336fa57, T6 Familie Stub/Skip-Tor)
+  testdatum   tests/test_stufe10_betrieb.py:510, :516, :620, :626 (zwei neue Blob-Versionen 044a58d8, 995bed17; T6-Zweige)
+  testdatum   tests/test_stufe5_ausfuehrung.py:443 (neue Blob-Version a73bafe0; LAUF_ROH des Redaktionstests)
+7 der 8 fallen unter bestehende Regeln des Einordnungsskripts (Kontonummern-Muster in tests/); fuer LAUF_ROH eine eigene Regel
+(Ausgabe des Skripts nach der Regel: "Eintraege: 133; eingeordnet: 133; offen: 0 / adresse-lokal 12, pruefsumme 74, testdatum 47").
+
+## 4) Bindung, Gueltigkeit, Pflege
+Die Basislinie selbst wird nicht gescannt (sie besteht aus 40-Hex-Objekt-IDs und 16-Hex-Abdruecken und waere sonst ihr eigener Fund);
+ihre Begruendungen laufen durch alle 9 Muster (Eichfall: IP:Port in einer Begruendung -> Exit 2). Ein Eintrag der Klasse
+"ungeprueft" sperrt (Exit 2), eine unbekannte Klasse sperrt, ein Eintrag mit anderen Feldern sperrt.
+Nach dem Zusammenbau aller T6-Patches entstehen neue Blob-Versionen von Testdateien mit denselben Beispiel-Kontonummern; dann
+einmal: git add -A; python tools/geheimnis_scan.py --basislinie-schreiben; python PROGRAMM/auftrag-01-fundament/belege/
+06-geheimnis-scan-basislinie.py -- jeder Eintrag, den keine Regel trifft, bleibt "ungeprueft" und sperrt, bis jemand ihn liest.

@@ -1,0 +1,175 @@
+==============================================================================
+GRUENER EICHFALL Familie Zweigdeckung-Tests -- risk/leverage.py, Stand NACH den neuen Tests (1c272fe + tests/test_zweige_leverage.py), 2026-09-04
+==============================================================================
+Waechter: A15 (Zweigdeckung je Geldpfad-Datei >= 90 %). Gegenstand: risk/leverage.py.
+Messung im Worktree auf 1c272fe MIT den zwei neuen Testdateien; sonst unveraendert. Coverage-Datendatei
+per COVERAGE_FILE ausserhalb des Arbeitsbaums. Last waehrend des Laufs: 36 python-Prozesse laut tasklist zu Beginn (mehrere Agenten parallel); Laufzeit 791,0 s.
+
+## 1. Die neue Testdatei allein
+$ PYTHONDONTWRITEBYTECODE=1 PYTHONIOENCODING=utf-8 python -m pytest -v -p no:cacheprovider tests/test_zweige_leverage.py
+============================= test session starts =============================
+platform win32 -- Python 3.11.7, pytest-8.3.4, pluggy-1.6.0 -- C:\Users\<konto>\AppData\Local\Programs\Python\Python311\python.exe
+Waechter A2 (tests/conftest.py): Skip = Fehlschlag.
+Waechter A10 (tests/conftest.py): Zustandsordner C:\Users\<konto>\AppData\Local\mt5_trading_ai\risiko (vorhanden: ja, 1 Dateien) und Arbeitsbaum C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_f2d56c67-47d-5 bleiben unveraendert.
+rootdir: C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_f2d56c67-47d-5
+configfile: pyproject.toml
+plugins: anyio-4.8.0, base-url-2.1.0, cov-6.0.0, playwright-0.7.2
+collecting ... collected 21 items
+
+tests/test_zweige_leverage.py::test_das_geruest_laedt_mit_einer_klasse PASSED [  4%]
+tests/test_zweige_leverage.py::test_pfadsuche_ohne_treffer_faellt_auf_die_paketkopie_zurueck_und_laedt_keinen_default PASSED [  9%]
+tests/test_zweige_leverage.py::test_fehlendes_pflichtfeld_ist_ein_benannter_ladefehler[policy_id] PASSED [ 14%]
+tests/test_zweige_leverage.py::test_fehlendes_pflichtfeld_ist_ein_benannter_ladefehler[policy_version] PASSED [ 19%]
+tests/test_zweige_leverage.py::test_fehlendes_pflichtfeld_ist_ein_benannter_ladefehler[valid_from] PASSED [ 23%]
+tests/test_zweige_leverage.py::test_fehlendes_pflichtfeld_ist_ein_benannter_ladefehler[verified_on] PASSED [ 28%]
+tests/test_zweige_leverage.py::test_fehlendes_pflichtfeld_ist_ein_benannter_ladefehler[classes] PASSED [ 33%]
+tests/test_zweige_leverage.py::test_classes_leer_oder_kein_objekt_ist_ladefehler[leeres-objekt] PASSED [ 38%]
+tests/test_zweige_leverage.py::test_classes_leer_oder_kein_objekt_ist_ladefehler[liste] PASSED [ 42%]
+tests/test_zweige_leverage.py::test_classes_leer_oder_kein_objekt_ist_ladefehler[zeichenkette] PASSED [ 47%]
+tests/test_zweige_leverage.py::test_classes_leer_oder_kein_objekt_ist_ladefehler[null] PASSED [ 52%]
+tests/test_zweige_leverage.py::test_anlageklasse_ohne_max_leverage_ist_ladefehler[zahl-statt-objekt] PASSED [ 57%]
+tests/test_zweige_leverage.py::test_anlageklasse_ohne_max_leverage_ist_ladefehler[objekt-ohne-deckel] PASSED [ 61%]
+tests/test_zweige_leverage.py::test_anlageklasse_ohne_max_leverage_ist_ladefehler[null] PASSED [ 66%]
+tests/test_zweige_leverage.py::test_anlageklasse_ohne_max_leverage_ist_ladefehler[liste] PASSED [ 71%]
+tests/test_zweige_leverage.py::test_max_leverage_unter_eins_ist_ladefehler[0] PASSED [ 76%]
+tests/test_zweige_leverage.py::test_max_leverage_unter_eins_ist_ladefehler[-1] PASSED [ 80%]
+tests/test_zweige_leverage.py::test_max_leverage_unter_eins_ist_ladefehler[-30] PASSED [ 85%]
+tests/test_zweige_leverage.py::test_max_leverage_eins_ist_die_untere_grenze_und_klammert PASSED [ 90%]
+tests/test_zweige_leverage.py::test_unlesbarer_wunsch_faellt_auf_den_default_nicht_auf_das_maximum PASSED [ 95%]
+tests/test_zweige_leverage.py::test_as_dict_traegt_jedes_feld_der_entscheidung PASSED [100%]
+
+============================= 21 passed in 25.63s =============================
+[exit=0]
+
+## 2. Suite ohne slow unter coverage --branch (Stand nachher)
+$ PYTHONDONTWRITEBYTECODE=1 PYTHONIOENCODING=utf-8 COVERAGE_FILE=<tmp>/cov-nachher2 python -m coverage run --branch --source=mt5_trading_ai -m pytest -q -p no:cacheprovider -m "not slow"
+FAILED tests/eichfall_werkzeuge.py::test_help_antwortet_mit_exit_0_und_usage[check_doc_numbers.py]
+FAILED tests/eichfall_werkzeuge.py::test_help_antwortet_mit_exit_0_und_usage[check_docs_claims.py]
+FAILED tests/eichfall_werkzeuge.py::test_help_antwortet_mit_exit_0_und_usage[geheimnis_scan.py]
+FAILED tests/eichfall_werkzeuge.py::test_ohne_terminal_eine_benannte_zeile_und_exit_2[live_betrieb]
+FAILED tests/test_readme_numbers.py::test_readme_test_function_count_matches_code
+5 failed, 1627 passed, 1 deselected in 790.97s (0:13:10)
+real	13m29.037s
+exit=1
+(4 der 5 FAILED sind dieselben bekannten roten Faelle anderer Familien wie vorher; kein Skip, kein Error.
+Der fuenfte, tests/test_readme_numbers.py::test_readme_test_function_count_matches_code, ist die Folge
+dieser Familie: der README-Kennzahlenblock nennt 1361 Testfunktionen, der Baum hat mit den zwei neuen
+Dateien 1378 (9 + 8 = 17 Funktionen mehr; 'assert 1361 == 1378'). README.md und der Kennzahlenblock sind
+dieser Familie nicht zugewiesen -> unter "offen".
+Zweiter eigener Fehler: der erste Nachher-Lauf (cov-nachher) wurde abgebrochen und wiederholt, weil ich
+sein Protokoll waehrend des Laufs mit einer Platzhalterkopie fuer einen Probelauf des Beleg-Skripts
+ueberschrieben hatte -- Protokoll unbrauchbar, Lauf mit neuen Dateinamen neu gefahren.)
+
+$ COVERAGE_FILE=<tmp>/cov-nachher2 python -m coverage json --include "mt5_trading_ai/risk/leverage.py,mt5_trading_ai/costs/model.py,mt5_trading_ai/venue/mt5.py" -o <tmp>/cov-nachher.json
+vorher : risk/leverage.py: Zweige 25/30 = 83.3 %  (< 90 %: ROT); Zeilen 90.5 %, fehlende Zeilen [81, 111, 137, 153, 156, 159, 252, 253]
+nachher: risk/leverage.py: Zweige 30/30 = 100.0 %  (>= 90 %: GRUEN); Zeilen 100.0 %, fehlende Zeilen []
+fehlende Zweige nachher (Zeile -> Ziel):
+  (keine)
+
+## 3. Das heutige Tor tools/zweigdeckung.py ueber den Bericht nachher
+$ python tools/zweigdeckung.py --bericht <tmp>/cov-nachher-voll.json
+==========================================================================
+ZWEIGDECKUNG JE DATEI DES GELDPFADS
+==========================================================================
+Schwelle je Datei: 80%
+
+Datei                                      Zeilen   Zweige
+venue/mt5.py                                87.8%    80.8%
+venue/protocol.py                          100.0%   100.0%
+execution/risk_manager.py                   99.5%    98.2%
+execution/schwebende_auftraege.py           93.3%    92.9%
+execution/cost_gate.py                     100.0%   100.0%
+risk/sizing.py                              94.6%    90.0%
+risk/stop_budget.py                         97.4%    94.4%
+risk/limits.py                             100.0%   100.0%
+risk/leverage.py                           100.0%   100.0%
+costs/model.py                             100.0%   100.0%
+gates/erkundung.py                          97.4%    93.8%
+
+Paket gesamt: Zeilen 93.5 %, Zweige 88.4 %
+ok — jede Datei des Geldpfads ueber der Schwelle.
+[exit=0]
+
+## 4. Mutation, Bezugspunkt: unmutiert und nach Wiederherstellung gruen (Kopie aus git archive HEAD)
+## Unmutiert (Bezugspunkt, muss gruen sein)
+$ python -m pytest -q -p no:cacheprovider tests/test_zweige_leverage.py   # [unmutiert]
+21 passed
+[exit=0]
+$ python -m pytest -q -p no:cacheprovider tests/test_zweige_costs_model.py   # [unmutiert]
+17 passed
+[exit=0]
+
+## Nach Wiederherstellung (muss wieder gruen sein)
+$ python -m pytest -q -p no:cacheprovider tests/test_zweige_leverage.py   # [wiederhergestellt]
+21 passed
+[exit=0]
+$ python -m pytest -q -p no:cacheprovider tests/test_zweige_costs_model.py   # [wiederhergestellt]
+17 passed
+[exit=0]
+
+## Quellen der Kopie gegen den Worktree (erwartet: keine Abweichung)
+leverage.py: identisch
+model.py: identisch
+
+## Anhang (nebenbei gemessen, nicht diese Familie): venue/mt5.py, fehlende Zweige je Funktion
+Aus denselben Berichten (Hilfsskript ordnet jede fehlende Zweigquelle der umschliessenden Funktion zu).
+vorher (cov-vorher2.json):
+venue/mt5.py: Zweige 223/276 = 80.8 %
+  initialize: 8 Zweige: 2193->2194, 2193->2195, 2195->2196, 2195->2197, 2197->2198, 2197->2199, 2199->2200, 2199->2201
+  _fuellart: 5 Zweige: 2121->2123, 2123->2124, 2123->2125, 2125->2126, 2125->2127
+  order_send: 5 Zweige: 2509->2510, 2511->2516, 2542->2543, 2557->2558, 2615->2621
+  rates: 4 Zweige: 2372->2373, 2372->2374, 2376->2377, 2376->2391
+  _sitzungsfenster: 3 Zweige: 264->265, 270->271, 274->275
+  _require_write: 3 Zweige: 2305->2306, 2310->2311, 2314->2315
+  _stops_stehen: 3 Zweige: 2766->2767, 2770->2771, 2781->2782
+  shutdown: 2 Zweige: 2204->-2203, 2204->2205
+  _zu_server: 2 Zweige: 2282->2283, 2282->2284
+  tick: 2 Zweige: 2359->2360, 2359->2361
+  _schwebeakte_waehlen: 1 Zweige: 362->367
+  konto_maengel: 1 Zweige: 445->446
+  connect: 1 Zweige: 572->573
+  submit_order: 1 Zweige: 1088->1102
+  _reduces_position: 1 Zweige: 1202->1203
+  kurs: 1 Zweige: 1387->1388
+  _enforce_leverage: 1 Zweige: 1395->1396
+  _enforce_cost_gate: 1 Zweige: 1435->1436
+  _enforce_risk: 1 Zweige: 1483->1484
+  _validate_volume: 1 Zweige: 1531->-1517
+  reconcile: 1 Zweige: 1748->1749
+  apply_private_event: 1 Zweige: 1781->1782
+  _ohne_fehlercode: 1 Zweige: 1950->1951
+  _send_gefuellt: 1 Zweige: 1994->1995
+  positions: 1 Zweige: 2407->2408
+  account: 1 Zweige: 2426->2427
+  Summe fehlend: 53
+
+nachher (cov-nachher.json):
+venue/mt5.py: Zweige 223/276 = 80.8 %
+  initialize: 8 Zweige: 2193->2194, 2193->2195, 2195->2196, 2195->2197, 2197->2198, 2197->2199, 2199->2200, 2199->2201
+  _fuellart: 5 Zweige: 2121->2123, 2123->2124, 2123->2125, 2125->2126, 2125->2127
+  order_send: 5 Zweige: 2509->2510, 2511->2516, 2542->2543, 2557->2558, 2615->2621
+  rates: 4 Zweige: 2372->2373, 2372->2374, 2376->2377, 2376->2391
+  _sitzungsfenster: 3 Zweige: 264->265, 270->271, 274->275
+  _require_write: 3 Zweige: 2305->2306, 2310->2311, 2314->2315
+  _stops_stehen: 3 Zweige: 2766->2767, 2770->2771, 2781->2782
+  shutdown: 2 Zweige: 2204->-2203, 2204->2205
+  _zu_server: 2 Zweige: 2282->2283, 2282->2284
+  tick: 2 Zweige: 2359->2360, 2359->2361
+  _schwebeakte_waehlen: 1 Zweige: 362->367
+  konto_maengel: 1 Zweige: 445->446
+  connect: 1 Zweige: 572->573
+  submit_order: 1 Zweige: 1088->1102
+  _reduces_position: 1 Zweige: 1202->1203
+  kurs: 1 Zweige: 1387->1388
+  _enforce_leverage: 1 Zweige: 1395->1396
+  _enforce_cost_gate: 1 Zweige: 1435->1436
+  _enforce_risk: 1 Zweige: 1483->1484
+  _validate_volume: 1 Zweige: 1531->-1517
+  reconcile: 1 Zweige: 1748->1749
+  apply_private_event: 1 Zweige: 1781->1782
+  _ohne_fehlercode: 1 Zweige: 1950->1951
+  _send_gefuellt: 1 Zweige: 1994->1995
+  positions: 1 Zweige: 2407->2408
+  account: 1 Zweige: 2426->2427
+  Summe fehlend: 53
+

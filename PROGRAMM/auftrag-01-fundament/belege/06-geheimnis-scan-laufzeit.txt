@@ -1,0 +1,50 @@
+# Geheimnis-Scan (Katalog A5): Laufzeit vorher/nachher. Windows 11, Python 3.11.7, detect-secrets 1.5.0, git 2.49.0, 16 logische Kerne.
+# Alle Zahlen dieses Belegs sind unter LAST gemessen: waehrend jeder Messung liefen fremde Agenten auf demselben Rechner
+# (CPU-Auslastung 97-100 % laut Win32_Processor.LoadPercentage vor bzw. waehrend der Laeufe; 33 python-Prozesse, darunter
+# drei pytest-Suiten mit coverage, tools/mutationstor.py --parallel 3, tools/zweigdeckung.py --messen anderer Familien).
+# Laufzeiten unter Last sind untereinander nicht vergleichbar; die Zahlen ohne Last sind OFFEN (kein lastfreies Fenster in
+# dieser Sitzung). Bezugsgroessen: Objekte = Blobs im Verlauf + eigene Objekte des Arbeitsbaums; verfolgte Dateien = git ls-files.
+
+## VORHER: alter Stand tools/geheimnis_scan.py (1c272fe, wortgleich 97ee206 -- "git log 97ee206..1c272fe -- tools/geheimnis_scan.py" ist leer):
+## 2 git-Aufrufe je Objekt (cat-file -t, cat-file blob) + detect-secrets als Kommandozeile ueber die verfolgten Dateien; Exit immer 0.
+$ python tools/geheimnis_scan.py        # alter Stand, im Worktree (Index mit dem Patch dieser Familie: 546 verfolgte Dateien)
+Gepruefte Objekte : 546 von Git verfolgte Dateien
+Funde             : 45
+Gepruefte Objekte : 1515 Blobs aus 145 Commits
+Funde (roh)       : 97
+Funde (bereinigt) : 60  [Vorlagen wie .env.example abgezogen]
+Gepruefte Objekte : 546 Dateien
+Funde             : 51
+ERGEBNIS: 193 Funde bei 546 verfolgten Dateien und 1515 Blobs im Verlauf.
+[exit=0] Dauer: 755.5 s   (Last: 97 % CPU vor dem Start; waehrend des Laufs 3 fremde pytest-Suiten; in den letzten 76 s zusaetzlich die
+                            11 schnellen Eichfaelle dieser Familie)
+Vorarbeit (97ee206, 4 fremde Agenten): 548.8 s, 180 Funde, Exit 0. T3 (306bbaa, 1284 Blobs, 127 Commits): 241 s, 129 Funde, Exit 0
+(belege/03-nachstellung/03-grundmessung-statisch-worktree.txt). Der Altstand liest jedes der 2218 bzw. hier 2300 Objekte aus
+rev-list --objects --all mit zwei Unterprozessen (rund 4.600 git-Aufrufe) und gibt bei 193 Funden Exit 0 zurueck.
+
+## NACHHER: neuer Stand (ein rev-list, ein cat-file --batch-check, ein cat-file --batch, ein hash-object --stdin-paths;
+## detect-secrets im Prozess (Pool ab 200 Objekten) ueber jedes Objekt genau einmal; Objekte je Blob-SHA zusammengefuehrt)
+Lauf A  $ python tools/geheimnis_scan.py --basislinie-schreiben     (HEAD 1c272fe, 146 Commits, 1529 Blobs, 554 verfolgte Dateien, 1551 Objekte)
+        Git-Lesen 7.6 s | detect-secrets 84 Funde 88.5 s | Muster 97 Funde 15.1 s | von aussen 112.8 s | Exit 0
+        (Last: 100 % CPU, parallel dazu die 11 schnellen Eichfaelle dieser Familie und die fremden Suiten)
+Lauf B  $ python tools/geheimnis_scan.py                            (derselbe Stand, Basislinie 133 Eintraege)
+        Git-Lesen 11.7 s | detect-secrets 84 Funde 211.9 s | Muster 97 Funde 11.5 s | von aussen 238.3 s | Exit 1 (12 Kontonamen im Tor lebend)
+        (Last: 100 % CPU, 33 python-Prozesse fremder Agenten, parallel dazu die Triage dieses Belegs -- ein zweiter Scan)
+Vorarbeit (97ee206, 4 fremde Agenten): 89.6 s / 108.9 s / 124.8 s / 111.4 s je Lauf (belege der Vorarbeit, dort 1401-1421 Objekte).
+
+Verhaeltnis unter vergleichbarer Last (beide Laeufe mit fremden Suiten, Lauf A gegen VORHER): 755.5 s -> 112.8 s, Faktor 6,7 bei
+gleichem Objektbestand; die Vorarbeit mass 548.8 s -> 89.6 s (Faktor 6,1). Der verbleibende Anteil ist detect-secrets selbst
+(88-212 s fuer 1551 Objekte, 22 MB, im 16er-Pool, je nach Last), nicht Git (7,6-11,7 s).
+Ziel "< 3 min ohne Last": mit 112,8 s unter Volllast (Lauf A) plausibel, aber NICHT gemessen -- offen, bis ein Lauf ohne fremde Last vorliegt.
+
+## Bausteine (Vorarbeit, Prototyp im Scratchpad, 2218 Objekte): rev-list 0,70 s; cat-file --batch-check 0,88 s; cat-file --batch 1,89 s
+## (21,7 MB); detect-secrets CLI ueber 510 Dateien 35,7 s; Prozess-Pool-Start unter Windows 23,0 s -> darum PARALLEL_AB = 200.
+
+## Nachtrag: Klon-Lauf mit geringerer Last (Eichfall Lauf 2, 06-geheimnis-scan-eichfall-pytest.txt; 1498 Objekte, --single-branch-Klon von HEAD 1c272fe)
+        Git-Lesen 3.3 s | detect-secrets 84 Funde 89.5 s | Muster 93 Funde 12.8 s | Dauer 106.4 s | Exit 1 (Kontonamen)
+        Last dabei (Win32_Processor.LoadPercentage / python-Prozesse): siehe Zeile darunter; die fremden Suiten waren zu diesem Zeitpunkt teils beendet.
+        Last kurz danach gemessen: 66 % CPU, 8 python-Prozesse (gegen 97-100 % und 29-33 waehrend VORHER und Lauf A/B).
+
+## Nachtrag Klon mit Patch (06-geheimnis-scan-gruen.txt), Last 66 % CPU / 8 python-Prozesse: Lauf 2b 1528 Objekte: --basislinie-schreiben 82,8 s;
+        Scan Git-Lesen 2,7 s | detect-secrets 63-64 s | Muster 7,8 s | Dauer 73,9 s | Exit 0. Lauf 1 (1521 Objekte, hoehere Last): 118,8 s.
+        Damit liegt der Scan bei geringer Last unter 3 min (73,9 s); ein Lauf ganz ohne fremde Last bleibt offen.

@@ -89,9 +89,9 @@ betrieb/ in .gitignore: True
 betrieb/ im Worktree vorhanden: False
 
 Windows-Pfad-Test (tests/test_risiko_zustand.py): Mechanik des Fehlschlags unter POSIX
-  Path('C:\\Users\\Test\\AppData\\Local').is_absolute() unter Windows: True
-  PurePosixPath('C:\\Users\\Test\\AppData\\Local').is_absolute() (Linux-Sicht): False
-  risiko_zustand.py:47: ``PurePosixPath("C:\\\\Users\\\\Test\\\\AppData\\\\Local").is_absolute()`` ist
+  Path('C:\\Users\\<konto>\\AppData\\Local').is_absolute() unter Windows: True
+  PurePosixPath('C:\\Users\\<konto>\\AppData\\Local').is_absolute() (Linux-Sicht): False
+  risiko_zustand.py:47: ``PurePosixPath("C:\\\\Users\\\\<konto>\\\\AppData\\\\Local").is_absolute()`` ist
   risiko_zustand.py:360: if not pfad.is_absolute():
   risiko_zustand.py:407: if roh and Path(roh).is_absolute():
   -> unter Linux faellt LOCALAPPDATA durch is_absolute() und der Fallback ~/.local/state greift

@@ -1,0 +1,107 @@
+==============================================================================
+ROTER EICHFALL Familie Zweigdeckung-Tests -- risk/leverage.py, Stand VOR den neuen Tests (1c272fe), 2026-09-04
+==============================================================================
+Waechter: A15 (Zweigdeckung je Geldpfad-Datei >= 90 %). Gegenstand: risk/leverage.py.
+Messung im Worktree auf 1c272fe OHNE tests/test_zweige_leverage.py (fuer diese Messung ausgelagert; git status sauber).
+Coverage-Datendatei per COVERAGE_FILE ausserhalb des Arbeitsbaums (Waechter A10). Last waehrend des
+Laufs: 24 python-Prozesse laut tasklist mitten im Lauf (mehrere Agenten parallel); Laufzeit 991,6 s; Laufzeiten sind darum nicht mit anderen Laeufen vergleichbar.
+
+## 1. Suite ohne slow unter coverage --branch (Stand vorher)
+$ PYTHONDONTWRITEBYTECODE=1 PYTHONIOENCODING=utf-8 COVERAGE_FILE=<tmp>/cov-vorher2 python -m coverage run --branch --source=mt5_trading_ai -m pytest -q -p no:cacheprovider -m "not slow"
+FAILED tests/eichfall_werkzeuge.py::test_help_antwortet_mit_exit_0_und_usage[check_doc_numbers.py]
+FAILED tests/eichfall_werkzeuge.py::test_help_antwortet_mit_exit_0_und_usage[check_docs_claims.py]
+FAILED tests/eichfall_werkzeuge.py::test_help_antwortet_mit_exit_0_und_usage[geheimnis_scan.py]
+FAILED tests/eichfall_werkzeuge.py::test_ohne_terminal_eine_benannte_zeile_und_exit_2[live_betrieb]
+4 failed, 1590 passed, 1 deselected in 991.62s (0:16:31)
+real	16m44.242s
+exit=1
+(Die 4 FAILED sind die bekannten roten Faelle anderer Familien: --help von check_doc_numbers.py,
+check_docs_claims.py, geheimnis_scan.py; Terminalzeile von live_betrieb.py. Kein Skip, kein Error.)
+
+$ python -m coverage json --include "mt5_trading_ai/risk/leverage.py,mt5_trading_ai/costs/model.py,mt5_trading_ai/venue/mt5.py" -o <tmp>/cov-vorher2.json
+risk/leverage.py: Zweige 25/30 = 83.3 %  (< 90 %: ROT); Zeilen 90.5 %, fehlende Zeilen [81, 111, 137, 153, 156, 159, 252, 253]
+fehlende Zweige (Zeile -> Ziel) und die Aussage des Zweigs:
+   106 -> 111  default_policy_path: kein config/<Datei> aufwaerts -> Rueckfall auf die Paketkopie
+   136 -> 137  load_policy: Pflichtfeld fehlt -> LeveragePolicyError 'ohne Pflichtfeld'
+   152 -> 153  load_policy: classes fehlt, leer oder kein Objekt -> 'ohne Anlageklassen'
+   155 -> 156  load_policy: Anlageklasse kein Objekt oder ohne max_leverage -> 'ohne max_leverage'
+   158 -> 159  load_policy: max_leverage < 1 -> 'mit max_leverage < 1'
+
+## 2. Das heutige Tor tools/zweigdeckung.py (Schwelle 0,80) ueber denselben Bericht
+$ python tools/zweigdeckung.py --bericht <tmp>/cov-vorher2-voll.json
+==========================================================================
+ZWEIGDECKUNG JE DATEI DES GELDPFADS
+==========================================================================
+Schwelle je Datei: 80%
+
+Datei                                      Zeilen   Zweige
+venue/mt5.py                                87.8%    80.8%
+venue/protocol.py                          100.0%   100.0%
+execution/risk_manager.py                   99.5%    98.2%
+execution/schwebende_auftraege.py           93.3%    92.9%
+execution/cost_gate.py                     100.0%   100.0%
+risk/sizing.py                              94.6%    90.0%
+risk/stop_budget.py                         97.4%    94.4%
+risk/limits.py                             100.0%   100.0%
+risk/leverage.py                            90.5%    83.3%
+costs/model.py                              92.6%    83.3%
+gates/erkundung.py                          97.4%    93.8%
+
+Paket gesamt: Zeilen 93.2 %, Zweige 87.9 %
+ok — jede Datei des Geldpfads ueber der Schwelle.
+[exit=0]
+
+Befund: das Tor sagt "ok" bei 83,3 %, weil MINDEST_ZWEIGDECKUNG = 0.80 unter A15 (0,90) liegt.
+tools/ ist nicht dieser Familie zugewiesen -> unter "offen".
+
+## 3. Mutation: der Test ist rot, wenn der Zweig weg ist (Kopie aus git archive HEAD + tests/test_zweige_leverage.py)
+$ bash mutation_lauf.sh   (Kopie unter <tmp>/kopie; Quelle mutiert, Test gefahren, Quelle wiederhergestellt)
+## Mutation L1 (Zweig 158->159 weg: max_leverage < 1 wird nicht abgewiesen): mt5_trading_ai/risk/leverage.py
+--- entfernt/ersetzt:
+    -         value = int(entry["max_leverage"])
+    -         if value < 1:
+    -             raise LeveragePolicyError(f"Anlageklasse {name!r} mit max_leverage < 1")
+--- durch:
+    +         value = int(entry["max_leverage"])
+mutiert: mt5_trading_ai\risk\leverage.py (3 Zeilen alt -> 1 Zeilen neu)
+$ python -m pytest -q -p no:cacheprovider tests/test_zweige_leverage.py   # [L1 (Zweig 158->159 weg: max_leverage < 1 wird nicht abgewiesen) (mutiert)]
+FAILED tests/test_zweige_leverage.py::test_max_leverage_unter_eins_ist_ladefehler[0]
+FAILED tests/test_zweige_leverage.py::test_max_leverage_unter_eins_ist_ladefehler[-1]
+FAILED tests/test_zweige_leverage.py::test_max_leverage_unter_eins_ist_ladefehler[-30]
+3 failed, 18 passed
+[exit=1]
+(Quelle wiederhergestellt)
+
+## Mutation L2 (Zweig 106->111 weg: erster Kandidat wird ungeprueft zurueckgegeben): mt5_trading_ai/risk/leverage.py
+--- entfernt/ersetzt:
+    -         candidate = parent / "config" / POLICY_FILENAME
+    -         if candidate.is_file():
+    -             return candidate
+--- durch:
+    +         candidate = parent / "config" / POLICY_FILENAME
+    +         return candidate
+mutiert: mt5_trading_ai\risk\leverage.py (3 Zeilen alt -> 2 Zeilen neu)
+$ python -m pytest -q -p no:cacheprovider tests/test_zweige_leverage.py   # [L2 (Zweig 106->111 weg: erster Kandidat wird ungeprueft zurueckgegeben) (mutiert)]
+FAILED tests/test_zweige_leverage.py::test_pfadsuche_ohne_treffer_faellt_auf_die_paketkopie_zurueck_und_laedt_keinen_default
+1 failed, 20 passed
+[exit=1]
+(Quelle wiederhergestellt)
+
+
+## 4. Eigener Fehler: der erste Messlauf war durch mich verunreinigt
+Der erste Lauf (COVERAGE_FILE=<tmp>/cov-vorher) lief, waehrend ich die zwei Testdateien in den
+Worktree schrieb und eine davon mit ruff format umformatierte. Waechter A10 hat das gemeldet:
+FAILED tests/eichfall_werkzeuge.py::test_help_antwortet_mit_exit_0_und_usage[check_doc_numbers.py]
+FAILED tests/eichfall_werkzeuge.py::test_help_antwortet_mit_exit_0_und_usage[check_docs_claims.py]
+FAILED tests/eichfall_werkzeuge.py::test_help_antwortet_mit_exit_0_und_usage[geheimnis_scan.py]
+FAILED tests/eichfall_werkzeuge.py::test_ohne_terminal_eine_benannte_zeile_und_exit_2[live_betrieb]
+ERROR tests/test_schreibpfad_wirkung.py::test_gefuellte_order_gilt_nicht_als_storniert
+ERROR tests/test_stufe5_ausfuehrung.py::test_die_aufzeichnung_traegt_keine_unredigierten_kennungen
+ERROR tests/test_stufe7_kaltstart.py::test_der_plausibilitaetsboden_liegt_echt_unter_der_annahme[gold]
+4 failed, 1590 passed, 1 deselected, 3 errors in 802.11s (0:13:22)
+real	13m28.810s
+exit=1
+(3 errors = A10: 'neu: tests\test_zweige_leverage.py.tmp...', 'neu: tests\test_zweige_costs_model.py',
+'geaendert: tests\test_zweige_costs_model.py'.) Die Deckungszahlen dieses Laufs waren identisch
+(risk/leverage.py: dieselben fehlenden Zweige), zaehlen aber nicht: eine Deckung aus einer roten Suite taugt
+nicht. Der Lauf oben (Abschnitt 1) ist die Wiederholung ohne Schreibzugriff.

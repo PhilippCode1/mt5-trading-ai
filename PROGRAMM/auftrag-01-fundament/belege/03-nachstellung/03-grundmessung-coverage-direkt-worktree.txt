@@ -3,9 +3,9 @@ $ python -m coverage run --branch --source=mt5_trading_ai -m pytest -q -p no:cac
 FAILED tests/test_stufe5_ausfuehrung.py::test_das_redigierwerkzeug_laeuft_und_bestaetigt_die_aufzeichnung
 9 failed, 1613 passed, 2 skipped in 450.15s (0:07:30)
 [exit=1, Dauer 469 s]
-$ python -m coverage json -o C:/Users/Acer/AppData/Local/Temp/claude/C--Users-Acer-OneDrive-Documents-Cursor1-mt5-trading-ai/d519626c-32fb-4c44-8526-edc9791110ae/scratchpad/wt_coverage.json
-Wrote JSON report to C:/Users/Acer/AppData/Local/Temp/claude/C--Users-Acer-OneDrive-Documents-Cursor1-mt5-trading-ai/d519626c-32fb-4c44-8526-edc9791110ae/scratchpad/wt_coverage.json
-$ python tools/zweigdeckung.py --bericht C:/Users/Acer/AppData/Local/Temp/claude/C--Users-Acer-OneDrive-Documents-Cursor1-mt5-trading-ai/d519626c-32fb-4c44-8526-edc9791110ae/scratchpad/wt_coverage.json
+$ python -m coverage json -o C:/Users/<konto>/AppData/Local/Temp/claude/C--Users-<konto>-OneDrive-Documents-Cursor1-mt5-trading-ai/d519626c-32fb-4c44-8526-edc9791110ae/scratchpad/wt_coverage.json
+Wrote JSON report to C:/Users/<konto>/AppData/Local/Temp/claude/C--Users-<konto>-OneDrive-Documents-Cursor1-mt5-trading-ai/d519626c-32fb-4c44-8526-edc9791110ae/scratchpad/wt_coverage.json
+$ python tools/zweigdeckung.py --bericht C:/Users/<konto>/AppData/Local/Temp/claude/C--Users-<konto>-OneDrive-Documents-Cursor1-mt5-trading-ai/d519626c-32fb-4c44-8526-edc9791110ae/scratchpad/wt_coverage.json
 ==========================================================================
 ZWEIGDECKUNG JE DATEI DES GELDPFADS
 ==========================================================================

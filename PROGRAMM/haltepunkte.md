@@ -10,7 +10,7 @@ Anhängend; ein erledigter Haltepunkt bekommt einen Nachtrag, keine Löschung.
 **Kategorie.** Zugangsdaten.
 
 **Sachlage.** Der Altbestand `bitget-btc-ai` liegt heute unter
-`C:\Users\Acer\OneDrive\Documents\Cursor1\mt5-trading-ai` (der Ordner wurde umbenannt; der
+`C:\Users\<konto>\OneDrive\Documents\Cursor1\mt5-trading-ai` (der Ordner wurde umbenannt; der
 Eintrag des Altstands nennt noch `…\Cursor1\bitget-btc-ai`). Dort liegen — nicht
 versioniert, von mir **nicht gelesen** — `.env`, `.env.local`, `.env.production`,
 `.env.local.backup`, `.env.production.backup` (Verzeichnisliste vom 2026-09-03). Der

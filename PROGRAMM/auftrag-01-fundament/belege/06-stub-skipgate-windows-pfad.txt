@@ -5,22 +5,22 @@
 
 ## 1. Simulation der POSIX-Sicht (PurePosixPath als Path der laufenden Plattform)
 $ python posix_sicht.py <worktree>
-LOCALAPPDATA (Testwert): 'C:\\Users\\Test\\AppData\\Local'
+LOCALAPPDATA (Testwert): 'C:\\Users\\<konto>\\AppData\\Local'
 PurePosixPath(LOKAL).is_absolute()   = False
 PureWindowsPath(LOKAL).is_absolute() = True
 Path(LOKAL).is_absolute() auf diesem Rechner (win32) = True
 
 ALT, Windows-Zweig unter POSIX: /home/runner/.local/state/mt5_trading_ai/risiko
   parts[:-2] = ('/', 'home', 'runner', '.local', 'state')
-  erwartet   = ('C:\\Users\\Test\\AppData\\Local',)  -> gleich: False
+  erwartet   = ('C:\\Users\\<konto>\\AppData\\Local',)  -> gleich: False
   (das ist die Assertion aus dem CI-Beleg 00-ci-nach-t0.txt, Zeile 22)
-NEU, Windows-Zweig unter POSIX: C:\Users\Test\AppData\Local/mt5_trading_ai/risiko
+NEU, Windows-Zweig unter POSIX: C:\Users\<konto>\AppData\Local/mt5_trading_ai/risiko
   PureWindowsPath(str(neu)) == PureWindowsPath(LOKAL, 'mt5_trading_ai', 'risiko'): True
   PureWindowsPath(str(neu)).is_absolute(): True
 NEU, POSIX-Zweig unter POSIX (XDG_STATE_HOME=/home/runner/eigener-zustand): /home/runner/eigener-zustand/mt5_trading_ai/risiko
 
 Echte Funktion auf diesem Rechner:
-  ist_windows=True : C:\Users\Test\AppData\Local\mt5_trading_ai\risiko
+  ist_windows=True : C:\Users\<konto>\AppData\Local\mt5_trading_ai\risiko
   ist_windows=False: \home\test\eigener-zustand\mt5_trading_ai\risiko
   PureWindowsPath(str(w)) == PureWindowsPath(LOKAL, 'mt5_trading_ai', 'risiko'): True
   PurePosixPath(p.as_posix()) == PurePosixPath(XDG, 'mt5_trading_ai', 'risiko'): True

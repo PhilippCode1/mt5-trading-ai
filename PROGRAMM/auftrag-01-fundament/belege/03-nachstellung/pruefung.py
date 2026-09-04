@@ -1,5 +1,5 @@
 # Abgeleitet aus PROGRAMM/eingang/pruef_ausgaben/nachproben/pruefung.py (Bewertung 2026-09-02). Aenderung: REPO zeigt auf den
-# Worktree C:/Users/Acer/nachstellung-306bbaa (Stand 306bbaa); Ausfuehrung 2026-09-03 unter Windows/Python 3.11.7.
+# Worktree C:/Users/<konto>/nachstellung-306bbaa (Stand 306bbaa); Ausfuehrung 2026-09-03 unter Windows/Python 3.11.7.
 """Nachpruefung einzelner Befunde -- nur lesend, gegen Fake-Terminal / Stub-mt5."""
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from decimal import Decimal
 from pathlib import Path
 from types import SimpleNamespace
 
-REPO = Path(r"C:/Users/Acer/nachstellung-306bbaa")
+REPO = Path.home() / "nachstellung-306bbaa"  # redigiert (T6 Geheimnis-Scan): vorher absolut C:/Users/<konto>/nachstellung-306bbaa
 sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(REPO / "tests"))
 SCRATCH = Path(__file__).parent

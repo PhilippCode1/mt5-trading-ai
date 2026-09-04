@@ -4,7 +4,7 @@ Dieses Dokument ist das dauerhafte Gedächtnis von Claude Code in diesem Reposit
 
 **Sitzungsbeginn, immer in dieser Reihenfolge:** `CLAUDE.md` lesen, dann `PROGRAMM/zustand.md`, dann den Masterprompt des laufenden Auftrags vollständig (`PROGRAMM/masterprompts/MASTERPROMPT-CC-0n-*.md`). Dann Plan-Modus mit prüfbaren Teilschritten nach `PROGRAMM/auftrag-0n-<name>/plan.md`; ein fortgesetzter Auftrag nimmt den bestehenden Plan auf und streicht Erledigtes. Erst danach bauen.
 
-**Umgebung dieses Rechners (gemessen 2026-09-03):** Windows 11, Python 3.11.7 unter `C:\Users\Acer\AppData\Local\Programs\Python\Python311\python.exe` (zusätzlich 3.13), Paket `MetaTrader5` 5.0.6090 installiert, `ruff` 0.9.2, `mypy` 1.14.1, `pytest` 8.3.4, `tzdata` vorhanden, Docker 29.5.2 mit WSL-Backend. Das MT5-Terminal muss für Smoke-Tests laufen und am Demokonto angemeldet sein. Der alte Bestand `bitget-btc-ai` liegt unter `C:\Users\Acer\OneDrive\Documents\Cursor1\mt5-trading-ai` und ist nicht Gegenstand des Programms.
+**Umgebung dieses Rechners (gemessen 2026-09-03):** Windows 11, Python 3.11.7 unter `C:\Users\<konto>\AppData\Local\Programs\Python\Python311\python.exe` (zusätzlich 3.13), Paket `MetaTrader5` 5.0.6090 installiert, `ruff` 0.9.2, `mypy` 1.14.1, `pytest` 8.3.4, `tzdata` vorhanden, Docker 29.5.2 mit WSL-Backend. Das MT5-Terminal muss für Smoke-Tests laufen und am Demokonto angemeldet sein. Der alte Bestand `bitget-btc-ai` liegt unter `C:\Users\<konto>\OneDrive\Documents\Cursor1\mt5-trading-ai` und ist nicht Gegenstand des Programms.
 
 ---
 

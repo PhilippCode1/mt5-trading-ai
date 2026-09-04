@@ -186,7 +186,7 @@ Broker-Kostentabelle — versioniert, belegt, fail-closed.
 ## `mt5_trading_ai/costs/model.py`
 
 Zeilen: 225
-Aufrufer: Paket 2 · Werkzeuge 3 · Tests 3
+Aufrufer: Paket 2 · Werkzeuge 3 · Tests 4
 
 Kostenmodell: die realen Kosten einer Order, gemessen statt angenommen.
 
@@ -477,7 +477,7 @@ Trials-Ledger (Phase 9.4) — ``TRIALS.jsonl``, ausschliesslich anhaengend.
 ## `mt5_trading_ai/risk/leverage.py`
 
 Zeilen: 253
-Aufrufer: Paket 2 · Werkzeuge 0 · Tests 3
+Aufrufer: Paket 2 · Werkzeuge 0 · Tests 5
 
 Gesetzlicher Hebeldeckel je Anlageklasse — geladen aus einer versionierten Datei.
 
@@ -548,7 +548,7 @@ Geldbetraege tragen ihre Waehrung; ein Kurs ist ein Messwert oder eine Sperre.
 ## `mt5_trading_ai/venue/catalog.py`
 
 Zeilen: 347
-Aufrufer: Paket 3 · Werkzeuge 4 · Tests 12
+Aufrufer: Paket 3 · Werkzeuge 4 · Tests 13
 
 Instrumentenkatalog — die Metadaten, die MT5 nicht liefert.
 
@@ -611,7 +611,7 @@ MT5-Anbindung an das ``TradingVenue``-Protokoll.
 ## `mt5_trading_ai/venue/protocol.py`
 
 Zeilen: 547
-Aufrufer: Paket 14 · Werkzeuge 9 · Tests 55
+Aufrufer: Paket 14 · Werkzeuge 9 · Tests 56
 
 Plattformunabhaengiger Handelsplatz-Vertrag.
 

@@ -173,7 +173,7 @@ def test_localappdata_wird_nur_unter_windows_gefragt() -> None:
     """Sonst laege die Zustandsdatei auf der CI (ubuntu-latest) IM Arbeitsbaum.
 
     Ein Windows-Pfad ist unter POSIX ein einziges **relatives** Namensstueck:
-    ``Path("C:\\\\Users\\\\Test\\\\AppData\\\\Local")`` hat dort weder Wurzel noch
+    ``Path("C:\\\\Users\\\\<konto>\\\\AppData\\\\Local")`` hat dort weder Wurzel noch
     Laufwerk. ``resolve()`` haengt das Arbeitsverzeichnis davor -- und damit landet die
     Datei mit dem Drawdown-Halt im Repo, wo ``git clean -xdf`` sie loescht und der
     naechste Start sie als „neu" und damit als „frei" liest.
@@ -192,7 +192,7 @@ def test_localappdata_wird_nur_unter_windows_gefragt() -> None:
     fruehere Fassung nahm ``Path.home()`` als XDG-Wert; der ist nur auf dem Rechner
     absolut, auf dem der Test gerade laeuft.
     """
-    lokal = r"C:\Users\Test\AppData\Local"  # absolut nur in Windows-Regeln
+    lokal = r"C:\Users\<konto>\AppData\Local"  # absolut nur in Windows-Regeln
     xdg = "/home/test/eigener-zustand"  # absolut nur in POSIX-Regeln
     umgebung = {"LOCALAPPDATA": lokal, "XDG_STATE_HOME": xdg}
     windows = standard_zustandsordner(umgebung=umgebung, ist_windows=True)

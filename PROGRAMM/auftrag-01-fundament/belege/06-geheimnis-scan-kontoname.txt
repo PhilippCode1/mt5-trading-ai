@@ -1,0 +1,68 @@
+# Geheimnis-Scan (Katalog A5), Klasse Kontoname: C:\Users\<name> bzw. /c/Users/<name> in verfolgten Dateien, Stand 1c272fe.
+# Regel des Werkzeugs (tools/geheimnis_scan.py, KONTONAME): jeder Name nach Users\ zaehlt; ein Platzhalter steht in spitzen
+# Klammern (C:\Users\<konto>) oder ist "..." -- beides zaehlt nicht. Keine Ausnahmeliste: das Werkzeug kann einen erfundenen
+# Namen nicht von einem echten unterscheiden. Namen werden nie ausgegeben; unten stehen sie als N1/N2/N3 mit Laenge.
+# Gruppen: lebend | archiv/ | PROGRAMM/eingang/ | PROGRAMM/masterprompts/ (die drei letzten per Manifest eingefroren, bleiben unveraendert).
+# Tor: --kontoname-sperre lebend ist Vorgabe (Treffer in lebenden Dateien -> Exit 1); --kontoname-sperre alle nimmt die eingefrorenen
+# Gruppen dazu; ein Abschalten gibt es nicht (argparse weist jeden anderen Wert mit Exit 2 ab; Eichfall
+# tests/eichfall_geheimnis_scan.py::test_kontoname_lebend_ist_tor_platzhalter_und_eingefrorene_gruppen_nicht).
+
+## 1) Zaehlung VOR der Redaktion (1c272fe, verfolgte Dateien; Scratch-Skript mit demselben Muster, Namen redigiert)
+Gruppen: lebend 42, PROGRAMM/eingang/ 12, archiv/ 55, PROGRAMM/masterprompts/ 0  -> 109 Treffer in 52 Dateien, 3 Namen
+Name x Gruppe: N1 lebend 29, N1 PROGRAMM/eingang/ 1, N1 archiv/ 55 | N2 lebend 12, N2 PROGRAMM/eingang/ 11 | N3 lebend 1
+N1 (Laenge 4) = Kontoname dieses Rechners. N2 (Laenge 4) = "Test", Platzhalter der Windows-Pfad-Tests (LOCALAPPDATA-Testwert, ein
+Profilpfad mit diesem Namen). N3 (Laenge 6) = "jemand", Platzhalter des Redaktionstests (tests/test_stufe5_ausfuehrung.py:444, PFAD_ROH).
+Nicht gezaehlt: Vorkommen mit "..." (Redaktionsmarke der Bewertung, PROGRAMM/eingang) und mit <konto> (eigene Belege).
+Lebende Treffer vor der Redaktion (42): CLAUDE.md:7 (2 x N1) | PROGRAMM/auftrag-01-fundament/plan.md:9 (2 x N1), :98 (N1) |
+PROGRAMM/entscheidungen.md:11, :15 (N1) | PROGRAMM/haltepunkte.md:13 (N1) | mt5_trading_ai/execution/risiko_zustand.py:47 (N2) |
+tests/test_risiko_zustand.py:176, :195 (N2) | tests/test_stufe5_ausfuehrung.py:444 (N3) | und 30 in
+PROGRAMM/auftrag-01-fundament/belege/: 02-eichfall-pre-commit.txt:3 (N1); 03-nachstellung/03-befunde-weitere.txt:92-94 (3 x N2);
+03-nachstellung/03-grundmessung-coverage-direkt-worktree.txt:6-8 (3 x N1); 03-nachstellung/03-grundmessung-mutation-pycache-worktree.txt
+:6,12,14,17,20,23 (6 x N1); 03-nachstellung/03-grundmessung-statisch-worktree.txt:64,79,84 (3 x N1); 03-nachstellung/03-pycache-mechanik-
+worktree.txt:2 (N1); 03-nachstellung/befunde_weitere.py:18 (N1), :117 (N2); 03-nachstellung/engine_check.py:2,6 (2 x N1);
+03-nachstellung/pruefung.py:2,15 (2 x N1); 03-nachstellung/trennschaerfe.py:2 (N1); 06-d3-rot.txt:10 (N1);
+06-stub-skipgate-posix-sicht.py:17 (N2); 06-stub-skipgate-windows-pfad.txt:8,15,17,23 (4 x N2).
+
+## 2) Redaktion der eigenen Belege (zugewiesen: PROGRAMM/auftrag-01-fundament/belege/), Scratch-Skript, 28 Ersetzungen in 14 Dateien
+Users\<name> -> Users\<konto> in Text, Kommentaren und String-Literalen; drei Code-Zeilen der Messskripte so, dass die Skripte
+lauffaehig bleiben (Path.home() / "nachstellung-306bbaa" statt des absoluten Pfads, mit Kommentar "redigiert"):
+  1  02-eichfall-pre-commit.txt          3  03-nachstellung/03-befunde-weitere.txt            3  03-nachstellung/03-grundmessung-coverage-direkt-worktree.txt
+  6  03-nachstellung/03-grundmessung-mutation-pycache-worktree.txt   3  03-nachstellung/03-grundmessung-statisch-worktree.txt
+  1  03-nachstellung/03-pycache-mechanik-worktree.txt   1  03-nachstellung/befunde_weitere.py (Code)   1  03-nachstellung/engine_check.py (Code, dazu "from pathlib import Path")
+  1  03-nachstellung/pruefung.py (Code)  1  03-nachstellung/trennschaerfe.py   1  06-d3-rot.txt   1  06-geheimnis-scan-kontoname.txt (Vorarbeit, ersetzt)
+  1  06-stub-skipgate-posix-sicht.py     4  06-stub-skipgate-windows-pfad.txt
+Zwei Belege sind kein UTF-8 (00-pytest-lokal-nach-t0.txt, 00-tore-lokal-nach-t0.txt) und enthalten keinen Treffer (Byte-Muster).
+Der Platzhalter "Test" in Belegen anderer Familien wurde mitredigiert, damit die Regel ohne Ausnahme gilt; die Testdateien selbst
+(risiko_zustand.py, test_risiko_zustand.py) gehoeren der Familie Zustand -> offen.
+
+## 3) Zaehlung NACH der Redaktion (Werkzeug selbst, Index mit dem Patch dieser Familie; Ausschnitt aus dem Lauf B in 06-geheimnis-scan-laufzeit.txt)
+KONTONAME (C:\Users\<name> in verfolgten Dateien; Platzhalter <...> und ... zaehlen nicht): 79 Treffer in 41 Dateien, 3 Namen (Treffer je Name: [64, 14, 1]); nach Gruppe: lebend 12, archiv/ 55, PROGRAMM/eingang/ 12, PROGRAMM/masterprompts/ 0
+  Tor --kontoname-sperre lebend: 12 Treffer im Geltungsbereich -> rot
+    3  [lebend] PROGRAMM/auftrag-01-fundament/plan.md
+    2  [lebend] CLAUDE.md
+    2  [lebend] PROGRAMM/entscheidungen.md
+    2  [lebend] tests/test_risiko_zustand.py
+    1  [lebend] PROGRAMM/haltepunkte.md
+    1  [lebend] mt5_trading_ai/execution/risiko_zustand.py
+    1  [lebend] tests/test_stufe5_ausfuehrung.py
+    (archiv/ 55 in 24 Dateien und PROGRAMM/eingang/ 12 in 5 Dateien unveraendert; vollstaendige Liste im Lauf B)
+ERGEBNIS: 0 neue Funde, 133 bekannte, 79 Kontonamen (12 im Tor 'lebend'); Exit 1
+
+## 4) OFFEN -- 12 lebende Treffer in 7 Dateien, die nicht dieser Familie gehoeren (Vorschlag je Datei; das Tor bleibt bis dahin rot)
+CLAUDE.md:7 (2 x N1, Absatz "Umgebung dieses Rechners", NICHT Abschnitt 0 -- A7 wortgleich bleibt unberuehrt): C:\Users\<konto>\...
+PROGRAMM/auftrag-01-fundament/plan.md:9 (2 x), :98 (1 x): C:\Users\<konto>\... (Plantext; Redaktion als dokumentierte Abweichung)
+PROGRAMM/entscheidungen.md:11, :15; PROGRAMM/haltepunkte.md:13: C:\Users\<konto>\...
+mt5_trading_ai/execution/risiko_zustand.py:47 (Docstring) und tests/test_risiko_zustand.py:176, :195: LOCALAPPDATA-Testwert mit dem
+  Namen Test -> C:\Users\<konto>\AppData\Local (PureWindowsPath/Path pruefen keine Zeichen; is_absolute() bleibt True/False wie zuvor). Familie Zustand.
+tests/test_stufe5_ausfuehrung.py:444: PFAD_ROH (Profilpfad mit dem Namen jemand) -> zur Laufzeit zusammensetzen
+  ("C:\\Users\\" + "jemand" + "\\repo\\betrieb\\STOP"), damit der Redaktionstest weiter einen echten Namen redigiert, die Datei aber keinen traegt.
+Gruener Eichfall mit genau diesen 7 Redaktionen im Wegwerf-Klon: 06-geheimnis-scan-gruen.txt, Lauf 2 (Tor lebend 0) und 2b (Exit 0 nach
+neu geschriebener Basislinie -- die zwei redigierten Testdateien sind neue Blobs, ihre bekannten Funde brauchen neue Eintraege).
+
+## 5) Nachtrag: Bindestrich-Schreibweise eines Pfads
+git grep -E "[A-Za-z]--Users-" ueber alle verfolgten Dateien fand den Kontonamen zusaetzlich in der Bindestrich-Schreibweise eines
+Werkzeugordners (C--Users-<name>-OneDrive-...) in genau 2 Dateien, 4 Vorkommen, beide eigene Belege (03-nachstellung/03-grundmessung-
+coverage-direkt-worktree.txt 3, 03-nachstellung/03-grundmessung-mutation-pycache-worktree.txt 1) -- vom Pfadmuster nicht erfasst.
+Redigiert (C--Users-<konto>-...), und KONTONAME um diese Schreibweise erweitert (Name endet am Strich; Eichfall
+test_platzhalter_und_redaktionsmarke_sind_keine_namen). Sonst kein verfolgter Treffer dieser Form (git grep: nur die 2 Dateien), die
+Zaehlungen in Abschnitt 1 und 3 bleiben damit unveraendert (bei Abschnitt 1 haette die erweiterte Regel 46 statt 42 lebende Treffer gezeigt).

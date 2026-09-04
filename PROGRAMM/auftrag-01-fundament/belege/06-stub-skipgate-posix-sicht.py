@@ -14,7 +14,7 @@ from pathlib import Path, PurePosixPath, PureWindowsPath
 sys.path.insert(0, sys.argv[1])
 from mt5_trading_ai.execution.risiko_zustand import standard_zustandsordner  # noqa: E402
 
-LOKAL = r"C:\Users\Test\AppData\Local"
+LOKAL = r"C:\Users\<konto>\AppData\Local"
 HEIM_POSIX = PurePosixPath("/home/runner")
 KONTO = Path.home().name  # Kontoname des Rechners, in der Ausgabe redigiert
 

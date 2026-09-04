@@ -1,9 +1,10 @@
 # Abgeleitet aus PROGRAMM/eingang/pruef_ausgaben/nachproben/engine_check.py (Bewertung 2026-09-02). Aenderung: REPO zeigt auf den
-# Worktree C:/Users/Acer/nachstellung-306bbaa (Stand 306bbaa); Ausfuehrung 2026-09-03 unter Windows/Python 3.11.7.
+# Worktree C:/Users/<konto>/nachstellung-306bbaa (Stand 306bbaa); Ausfuehrung 2026-09-03 unter Windows/Python 3.11.7.
 """Nachrechnung der Backtest-Maschine: Fill-Preis, Kosten je Trade, Purge-Beispiel,
 Naechte am FX-Rollover, Konto-Ruin, Equity-Definition."""
 import sys
-sys.path.insert(0, r"C:/Users/Acer/nachstellung-306bbaa")
+from pathlib import Path
+sys.path.insert(0, str(Path.home() / "nachstellung-306bbaa"))  # redigiert (T6 Geheimnis-Scan): vorher absolut C:/Users/<konto>/nachstellung-306bbaa
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from mt5_trading_ai.backtest.engine import (

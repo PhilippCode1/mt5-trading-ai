@@ -1,0 +1,26 @@
+# Geheimnis-Scan (Katalog A5): Tore im Worktree (Stand 1c272fe + Patch dieser Familie), Windows 11, Python 3.11.7.
+# PYTHONDONTWRITEBYTECODE=1 PYTHONIOENCODING=utf-8. Last: 97-100 % CPU durch fremde Agenten (3 pytest-Suiten mit coverage,
+# mutationstor --parallel 3, zweigdeckung --messen; 29-33 python-Prozesse) waehrend aller Laeufe.
+
+$ python -m ruff format --check .
+175 files already formatted
+[exit=0]
+$ python -m ruff check .
+All checks passed!
+[exit=0]
+$ python -m mypy --strict mt5_trading_ai tools PROGRAMM/hooks
+Success: no issues found in 82 source files
+[exit=0]
+
+$ python -m pytest -q -p no:cacheprovider -m "not slow"
+FAILED tests/eichfall_werkzeuge.py::test_help_antwortet_mit_exit_0_und_usage[check_doc_numbers.py]
+FAILED tests/eichfall_werkzeuge.py::test_help_antwortet_mit_exit_0_und_usage[check_docs_claims.py]
+FAILED tests/eichfall_werkzeuge.py::test_ohne_terminal_eine_benannte_zeile_und_exit_2[live_betrieb]
+FAILED tests/test_readme_numbers.py::test_readme_test_function_count_matches_code
+4 failed, 1601 passed, 4 deselected in 649.08s (0:10:49)
+[exit=1]
+Einordnung der 4 roten Faelle: die ersten drei sind die bei 1c272fe bekannten roten Faelle anderer Familien (Doku-Tore --help,
+Terminalzeile live_betrieb); test_help_antwortet_mit_exit_0_und_usage[geheimnis_scan.py] ist NICHT mehr rot (eigener Lauf:
+06-geheimnis-scan-eichfall-pytest.txt). test_readme_numbers: README-Kennzahlenblock zaehlt 1361 Testfunktionen, der Baum 1375
+(+14 aus tests/eichfall_geheimnis_scan.py); der Block wird zentral mit tools/gen_docs.py erzeugt (README nicht angefasst) -> offen.
+Die 4 deselektierten sind die slow-Faelle (Mutationstor 1, Klon-Eichfaelle dieser Familie 3).

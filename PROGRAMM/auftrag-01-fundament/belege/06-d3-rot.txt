@@ -7,7 +7,7 @@
 $ python -m pytest -q -p no:cacheprovider tests/eichfall_d3.py
 =================================== ERRORS ====================================
 ____________________ ERROR collecting tests/eichfall_d3.py ____________________
-ImportError while importing test module 'C:\Users\Acer\nachstellung-306bbaa\tests\eichfall_d3.py'.
+ImportError while importing test module 'C:\Users\<konto>\nachstellung-306bbaa\tests\eichfall_d3.py'.
 E   ModuleNotFoundError: No module named 'mt5_trading_ai.risk.waehrung'
 ERROR tests/eichfall_d3.py
 !!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!

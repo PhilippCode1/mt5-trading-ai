@@ -1,0 +1,108 @@
+==============================================================================
+GRUENER EICHFALL Familie Zweigdeckung-Tests -- costs/model.py, Stand NACH den neuen Tests (1c272fe + tests/test_zweige_costs_model.py), 2026-09-04
+==============================================================================
+Waechter: A15 (Zweigdeckung je Geldpfad-Datei >= 90 %). Gegenstand: costs/model.py.
+Messung im Worktree auf 1c272fe MIT den zwei neuen Testdateien; sonst unveraendert. Coverage-Datendatei
+per COVERAGE_FILE ausserhalb des Arbeitsbaums. Last waehrend des Laufs: 36 python-Prozesse laut tasklist zu Beginn (mehrere Agenten parallel); Laufzeit 791,0 s.
+
+## 1. Die neue Testdatei allein
+$ PYTHONDONTWRITEBYTECODE=1 PYTHONIOENCODING=utf-8 python -m pytest -v -p no:cacheprovider tests/test_zweige_costs_model.py
+============================= test session starts =============================
+platform win32 -- Python 3.11.7, pytest-8.3.4, pluggy-1.6.0 -- C:\Users\<konto>\AppData\Local\Programs\Python\Python311\python.exe
+Waechter A2 (tests/conftest.py): Skip = Fehlschlag.
+Waechter A10 (tests/conftest.py): Zustandsordner C:\Users\<konto>\AppData\Local\mt5_trading_ai\risiko (vorhanden: ja, 1 Dateien) und Arbeitsbaum C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_f2d56c67-47d-5 bleiben unveraendert.
+rootdir: C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_f2d56c67-47d-5
+configfile: pyproject.toml
+plugins: anyio-4.8.0, base-url-2.1.0, cov-6.0.0, playwright-0.7.2
+collecting ... collected 17 items
+
+tests/test_zweige_costs_model.py::test_das_geruest_rechnet_die_bekannten_kosten PASSED [  5%]
+tests/test_zweige_costs_model.py::test_nicht_endlicher_wert_ist_ein_fehler_der_das_feld_nennt[slippage-nan] PASSED [ 11%]
+tests/test_zweige_costs_model.py::test_nicht_endlicher_wert_ist_ein_fehler_der_das_feld_nennt[slippage-inf] PASSED [ 17%]
+tests/test_zweige_costs_model.py::test_nicht_endlicher_wert_ist_ein_fehler_der_das_feld_nennt[kommission-nan] PASSED [ 23%]
+tests/test_zweige_costs_model.py::test_nicht_endlicher_wert_ist_ein_fehler_der_das_feld_nennt[kommission-inf] PASSED [ 29%]
+tests/test_zweige_costs_model.py::test_nicht_endlicher_wert_ist_ein_fehler_der_das_feld_nennt[swap-long-nan] PASSED [ 35%]
+tests/test_zweige_costs_model.py::test_nicht_endlicher_wert_ist_ein_fehler_der_das_feld_nennt[swap-short-neg-inf] PASSED [ 41%]
+tests/test_zweige_costs_model.py::test_negative_slippage_ist_ein_fehler[-0.0001] PASSED [ 47%]
+tests/test_zweige_costs_model.py::test_negative_slippage_ist_ein_fehler[-0.5] PASSED [ 52%]
+tests/test_zweige_costs_model.py::test_negative_slippage_ist_ein_fehler[-1] PASSED [ 58%]
+tests/test_zweige_costs_model.py::test_slippage_null_ist_die_untere_grenze PASSED [ 64%]
+tests/test_zweige_costs_model.py::test_negative_naechte_sind_ein_fehler[naechte-negativ] PASSED [ 70%]
+tests/test_zweige_costs_model.py::test_negative_naechte_sind_ein_fehler[dreifach-negativ] PASSED [ 76%]
+tests/test_zweige_costs_model.py::test_negative_naechte_sind_ein_fehler[beide-negativ] PASSED [ 82%]
+tests/test_zweige_costs_model.py::test_null_naechte_sind_die_untere_grenze PASSED [ 88%]
+tests/test_zweige_costs_model.py::test_uebergebener_katalog_wird_genutzt_und_kein_pfad_gelesen PASSED [ 94%]
+tests/test_zweige_costs_model.py::test_uebergebener_katalog_prueft_symbol_klasse_und_kommission PASSED [100%]
+
+============================= 17 passed in 7.12s ==============================
+[exit=0]
+
+## 2. Suite ohne slow unter coverage --branch (Stand nachher)
+$ PYTHONDONTWRITEBYTECODE=1 PYTHONIOENCODING=utf-8 COVERAGE_FILE=<tmp>/cov-nachher2 python -m coverage run --branch --source=mt5_trading_ai -m pytest -q -p no:cacheprovider -m "not slow"
+FAILED tests/eichfall_werkzeuge.py::test_help_antwortet_mit_exit_0_und_usage[check_doc_numbers.py]
+FAILED tests/eichfall_werkzeuge.py::test_help_antwortet_mit_exit_0_und_usage[check_docs_claims.py]
+FAILED tests/eichfall_werkzeuge.py::test_help_antwortet_mit_exit_0_und_usage[geheimnis_scan.py]
+FAILED tests/eichfall_werkzeuge.py::test_ohne_terminal_eine_benannte_zeile_und_exit_2[live_betrieb]
+FAILED tests/test_readme_numbers.py::test_readme_test_function_count_matches_code
+5 failed, 1627 passed, 1 deselected in 790.97s (0:13:10)
+real	13m29.037s
+exit=1
+(4 der 5 FAILED sind dieselben bekannten roten Faelle anderer Familien wie vorher; kein Skip, kein Error.
+Der fuenfte, tests/test_readme_numbers.py::test_readme_test_function_count_matches_code, ist die Folge
+dieser Familie: der README-Kennzahlenblock nennt 1361 Testfunktionen, der Baum hat mit den zwei neuen
+Dateien 1378 (9 + 8 = 17 Funktionen mehr; 'assert 1361 == 1378'). README.md und der Kennzahlenblock sind
+dieser Familie nicht zugewiesen -> unter "offen".
+Zweiter eigener Fehler: der erste Nachher-Lauf (cov-nachher) wurde abgebrochen und wiederholt, weil ich
+sein Protokoll waehrend des Laufs mit einer Platzhalterkopie fuer einen Probelauf des Beleg-Skripts
+ueberschrieben hatte -- Protokoll unbrauchbar, Lauf mit neuen Dateinamen neu gefahren.)
+
+$ COVERAGE_FILE=<tmp>/cov-nachher2 python -m coverage json --include "mt5_trading_ai/risk/leverage.py,mt5_trading_ai/costs/model.py,mt5_trading_ai/venue/mt5.py" -o <tmp>/cov-nachher.json
+vorher : costs/model.py: Zweige 20/24 = 83.3 %  (< 90 %: ROT); Zeilen 92.6 %, fehlende Zeilen [93, 147, 149]
+nachher: costs/model.py: Zweige 24/24 = 100.0 %  (>= 90 %: GRUEN); Zeilen 100.0 %, fehlende Zeilen []
+fehlende Zweige nachher (Zeile -> Ziel):
+  (keine)
+
+## 3. Das heutige Tor tools/zweigdeckung.py ueber den Bericht nachher
+$ python tools/zweigdeckung.py --bericht <tmp>/cov-nachher-voll.json
+==========================================================================
+ZWEIGDECKUNG JE DATEI DES GELDPFADS
+==========================================================================
+Schwelle je Datei: 80%
+
+Datei                                      Zeilen   Zweige
+venue/mt5.py                                87.8%    80.8%
+venue/protocol.py                          100.0%   100.0%
+execution/risk_manager.py                   99.5%    98.2%
+execution/schwebende_auftraege.py           93.3%    92.9%
+execution/cost_gate.py                     100.0%   100.0%
+risk/sizing.py                              94.6%    90.0%
+risk/stop_budget.py                         97.4%    94.4%
+risk/limits.py                             100.0%   100.0%
+risk/leverage.py                           100.0%   100.0%
+costs/model.py                             100.0%   100.0%
+gates/erkundung.py                          97.4%    93.8%
+
+Paket gesamt: Zeilen 93.5 %, Zweige 88.4 %
+ok — jede Datei des Geldpfads ueber der Schwelle.
+[exit=0]
+
+## 4. Mutation, Bezugspunkt: unmutiert und nach Wiederherstellung gruen (Kopie aus git archive HEAD)
+## Unmutiert (Bezugspunkt, muss gruen sein)
+$ python -m pytest -q -p no:cacheprovider tests/test_zweige_leverage.py   # [unmutiert]
+21 passed
+[exit=0]
+$ python -m pytest -q -p no:cacheprovider tests/test_zweige_costs_model.py   # [unmutiert]
+17 passed
+[exit=0]
+
+## Nach Wiederherstellung (muss wieder gruen sein)
+$ python -m pytest -q -p no:cacheprovider tests/test_zweige_leverage.py   # [wiederhergestellt]
+21 passed
+[exit=0]
+$ python -m pytest -q -p no:cacheprovider tests/test_zweige_costs_model.py   # [wiederhergestellt]
+17 passed
+[exit=0]
+
+## Quellen der Kopie gegen den Worktree (erwartet: keine Abweichung)
+leverage.py: identisch
+model.py: identisch

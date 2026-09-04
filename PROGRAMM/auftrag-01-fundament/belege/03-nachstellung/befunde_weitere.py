@@ -15,7 +15,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path, PurePosixPath
 from zoneinfo import ZoneInfo
 
-REPO = Path(r"C:/Users/Acer/nachstellung-306bbaa")
+REPO = Path.home() / "nachstellung-306bbaa"  # redigiert (T6 Geheimnis-Scan): vorher absolut C:/Users/<konto>/nachstellung-306bbaa
 sys.path.insert(0, str(REPO))
 for k in ("MT5_RISIKO_ZUSTAND", "MT5_RISIKO_ZUSTAND_ORDNER", "MT5_SCHWEBENDE_AUFTRAEGE"):
     os.environ.pop(k, None)
@@ -114,7 +114,7 @@ print("betrieb/ in .gitignore:", any(z.strip() == "/betrieb/" for z in (REPO / "
 print("betrieb/ im Worktree vorhanden:", (REPO / "betrieb").is_dir())
 print()
 print("Windows-Pfad-Test (tests/test_risiko_zustand.py): Mechanik des Fehlschlags unter POSIX")
-lokal = r"C:\Users\Test\AppData\Local"
+lokal = r"C:\Users\<konto>\AppData\Local"
 print(f"  Path({lokal!r}).is_absolute() unter Windows:", Path(lokal).is_absolute())
 print(f"  PurePosixPath({lokal!r}).is_absolute() (Linux-Sicht):", PurePosixPath(lokal).is_absolute())
 for nr, z in grep("mt5_trading_ai/execution/risiko_zustand.py", r"is_absolute\(\)"):

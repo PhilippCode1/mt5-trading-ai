@@ -1,6 +1,6 @@
 # Eichfall A7: Pre-Commit-Hook und Katalog-Hash in einem Wegwerf-Klon (2026-09-03, Stand a3c623d)
 $ python PROGRAMM/auftrag-01-fundament/belege/02-eichfall-pre-commit.py
-Klon: C:\Users\Acer\AppData\Local\Temp\tmpnjrqwfn3\klon  HEAD=a3c623d
+Klon: C:\Users\<konto>\AppData\Local\Temp\tmpnjrqwfn3\klon  HEAD=a3c623d
 
 OK  Abnahmekatalog aendern (PROGRAMM/abnahmekatalog.md): git commit exit=1, erwartet Abweisung
      pre-commit: Sperren

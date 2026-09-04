@@ -6,7 +6,7 @@ Stand 2026-09-03. Nach Freigabe wird dieser Plan wortgleich nach `PROGRAMM/auftr
 
 ## 1 · Kontext
 
-**Wo das Programm läuft — und warum nicht im Startverzeichnis.** Die Sitzung startete in `C:\Users\Acer\OneDrive\Documents\Cursor1\mt5-trading-ai`. Das ist der Altbestand `bitget-btc-ai` (Zweig `main`, Remote PhisoLive/bitget-btc-ai, 122 Commits, Monorepo mit apps/, node_modules, shared/python; der Ordner wurde umbenannt — H-003 nennt ihn noch `…\Cursor1\bitget-btc-ai`). Der bewertete Code (`mt5_trading_ai/`, 306bbaa, 114 Commits) liegt in `C:\Users\Acer\mt5_trading_ai` mit origin `PhilippCode1/mt5-trading-ai` (master, **öffentliches** Repo). Masterprompt 01 Abschnitt 0 nennt genau dieses Repository als Arbeitsverzeichnis; die Übersicht §2 sagt „git clone PhilippCode1/mt5-trading-ai … PROGRAMM/ … committen und pushen“. Jeder Befund D1–D8 verweist auf Dateien, die nur dort existieren. Darum wurde die Einrichtung dort ausgeführt und die Sitzung dorthin verschoben:
+**Wo das Programm läuft — und warum nicht im Startverzeichnis.** Die Sitzung startete in `C:\Users\<konto>\OneDrive\Documents\Cursor1\mt5-trading-ai`. Das ist der Altbestand `bitget-btc-ai` (Zweig `main`, Remote PhisoLive/bitget-btc-ai, 122 Commits, Monorepo mit apps/, node_modules, shared/python; der Ordner wurde umbenannt — H-003 nennt ihn noch `…\Cursor1\bitget-btc-ai`). Der bewertete Code (`mt5_trading_ai/`, 306bbaa, 114 Commits) liegt in `C:\Users\<konto>\mt5_trading_ai` mit origin `PhilippCode1/mt5-trading-ai` (master, **öffentliches** Repo). Masterprompt 01 Abschnitt 0 nennt genau dieses Repository als Arbeitsverzeichnis; die Übersicht §2 sagt „git clone PhilippCode1/mt5-trading-ai … PROGRAMM/ … committen und pushen“. Jeder Befund D1–D8 verweist auf Dateien, die nur dort existieren. Darum wurde die Einrichtung dort ausgeführt und die Sitzung dorthin verschoben:
 
 | Commit | Inhalt | gepusht |
 |---|---|---|
@@ -95,7 +95,7 @@ T0 geht vor dem Einfrieren: er repariert Zustände, die ich verursacht habe, und
 
 ## 5 · Haltepunkte (nur Philipp)
 
-- **H-003 (Zugangsdaten, offen seit 2026-08-19):** Im OneDrive-Ordner `C:\Users\Acer\OneDrive\Documents\Cursor1\mt5-trading-ai` (ehemals `bitget-btc-ai`) liegen `.env`, `.env.local`, `.env.production`, `.env.local.backup`, `.env.production.backup` — nicht versioniert, von mir nicht gelesen. Empfehlung: Schlüssel bei den Anbietern widerrufen, danach Dateien und Archive löschen. Alternative: nur löschen (nicht empfohlen). Dazu: den dortigen ungepushten Commit bf6bcd3 verwerfen (`git reset --hard 5c39ebb` im OneDrive-Repo) — das tue ich nicht selbst.
+- **H-003 (Zugangsdaten, offen seit 2026-08-19):** Im OneDrive-Ordner `C:\Users\<konto>\OneDrive\Documents\Cursor1\mt5-trading-ai` (ehemals `bitget-btc-ai`) liegen `.env`, `.env.local`, `.env.production`, `.env.local.backup`, `.env.production.backup` — nicht versioniert, von mir nicht gelesen. Empfehlung: Schlüssel bei den Anbietern widerrufen, danach Dateien und Archive löschen. Alternative: nur löschen (nicht empfohlen). Dazu: den dortigen ungepushten Commit bf6bcd3 verwerfen (`git reset --hard 5c39ebb` im OneDrive-Repo) — das tue ich nicht selbst.
 - **Demokonto im Terminal:** Für A9 muss das Terminal mit dem Demokonto angemeldet sein (Übersicht §2.4). Kein Haltepunkt im Sinne der fünf, aber eine Handlung, die nur Philipp vornimmt.
 
 ## 6 · Verifikation (Abnahme A1–A9, je Belegdatei)

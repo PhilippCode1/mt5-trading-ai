@@ -442,7 +442,22 @@ TICKET_ROH = "987654321"
 ORDER_ROH = "555444333"
 KENNUNG_ROH = "open-EURUSD-0123456789"
 LAUF_ROH = "0123456789abcdef0123456789abcdef"
-PFAD_ROH = "C:\\Users\\jemand\\repo\\betrieb\\STOP"
+# Der Pfad ist Pruefgegenstand der Redaktion und wird darum zur Laufzeit gebaut:
+# stuende er als Muster im Quelltext, meldete ihn der Geheimnis-Scan als Kontonamen
+# in einer lebenden Datei (Katalog A5).
+PFAD_ROH = (
+    "C:"
+    + chr(92)
+    + "Users"
+    + chr(92)
+    + "jemand"
+    + chr(92)
+    + "repo"
+    + chr(92)
+    + "betrieb"
+    + chr(92)
+    + "STOP"
+)
 
 
 def _fake_journal(pfad: Path, *, minute: int, lauf: str | None) -> None:

@@ -61,7 +61,7 @@ Geschrieben: config/atr_measurements.json
 [exit=0]
 $ python tools/live_betrieb.py --dauer 0.001 --takt 1
 Beendet nach 4 Takten. Equity 49975.75 -> 49975.75 EUR
-Journal: C:\Users\Acer\nachstellung-306bbaa\betrieb\journal-20260903T182915.jsonl
+Journal: C:\Users\<konto>\nachstellung-306bbaa\betrieb\journal-20260903T182915.jsonl
 Auswertung: python tools/betrieb_auswerten.py journal-20260903T182915.jsonl
 [exit=0]
 $ python tools/live_konsole.py --takte 1
@@ -76,12 +76,12 @@ $ PYTHONPATH=<shim> python tools/mt5_smoke.py
 SMOKE FEHLGESCHLAGEN
 [exit=1]
 $ PYTHONPATH=<shim> python tools/live_betrieb.py --dauer 0.001 --takt 1
-  File "C:\Users\Acer\nachstellung-306bbaa\mt5_trading_ai\venue\mt5.py", line 2156, in initialize
+  File "C:\Users\<konto>\nachstellung-306bbaa\mt5_trading_ai\venue\mt5.py", line 2156, in initialize
     raise VenueUnavailableError(
 mt5_trading_ai.venue.protocol.VenueUnavailableError: MetaTrader5 nicht installiert (pip install MetaTrader5)
 [exit=1]
 $ PYTHONPATH=<shim> python tools/live_konsole.py --takte 1
-  File "C:\Users\Acer\nachstellung-306bbaa\mt5_trading_ai\venue\mt5.py", line 2156, in initialize
+  File "C:\Users\<konto>\nachstellung-306bbaa\mt5_trading_ai\venue\mt5.py", line 2156, in initialize
     raise VenueUnavailableError(
 mt5_trading_ai.venue.protocol.VenueUnavailableError: MetaTrader5 nicht installiert (pip install MetaTrader5)
 [exit=1]

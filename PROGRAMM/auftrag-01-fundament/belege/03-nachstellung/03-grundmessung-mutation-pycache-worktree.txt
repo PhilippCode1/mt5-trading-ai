@@ -3,24 +3,24 @@
 # gueltigen .pyc (Kopf = Quell-mtime/-groesse) gegen einen frischen Compile (dont_inherit=True, co_filename ausgeblendet,
 # von pytest umgeschriebene .pyc ausgenommen). Zwei fruehere Fassungen der Pruefung meldeten 40 bzw. 10 Scheintreffer
 # (co_filename bzw. vererbte Future-Flags) -- Messfehler, hier korrigiert.
-$ python pycache_pruefung.py C:/Users/Acer/nachstellung-306bbaa
+$ python pycache_pruefung.py C:/Users/<konto>/nachstellung-306bbaa
 gueltige .pyc-Dateien geprueft: 71
 davon mit Bytecode, der NICHT der Quelle entspricht: 0
 [exit=0]
 
 # Auszug aus dem Lauf (zweigdeckung.py --messen scheitert unter Windows an cp1252; mutationstor.py):
-$ python tools/zweigdeckung.py --messen --bericht C:/Users/Acer/AppData/Local/Temp/claude/C--Users-Acer-OneDrive-Documents-Cursor1-mt5-trading-ai/d519626c-32fb-4c44-8526-edc9791110ae/scratchpad/wt_coverage.json
+$ python tools/zweigdeckung.py --messen --bericht C:/Users/<konto>/AppData/Local/Temp/claude/C--Users-<konto>-OneDrive-Documents-Cursor1-mt5-trading-ai/d519626c-32fb-4c44-8526-edc9791110ae/scratchpad/wt_coverage.json
 Exception in thread Thread-1 (_readerthread):
-  File "C:\Users\Acer\AppData\Local\Programs\Python\Python311\Lib\subprocess.py", line 1597, in _readerthread
+  File "C:\Users\<konto>\AppData\Local\Programs\Python\Python311\Lib\subprocess.py", line 1597, in _readerthread
     buffer.append(fh.read())
                   ^^^^^^^^^
-  File "C:\Users\Acer\AppData\Local\Programs\Python\Python311\Lib\encodings\cp1252.py", line 23, in decode
+  File "C:\Users\<konto>\AppData\Local\Programs\Python\Python311\Lib\encodings\cp1252.py", line 23, in decode
     return codecs.charmap_decode(input,self.errors,decoding_table)[0]
 Traceback (most recent call last):
-  File "C:\Users\Acer\nachstellung-306bbaa\tools\zweigdeckung.py", line 177, in <module>
+  File "C:\Users\<konto>\nachstellung-306bbaa\tools\zweigdeckung.py", line 177, in <module>
     raise SystemExit(main())
                      ^^^^^^
-  File "C:\Users\Acer\nachstellung-306bbaa\tools\zweigdeckung.py", line 170, in main
+  File "C:\Users\<konto>\nachstellung-306bbaa\tools\zweigdeckung.py", line 170, in main
     rc = messen(args.bericht)
          ^^^^^^^^^^^^^^^^^^^^
    8/16  schemahash                 getoetet

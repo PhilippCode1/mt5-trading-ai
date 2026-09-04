@@ -44,7 +44,7 @@ Das erste ist keine Formsache: ein Windows-Pfad ist unter POSIX ein einziges
 **relatives** Namensstueck. ``Path("C:\\\\Users\\\\...").resolve()`` haengt dort das
 Arbeitsverzeichnis davor, die Zustandsdatei landet mitten IM Repo -- und damit gilt
 genau der Absatz oben, den die Ortswahl vermeiden sollte. Gemessen mit POSIX-Regeln:
-``PurePosixPath("C:\\\\Users\\\\Test\\\\AppData\\\\Local").is_absolute()`` ist
+``PurePosixPath("C:\\\\Users\\\\<konto>\\\\AppData\\\\Local").is_absolute()`` ist
 ``False``, die Datei laege unter ``<repo>/C:\\Users\\...``. Die CI dieses Repos faehrt
 ubuntu-latest. Ein relativer Pfad aus ``--zustandsordner`` hat dieselbe Wirkung; er
 wird nicht stillschweigend zurechtgebogen, sondern mit ``ZustandsortFehler``

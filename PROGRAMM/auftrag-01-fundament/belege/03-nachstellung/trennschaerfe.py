@@ -1,5 +1,5 @@
 # Abgeleitet aus PROGRAMM/eingang/pruef_ausgaben/trennschaerfe.py (Bewertung 2026-09-02). Aenderung: REPO zeigt auf den
-# Worktree C:/Users/Acer/nachstellung-306bbaa (Stand 306bbaa); Ausfuehrung 2026-09-03 unter Windows/Python 3.11.7.
+# Worktree C:/Users/<konto>/nachstellung-306bbaa (Stand 306bbaa); Ausfuehrung 2026-09-03 unter Windows/Python 3.11.7.
 """Unabhängige Trennschärfe-Messung des Sechs-Bedingungen-Tors mit den Funktionen des Repos.
 Annahme: i.i.d. normale Trade-Renditen, T Trades in 0,9 Jahren OoS, N=60 Versuche (Repo-Kampagne),
 Bedingung 1: annualisierte Trade-Sharpe >= 1,0; Bedingung 2: DSR > 0,95 (Repo-Funktion, Standardvarianz)."""

@@ -1,0 +1,69 @@
+# Geheimnis-Scan (Katalog A5): Eichfaelle tests/eichfall_geheimnis_scan.py, Stand 1c272fe + Patch dieser Familie, Windows 11, Python 3.11.7.
+# PYTHONDONTWRITEBYTECODE=1 PYTHONIOENCODING=utf-8; Last: 97-100 % CPU durch fremde Agenten (3 pytest-Suiten mit coverage, mutationstor
+# --parallel 3, zweigdeckung --messen; 29-33 python-Prozesse) waehrend aller Laeufe -- Zeiten entsprechend, nicht vergleichbar.
+# A10: jeder Fall schreibt nur in tmp_path; der Temp-Ordner des Werkzeugs (Objekte fuer detect-secrets) liegt ueber TMP/TEMP/TMPDIR
+# ebenfalls in tmp_path (Zusicherung in test_mini_repo_ohne_fund_...: Ordner tmp_path/tmp existiert und ist nach dem Lauf leer).
+
+## 1) Die 11 schnellen Faelle (Mini-Repos), in der Suite ohne slow
+$ python -m pytest -q -p no:cacheprovider -m "not slow" tests/eichfall_geheimnis_scan.py
+...........                                                              [100%]
+11 passed, 3 deselected in 76.07s (0:01:16)
+[exit=0]
+Rot/Gruen je Waechter (Belegstelle = Testname):
+Neuer Fund im Arbeitsbaum        rot:   test_gepflanztes_geheimnis_im_baum_ist_rot (verfolgt, nicht committet; Exit 1, "NEU  Baum ... zugang.txt:1 ... AWS", Fundtext nicht in der Ausgabe)
+Neuer Fund nur im Verlauf        rot:   test_geheimnis_nur_im_verlauf_ist_rot (committet, geloescht; Exit 1, "NEU  Verlauf")
+Ohne Fund                        gruen: test_mini_repo_ohne_fund_ist_gruen_und_nennt_keine_absoluten_pfade (Exit 0, kein Rechnerpfad, Tor lebend 0 -> gruen)
+Basislinie bindet ans Objekt     rot:   test_basislinie_deckt_genau_dieses_objekt (ungeprueft -> Exit 2; eingeordnet -> Exit 0; Datei um eine Zeile laenger -> Exit 1)
+Basislinie ungueltig             rot:   test_basislinie_fehlt_oder_ist_ungueltig_ist_werkzeugfehler (fehlt / Muster in Begruendung / unbekannte Klasse / falsche Felder -> je Exit 2)
+Werkzeugfehler ohne Rechnerpfad  gruen: test_werkzeugfehler_nennt_keinen_rechnerpfad (kein Git-Repo -> Exit 2, tmp_path und Repo-Pfad nicht in der Ausgabe)
+Flacher Klon                     rot:   test_flacher_klon_ist_werkzeugfehler (Exit 2, "flacher Klon")
+Kontoname                        rot:   test_kontoname_lebend_ist_tor_platzhalter_und_eingefrorene_gruppen_nicht -- lebende Datei mit 2 Treffern + archiv/ mit 1:
+                                        Exit 1, "3 Treffer in 2 Dateien, 1 Namen", "nach Gruppe: lebend 2, archiv/ 1, ...", Zeilen "[lebend] notiz.txt" / "[archiv/] archiv/alt.txt",
+                                        Platzhalter-Datei (<konto>, ..., <name>) nicht gelistet, Name nicht in der Ausgabe;
+                                 gruen: nur noch archiv/ -> Exit 0 ("Tor --kontoname-sperre lebend: 0 Treffer"); rot: --kontoname-sperre alle -> Exit 1;
+                                        --kontoname-sperre aus -> argparse Exit 2 mit usage (kein Abschalten)
+--help                           gruen: test_help_ist_exit_0_mit_usage (A13; Exit 0, "usage", "--kontoname-sperre {lebend,alle}")
+Muster fuer den Zustandstest     gruen: test_muster_bleiben_fuer_den_zustandstest_importierbar (9 Muster, bytes)
+Kontoname-Muster selbst          gruen: test_platzhalter_und_redaktionsmarke_sind_keine_namen (<konto> und ... fallen durch; Name, auch mit doppelten Backslashes, faellt hinein)
+
+## 2) A13 in der Werkzeug-Familie: der bei 1c272fe rote Fall ist gruen
+$ python -m pytest -v -p no:cacheprovider "tests/eichfall_werkzeuge.py::test_help_antwortet_mit_exit_0_und_usage[geheimnis_scan.py]"
+tests/eichfall_werkzeuge.py::test_help_antwortet_mit_exit_0_und_usage[geheimnis_scan.py] PASSED [100%]
+1 passed in 9.13s
+[exit=0]
+
+## 3) Die 3 slow-Faelle am Wegwerf-Klon dieses Repos (git clone --shared --single-branch; HEAD 1c272fe, also OHNE die nicht committeten Aenderungen dieser Familie)
+$ python -m pytest -v -p no:cacheprovider -m slow tests/eichfall_geheimnis_scan.py         # Lauf 1
+tests/eichfall_geheimnis_scan.py::test_klon_dieses_repos_hat_keine_neuen_funde FAILED [ 33%]
+tests/eichfall_geheimnis_scan.py::test_klon_dieses_repos_hat_keine_kontonamen_in_lebenden_dateien FAILED [ 66%]
+tests/eichfall_geheimnis_scan.py::test_klon_mit_pflanzung_und_geaenderter_basisdatei_ist_rot PASSED [100%]
+2 failed, 1 passed, 11 deselected in 451.89s (0:07:31)
+[exit=1]
+Ausgabe des Werkzeugs im Klon (aus der Assertion): HEAD 1c272fe, 139 Commits, 1498 Blobs, 546 verfolgte Dateien; detect-secrets 84 Funde 243.3 s;
+Muster 93 Funde; "Basislinie .secrets.baseline: 133 Eintraege, 131 verwendet, 2 ohne Fund im Repo"; "NEUE FUNDE: 0";
+"KONTONAME ...: 109 Treffer in 54 Dateien, 3 Namen ...; nach Gruppe: lebend 42, archiv/ 55, PROGRAMM/eingang/ 12, PROGRAMM/masterprompts/ 0";
+"Tor --kontoname-sperre lebend: 42 Treffer im Geltungsbereich -> rot"; "ERGEBNIS: 0 neue Funde, 131 bekannte, 109 Kontonamen (42 im Tor 'lebend'); Exit 1".
+Ursache Fall 1 (rot in Lauf 1): die Assertion verlangte "0 ohne Fund im Repo"; 2 Eintraege der im Worktree geschriebenen Basislinie zeigen auf
+Blob-Versionen von tests/test_stufe10_betrieb.py, die nur auf Zweigen paralleler Worktrees liegen (rev-list --all im geteilten Objektlager:
+146 Commits/1529 Blobs; --single-branch-Klon: 139/1498). Ein verwaister Eintrag deckt nichts -- die Assertion wurde auf "NEUE FUNDE: 0 und
+>= 1 verwendet" gestellt (Docstring des Tests), Lauf 2 unten.
+Ursache Fall 2 (rot, erwartet): der Klon traegt HEAD 1c272fe mit 42 Kontonamen-Treffern in lebenden Dateien (30 davon in Belegen dieser
+Familie redigiert, nicht committet; 12 in 7 Dateien anderer Familien -> offen, 06-geheimnis-scan-kontoname.txt Abschnitt 4). Der Fall
+wird gruen, sobald HEAD diese Redaktionen traegt (Nachweis am Klon mit Patch: 06-geheimnis-scan-gruen.txt, Lauf 2).
+Fall 3 (rot wie verlangt, PASSED): Geheimnis nur im Verlauf + gedeckte Datei geaendert -> Exit 1.
+
+$ python -m pytest -v -p no:cacheprovider -m slow -k "keine_neuen_funde or keine_kontonamen" tests/eichfall_geheimnis_scan.py   # Lauf 2, nach der Assertion-Aenderung
+tests/eichfall_geheimnis_scan.py::test_klon_dieses_repos_hat_keine_neuen_funde PASSED [ 50%]
+tests/eichfall_geheimnis_scan.py::test_klon_dieses_repos_hat_keine_kontonamen_in_lebenden_dateien FAILED [100%]
+1 failed, 1 passed, 12 deselected in 111.23s (0:01:51)
+[exit=1]
+Werkzeug im Klon (Lauf 2, Last inzwischen geringer): Git-Lesen 3.3 s; detect-secrets 84 Funde 89.5 s; Muster 93 Funde 12.8 s; Dauer 106.4 s;
+"Basislinie .secrets.baseline: 133 Eintraege, 131 verwendet, 2 ohne Fund im Repo; bekannte Funde je Klasse: adresse-lokal 19, pruefsumme 74, testdatum 84";
+"NEUE FUNDE: 0"; Kontonamen wie in Lauf 1 (42 im Tor lebend, HEAD ohne die Redaktionen) -> Fall 2 bleibt rot bis zu den unter offen genannten Redaktionen.
+Stand der Datei damit: 11 schnelle Faelle gruen; slow: 2 gruen (keine neuen Funde; Pflanzung rot), 1 rot mit benanntem Grund (Kontonamen in HEAD 1c272fe).
+
+## 4) Wiederholung der 11 schnellen Faelle nach der Erweiterung des Kontoname-Musters (Bindestrich-Schreibweise), Last 66 % CPU / 8 python-Prozesse
+$ python -m pytest -q -p no:cacheprovider -m "not slow" tests/eichfall_geheimnis_scan.py
+...........                                                              [100%]
+11 passed, 3 deselected in 31.85s
+[exit=0]
