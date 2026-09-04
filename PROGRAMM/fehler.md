@@ -141,6 +141,21 @@ je einer Sekunde -- unter der Last des Pre-Push-Laufs (Suite, Mutantenlaeufe, Vi
 Jetzt sechs Versuche mit wachsender Wartezeit (0,5 bis 16 s, in Summe unter 32 s); der Fehler bleibt hart,
 nur die Zahl der Versuche steigt. Danach: `tests/eichfall_mutationstor.py` 3 gruen in 232 s.
 
+**Dritter Anlauf, dritte Ursache -- und die ist keine Umgebung.** Der Push fiel erneut, diesmal an
+`tests/test_stufe8_testwirkung.py::test_die_messung_faellt_ohne_absturz_wenn_die_suite_rot_ist`:
+`assert () == ('tests/test_rot_eichfall_zweigdeckung.py::test_rot',)`. Die Messung sah `exit=1`, konnte
+aber keinen roten Fall benennen -- `tools/zweigdeckung.py::fehlschlaege` liest die Zeilen `FAILED ...`
+aus der pytest-Ausgabe, und die druckt pytest nur nach seiner Vorgabe fuer `-r`. Der Fall laeuft einzeln
+gruen (dreimal nachgestellt) und fiel nur im vollen Lauf: eine Abhaengigkeit von etwas, das nicht
+zugesichert ist, ist ein Fehler im Werkzeug, kein Flatterfall. `SUITE_ARGUMENTE` erzwingt die Zeilen
+jetzt mit `-rfE`; danach dreimal gruen (16,9 / 20,4 / 28,2 s).
+
+**Was ich daraus mitnehme.** Drei Pushs, drei verschiedene Ursachen unter einer Fehlermeldung. Zweimal
+war es die Umgebung (Platz, Virenscanner), einmal das Werkzeug. Die Reihenfolge war richtig: erst
+nachstellen, dann die Ursache benennen, nie die Zusicherung lockern. Falsch war, den Pre-Push-Lauf als
+Messgeraet zu benutzen -- 16 Minuten je Anlauf. Kuenftig: die Suite ohne slow lokal fahren, dann die
+slow-Faelle einzeln, erst dann pushen.
+
 **Nicht meine Sache, aber zu sagen:** die Platte ist zu 99,4 % belegt; die restlichen 470 GB sind fremde
 Daten. Wer hier weiterarbeitet, braucht Platz — das steht in `PROGRAMM/haltepunkte.md` als Hinweis, nicht
 als Handlung von mir.

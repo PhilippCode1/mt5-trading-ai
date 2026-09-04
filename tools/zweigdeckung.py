@@ -105,6 +105,12 @@ KOPIE_ZUSAETZLICH: tuple[str, ...] = ("aufzeichnungen", "config")
 #: Kopie und Unterprozess; in der Kopie liefen sie verschachtelt).
 SUITE_ARGUMENTE: tuple[str, ...] = (
     "-q",
+    # ``-rfE`` erzwingt die Zeilen "FAILED ..." und "ERROR ...", aus denen
+    # :func:`fehlschlaege` die roten Faelle liest. Ohne sie haengt die Liste an der
+    # Vorgabe von pytest bzw. an ``addopts`` der Kopie: im Pre-Push-Lauf vom
+    # 2026-09-04 kam einmal exit=1 ohne eine einzige FAILED-Zeile zurueck, und die
+    # Messung stand ohne benennbaren Fall da (F-008, dritter Anlauf).
+    "-rfE",
     "-p",
     "no:cacheprovider",
     "-m",
@@ -113,7 +119,9 @@ SUITE_ARGUMENTE: tuple[str, ...] = (
 )
 
 #: ``FAILED tests/x.py::test_y - ...`` / ``ERROR tests/x.py`` im Kurzbericht von pytest
-#: (``-q`` druckt ihn noch; ``-qq`` nicht -- darum steht in SUITE_ARGUMENTE ein ``-q``).
+#: (``-q`` druckt ihn noch; ``-qq`` nicht -- darum steht in SUITE_ARGUMENTE ein ``-q``
+#: und seit F-008 zusaetzlich ``-rfE``, das die Zeilen unabhaengig von der Vorgabe
+#: erzwingt).
 _FEHLSCHLAG = re.compile(r"^(?:FAILED|ERROR) (\S+)", re.MULTILINE)
 
 
