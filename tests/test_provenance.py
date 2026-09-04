@@ -10,6 +10,7 @@ Haupt-Repos zu beruehren.
 from __future__ import annotations
 
 import subprocess
+import time
 from pathlib import Path
 
 import pytest
@@ -17,13 +18,24 @@ from mt5_trading_ai.backtest.provenance import ProvenanceError, code_commit_from
 
 
 def _git(cwd: Path, *args: str) -> None:
-    subprocess.run(
-        ["git", "-c", "user.email=t@t", "-c", "user.name=t", *args],
-        cwd=cwd,
-        check=True,
-        capture_output=True,
-        text=True,
-    )
+    # Windows haelt frisch geschriebene Git-Objekte sporadisch fest
+    # (Virenscanner): sechs Versuche mit wachsender Pause, dann hart (F-008).
+    for versuch in range(6):
+        lauf = subprocess.run(
+            ["git", "-c", "user.email=t@t", "-c", "user.name=t", *args],
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+        )
+        if lauf.returncode == 0:
+            return
+        flatter = any(
+            m in (lauf.stderr or "")
+            for m in ("Permission denied", "failed to insert into database")
+        )
+        if not flatter or versuch == 5:
+            raise AssertionError(f"git {args} (Versuch {versuch + 1}): {lauf.stderr}")
+        time.sleep(0.5 * 2**versuch)
 
 
 def _clean_repo(root: Path) -> None:

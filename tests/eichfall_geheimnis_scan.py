@@ -62,25 +62,33 @@ def _umgebung(tmp: Path) -> dict[str, str]:
     return {**UMGEBUNG, "TMP": str(tmp), "TEMP": str(tmp), "TMPDIR": str(tmp)}
 
 
+#: Windows haelt frisch geschriebene Git-Objekte sporadisch fest (Virenscanner,
+#: Indexer). Sechs Versuche mit wachsender Pause; der Fehler bleibt hart (F-008).
+GIT_VERSUCHE = 6
+GIT_FLATTER = ("Permission denied", "failed to insert into database", "unable to index")
+
+
 def _git(repo: Path, *args: str) -> str:
     """Git im Wegwerf-Repo; Schreibfehler mit 'Permission denied' werden wiederholt.
 
     Unter Windows scheitert das Umbenennen einer frisch geschriebenen Objektdatei
     sporadisch mit EACCES, wenn ein Virenscanner oder Indexer sie gerade haelt
     (gemessen: 5 von 30 Repo-Anlagen bei Volllast des Rechners, Beleg
-    06-geheimnis-scan-eichfall-pytest.txt). Das ist kein Verhalten des geprueften
-    Werkzeugs; drei Versuche mit Pause, dann Fehlschlag.
+    06-geheimnis-scan-eichfall-pytest.txt; unter der Last des Pre-Push-Laufs fiel
+    derselbe Fall zweimal trotz dreier Versuche, F-008). Das ist kein Verhalten des
+    geprueften Werkzeugs; sechs Versuche mit wachsender Pause, dann Fehlschlag.
     """
-    for versuch in range(3):
+    for versuch in range(GIT_VERSUCHE):
         res = subprocess.run(
             ["git", *args], cwd=repo, capture_output=True, env=UMGEBUNG
         )
         fehler = res.stderr.decode("utf-8", "replace")
         if res.returncode == 0:
             return res.stdout.decode("utf-8", "replace")
-        if "Permission denied" not in fehler or versuch == 2:
+        vorbei = versuch == GIT_VERSUCHE - 1
+        if not any(m in fehler for m in GIT_FLATTER) or vorbei:
             raise AssertionError(f"git {args} (Versuch {versuch + 1}): {fehler}")
-        time.sleep(0.5 * (versuch + 1))
+        time.sleep(0.5 * 2**versuch)
     raise AssertionError("unerreichbar")
 
 

@@ -9,6 +9,7 @@ Eingaenge und das Archiv nicht gescannt, sondern per Manifest gesichert sind.
 from __future__ import annotations
 
 import subprocess
+import time
 from pathlib import Path
 
 import pytest
@@ -135,7 +136,24 @@ def test_eine_markdown_unter_tests_ist_rot(monkeypatch: pytest.MonkeyPatch) -> N
 
 
 def _git(repo: Path, *args: str) -> None:
-    subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True)
+    # Windows haelt frisch geschriebene Git-Objekte sporadisch fest
+    # (Virenscanner): sechs Versuche mit wachsender Pause, dann hart (F-008).
+    for versuch in range(6):
+        lauf = subprocess.run(
+            ["git", *args],
+            cwd=repo,
+            capture_output=True,
+            text=True,
+        )
+        if lauf.returncode == 0:
+            return
+        flatter = any(
+            m in (lauf.stderr or "")
+            for m in ("Permission denied", "failed to insert into database")
+        )
+        if not flatter or versuch == 5:
+            raise AssertionError(f"git {args} (Versuch {versuch + 1}): {lauf.stderr}")
+        time.sleep(0.5 * 2**versuch)
 
 
 def test_rot_eine_gross_geschriebene_md_an_der_wurzel_wird_gesehen(
