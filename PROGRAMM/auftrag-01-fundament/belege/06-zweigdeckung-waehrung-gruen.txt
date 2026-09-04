@@ -1,0 +1,214 @@
+==============================================================================
+GRUENER EICHFALL Familie Zweigdeckung-Tests -- risk/waehrung.py, Stand NACH tests/test_zweige_waehrung.py (f37caa6 + die neue Datei), 2026-09-04
+==============================================================================
+Waechter: A15 (Zweigdeckung je Geldpfad-Datei >= 90 %). Gegenstand: risk/waehrung.py.
+Geaendert wurde nur tests/test_zweige_waehrung.py (neu) und dieser Beleg; Paketcode, andere Tests und Werkzeuge
+sind unveraendert -- git status am Ende.
+
+## 1. Die neue Testdatei allein
+$ PYTHONDONTWRITEBYTECODE=1 PYTHONIOENCODING=utf-8 python -m pytest -v -p no:cacheprovider tests/test_zweige_waehrung.py
+============================= test session starts =============================
+platform win32 -- Python 3.11.7, pytest-8.3.4, pluggy-1.6.0 -- C:\Users\<konto>\AppData\Local\Programs\Python\Python311\python.exe
+Waechter A2 (tests/conftest.py): Skip = Fehlschlag.
+Waechter A10 (tests/conftest.py): Zustandsordner C:\Users\<konto>\AppData\Local\mt5_trading_ai\risiko (vorhanden: ja, 1 Dateien) und Arbeitsbaum C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_ca8f1b2c-ff3-2 bleiben unveraendert.
+rootdir: C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_ca8f1b2c-ff3-2
+configfile: pyproject.toml
+plugins: anyio-4.8.0, base-url-2.1.0, cov-6.0.0, playwright-0.7.2
+collecting ... collected 26 items
+
+tests/test_zweige_waehrung.py::test_bezugspunkt_ein_betrag_mit_waehrung_entsteht PASSED [  3%]
+tests/test_zweige_waehrung.py::test_betrag_ohne_waehrung_entsteht_nicht[] PASSED [  7%]
+tests/test_zweige_waehrung.py::test_betrag_ohne_waehrung_entsteht_nicht[ ] PASSED [ 11%]
+tests/test_zweige_waehrung.py::test_betrag_ohne_waehrung_entsteht_nicht[   ] PASSED [ 15%]
+tests/test_zweige_waehrung.py::test_betrag_ohne_waehrung_entsteht_nicht[\t] PASSED [ 19%]
+tests/test_zweige_waehrung.py::test_betrag_ohne_waehrung_entsteht_nicht[\n] PASSED [ 23%]
+tests/test_zweige_waehrung.py::test_betrag_ohne_waehrung_entsteht_nicht[ \t\n ] PASSED [ 26%]
+tests/test_zweige_waehrung.py::test_der_fehler_nennt_seinen_grund_und_ist_ein_valueerror PASSED [ 30%]
+tests/test_zweige_waehrung.py::test_die_waehrung_laesst_sich_auch_nachtraeglich_nicht_entfernen PASSED [ 34%]
+tests/test_zweige_waehrung.py::test_eine_nicht_getrimmte_waehrung_ist_eine_andere_waehrung PASSED [ 38%]
+tests/test_zweige_waehrung.py::test_gleiche_waehrung_addiert_und_subtrahiert_ohne_kurs PASSED [ 42%]
+tests/test_zweige_waehrung.py::test_fremde_waehrungen_lassen_sich_weder_addieren_noch_subtrahieren PASSED [ 46%]
+tests/test_zweige_waehrung.py::test_mal_skaliert_den_wert_und_behaelt_die_waehrung PASSED [ 50%]
+tests/test_zweige_waehrung.py::test_zwei_betraege_lassen_sich_nicht_multiplizieren PASSED [ 53%]
+tests/test_zweige_waehrung.py::test_gleiche_waehrung_gibt_denselben_betrag_zurueck_und_ignoriert_den_kurs PASSED [ 57%]
+tests/test_zweige_waehrung.py::test_mit_kurs_wechselt_der_betrag_die_waehrung PASSED [ 61%]
+tests/test_zweige_waehrung.py::test_ohne_kurs_sperrt_die_umrechnung_und_nennt_den_grund PASSED [ 65%]
+tests/test_zweige_waehrung.py::test_ein_kurs_von_null_oder_darunter_ist_kein_kurs[0] PASSED [ 69%]
+tests/test_zweige_waehrung.py::test_ein_kurs_von_null_oder_darunter_ist_kein_kurs[-0.0001] PASSED [ 73%]
+tests/test_zweige_waehrung.py::test_ein_kurs_von_null_oder_darunter_ist_kein_kurs[-1.27] PASSED [ 76%]
+tests/test_zweige_waehrung.py::test_gleiche_waehrung_fragt_kein_terminal PASSED [ 80%]
+tests/test_zweige_waehrung.py::test_direkter_tick_wird_genommen_und_das_gegenpaar_gar_nicht_erst_gefragt PASSED [ 84%]
+tests/test_zweige_waehrung.py::test_leerer_direkter_tick_faellt_auf_den_kehrwert_des_gegenpaars_zurueck PASSED [ 88%]
+tests/test_zweige_waehrung.py::test_beide_ticks_leer_ergeben_keinen_kurs_und_der_sperrt PASSED [ 92%]
+tests/test_zweige_waehrung.py::test_kein_tick_in_beiden_richtungen_ergibt_keinen_kurs PASSED [ 96%]
+tests/test_zweige_waehrung.py::test_ein_mittelkurs_unter_null_ist_in_beiden_richtungen_kein_kurs PASSED [100%]
+
+============================= 26 passed in 3.53s ==============================
+exit=0
+
+## 2. Messung nachher
+$ PYTHONDONTWRITEBYTECODE=1 PYTHONIOENCODING=utf-8 python tools/zweigdeckung.py --messen --zweige --bericht <tmp>/cov-nachher.json --kopie <tmp>/kopie-nachher
+Kopie: <tmp>/kopie-nachher (615 Dateien, 14.9 s)
+Suite unter coverage: exit=1, 1508 s -- 1 failed, 1756 passed, 4 deselected in 1474.98s (0:24:34)
+Bericht: <tmp>/cov-nachher.json
+Suite rot: 1 Faelle -- das Tor bleibt rot, s. Urteil.
+    tests/test_readme_numbers.py::test_readme_test_function_count_matches_code
+==========================================================================
+ZWEIGDECKUNG JE DATEI DES GELDPFADS
+==========================================================================
+Schwelle je Datei: 90% (Katalog A15)
+
+Datei                                      Zeilen   Zweige  fehlend
+venue/mt5.py                                89.4%    83.0%       54  <== unter der Schwelle
+venue/protocol.py                          100.0%   100.0%        0
+execution/risk_manager.py                   99.7%    99.0%        1
+execution/schwebende_auftraege.py           96.3%    92.5%        3
+execution/cost_gate.py                     100.0%   100.0%        0
+risk/sizing.py                              94.6%    90.0%        4
+risk/stop_budget.py                         97.4%    94.4%        1
+risk/limits.py                             100.0%   100.0%        0
+risk/leverage.py                           100.0%   100.0%        0
+costs/model.py                             100.0%   100.0%        0
+gates/erkundung.py                          97.4%    93.8%        1
+risk/waehrung.py                           100.0%   100.0%        0
+execution/handelspause.py                   94.3%    90.6%        3
+execution/reconcile.py                      89.4%    79.4%        7  <== unter der Schwelle
+
+Paket gesamt: Zeilen 93.1 %, Zweige 88.1 %
+
+venue/mt5.py: 54 fehlende Zweige (Zeile->Ziel)
+    270->271, 276->277, 280->281, 498->499, 642->643, 1178->1192, 1293->1294, 1478->1479
+    1486->1487, 1526->1527, 1574->1575, 1622->Ausgang, 1845->Ausgang, 1862->1863, 1870->1872, 1945->1946
+    1985->1990, 2053->2058, 2084->2085, 2253->2254, 2297->2298, 2424->2426, 2426->2427, 2426->2428
+    2428->2429, 2428->2430, 2587->2588, 2587->2589, 2589->2590, 2589->2591, 2591->2592, 2591->2593
+    2593->2594, 2593->2595, 2598->Ausgang, 2598->2599, 2791->2792, 2796->2797, 2800->2801, 2845->2846
+    2858->2859, 2858->2860, 2862->2863, 2862->2877, 2893->2894, 2912->2913, 2995->2996, 2997->3002
+    3028->3029, 3043->3044, 3101->3107, 3252->3253, 3256->3257, 3267->3268
+    nicht gelaufene Zeilen: 271, 277, 281, 499, 643, 1294, 1479, 1487, 1527, 1575, 1863, 1864, 1946, 1949, 1950, 1996, 1997, 1998, 1999, 2058, 2059, 2062, 2076, 2077, 2078, 2085, 2254, 2298, 2426, 2427, 2428, 2429, 2430, 2579, 2580, 2581, 2582, 2585, 2586, 2587, 2588, 2589, 2590, 2591, 2592, 2593, 2594, 2595, 2598, 2599, 2792, 2797, 2801, 2837, 2840, 2841, 2846, 2854, 2855, 2858, 2859, 2860, 2861, 2862, 2863, 2877, 2894, 2913, 2996, 3002, 3003, 3004, 3029, 3044, 3107, 3253, 3257, 3268
+
+execution/risk_manager.py: 1 fehlende Zweige (Zeile->Ziel)
+    918->Ausgang
+
+execution/schwebende_auftraege.py: 3 fehlende Zweige (Zeile->Ziel)
+    113->114, 391->392, 399->400
+    nicht gelaufene Zeilen: 114, 392, 393, 400
+
+risk/sizing.py: 4 fehlende Zweige (Zeile->Ziel)
+    114->115, 116->117, 139->140, 202->203
+    nicht gelaufene Zeilen: 115, 117, 140, 203
+
+risk/stop_budget.py: 1 fehlende Zweige (Zeile->Ziel)
+    249->250
+    nicht gelaufene Zeilen: 250
+
+gates/erkundung.py: 1 fehlende Zweige (Zeile->Ziel)
+    225->226
+    nicht gelaufene Zeilen: 226
+
+execution/handelspause.py: 3 fehlende Zweige (Zeile->Ziel)
+    102->103, 108->109, 112->113
+    nicht gelaufene Zeilen: 103, 109, 113
+
+execution/reconcile.py: 7 fehlende Zweige (Zeile->Ziel)
+    177->178, 192->193, 194->195, 241->242, 247->248, 250->251, 282->283
+    nicht gelaufene Zeilen: 162, 178, 188, 189, 193, 195, 226, 239, 240, 242, 245, 246, 248, 251, 283
+
+FEHLGESCHLAGEN — die Suite ist rot (1 Faelle); die Deckung oben stammt aus einem roten Lauf, ein gruenes Urteil setzt eine gruene Suite voraus: tests/test_readme_numbers.py::test_readme_test_function_count_matches_code
+FEHLGESCHLAGEN — venue/mt5.py: 83.0% Zweigdeckung, verlangt sind 90% (54 Zweige fehlen).
+FEHLGESCHLAGEN — execution/reconcile.py: 79.4% Zweigdeckung, verlangt sind 90% (7 Zweige fehlen).
+Was fehlt, sind in aller Regel die ablehnenden Zweige -- also die, wegen derer die Datei existiert.
+
+Aus den Berichten, nur die eine Datei:
+vorher : risk/waehrung.py: Zweige 13/18 = 72.2 % (< 90 %: ROT); Zeilen 82.5 %, fehlende Zeilen [43, 54, 57, 58, 61, 67]
+    fehlende Zweige (Zeile -> Ziel): 42->43, 46->Ausgang, 66->67, 93->95, 98->100
+nachher: risk/waehrung.py: Zweige 18/18 = 100.0 % (>= 90 %: GRUEN); Zeilen 100.0 %, fehlende Zeilen []
+    fehlende Zweige (Zeile -> Ziel): (keine)
+
+Jetzt gedeckte Zweige (vorher fehlend, nachher gelaufen) und der Test, der sie
+unterscheidet:
+   42 -> 43     test_betrag_ohne_waehrung_entsteht_nicht[6 Faelle],
+                test_der_fehler_nennt_seinen_grund_und_ist_ein_valueerror,
+                test_die_waehrung_laesst_sich_auch_nachtraeglich_nicht_entfernen
+   46 -> Ausg.  test_gleiche_waehrung_addiert_und_subtrahiert_ohne_kurs,
+                test_mal_skaliert_den_wert_und_behaelt_die_waehrung
+   66 -> 67     test_gleiche_waehrung_gibt_denselben_betrag_zurueck_und_ignoriert_den_kurs
+   93 -> 95     test_leerer_direkter_tick_faellt_auf_den_kehrwert_des_gegenpaars_zurueck
+   98 -> 100    test_beide_ticks_leer_ergeben_keinen_kurs_und_der_sperrt,
+                test_ein_mittelkurs_unter_null_ist_in_beiden_richtungen_kein_kurs
+Jetzt gelaufene Zeilen (vorher nicht gelaufen): 43, 54, 57, 58, 61, 67.
+
+## 3. Der eine rote Fall der Suite -- und warum er hier stehen bleibt
+tests/test_readme_numbers.py::test_readme_test_function_count_matches_code vergleicht den Kennzahlenblock
+in README.md (Zeile 40: 'test_function_count: 1482') mit der gezaehlten Zahl der Testfunktionen im Baum.
+Die neue Datei bringt 19 Testfunktionen mit; gemessen:
+$ python -c "...check_doc_numbers.test_function_count()..."
+    test_function_count = 1501     (README: 1482; 1501 - 1482 = 19)
+README.md gehoert nicht zu dieser Familie (Auftrag: nur die eigene neue Testdatei aendern) -> unter 'offen'.
+Der Fall beruehrt die Deckung von risk/waehrung.py nicht: er zaehlt Zeilen in README.md.
+
+## 4. Werkzeuge und Suite
+$ python -m ruff format .
+189 files left unchanged
+[exit=0]
+
+$ python -m ruff check .
+All checks passed!
+[exit=0]
+
+$ python -m mypy --strict mt5_trading_ai tools PROGRAMM/hooks
+Success: no issues found in 85 source files
+[exit=0]
+
+$ python -m pytest -q -p no:cacheprovider tests/test_zweige_waehrung.py
+..........................                                               [100%]
+26 passed in 3.37s
+[exit=0]
+
+$ python -m pytest -q -p no:cacheprovider -m "not slow"
+[... 7 Zeilen gekuerzt ...]
+........................................................................ [ 32%]
+........................................................................ [ 36%]
+........................................................................ [ 40%]
+........................................................................ [ 45%]
+........................................................................ [ 49%]
+........................................................................ [ 53%]
+........................................................................ [ 57%]
+..............................................F......................... [ 61%]
+........................................................................ [ 65%]
+........................................................................ [ 69%]
+........................................................................ [ 73%]
+........................................................................ [ 77%]
+........................................................................ [ 81%]
+........................................................................ [ 85%]
+........................................................................ [ 90%]
+........................................................................ [ 94%]
+........................................................................ [ 98%]
+...............................                                          [100%]
+================================== FAILURES ===================================
+________________ test_readme_test_function_count_matches_code _________________
+
+    def test_readme_test_function_count_matches_code() -> None:
+>       assert _declared()["test_function_count"] == _test_function_count()
+E       assert 1482 == 1501
+E        +  where 1501 = _test_function_count()
+
+tests\test_readme_numbers.py:85: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_readme_numbers.py::test_readme_test_function_count_matches_code
+1 failed, 1758 passed, 5 deselected in 853.91s (0:14:13)
+
+$ git status --porcelain
+?? PROGRAMM/auftrag-01-fundament/belege/06-zweigdeckung-waehrung-gruen.txt
+?? PROGRAMM/auftrag-01-fundament/belege/06-zweigdeckung-waehrung-rot.txt
+?? tests/test_zweige_waehrung.py
+
+## 5. Beobachtung am Paketcode (nicht geaendert, Auftrag: nur die eigene Testdatei) -> 'offen'
+Der Docstring von kurs_aus_ticks sagt: 'Ein Kurs von 0 oder ein verschraenkter Tick zaehlt als nicht messbar.'
+Der Code prueft aber nur den Mittelkurs (mid > 0). Ein verschraenkter Tick mit zwei positiven Preisen
+(bid > ask) hat einen Mittelkurs > 0 und wird angenommen. Gemessen im Worktree, ohne Aenderung:
+$ python -c "kurs_aus_ticks('GBP','USD', {'GBPUSD': Tick(bid=1.2801, ask=1.2599)}.get)"
+    verschraenkt bid=1.2801 ask=1.2599 -> 1.2700
+    leer bid=0 ask=0 -> None
+Die neue Testdatei deckt darum den Fall 'Mittelkurs <= 0' (leerer und negativer Tick) und behauptet nichts
+ueber verschraenkte Ticks: eine Zusicherung, die den heutigen Stand festschriebe, wuerde die Luecke zementieren.
+

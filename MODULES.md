@@ -254,7 +254,7 @@ Datenqualitaet als Gate (Phase 7.2).
 ## `mt5_trading_ai/execution/cost_gate.py`
 
 Zeilen: 137
-Aufrufer: Paket 2 · Werkzeuge 3 · Tests 6
+Aufrufer: Paket 2 · Werkzeuge 3 · Tests 7
 
 Pre-Trade-Kostentor am Order-Pfad.
 
@@ -297,7 +297,7 @@ Anschluss der Hebelklammer an den Order-Pfad.
 ## `mt5_trading_ai/execution/private_sync.py`
 
 Zeilen: 89
-Aufrufer: Paket 2 · Werkzeuge 1 · Tests 3
+Aufrufer: Paket 2 · Werkzeuge 1 · Tests 4
 
 Private Ereignis-Synchronisation: der Kontostrom haelt das Buch aktuell.
 
@@ -308,7 +308,7 @@ Private Ereignis-Synchronisation: der Kontostrom haelt das Buch aktuell.
 ## `mt5_trading_ai/execution/reconcile.py`
 
 Zeilen: 321
-Aufrufer: Paket 3 · Werkzeuge 2 · Tests 22
+Aufrufer: Paket 3 · Werkzeuge 2 · Tests 24
 
 Order-Lebenszyklus und Reconcile: Konto gegen Buch.
 
@@ -338,7 +338,7 @@ Mehrteilige Freigabe fuer Order-Submit an einen echten Markt.
 ## `mt5_trading_ai/execution/risiko_zustand.py`
 
 Zeilen: 1722
-Aufrufer: Paket 4 · Werkzeuge 7 · Tests 37
+Aufrufer: Paket 4 · Werkzeuge 7 · Tests 38
 
 Der Risikozustand, der einen Neustart ueberdauert -- und wie er fail-closed liest.
 
@@ -361,7 +361,7 @@ Der Risikozustand, der einen Neustart ueberdauert -- und wie er fail-closed lies
 ## `mt5_trading_ai/execution/risk_manager.py`
 
 Zeilen: 1203
-Aufrufer: Paket 3 · Werkzeuge 6 · Tests 30
+Aufrufer: Paket 3 · Werkzeuge 6 · Tests 32
 
 Risikoschicht am Order-Pfad: die vier Grenzen als letzte Verteidigungslinie.
 
@@ -396,7 +396,7 @@ Treiber-Loop/Scheduler (Paket 7): Frische, Drift und Drawdown-Peak getaktet prue
 ## `mt5_trading_ai/execution/schwebende_auftraege.py`
 
 Zeilen: 423
-Aufrufer: Paket 1 · Werkzeuge 2 · Tests 28
+Aufrufer: Paket 1 · Werkzeuge 2 · Tests 29
 
 Auftraege, deren Sendeversuch ohne Antwort endete -- „koennte beim Broker leben".
 
@@ -536,7 +536,7 @@ Stop-Budget je Anlageklasse — hergeleitet, nicht uebertragen (Phase 6.5).
 ## `mt5_trading_ai/risk/waehrung.py`
 
 Zeilen: 100
-Aufrufer: Paket 1 · Werkzeuge 0 · Tests 1
+Aufrufer: Paket 1 · Werkzeuge 0 · Tests 2
 
 Geldbetraege tragen ihre Waehrung; ein Kurs ist ein Messwert oder eine Sperre.
 
@@ -548,7 +548,7 @@ Geldbetraege tragen ihre Waehrung; ein Kurs ist ein Messwert oder eine Sperre.
 ## `mt5_trading_ai/venue/catalog.py`
 
 Zeilen: 347
-Aufrufer: Paket 3 · Werkzeuge 4 · Tests 13
+Aufrufer: Paket 3 · Werkzeuge 4 · Tests 14
 
 Instrumentenkatalog — die Metadaten, die MT5 nicht liefert.
 
@@ -586,7 +586,7 @@ Ein Terminal ohne MetaTrader: die Betriebsattrappe fuer Trockenlauf und Eichfael
 ## `mt5_trading_ai/venue/mt5.py`
 
 Zeilen: 3271
-Aufrufer: Paket 4 · Werkzeuge 7 · Tests 44
+Aufrufer: Paket 4 · Werkzeuge 7 · Tests 46
 
 MT5-Anbindung an das ``TradingVenue``-Protokoll.
 
@@ -611,7 +611,7 @@ MT5-Anbindung an das ``TradingVenue``-Protokoll.
 ## `mt5_trading_ai/venue/protocol.py`
 
 Zeilen: 547
-Aufrufer: Paket 14 · Werkzeuge 9 · Tests 56
+Aufrufer: Paket 14 · Werkzeuge 9 · Tests 58
 
 Plattformunabhaengiger Handelsplatz-Vertrag.
 

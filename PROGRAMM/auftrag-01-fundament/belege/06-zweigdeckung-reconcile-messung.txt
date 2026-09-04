@@ -1,0 +1,152 @@
+==============================================================================
+ZWEIGDECKUNG execution/reconcile.py -- vorher 79,4 %, nachher 100,0 %
+Stand f37caa6 + tests/test_zweige_reconcile.py, 2026-09-04
+==============================================================================
+Waechter: A15 (Zweigdeckung je Geldpfad-Datei >= 90 %, Schwelle in
+tools/zweigdeckung.py, nie gesenkt). Gegenstand: mt5_trading_ai/execution/reconcile.py
+-- das Positionsbuch und der Startabgleich (Befunde D7/D8).
+
+Beide Messungen mit demselben Befehl, in einer Kopie des Arbeitsbaums (der Arbeitsbaum
+bekommt weder .coverage noch __pycache__ ab, Katalog A18), PYTHONDONTWRITEBYTECODE=1
+und PYTHONIOENCODING=utf-8. Geaendert wurde ausschliesslich die neue Testdatei
+tests/test_zweige_reconcile.py; Paketcode, andere Tests und Werkzeuge blieben
+unberuehrt (git diff --stat unten).
+
+## 1. VORHER (Stand f37caa6, ohne die neue Testdatei)
+$ PYTHONDONTWRITEBYTECODE=1 PYTHONIOENCODING=utf-8 python tools/zweigdeckung.py --messen --zweige --bericht <tmp>/vorher.json
+Kopie: <tmp>\zweigdeckung-t3m8z76_ (614 Dateien, 14.6 s)
+Suite unter coverage: exit=0, 1008 s -- 1731 passed, 4 deselected in 998.70s (0:16:38)
+
+Datei                                      Zeilen   Zweige  fehlend
+execution/reconcile.py                      89.4%    79.4%       7  <== unter der Schwelle
+
+execution/reconcile.py: 7 fehlende Zweige (Zeile->Ziel)
+    177->178, 192->193, 194->195, 241->242, 247->248, 250->251, 282->283
+    nicht gelaufene Zeilen: 162, 178, 188, 189, 193, 195, 226, 239, 240, 242, 245, 246, 248, 251, 283
+
+FEHLGESCHLAGEN — execution/reconcile.py: 79.4% Zweigdeckung, verlangt sind 90% (7 Zweige fehlen).
+[exit=1; die anderen zwei roten Dateien venue/mt5.py 83,0 % und risk/waehrung.py 72,2 %
+ sind andere Familien und hier nicht Gegenstand]
+
+## 2. NACHHER (derselbe Stand + tests/test_zweige_reconcile.py)
+$ PYTHONDONTWRITEBYTECODE=1 PYTHONIOENCODING=utf-8 python tools/zweigdeckung.py --messen --zweige --bericht <tmp>/nachher.json
+Kopie: <tmp>\zweigdeckung-wo2z2jr_ (615 Dateien, 14.7 s)
+Suite unter coverage: exit=1, 1427 s -- 1 failed, 1750 passed, 4 deselected in 1400.81s (0:23:20)
+Suite rot: 1 Faelle -- das Tor bleibt rot, s. Urteil.
+    tests/test_readme_numbers.py::test_readme_test_function_count_matches_code
+
+Datei                                      Zeilen   Zweige  fehlend
+execution/reconcile.py                     100.0%   100.0%        0
+
+(keine fehlenden Zweige mehr; die Datei steht im Bericht ohne Zweigliste)
+
+Paket gesamt: Zeilen 93,3 %, Zweige 88,1 % (vorher 92,9 % / 87,7 %)
+
+## 3. Die sieben Zweige und die Zusicherung, die sie unterscheidet
+Zweig     Stelle in reconcile.py                     Fall in tests/test_zweige_reconcile.py
+177->178  _buchposition_lesen: Eintrag kein Objekt   test_ein_defekter_buchsatz_sperrt_die_eroeffnung[177-eintrag-kein-objekt]
+192->193  Kennung/Ticket/Symbol kein oder leerer     ...[192-ticket-ist-zahl], ...[192-symbol-leer]
+          Text
+194->195  richtung ausserhalb kauf/verkauf           ...[194-richtung-unbekannt],
+                                                     test_der_defekte_satz_steht_im_journal_des_betriebs
+241->242  _roh_lesen: Datei da, aber leer            test_ein_leeres_buch_auf_der_platte_sperrt_nichts
+247->248  fremde Fassung oder kein Objekt            test_ein_buch_mit_fremdem_rahmen_...[247-fremde-fassung],
+                                                     ...[247-liste-statt-objekt]
+250->251  'positionen' fehlt oder ist keine Liste    ...[250-ohne-positionen], ...[250-positionen-kein-liste]
+282->283  austragen: Kennung unbekannt               test_austragen_einer_unbekannten_kennung_schreibt_nicht
+
+Dazu die bis dahin nicht gelaufenen Zeilen:
+  162       Buchposition.side (kauf->BUY, verkauf->SELL)  test_die_richtung_im_buch_bestimmt_die_seite
+  188, 189  Fang von KeyError/TypeError/ValueError/       ...[188-ticket-fehlt], [188-menge-keine-zahl],
+            InvalidOperation beim Lesen eines Satzes      [188-zeit-kein-datum], [188-zeit-keine-zeichenkette]
+  226       Positionsbuch.pfad                            test_das_buch_nennt_seinen_ort_im_zustandsordner
+  239, 240  OSError beim Lesen -> positionsbuch_unlesbar  test_ein_unlesbares_buch_latcht_den_halt
+  245, 246  JSONDecodeError -> positionsbuch_defekt       ...[245-zerrissenes-json],
+                                                          test_ein_defektes_buch_sperrt_die_eroeffnung_und_laesst_die_schliessung
+
+## 4. Was die Zusicherungen behaupten -- die Folge, nicht der Rueckgabewert
+Jeder Defekt-Zweig wird ueber seine Wirkung beim Aufrufer festgenagelt
+(Hilfsfunktion _defekt_ergibt_halt): Mt5Venue.adopt_book nennt den Defekt in
+startabgleich.defekt, setzt den Global-Halt mit dem Grund
+"positionsbuch_defekt:<meldung>" in halt_gruende, und die naechste eroeffnende Order
+faellt mit reason="global_halt". Dazu je nach Fall:
+
+* die Platte bleibt Zeichen fuer Zeichen stehen -- ein defektes oder fremdes Buch wird
+  nicht ueberschrieben (Fassung 2 wird nicht mit Fassung 1 ueberbaut);
+* tools/live_betrieb.py::_startabgleich_journalisieren schreibt genau einen
+  startabgleich-Satz mit dem Feld "defekt"
+  (test_der_defekte_satz_steht_im_journal_des_betriebs);
+* die Schliessung bleibt frei: bei defektem Buch wird die eroeffnende Order abgewiesen,
+  die reduzierende Order mit Ticket dagegen angenommen, und der Plattenfehler beim
+  Austragen haengt "positionsbuch_nicht_gesichert:PositionsbuchDefekt" als zweiten
+  Halt-Grund an
+  (test_ein_defektes_buch_sperrt_die_eroeffnung_und_laesst_die_schliessung);
+* die leere Datei ist der Gegenpol: kein Defekt, kein Halt, die naechste Eroeffnung
+  geht durch und steht danach im Buch.
+
+Ob diese Zusicherungen ihren Zweig wirklich unterscheiden, ist gemessen und steht in
+06-zweigdeckung-reconcile-gegenproben.txt: 11 von 11 Gegenproben rot, 0 unbemerkt.
+
+## 5. Die neue Testdatei allein
+$ PYTHONDONTWRITEBYTECODE=1 PYTHONIOENCODING=utf-8 python -m pytest -v -p no:cacheprovider tests/test_zweige_reconcile.py
+============================= test session starts =============================
+platform win32 -- Python 3.11.7, pytest-8.3.4, pluggy-1.6.0 -- C:\Users\<konto>\AppData\Local\Programs\Python\Python311\python.exe
+Waechter A2 (tests/conftest.py): Skip = Fehlschlag.
+Waechter A10 (tests/conftest.py): Zustandsordner C:\Users\<konto>\AppData\Local\mt5_trading_ai\risiko (vorhanden: ja, 1 Dateien) und Arbeitsbaum C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_ca8f1b2c-ff3-3 bleiben unveraendert.
+rootdir: C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_ca8f1b2c-ff3-3
+configfile: pyproject.toml
+plugins: anyio-4.8.0, base-url-2.1.0, cov-6.0.0, playwright-0.7.2
+collecting ... collected 20 items
+
+tests/test_zweige_reconcile.py::test_ein_leeres_buch_auf_der_platte_sperrt_nichts PASSED [  5%]
+tests/test_zweige_reconcile.py::test_ein_unlesbares_buch_latcht_den_halt PASSED [ 10%]
+tests/test_zweige_reconcile.py::test_ein_buch_mit_fremdem_rahmen_sperrt_die_eroeffnung[245-zerrissenes-json] PASSED [ 15%]
+tests/test_zweige_reconcile.py::test_ein_buch_mit_fremdem_rahmen_sperrt_die_eroeffnung[247-liste-statt-objekt] PASSED [ 20%]
+tests/test_zweige_reconcile.py::test_ein_buch_mit_fremdem_rahmen_sperrt_die_eroeffnung[247-fremde-fassung] PASSED [ 25%]
+tests/test_zweige_reconcile.py::test_ein_buch_mit_fremdem_rahmen_sperrt_die_eroeffnung[250-ohne-positionen] PASSED [ 30%]
+tests/test_zweige_reconcile.py::test_ein_buch_mit_fremdem_rahmen_sperrt_die_eroeffnung[250-positionen-kein-liste] PASSED [ 35%]
+tests/test_zweige_reconcile.py::test_ein_defekter_buchsatz_sperrt_die_eroeffnung[177-eintrag-kein-objekt] PASSED [ 40%]
+tests/test_zweige_reconcile.py::test_ein_defekter_buchsatz_sperrt_die_eroeffnung[188-ticket-fehlt] PASSED [ 45%]
+tests/test_zweige_reconcile.py::test_ein_defekter_buchsatz_sperrt_die_eroeffnung[188-menge-keine-zahl] PASSED [ 50%]
+tests/test_zweige_reconcile.py::test_ein_defekter_buchsatz_sperrt_die_eroeffnung[188-zeit-kein-datum] PASSED [ 55%]
+tests/test_zweige_reconcile.py::test_ein_defekter_buchsatz_sperrt_die_eroeffnung[188-zeit-keine-zeichenkette] PASSED [ 60%]
+tests/test_zweige_reconcile.py::test_ein_defekter_buchsatz_sperrt_die_eroeffnung[192-ticket-ist-zahl] PASSED [ 65%]
+tests/test_zweige_reconcile.py::test_ein_defekter_buchsatz_sperrt_die_eroeffnung[192-symbol-leer] PASSED [ 70%]
+tests/test_zweige_reconcile.py::test_ein_defekter_buchsatz_sperrt_die_eroeffnung[194-richtung-unbekannt] PASSED [ 75%]
+tests/test_zweige_reconcile.py::test_der_defekte_satz_steht_im_journal_des_betriebs PASSED [ 80%]
+tests/test_zweige_reconcile.py::test_ein_defektes_buch_sperrt_die_eroeffnung_und_laesst_die_schliessung PASSED [ 85%]
+tests/test_zweige_reconcile.py::test_austragen_einer_unbekannten_kennung_schreibt_nicht PASSED [ 90%]
+tests/test_zweige_reconcile.py::test_die_richtung_im_buch_bestimmt_die_seite PASSED [ 95%]
+tests/test_zweige_reconcile.py::test_das_buch_nennt_seinen_ort_im_zustandsordner PASSED [100%]
+
+============================= 20 passed in 5.40s ==============================
+[exit=0]
+
+## 6. Die uebrigen Tore
+$ python -m ruff format .
+189 files left unchanged
+$ python -m ruff check .
+All checks passed!
+$ python -m mypy --strict mt5_trading_ai tools PROGRAMM/hooks
+Success: no issues found in 85 source files
+
+$ PYTHONDONTWRITEBYTECODE=1 PYTHONIOENCODING=utf-8 python -m pytest -q -rfE -p no:cacheprovider -m "not slow"
+=========================== short test summary info ===========================
+FAILED tests/test_readme_numbers.py::test_readme_test_function_count_matches_code
+1 failed, 1752 passed, 5 deselected in 835.61s (0:13:55)
+[exit=1]
+(1.753 gelaufene Faelle: 1.733 wie bei f37caa6, dazu die 20 der neuen Datei. Kein Skip,
+ kein Error. Der eine rote Fall steht unter Punkt 7.)
+
+$ git status --porcelain
+?? PROGRAMM/auftrag-01-fundament/belege/06-zweigdeckung-reconcile-gegenproben.txt
+?? tests/test_zweige_reconcile.py
+(zwei neue Dateien, keine geaenderte -- Paketcode, andere Tests und Werkzeuge
+ unberuehrt; dieser Beleg selbst kam danach dazu.)
+
+## 7. Offen (nicht dieser Familie zugewiesen)
+tests/test_readme_numbers.py::test_readme_test_function_count_matches_code ist rot:
+der Kennzahlenblock in README.md nennt 1482 Testfunktionen, der Baum hat mit der neuen
+Datei 1491 (9 Funktionen mehr; "assert 1482 == 1491"). README.md gehoert nicht zu
+dieser Familie -- die Zahl erzeugt tools/gen_docs.py -- und wurde darum nicht
+angefasst.

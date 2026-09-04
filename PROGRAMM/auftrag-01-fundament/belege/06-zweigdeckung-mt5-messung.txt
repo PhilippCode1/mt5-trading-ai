@@ -1,0 +1,303 @@
+==============================================================================
+ZWEIGDECKUNG venue/mt5.py (A15) -- Messung vor und nach tests/test_zweige_mt5.py
+==============================================================================
+Waechter: A15 (Zweigdeckung je Geldpfad-Datei >= 90 %, Schwelle in tools/zweigdeckung.py,
+nie gesenkt). Gegenstand: mt5_trading_ai/venue/mt5.py (3271 Zeilen). Stand des
+Arbeitsbaums: f37caa6 plus genau eine neue Datei, tests/test_zweige_mt5.py (47
+Testfunktionen, 50 Faelle). Paketcode, andere Tests und Werkzeuge unveraendert
+(git status: nur diese eine neue Datei plus die beiden Belege).
+
+Gemessen auf diesem Rechner (Windows 11, Python 3.11.7) mit
+PYTHONDONTWRITEBYTECODE=1 und PYTHONIOENCODING=utf-8. Beide Laeufe fahren die Suite
+ohne slow in einer KOPIE des Arbeitsbaums (tools/zweigdeckung.py --messen); der
+Arbeitsbaum bekommt weder .coverage noch __pycache__ ab (A18). Kontoname redigiert.
+Waehrend der Laeufe liefen weitere Prozesse dieser Sitzung (zweite Messung, volle
+Suite, Geheimnis-Scan); die Laufzeiten sind darum nicht mit anderen Laeufen
+vergleichbar, die Deckung ist es.
+
+------------------------------------------------------------------------------
+## 1. VORHER -- ohne tests/test_zweige_mt5.py
+------------------------------------------------------------------------------
+$ python tools/zweigdeckung.py --messen
+Kopie: C:\Users\<konto>\AppData\Local\Temp\zweigdeckung-hyq7e7w0 (614 Dateien, 21.9 s)
+Suite unter coverage: exit=0, 1012 s -- 1731 passed, 4 deselected in 1003.93s (0:16:43)
+Bericht: C:\Users\<konto>\AppData\Local\Temp\zweigdeckung\coverage.json
+==========================================================================
+ZWEIGDECKUNG JE DATEI DES GELDPFADS
+==========================================================================
+Schwelle je Datei: 90% (Katalog A15)
+
+Datei                                      Zeilen   Zweige  fehlend
+venue/mt5.py                                89.4%    83.0%       54  <== unter der Schwelle
+venue/protocol.py                          100.0%   100.0%        0
+execution/risk_manager.py                   99.7%    99.0%        1
+execution/schwebende_auftraege.py           96.3%    92.5%        3
+execution/cost_gate.py                     100.0%   100.0%        0
+risk/sizing.py                              94.6%    90.0%        4
+risk/stop_budget.py                         97.4%    94.4%        1
+risk/limits.py                             100.0%   100.0%        0
+risk/leverage.py                           100.0%   100.0%        0
+costs/model.py                             100.0%   100.0%        0
+gates/erkundung.py                          97.4%    93.8%        1
+risk/waehrung.py                            82.5%    72.2%        5  <== unter der Schwelle
+execution/handelspause.py                   94.3%    90.6%        3
+execution/reconcile.py                      89.4%    79.4%        7  <== unter der Schwelle
+
+Paket gesamt: Zeilen 92.9 %, Zweige 87.8 %
+
+venue/mt5.py: 54 fehlende Zweige (Zeile->Ziel)
+    270->271, 276->277, 280->281, 498->499, 642->643, 1178->1192, 1293->1294, 1478->1479
+    1486->1487, 1526->1527, 1574->1575, 1622->Ausgang, 1845->Ausgang, 1862->1863, 1870->1872, 1945->1946
+    1985->1990, 2053->2058, 2084->2085, 2253->2254, 2297->2298, 2424->2426, 2426->2427, 2426->2428
+    2428->2429, 2428->2430, 2587->2588, 2587->2589, 2589->2590, 2589->2591, 2591->2592, 2591->2593
+    2593->2594, 2593->2595, 2598->Ausgang, 2598->2599, 2791->2792, 2796->2797, 2800->2801, 2845->2846
+    2858->2859, 2858->2860, 2862->2863, 2862->2877, 2893->2894, 2912->2913, 2995->2996, 2997->3002
+    3028->3029, 3043->3044, 3101->3107, 3252->3253, 3256->3257, 3267->3268
+    nicht gelaufene Zeilen: 271, 277, 281, 499, 643, 1294, 1479, 1487, 1527, 1575, 1863, 1864, 1946, 1949, 1950, 1996, 1997, 1998, 1999, 2058, 2059, 2062, 2076, 2077, 2078, 2085, 2254, 2298, 2426, 2427, 2428, 2429, 2430, 2579, 2580, 2581, 2582, 2585, 2586, 2587, 2588, 2589, 2590, 2591, 2592, 2593, 2594, 2595, 2598, 2599, 2792, 2797, 2801, 2837, 2840, 2841, 2846, 2854, 2855, 2858, 2859, 2860, 2861, 2862, 2863, 2877, 2894, 2913, 2996, 3002, 3003, 3004, 3029, 3044, 3107, 3253, 3257, 3268
+
+risk/waehrung.py: 5 fehlende Zweige (Zeile->Ziel)
+    42->43, 46->Ausgang, 66->67, 93->95, 98->100
+    nicht gelaufene Zeilen: 43, 54, 57, 58, 61, 67
+
+execution/reconcile.py: 7 fehlende Zweige (Zeile->Ziel)
+    177->178, 192->193, 194->195, 241->242, 247->248, 250->251, 282->283
+    nicht gelaufene Zeilen: 162, 178, 188, 189, 193, 195, 226, 239, 240, 242, 245, 246, 248, 251, 283
+
+FEHLGESCHLAGEN — venue/mt5.py: 83.0% Zweigdeckung, verlangt sind 90% (54 Zweige fehlen).
+FEHLGESCHLAGEN — risk/waehrung.py: 72.2% Zweigdeckung, verlangt sind 90% (5 Zweige fehlen).
+FEHLGESCHLAGEN — execution/reconcile.py: 79.4% Zweigdeckung, verlangt sind 90% (7 Zweige fehlen).
+Was fehlt, sind in aller Regel die ablehnenden Zweige -- also die, wegen derer die Datei existiert.
+
+------------------------------------------------------------------------------
+## 2. NACHHER -- mit tests/test_zweige_mt5.py (dieselbe Datei, gleicher Aufruf)
+------------------------------------------------------------------------------
+$ python tools/zweigdeckung.py --messen
+Kopie: C:\Users\<konto>\AppData\Local\Temp\zweigdeckung-f66vahtt (615 Dateien, 21.5 s)
+Suite unter coverage: exit=1, 1254 s -- 1 failed, 1780 passed, 4 deselected in 1242.15s (0:20:42)
+Bericht: C:\Users\<konto>\AppData\Local\Temp\zweigdeckung\coverage.json
+Suite rot: 1 Faelle -- das Tor bleibt rot, s. Urteil.
+    tests/test_readme_numbers.py::test_readme_test_function_count_matches_code
+==========================================================================
+ZWEIGDECKUNG JE DATEI DES GELDPFADS
+==========================================================================
+Schwelle je Datei: 90% (Katalog A15)
+
+Datei                                      Zeilen   Zweige  fehlend
+venue/mt5.py                                99.2%   100.0%        0
+venue/protocol.py                          100.0%   100.0%        0
+execution/risk_manager.py                   99.7%    99.0%        1
+execution/schwebende_auftraege.py           96.3%    92.5%        3
+execution/cost_gate.py                     100.0%   100.0%        0
+risk/sizing.py                              94.6%    90.0%        4
+risk/stop_budget.py                         97.4%    94.4%        1
+risk/limits.py                             100.0%   100.0%        0
+risk/leverage.py                           100.0%   100.0%        0
+costs/model.py                             100.0%   100.0%        0
+gates/erkundung.py                          97.4%    93.8%        1
+risk/waehrung.py                            82.5%    72.2%        5  <== unter der Schwelle
+execution/handelspause.py                   94.3%    90.6%        3
+execution/reconcile.py                      89.4%    79.4%        7  <== unter der Schwelle
+
+Paket gesamt: Zeilen 94.5 %, Zweige 90.7 %
+
+risk/waehrung.py: 5 fehlende Zweige (Zeile->Ziel)
+    42->43, 46->Ausgang, 66->67, 93->95, 98->100
+    nicht gelaufene Zeilen: 43, 54, 57, 58, 61, 67
+
+execution/reconcile.py: 7 fehlende Zweige (Zeile->Ziel)
+    177->178, 192->193, 194->195, 241->242, 247->248, 250->251, 282->283
+    nicht gelaufene Zeilen: 162, 178, 188, 189, 193, 195, 226, 239, 240, 242, 245, 246, 248, 251, 283
+
+FEHLGESCHLAGEN — die Suite ist rot (1 Faelle); die Deckung oben stammt aus einem roten Lauf, ein gruenes Urteil setzt eine gruene Suite voraus: tests/test_readme_numbers.py::test_readme_test_function_count_matches_code
+FEHLGESCHLAGEN — risk/waehrung.py: 72.2% Zweigdeckung, verlangt sind 90% (5 Zweige fehlen).
+FEHLGESCHLAGEN — execution/reconcile.py: 79.4% Zweigdeckung, verlangt sind 90% (7 Zweige fehlen).
+Was fehlt, sind in aller Regel die ablehnenden Zweige -- also die, wegen derer die Datei existiert.
+
+------------------------------------------------------------------------------
+## 3. DAS ERGEBNIS IN EINER ZEILE
+------------------------------------------------------------------------------
+venue/mt5.py   Zweige  83,0 % -> 100,0 %   (fehlende Zweige 54 -> 0; 318 von 318 Bogen)
+venue/mt5.py   Zeilen  89,4 % ->  99,2 %   (913 von 923 Anweisungen)
+Paket gesamt   Zweige  87,8 % ->  90,7 %   Zeilen 92,9 % -> 94,5 %
+Schwelle A15 (90 %) fuer diese Datei erfuellt, Abstand +10,0 Prozentpunkte.
+
+Die uebrigen Zahlen der Tabelle stehen unveraendert -- diese Datei fasst nichts an,
+was eine andere Geldpfad-Datei deckt. risk/waehrung.py (72,2 %) und
+execution/reconcile.py (79,4 %) bleiben unter der Schwelle; sie sind der Gegenstand
+anderer Familien, nicht dieser.
+
+------------------------------------------------------------------------------
+## 4. WELCHER TEST DECKT WELCHEN ZWEIG -- gemessen, nicht behauptet
+------------------------------------------------------------------------------
+Gemessen mit dynamischen coverage-Kontexten (dynamic_context = test_function) und
+aus der Tabelle ``arc`` der coverage-Datendatei gelesen; die Datendatei lag
+ausserhalb des Arbeitsbaums (A10). "Ausgang" ist in coverage ein negatives Ziel (die
+Startzeile des Rahmens), darum ueber das Vorzeichen aufgeloest.
+
+$ python -m coverage run --rcfile=<tmp>/kontexte.rc -m pytest -q -p no:cacheprovider tests/test_zweige_mt5.py
+50 passed
+$ python <tmp>/zuordnung.py
+270->271          test_zweige_mt5.test_sitzung_mit_wochentag_sieben_ist_ein_katalogfehler
+276->277          test_zweige_mt5.test_sitzungsbeginn_am_tagesende_ist_ein_katalogfehler
+280->281          test_zweige_mt5.test_sitzung_mit_gleichem_beginn_und_ende_ist_mehrdeutig
+498->499          test_zweige_mt5.test_eine_fehlende_pflichtzahl_sperrt_mit_namen
+642->643          test_zweige_mt5.test_ein_terminal_das_sich_nicht_aufbaut_ist_kein_venue
+1178->1192        test_zweige_mt5.test_ein_abbau_laeuft_auch_ohne_risiko_manager_durch
+1293->1294        test_zweige_mt5.test_ohne_positionsticket_baut_nichts_ab
+1478->1479        test_zweige_mt5.test_eine_leere_waehrung_hat_keinen_kurs
+1486->1487        test_zweige_mt5.test_ohne_kurs_faellt_die_hebelpruefung_aus
+1526->1527        test_zweige_mt5.test_ohne_kurs_faellt_das_kostentor_aus
+1574->1575        test_zweige_mt5.test_ohne_kurs_faellt_die_risikopruefung_aus
+1622->Ausgang     test_zweige_mt5.test_ohne_schrittweite_wird_das_volumen_nicht_gerastert
+1845->Ausgang     test_zweige_mt5.test_derselbe_halt_grund_wird_nicht_zweimal_gefuehrt
+1862->1863        test_zweige_mt5.test_halt_reason_auf_none_loescht_alle_gruende
+1870->1872        test_zweige_mt5.test_ein_neuer_halt_grund_wird_angehaengt_und_die_kette_nicht_verdoppelt
+1945->1946        test_zweige_mt5.test_eine_position_ohne_kurs_ist_eine_unbewertbare_drift
+1985->1990        test_zweige_mt5.test_der_startabgleich_kennt_ohne_risiko_manager_keine_geister
+2053->2058        test_zweige_mt5.test_ein_fill_ohne_ticket_latcht_den_halt_und_bucht_einen_platzhalter
+2084->2085        test_zweige_mt5.test_ohne_konfigurierten_privatstrom_gibt_es_kein_ereignis
+2253->2254        test_zweige_mt5.test_ohne_ergebnis_gibt_es_keinen_erfolgscode
+2297->2298        test_zweige_mt5.test_ein_benannter_fehlercode_ist_keine_fuellung
+2424->2426        test_zweige_mt5.test_die_fuellart_folgt_der_maske_des_symbols, test_zweige_mt5.test_ohne_gemeldete_fuellart_wird_nicht_geraten
+2426->2427        test_zweige_mt5.test_die_fuellart_folgt_der_maske_des_symbols
+2426->2428        test_zweige_mt5.test_die_fuellart_folgt_der_maske_des_symbols, test_zweige_mt5.test_ohne_gemeldete_fuellart_wird_nicht_geraten
+2428->2429        test_zweige_mt5.test_die_fuellart_folgt_der_maske_des_symbols
+2428->2430        test_zweige_mt5.test_ohne_gemeldete_fuellart_wird_nicht_geraten
+2587->2588        test_zweige_mt5.test_initialize_reicht_genau_die_gesetzten_zugangsfelder_weiter
+2587->2589        test_zweige_mt5.test_initialize_ohne_zugangsfelder_reicht_nichts_weiter
+2589->2590        test_zweige_mt5.test_initialize_reicht_genau_die_gesetzten_zugangsfelder_weiter
+2589->2591        test_zweige_mt5.test_initialize_ohne_zugangsfelder_reicht_nichts_weiter
+2591->2592        test_zweige_mt5.test_initialize_reicht_genau_die_gesetzten_zugangsfelder_weiter
+2591->2593        test_zweige_mt5.test_initialize_ohne_zugangsfelder_reicht_nichts_weiter
+2593->2594        test_zweige_mt5.test_initialize_reicht_genau_die_gesetzten_zugangsfelder_weiter
+2593->2595        test_zweige_mt5.test_initialize_ohne_zugangsfelder_reicht_nichts_weiter
+2598->Ausgang     test_zweige_mt5.test_shutdown_ohne_sitzung_tut_nichts_mit_sitzung_schliesst_es
+2598->2599        test_zweige_mt5.test_shutdown_ohne_sitzung_tut_nichts_mit_sitzung_schliesst_es
+2791->2792        test_zweige_mt5.test_der_schreibpfad_ist_ohne_freigabe_gesperrt
+2796->2797        test_zweige_mt5.test_der_schreibpfad_braucht_eine_sitzung
+2800->2801        test_zweige_mt5.test_der_schreibpfad_des_terminals_bleibt_auf_dem_demokonto
+2845->2846        test_zweige_mt5.test_ohne_tick_meldet_das_terminal_keinen_kurs
+2858->2859        test_zweige_mt5.test_ohne_kerzen_liefert_rates_ein_leeres_tupel
+2858->2860        test_zweige_mt5.test_rates_bildet_jede_gemeldete_zeile_ab
+2862->2863        test_zweige_mt5.test_rates_bildet_jede_gemeldete_zeile_ab
+2862->2877        test_zweige_mt5.test_rates_bildet_jede_gemeldete_zeile_ab
+2893->2894        test_zweige_mt5.test_positions_bildet_jede_gemeldete_position_ab
+2912->2913        test_zweige_mt5.test_ohne_konto_info_ist_das_terminal_nicht_verfuegbar
+2995->2996        test_zweige_mt5.test_order_send_ohne_tick_meldet_no_tick
+2997->3002        test_zweige_mt5.test_eine_limitorder_geht_als_pending_mit_wunschpreis_raus
+3028->3029        test_zweige_mt5.test_eine_limitorder_geht_als_pending_mit_wunschpreis_raus
+3043->3044        test_zweige_mt5.test_ein_unabfragbarer_bestand_verhindert_die_schliessung
+3101->3107        test_zweige_mt5.test_ohne_ergebnis_lautet_der_grund_no_result
+3252->3253        test_zweige_mt5.test_eine_verschwundene_position_belegt_keinen_stop
+3256->3257        test_zweige_mt5.test_ohne_symbol_info_ist_der_stop_nicht_belegbar
+3267->3268        test_zweige_mt5.test_ein_nicht_gemeldeter_stop_ist_kein_beleg
+
+54 Zielzweige, davon ohne Test dieser Datei: 0
+
+------------------------------------------------------------------------------
+## 5. WAS DIESE DATEI NICHT LEISTET -- benannt statt verschwiegen
+------------------------------------------------------------------------------
+* Drei Zweige sind ueber ``submit_order`` nicht erreichbar und werden darum an ihrer
+  eigenen Methode gerufen (dieselbe Form wie tests/eichfall_d20.py:169):
+  1293->1294 (``_reduces_position`` ohne Ticket -- ``OrderRequest`` weist ein
+  reduce_only ohne Ticket schon im Konstruktor ab, D2), 1526->1527 und 1574->1575
+  (Kostentor und Risikotor ohne Kurs -- der Frische-Latch liest denselben Tick eine
+  Sperre frueher und antwortete sonst statt des gemeinten Tors). 1622->Ausgang
+  (``_validate_volume`` ohne Schrittweite) ebenso: ein Instrument mit
+  volume_step = 0 entsteht am Terminal nicht, die Sperre steht aber im Code.
+* 1486->1487 (Hebeltor ohne Kurs) laeuft dagegen ueber den vollen Orderpfad: das
+  Fake-Terminal verstummt ab dem ZWEITEN Tick-Aufruf. Dass der erste dem Frische-Latch
+  und der zweite dem Hebeltor gehoert, haelt tests/test_orderpfad_verdrahtung.py fest.
+* ``RealMt5Terminal.initialize`` wird mit einem Attrappenmodul in ``sys.modules``
+  gefahren. Das echte Paket MetaTrader5 wird nicht geladen und
+  ``MetaTrader5.initialize()`` nirgends gerufen -- kein Terminal, kein Handel.
+* Kein Test schreibt ausserhalb tmp_path; alle Ablagen sind FluechtigeSchwebeAkte und
+  FluechtigesPositionsbuch. Der Waechter A10 (tests/conftest.py) lief in jedem Lauf mit.
+
+------------------------------------------------------------------------------
+## 6. WAS AN ZEILEN OFFEN BLEIBT (Zweige sind vollstaendig, Zeilen nicht)
+------------------------------------------------------------------------------
+Die Zweigdeckung steht auf 100,0 %, die Zeilendeckung auf 99,2 %. Der Unterschied ist
+kein Widerspruch: coverage meldet einen fehlenden ZWEIG nur an einer Zeile, die selbst
+gelaufen ist. Ein Block, in den ueberhaupt kein Bogen fuehrt (Ausnahmezweige), faellt
+in der Zeilenspalte auf und in der Zweigspalte nicht. Diese Zeilen sind es:
+
+$ python <tmp>/restzeilen.py <temp>/zweigdeckung/coverage.json
+covered_branches 318 von 318, missing_branches 0, num_partial_branches 0
+covered_lines 913 von 923, missing_lines 10:
+
+ 1996:         except PositionsbuchDefekt as exc:            \
+ 1997:             defekt = str(exc)                          |  adopt_book: ein
+ 1998:             self._halted = True                        |  unlesbares Positions-
+ 1999:             self._halt_grund_ergaenzen(...)            /  buch latcht den Halt
+ 2076:         except (OSError, PositionsbuchDefekt) as exc:  \  _positionsbuch_fort-
+ 2077:             self._halted = True                        |  schreiben: Platten-
+ 2078:             self._halt_grund_ergaenzen(                /  fehler latcht den Halt
+ 2837:         return tuple(self._to_symbol(i) for i in (self._mt5.symbols_get() or ()))
+ 2840:         info = self._mt5.symbol_info(name)
+ 2841:         return None if info is None else self._to_symbol(info)
+
+Warum sie hier stehen bleiben und nicht mitgenommen wurden:
+
+* 1996-1999 und 2076-2078 sind AUSNAHMEZWEIGE (``except``). Sie tragen keinen
+  Verzweigungsbogen, also weder einen gedeckten noch einen fehlenden -- der Auftrag
+  dieser Datei war die Zweigliste, und die ist vollstaendig (318 von 318). Beide Faelle
+  sind ausserdem an anderer Stelle des Repos gefahren: das defekte Positionsbuch in
+  tests/eichfall_d7.py, der Plattenfehler beim Fortschreiben in tests/eichfall_d8.py --
+  dort mit einem Buch, das wirft. Ein dritter Nachbau hier waere eine Kopie.
+* 2837 und 2840/2841 sind die beiden LESENDEN Methoden des realen Terminals
+  (``symbols``, ``symbol``). Auch sie sind zweigfrei; ``_to_symbol``, das sie rufen,
+  laeuft in tests/test_stop_level_einheit.py.
+
+Ein Befund am Rand, der beim Lesen von 2837 auffiel und hier NICHT behoben wird (Regel
+dieses Auftrags: nur die eigene neue Testdatei):
+
+    def symbols(self) -> tuple[Mt5Symbol, ...]:
+        return tuple(self._to_symbol(i) for i in (self._mt5.symbols_get() or ()))
+
+``symbols_get()`` gibt bei einem FEHLER ``None`` und bei leerem Ergebnis ein leeres
+Tupel -- dieselbe Falle, die fuenfzig Zeilen tiefer bei ``positions()`` ausdruecklich
+benannt und dort fail-closed geschlossen ist ("Ein ``or ()`` macht daraus dasselbe --
+und ein Lesefehler saehe dann aus wie 'keine Positionen offen'"). Hier steht das
+``or ()`` noch. Die Fehlrichtung ist zufaellig harmlos: ein leeres Universum laesst
+``Mt5Venue.list_instruments`` fuer jedes Katalogsymbol ``UnknownInstrumentError``
+werfen, also fail-closed. Zufaellig ist keine Begruendung; die Stelle gehoert in die
+naechste Welle am Paketcode.
+
+------------------------------------------------------------------------------
+## 7. EIN ROTER FALL, DEN DIESE DATEI VERURSACHT -- und der hier nicht behoben wird
+------------------------------------------------------------------------------
+tests/test_readme_numbers.py::test_readme_test_function_count_matches_code
+    assert 1482 == 1529
+
+README.md fuehrt im KENNZAHLEN-Block (Zeile 40) ``test_function_count: 1482``.
+tools/check_doc_numbers.py zaehlt jetzt 1529: 1482 + 47 Testfunktionen dieser Datei,
+also genau die Differenz. Vor dieser Datei war der Fall gruen (Lauf 1 oben: exit=0,
+1731 passed).
+
+Nicht hier geaendert, aus einem Grund: die Zahl steht an EINER Stelle fuer ALLE
+Testdateien. Jede parallel laufende T6-Familie erhoeht sie ebenfalls; vier Patches,
+die dieselbe Zeile auf vier verschiedene Werte setzen, widersprechen sich beim
+Einspielen und sind einzeln alle falsch. Richtig ist eine Zahl nach dem Zusammenfuehren:
+
+    $ python -c "import sys; sys.path.insert(0,'.'); import importlib.util as u; s=u.spec_from_file_location('t','tools/check_doc_numbers.py'); m=u.module_from_spec(s); s.loader.exec_module(m); print(m.test_function_count())"
+
+und dieser Wert nach README.md, Zeile 40. Fuer diese Datei allein: 1482 -> 1529.
+
+------------------------------------------------------------------------------
+## 8. DIE UEBRIGEN TORE, GEGEN DENSELBEN STAND GEFAHREN
+------------------------------------------------------------------------------
+$ python -m ruff format .
+189 files left unchanged
+$ python -m ruff check .
+All checks passed!
+$ python -m mypy --strict mt5_trading_ai tools PROGRAMM/hooks
+Success: no issues found in 85 source files
+$ python -m pytest -q -p no:cacheprovider tests/test_zweige_mt5.py
+50 passed in 8.58s
+$ python -m pytest -q -rfE -p no:cacheprovider -m "not slow"
+FAILED tests/test_readme_numbers.py::test_readme_test_function_count_matches_code
+1 failed, 1782 passed, 5 deselected in 827.55s (0:13:47)
+    (der eine rote Fall ist der aus Abschnitt 7; kein uebersprungener Fall, kein Error)
+$ python tools/geheimnis_scan.py
+ERGEBNIS: 0 neue Funde, 148 bekannte, 67 Kontonamen (0 im Tor 'lebend'); Dauer 175.2 s; Exit 0

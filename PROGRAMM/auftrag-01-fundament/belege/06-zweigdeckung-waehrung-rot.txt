@@ -1,0 +1,213 @@
+==============================================================================
+ROTER EICHFALL Familie Zweigdeckung-Tests -- risk/waehrung.py, Stand VOR tests/test_zweige_waehrung.py (f37caa6), 2026-09-04
+==============================================================================
+Waechter: A15 (Zweigdeckung je Geldpfad-Datei >= 90 %, nie gesenkt). Gegenstand: risk/waehrung.py -- der Kern des
+Befundes D3 (Bewertung 3.3): eine Zahl ohne Waehrung laesst sich mit jeder anderen Zahl multiplizieren.
+
+Gemessen mit tools/zweigdeckung.py --messen --zweige: die Suite ohne slow laeuft unter coverage --branch in einer
+KOPIE des Arbeitsbaums (tempfile), nicht im Worktree; der Arbeitsbaum bekommt weder .coverage noch __pycache__ ab (A10, A18).
+Die Kopie entstand, BEVOR tests/test_zweige_waehrung.py im Worktree stand -- gepruefte Gegenprobe:
+    $ ls <tmp>/kopie-vorher/tests/test_zweige_waehrung.py
+    ls: cannot access '<tmp>/kopie-vorher/tests/test_zweige_waehrung.py': No such file or directory
+
+## 1. Messung vorher (Suite gruen)
+$ PYTHONDONTWRITEBYTECODE=1 PYTHONIOENCODING=utf-8 python tools/zweigdeckung.py --messen --zweige --bericht <tmp>/cov-vorher.json --kopie <tmp>/kopie-vorher
+Kopie: <tmp>/kopie-vorher (614 Dateien, 20.6 s)
+Suite unter coverage: exit=0, 1107 s -- 1731 passed, 4 deselected in 1094.03s (0:18:14)
+Bericht: <tmp>/cov-vorher.json
+==========================================================================
+ZWEIGDECKUNG JE DATEI DES GELDPFADS
+==========================================================================
+Schwelle je Datei: 90% (Katalog A15)
+
+Datei                                      Zeilen   Zweige  fehlend
+venue/mt5.py                                89.4%    83.0%       54  <== unter der Schwelle
+venue/protocol.py                          100.0%   100.0%        0
+execution/risk_manager.py                   99.7%    99.0%        1
+execution/schwebende_auftraege.py           96.3%    92.5%        3
+execution/cost_gate.py                     100.0%   100.0%        0
+risk/sizing.py                              94.6%    90.0%        4
+risk/stop_budget.py                         97.4%    94.4%        1
+risk/limits.py                             100.0%   100.0%        0
+risk/leverage.py                           100.0%   100.0%        0
+costs/model.py                             100.0%   100.0%        0
+gates/erkundung.py                          97.4%    93.8%        1
+risk/waehrung.py                            82.5%    72.2%        5  <== unter der Schwelle
+execution/handelspause.py                   94.3%    90.6%        3
+execution/reconcile.py                      89.4%    79.4%        7  <== unter der Schwelle
+
+Paket gesamt: Zeilen 92.9 %, Zweige 87.7 %
+
+venue/mt5.py: 54 fehlende Zweige (Zeile->Ziel)
+    270->271, 276->277, 280->281, 498->499, 642->643, 1178->1192, 1293->1294, 1478->1479
+    1486->1487, 1526->1527, 1574->1575, 1622->Ausgang, 1845->Ausgang, 1862->1863, 1870->1872, 1945->1946
+    1985->1990, 2053->2058, 2084->2085, 2253->2254, 2297->2298, 2424->2426, 2426->2427, 2426->2428
+    2428->2429, 2428->2430, 2587->2588, 2587->2589, 2589->2590, 2589->2591, 2591->2592, 2591->2593
+    2593->2594, 2593->2595, 2598->Ausgang, 2598->2599, 2791->2792, 2796->2797, 2800->2801, 2845->2846
+    2858->2859, 2858->2860, 2862->2863, 2862->2877, 2893->2894, 2912->2913, 2995->2996, 2997->3002
+    3028->3029, 3043->3044, 3101->3107, 3252->3253, 3256->3257, 3267->3268
+    nicht gelaufene Zeilen: 271, 277, 281, 499, 643, 1294, 1479, 1487, 1527, 1575, 1863, 1864, 1946, 1949, 1950, 1996, 1997, 1998, 1999, 2058, 2059, 2062, 2076, 2077, 2078, 2085, 2254, 2298, 2426, 2427, 2428, 2429, 2430, 2579, 2580, 2581, 2582, 2585, 2586, 2587, 2588, 2589, 2590, 2591, 2592, 2593, 2594, 2595, 2598, 2599, 2792, 2797, 2801, 2837, 2840, 2841, 2846, 2854, 2855, 2858, 2859, 2860, 2861, 2862, 2863, 2877, 2894, 2913, 2996, 3002, 3003, 3004, 3029, 3044, 3107, 3253, 3257, 3268
+
+execution/risk_manager.py: 1 fehlende Zweige (Zeile->Ziel)
+    918->Ausgang
+
+execution/schwebende_auftraege.py: 3 fehlende Zweige (Zeile->Ziel)
+    113->114, 391->392, 399->400
+    nicht gelaufene Zeilen: 114, 392, 393, 400
+
+risk/sizing.py: 4 fehlende Zweige (Zeile->Ziel)
+    114->115, 116->117, 139->140, 202->203
+    nicht gelaufene Zeilen: 115, 117, 140, 203
+
+risk/stop_budget.py: 1 fehlende Zweige (Zeile->Ziel)
+    249->250
+    nicht gelaufene Zeilen: 250
+
+gates/erkundung.py: 1 fehlende Zweige (Zeile->Ziel)
+    225->226
+    nicht gelaufene Zeilen: 226
+
+risk/waehrung.py: 5 fehlende Zweige (Zeile->Ziel)
+    42->43, 46->Ausgang, 66->67, 93->95, 98->100
+    nicht gelaufene Zeilen: 43, 54, 57, 58, 61, 67
+
+execution/handelspause.py: 3 fehlende Zweige (Zeile->Ziel)
+    102->103, 108->109, 112->113
+    nicht gelaufene Zeilen: 103, 109, 113
+
+execution/reconcile.py: 7 fehlende Zweige (Zeile->Ziel)
+    177->178, 192->193, 194->195, 241->242, 247->248, 250->251, 282->283
+    nicht gelaufene Zeilen: 162, 178, 188, 189, 193, 195, 226, 239, 240, 242, 245, 246, 248, 251, 283
+
+FEHLGESCHLAGEN — venue/mt5.py: 83.0% Zweigdeckung, verlangt sind 90% (54 Zweige fehlen).
+FEHLGESCHLAGEN — risk/waehrung.py: 72.2% Zweigdeckung, verlangt sind 90% (5 Zweige fehlen).
+FEHLGESCHLAGEN — execution/reconcile.py: 79.4% Zweigdeckung, verlangt sind 90% (7 Zweige fehlen).
+Was fehlt, sind in aller Regel die ablehnenden Zweige -- also die, wegen derer die Datei existiert.
+
+Aus dem Bericht <tmp>/cov-vorher.json, nur die eine Datei:
+vorher: risk/waehrung.py: Zweige 13/18 = 72.2 % (< 90 %: ROT); Zeilen 82.5 %, fehlende Zeilen [43, 54, 57, 58, 61, 67]
+    fehlende Zweige (Zeile -> Ziel): 42->43, 46->Ausgang, 66->67, 93->95, 98->100
+
+Aussage der fuenf fehlenden Zweige (aus dem Modul gelesen, nicht geraten):
+   42 -> 43     Betrag.__post_init__: leere oder blanke Waehrung -> WaehrungsFehler
+                ("Betrag ohne Waehrung"). Das ist D3 an seiner Wurzel: eine Zahl ohne
+                Waehrung laesst sich mit jeder anderen Zahl multiplizieren.
+   46 -> Ausg.  Betrag._gleich: gleiche Waehrung -> kein Fehler; erst damit liefen
+                __add__ (Zeile 54), __sub__ (57, 58) und mal (61).
+   66 -> 67     Betrag.umgerechnet: Ziel- gleich Ausgangswaehrung -> self, ohne Kurs.
+   93 -> 95     kurs_aus_ticks: Mittelkurs des direkten Paars <= 0 (Tick ohne Quote,
+                bid=ask=0) -> weiter zum Gegenpaar, statt Kurs 0 zurueckzugeben.
+   98 -> 100    kurs_aus_ticks: auch der Mittelkurs des Gegenpaars <= 0 -> None; ohne
+                ihn rechnete die Zeile darunter Decimal("1") / 0.
+
+## 2. Gegenproben: der Test ist rot, wenn der Zweig weg ist
+In einer KOPIE des Arbeitsbaums (tempfile, nie im Worktree) wird je Gegenprobe eine Zeile von
+mt5_trading_ai/risk/waehrung.py geaendert, tests/test_zweige_waehrung.py dagegen gefahren und die Quelle
+wiederhergestellt. Ein Zweig, dessen Wegfall keinen Test rot macht, ist nicht gedeckt, sondern nur beruehrt.
+W1 bis W5 nehmen je einen der fuenf fehlenden Zweige weg; W6 bis W8 vertauschen Rueckgaben, damit nicht nur
+das Durchlaufen, sondern das Ergebnis geprueft ist.
+
+Kopie: <tmp>/gegenprobe-waehrung (615 Dateien)
+
+## Bezugspunkt: unveraenderte Quelle
+$ python -m pytest -q -p no:cacheprovider tests/test_zweige_waehrung.py
+26 passed in 2.88s
+[exit=0]
+
+## Gegenprobe W1 (Zweig 42->43 weg: ein Betrag ohne Waehrung entsteht)
+--- geaenderte Zeile(n):
+    -         if not self.waehrung or not self.waehrung.strip():
+    -             raise WaehrungsFehler("Betrag ohne Waehrung")
+    +         return None
+$ python -m pytest -q -p no:cacheprovider -rf tests/test_zweige_waehrung.py
+FAILED tests/test_zweige_waehrung.py::test_betrag_ohne_waehrung_entsteht_nicht[]
+FAILED tests/test_zweige_waehrung.py::test_betrag_ohne_waehrung_entsteht_nicht[ ]
+FAILED tests/test_zweige_waehrung.py::test_betrag_ohne_waehrung_entsteht_nicht[   ]
+FAILED tests/test_zweige_waehrung.py::test_betrag_ohne_waehrung_entsteht_nicht[\t]
+FAILED tests/test_zweige_waehrung.py::test_betrag_ohne_waehrung_entsteht_nicht[\n]
+FAILED tests/test_zweige_waehrung.py::test_betrag_ohne_waehrung_entsteht_nicht[ \t\n ]
+FAILED tests/test_zweige_waehrung.py::test_der_fehler_nennt_seinen_grund_und_ist_ein_valueerror
+FAILED tests/test_zweige_waehrung.py::test_die_waehrung_laesst_sich_auch_nachtraeglich_nicht_entfernen
+8 failed, 18 passed in 3.45s
+[exit=1]
+(Quelle wiederhergestellt)
+
+## Gegenprobe W2 (Zweig 46 gekippt: != wird == (gleiche Waehrung wird abgelehnt))
+--- geaenderte Zeile(n):
+    -         if anderer.waehrung != self.waehrung:
+    +         if anderer.waehrung == self.waehrung:
+$ python -m pytest -q -p no:cacheprovider -rf tests/test_zweige_waehrung.py
+FAILED tests/test_zweige_waehrung.py::test_eine_nicht_getrimmte_waehrung_ist_eine_andere_waehrung
+FAILED tests/test_zweige_waehrung.py::test_gleiche_waehrung_addiert_und_subtrahiert_ohne_kurs
+FAILED tests/test_zweige_waehrung.py::test_fremde_waehrungen_lassen_sich_weder_addieren_noch_subtrahieren
+3 failed, 23 passed in 3.65s
+[exit=1]
+(Quelle wiederhergestellt)
+
+## Gegenprobe W3 (Zweig 66->67 weg: gleiche Waehrung geht durch die Kurspruefung)
+--- geaenderte Zeile(n):
+    -         if nach == self.waehrung:
+    -             return self
+$ python -m pytest -q -p no:cacheprovider -rf tests/test_zweige_waehrung.py
+FAILED tests/test_zweige_waehrung.py::test_gleiche_waehrung_gibt_denselben_betrag_zurueck_und_ignoriert_den_kurs
+1 failed, 25 passed in 4.06s
+[exit=1]
+(Quelle wiederhergestellt)
+
+## Gegenprobe W4 (Zweig 93->95 weg: Mittelkurs 0 wird als Kurs zurueckgegeben)
+--- geaenderte Zeile(n):
+    -         if mid > 0:
+    -             return mid
+    +         return mid
+$ python -m pytest -q -p no:cacheprovider -rf tests/test_zweige_waehrung.py
+FAILED tests/test_zweige_waehrung.py::test_leerer_direkter_tick_faellt_auf_den_kehrwert_des_gegenpaars_zurueck
+FAILED tests/test_zweige_waehrung.py::test_beide_ticks_leer_ergeben_keinen_kurs_und_der_sperrt
+FAILED tests/test_zweige_waehrung.py::test_ein_mittelkurs_unter_null_ist_in_beiden_richtungen_kein_kurs
+3 failed, 23 passed in 4.21s
+[exit=1]
+(Quelle wiederhergestellt)
+
+## Gegenprobe W5 (Zweig 98->100 weg: Kehrwert eines Mittelkurses 0 wird gerechnet)
+--- geaenderte Zeile(n):
+    -         if mid > 0:
+    -             return Decimal("1") / mid
+    +         return Decimal("1") / mid
+$ python -m pytest -q -p no:cacheprovider -rf tests/test_zweige_waehrung.py
+FAILED tests/test_zweige_waehrung.py::test_beide_ticks_leer_ergeben_keinen_kurs_und_der_sperrt
+FAILED tests/test_zweige_waehrung.py::test_ein_mittelkurs_unter_null_ist_in_beiden_richtungen_kein_kurs
+2 failed, 24 passed in 4.65s
+[exit=1]
+(Quelle wiederhergestellt)
+
+## Gegenprobe W6 (Zeile 54 vertauscht: __add__ subtrahiert)
+--- geaenderte Zeile(n):
+    -         return Betrag(self.wert + anderer.wert, self.waehrung)
+    +         return Betrag(self.wert - anderer.wert, self.waehrung)
+$ python -m pytest -q -p no:cacheprovider -rf tests/test_zweige_waehrung.py
+FAILED tests/test_zweige_waehrung.py::test_gleiche_waehrung_addiert_und_subtrahiert_ohne_kurs
+1 failed, 25 passed in 4.79s
+[exit=1]
+(Quelle wiederhergestellt)
+
+## Gegenprobe W7 (Zeile 73 vertauscht: umgerechnet behaelt die alte Waehrung)
+--- geaenderte Zeile(n):
+    -         return Betrag(self.wert * kurs, nach)
+    +         return Betrag(self.wert * kurs, self.waehrung)
+$ python -m pytest -q -p no:cacheprovider -rf tests/test_zweige_waehrung.py
+FAILED tests/test_zweige_waehrung.py::test_mit_kurs_wechselt_der_betrag_die_waehrung
+1 failed, 25 passed in 4.73s
+[exit=1]
+(Quelle wiederhergestellt)
+
+## Gegenprobe W8 (Zweig 96->100 weg: der Tick des Gegenpaars wird ungeprueft gelesen)
+--- geaenderte Zeile(n):
+    -     if kehr is not None:
+    +     if True:
+$ python -m pytest -q -p no:cacheprovider -rf tests/test_zweige_waehrung.py
+FAILED tests/test_zweige_waehrung.py::test_kein_tick_in_beiden_richtungen_ergibt_keinen_kurs
+1 failed, 25 passed in 4.57s
+[exit=1]
+(Quelle wiederhergestellt)
+
+Gegenproben: 8 gefahren, 8 machten mindestens einen Test rot.
+

@@ -1,0 +1,151 @@
+==============================================================================
+GEGENPROBEN zu tests/test_zweige_mt5.py -- 15 gekippte Zeilen in einer KOPIE
+==============================================================================
+Ein Test, der eine Zeile nur beruehrt, ist wertlos. Die Frage dieser Datei lautet
+darum nicht "laeuft der Zweig?", sondern "unterscheidet die Zusicherung ihn?".
+Gemessen wird das so: in einer KOPIE des Arbeitsbaums (tempfile, nie im Worktree)
+wird genau eine Zeile von mt5_trading_ai/venue/mt5.py gekippt und
+tests/test_zweige_mt5.py dagegen gefahren. Wird kein Test rot, prueft die Zusicherung
+den Zweig nicht.
+
+15 Proben ueber 15 verschiedene Familien der Datei (Sitzungsfenster, Kontopruefung,
+Verbindung, Abbau, Volumenraster, Halt-Gruende, Reconcile, Positionsbuch,
+Antwortlese, Fuellart, Verbindungsaufbau, Schreibsperre, Kerzen, Senden, Stop-
+Nachlese). Ergebnis: 15 von 15 machen mindestens einen Fall rot, 0 misslungen.
+
+Der Bezugslauf oben (Kopie unverändert) ist gruen -- ohne ihn bewiese ein roter Lauf
+unten nur eine kaputte Kopie.
+
+Aufruf (das Skript liegt ausserhalb des Repositories, es ist Messwerkzeug, kein Code
+des Pakets):
+$ python <tmp>/gegenproben_mt5.py <worktree>
+
+=== Bezugslauf in der KOPIE, nichts geaendert ===
+50 passed in 4.83s
+
+=== 270->271 Wochentag ausserhalb 0..6 ===
+Zeile 270: if not 0 <= session.weekday <= 6:
+       ->      if False:  # GEGENPROBE 270->271
+pytest exit=1; 1 failed, 49 passed in 5.57s
+  ROT: tests/test_zweige_mt5.py::test_sitzung_mit_wochentag_sieben_ist_ein_katalogfehler
+
+=== 498->499 fehlende Pflichtzahl ===
+Zeile 498: if wert is None:
+       ->      if wert is not None:  # GEGENPROBE 498->499
+pytest exit=1; 9 failed, 41 passed in 6.45s
+  ROT: tests/test_zweige_mt5.py::test_eine_fehlende_pflichtzahl_sperrt_mit_namen[balance]
+  ROT: tests/test_zweige_mt5.py::test_eine_fehlende_pflichtzahl_sperrt_mit_namen[equity]
+  ROT: tests/test_zweige_mt5.py::test_eine_fehlende_pflichtzahl_sperrt_mit_namen[margin_used]
+  ROT: tests/test_zweige_mt5.py::test_eine_fehlende_pflichtzahl_sperrt_mit_namen[margin_free]
+  ROT: tests/test_zweige_mt5.py::test_ein_abbau_laeuft_auch_ohne_risiko_manager_durch
+  ROT: tests/test_zweige_mt5.py::test_ein_fill_ohne_ticket_latcht_den_halt_und_bucht_einen_platzhalter
+  ROT: tests/test_zweige_mt5.py::test_ohne_kurs_faellt_die_hebelpruefung_aus
+  ROT: tests/test_zweige_mt5.py::test_ohne_kurs_faellt_das_kostentor_aus
+  ROT: tests/test_zweige_mt5.py::test_ohne_kurs_faellt_die_risikopruefung_aus
+
+=== 642->643 Terminal baut nicht auf ===
+Zeile 642: if not self._terminal.initialize():
+       ->      if self._terminal.initialize():  # GEGENPROBE 642->643
+pytest exit=1; 21 failed, 29 passed in 9.58s
+  ROT: tests/test_zweige_mt5.py::test_ein_gesundes_sitzungsfenster_wird_nicht_beanstandet
+  ROT: tests/test_zweige_mt5.py::test_sitzung_mit_wochentag_sieben_ist_ein_katalogfehler
+  ROT: tests/test_zweige_mt5.py::test_sitzungsbeginn_am_tagesende_ist_ein_katalogfehler
+  ROT: tests/test_zweige_mt5.py::test_sitzung_mit_gleichem_beginn_und_ende_ist_mehrdeutig
+  ROT: tests/test_zweige_mt5.py::test_ein_terminal_das_sich_nicht_aufbaut_ist_kein_venue
+  ROT: tests/test_zweige_mt5.py::test_ein_abbau_laeuft_auch_ohne_risiko_manager_durch
+  ROT: tests/test_zweige_mt5.py::test_ohne_positionsticket_baut_nichts_ab
+  ROT: tests/test_zweige_mt5.py::test_ein_fill_ohne_ticket_latcht_den_halt_und_bucht_einen_platzhalter
+  ROT: tests/test_zweige_mt5.py::test_eine_leere_waehrung_hat_keinen_kurs
+  ROT: tests/test_zweige_mt5.py::test_ohne_kurs_faellt_die_hebelpruefung_aus
+  ROT: tests/test_zweige_mt5.py::test_ohne_kurs_faellt_das_kostentor_aus
+  ROT: tests/test_zweige_mt5.py::test_ohne_kurs_faellt_die_risikopruefung_aus
+  ROT: tests/test_zweige_mt5.py::test_ohne_schrittweite_wird_das_volumen_nicht_gerastert
+  ROT: tests/test_zweige_mt5.py::test_derselbe_halt_grund_wird_nicht_zweimal_gefuehrt
+  ROT: tests/test_zweige_mt5.py::test_halt_reason_auf_none_loescht_alle_gruende
+  ROT: tests/test_zweige_mt5.py::test_ein_neuer_halt_grund_wird_angehaengt_und_die_kette_nicht_verdoppelt
+  ROT: tests/test_zweige_mt5.py::test_eine_position_ohne_kurs_ist_eine_unbewertbare_drift
+  ROT: tests/test_zweige_mt5.py::test_eine_position_ausserhalb_des_katalogs_ist_eine_unbewertbare_drift
+  ROT: tests/test_zweige_mt5.py::test_der_startabgleich_kennt_ohne_risiko_manager_keine_geister
+  ROT: tests/test_zweige_mt5.py::test_ohne_konfigurierten_privatstrom_gibt_es_kein_ereignis
+  ROT: tests/test_zweige_mt5.py::test_die_frist_des_venues_gilt_auch_fuer_den_kursstrom
+
+=== 1293->1294 Abbau ohne Ticket ===
+Zeile 1293: if ticket is None:
+       ->      if ticket is not None:  # GEGENPROBE 1293->1294
+pytest exit=1; 2 failed, 48 passed in 4.64s
+  ROT: tests/test_zweige_mt5.py::test_ein_abbau_laeuft_auch_ohne_risiko_manager_durch
+  ROT: tests/test_zweige_mt5.py::test_ohne_positionsticket_baut_nichts_ab
+
+=== 1622->Ausgang Schrittweite 0 ===
+Zeile 1622: if step > 0:
+       ->      if step >= 0:  # GEGENPROBE 1622->Ausgang
+pytest exit=1; 1 failed, 49 passed in 6.28s
+  ROT: tests/test_zweige_mt5.py::test_ohne_schrittweite_wird_das_volumen_nicht_gerastert
+
+=== 1845->Ausgang doppelter Halt-Grund ===
+Zeile 1845: if grund not in self._halt_gruende:
+       ->      if True:  # GEGENPROBE 1845->Ausgang
+pytest exit=1; 1 failed, 49 passed in 6.90s
+  ROT: tests/test_zweige_mt5.py::test_derselbe_halt_grund_wird_nicht_zweimal_gefuehrt
+
+=== 1945->1946 Position ohne Kurs ===
+Zeile 1945: if tick is None:
+       ->      if tick is not None:  # GEGENPROBE 1945->1946
+pytest exit=1; 1 failed, 49 passed in 6.19s
+  ROT: tests/test_zweige_mt5.py::test_eine_position_ohne_kurs_ist_eine_unbewertbare_drift
+
+=== 2053->2058 Fill ohne Ticket ===
+Zeile 2053: if not ticket:
+       ->      if ticket:  # GEGENPROBE 2053->2058
+pytest exit=1; 1 failed, 49 passed in 5.67s
+  ROT: tests/test_zweige_mt5.py::test_ein_fill_ohne_ticket_latcht_den_halt_und_bucht_einen_platzhalter
+
+=== 2297->2298 Fehlercode ist keine Fuellung ===
+Zeile 2297: if code != 0:
+       ->      if code == 0:  # GEGENPROBE 2297->2298
+pytest exit=1; 1 failed, 49 passed in 4.93s
+  ROT: tests/test_zweige_mt5.py::test_ein_benannter_fehlercode_ist_keine_fuellung
+
+=== 2426->2427 Fuellart IOC ===
+Zeile 2426: if maske & 2:
+       ->      if maske & 4:  # GEGENPROBE 2426->2427
+pytest exit=1; 1 failed, 49 passed in 4.73s
+  ROT: tests/test_zweige_mt5.py::test_die_fuellart_folgt_der_maske_des_symbols
+
+=== 2587->2588 Pfad im Verbindungsaufbau ===
+Zeile 2587: if self._path is not None:
+       ->      if self._path is None:  # GEGENPROBE 2587->2588
+pytest exit=1; 2 failed, 48 passed in 5.06s
+  ROT: tests/test_zweige_mt5.py::test_initialize_reicht_genau_die_gesetzten_zugangsfelder_weiter
+  ROT: tests/test_zweige_mt5.py::test_initialize_ohne_zugangsfelder_reicht_nichts_weiter
+
+=== 2800->2801 Schreibpfad nur auf Demo ===
+Zeile 2800: if self._require_demo and not self.account().is_demo:
+       ->      if False:  # GEGENPROBE 2800->2801
+pytest exit=1; 1 failed, 49 passed in 5.41s
+  ROT: tests/test_zweige_mt5.py::test_der_schreibpfad_des_terminals_bleibt_auf_dem_demokonto
+
+=== 2862->2863 Kerzenschleife ===
+Zeile 2862: for row in rows:
+       ->      for row in ():  # GEGENPROBE 2862->2863
+pytest exit=1; 1 failed, 49 passed in 6.55s
+  ROT: tests/test_zweige_mt5.py::test_rates_bildet_jede_gemeldete_zeile_ab
+
+=== 2995->2996 order_send ohne Tick ===
+Zeile 2995: if raw_tick is None:
+       ->      if raw_tick is not None:  # GEGENPROBE 2995->2996
+pytest exit=1; 5 failed, 45 passed in 7.86s
+  ROT: tests/test_zweige_mt5.py::test_der_schreibpfad_des_terminals_bleibt_auf_dem_demokonto
+  ROT: tests/test_zweige_mt5.py::test_order_send_ohne_tick_meldet_no_tick
+  ROT: tests/test_zweige_mt5.py::test_eine_limitorder_geht_als_pending_mit_wunschpreis_raus
+  ROT: tests/test_zweige_mt5.py::test_ein_unabfragbarer_bestand_verhindert_die_schliessung
+  ROT: tests/test_zweige_mt5.py::test_ohne_ergebnis_lautet_der_grund_no_result
+
+=== 3267->3268 nicht gemeldeter Stop ===
+Zeile 3267: if gemeldet is None:
+       ->      if gemeldet is not None:  # GEGENPROBE 3267->3268
+pytest exit=1; 2 failed, 48 passed in 7.46s
+  ROT: tests/test_zweige_mt5.py::test_ein_verschobener_stop_wird_nachgelesen_und_belegt
+  ROT: tests/test_zweige_mt5.py::test_ein_nicht_gemeldeter_stop_ist_kein_beleg
+
+15 Gegenproben, davon ohne roten Fall: 0

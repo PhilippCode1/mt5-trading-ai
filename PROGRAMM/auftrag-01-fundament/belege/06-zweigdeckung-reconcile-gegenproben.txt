@@ -1,0 +1,96 @@
+==============================================================================
+GEGENPROBEN zur Familie Zweigdeckung -- execution/reconcile.py
+Stand f37caa6 + tests/test_zweige_reconcile.py, 2026-09-04
+==============================================================================
+Frage: unterscheidet jede Zusicherung ihren Zweig? Antwort nur durch Messung: in einer
+KOPIE des Repositories (nie im Arbeitsbaum) wird je Gegenprobe genau eine Zeile von
+mt5_trading_ai/execution/reconcile.py geaendert -- Vergleich gekippt, Bedingung
+entschaerft, Fangzweig entfernt --, danach laeuft tests/test_zweige_reconcile.py
+dagegen. Wird die Datei dabei nicht rot, ist die Zusicherung entkernt.
+
+Die Kopie entsteht mit tools/zweigdeckung.py::repo_kopieren (verfolgte und neue,
+nicht ignorierte Dateien + Wegwerf-Git), Unterprozesse mit PYTHONDONTWRITEBYTECODE=1
+und PYTHONIOENCODING=utf-8. Nach jeder Gegenprobe wird die Originalzeile
+zurueckgeschrieben; die Kopie wird am Ende geloescht. Der Arbeitsbaum wird nur gelesen.
+
+## Die elf geaenderten Zeilen (Original -> Gegenprobe)
+ 162  return OrderSide.BUY if self.richtung == "kauf" ...
+      -> ... if self.richtung == "verkauf" ...                   (Seite vertauscht)
+ 177  if not isinstance(satz, dict):        -> if False:
+ 188  except (KeyError, TypeError, ValueError, InvalidOperation) as exc:
+      -> except NotImplementedError as exc:                      (Fangzweig entfernt)
+ 192  if not all(isinstance(x, str) and x for x in (...)):
+      -> if not all(isinstance(x, str) for x in (...)):          (Leertext erlaubt)
+ 194  if richtung not in ("kauf", "verkauf"):
+      -> if richtung not in ("kauf", "verkauf", "long"):
+ 239  except OSError as exc:                -> except InterruptedError as exc:
+ 241  if not roh.strip(): return []         -> if roh.strip() and False: return []
+ 245  except json.JSONDecodeError as exc:   -> except RecursionError as exc:
+ 247  if not isinstance(daten, dict) or daten.get("fassung") != POSITIONSBUCH_FASSUNG:
+      -> if not isinstance(daten, dict):                         (Fassung ungeprueft)
+ 250  if not isinstance(liste, list): raise PositionsbuchDefekt(...)
+      -> if not isinstance(liste, list): return []
+ 282  if weg is None: return None           -> (beide Zeilen entfernt)
+
+## Ausgabe des Laufs
+$ PYTHONDONTWRITEBYTECODE=1 PYTHONIOENCODING=utf-8 python gegenproben.py
+Kopie: <tmp>\gegenprobe-0pndweje (615 Dateien)
+
+[0] unveraendert: exit=0 -- 20 passed in 8.21s
+
+[Zeile 162] 162 Seite vertauscht: ROT (gut), exit=1 -- 1 failed, 19 passed in 6.64s
+    rot: test_die_richtung_im_buch_bestimmt_die_seite
+
+[Zeile 177] 177 Eintrag-Typ nicht geprueft: ROT (gut), exit=1 -- 1 failed, 19 passed in 5.56s
+    rot: test_ein_defekter_buchsatz_sperrt_die_eroeffnung[177-eintrag-kein-objekt]
+
+[Zeile 188] 188 kein Fang der Lesefehler: ROT (gut), exit=1 -- 4 failed, 16 passed in 6.92s
+    rot: test_ein_defekter_buchsatz_sperrt_die_eroeffnung[188-menge-keine-zahl]
+    rot: test_ein_defekter_buchsatz_sperrt_die_eroeffnung[188-ticket-fehlt]
+    rot: test_ein_defekter_buchsatz_sperrt_die_eroeffnung[188-zeit-kein-datum]
+    rot: test_ein_defekter_buchsatz_sperrt_die_eroeffnung[188-zeit-keine-zeichenkette]
+
+[Zeile 192] 192 Leertext erlaubt: ROT (gut), exit=1 -- 1 failed, 19 passed in 8.65s
+    rot: test_ein_defekter_buchsatz_sperrt_die_eroeffnung[192-symbol-leer]
+
+[Zeile 194] 194 fremde Richtung erlaubt: ROT (gut), exit=1 -- 2 failed, 18 passed in 8.41s
+    rot: test_der_defekte_satz_steht_im_journal_des_betriebs
+    rot: test_ein_defekter_buchsatz_sperrt_die_eroeffnung[194-richtung-unbekannt]
+
+[Zeile 239] 239 kein Fang des OSError: ROT (gut), exit=1 -- 1 failed, 19 passed in 8.43s
+    rot: test_ein_unlesbares_buch_latcht_den_halt
+
+[Zeile 241] 241 leere Datei nicht abgefangen: ROT (gut), exit=1 -- 1 failed, 19 passed in 8.03s
+    rot: test_ein_leeres_buch_auf_der_platte_sperrt_nichts
+
+[Zeile 245] 245 kein Fang des JSON-Fehlers: ROT (gut), exit=1 -- 2 failed, 18 passed in 7.88s
+    rot: test_ein_buch_mit_fremdem_rahmen_sperrt_die_eroeffnung[245-zerrissenes-json]
+    rot: test_ein_defektes_buch_sperrt_die_eroeffnung_und_laesst_die_schliessung
+
+[Zeile 247] 247 Fassung nicht geprueft: ROT (gut), exit=1 -- 1 failed, 19 passed in 6.05s
+    rot: test_ein_buch_mit_fremdem_rahmen_sperrt_die_eroeffnung[247-fremde-fassung]
+
+[Zeile 250] 250 'positionen' nicht geprueft: ROT (gut), exit=1 -- 2 failed, 18 passed in 8.43s
+    rot: test_ein_buch_mit_fremdem_rahmen_sperrt_die_eroeffnung[250-ohne-positionen]
+    rot: test_ein_buch_mit_fremdem_rahmen_sperrt_die_eroeffnung[250-positionen-kein-liste]
+
+[Zeile 282] 282 unbekannte Kennung schreibt doch: ROT (gut), exit=1 -- 1 failed, 19 passed in 8.11s
+    rot: test_austragen_einer_unbekannten_kennung_schreibt_nicht
+
+unbemerkte Aenderungen: 0 von 11
+[exit=0]
+
+## Urteil
+11 von 11 Gegenproben rot, 0 unbemerkt. Der Bezugspunkt (Kopie ohne Aenderung) ist
+gruen -- ohne ihn waere jedes "rot" wertlos.
+
+Zwei Gegenproben sind ausdruecklich auf die FOLGE gerichtet und nicht auf den
+Rueckgabewert:
+
+* Zeile 282: die Aenderung laesst ``austragen`` weiterhin ``None`` zurueckgeben --
+  am Rueckgabewert ist sie nicht zu sehen. Rot wird der Fall an der Platte: die
+  handgesetzte Formatierung des Buches (Einzug 4, Schlusszeile) ueberlebt nur, wenn
+  ``_schreiben`` gar nicht erst laeuft.
+* Zeile 247: die Aenderung wirft keine Ausnahme, sondern liest ein Buch der Fassung 2
+  als leeres Buch. Rot wird der Fall daran, dass danach der Halt fehlt, die naechste
+  Eroeffnung durchgeht und der fremde Text ueberschrieben ist.
