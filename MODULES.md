@@ -275,7 +275,7 @@ Frische-Latch fuer den Kontozustand — S2 aus Paket 0.
 ## `mt5_trading_ai/execution/handelspause.py`
 
 Zeilen: 204
-Aufrufer: Paket 1 · Werkzeuge 0 · Tests 1
+Aufrufer: Paket 1 · Werkzeuge 0 · Tests 2
 
 Handelspausen aus der Sitzungstabelle -- und die Gap-Sperre davor (Befund D13).
 
@@ -308,7 +308,7 @@ Private Ereignis-Synchronisation: der Kontostrom haelt das Buch aktuell.
 ## `mt5_trading_ai/execution/reconcile.py`
 
 Zeilen: 321
-Aufrufer: Paket 3 · Werkzeuge 2 · Tests 24
+Aufrufer: Paket 3 · Werkzeuge 2 · Tests 25
 
 Order-Lebenszyklus und Reconcile: Konto gegen Buch.
 
@@ -338,7 +338,7 @@ Mehrteilige Freigabe fuer Order-Submit an einen echten Markt.
 ## `mt5_trading_ai/execution/risiko_zustand.py`
 
 Zeilen: 1722
-Aufrufer: Paket 4 · Werkzeuge 7 · Tests 38
+Aufrufer: Paket 4 · Werkzeuge 7 · Tests 40
 
 Der Risikozustand, der einen Neustart ueberdauert -- und wie er fail-closed liest.
 
@@ -361,7 +361,7 @@ Der Risikozustand, der einen Neustart ueberdauert -- und wie er fail-closed lies
 ## `mt5_trading_ai/execution/risk_manager.py`
 
 Zeilen: 1203
-Aufrufer: Paket 3 · Werkzeuge 6 · Tests 32
+Aufrufer: Paket 3 · Werkzeuge 6 · Tests 33
 
 Risikoschicht am Order-Pfad: die vier Grenzen als letzte Verteidigungslinie.
 
@@ -396,7 +396,7 @@ Treiber-Loop/Scheduler (Paket 7): Frische, Drift und Drawdown-Peak getaktet prue
 ## `mt5_trading_ai/execution/schwebende_auftraege.py`
 
 Zeilen: 423
-Aufrufer: Paket 1 · Werkzeuge 2 · Tests 29
+Aufrufer: Paket 1 · Werkzeuge 2 · Tests 30
 
 Auftraege, deren Sendeversuch ohne Antwort endete -- „koennte beim Broker leben".
 
@@ -426,7 +426,7 @@ Vorregistrierte Kriterien und ihre Auswertung (Phase 9.3).
 ## `mt5_trading_ai/gates/erkundung.py`
 
 Zeilen: 245
-Aufrufer: Paket 1 · Werkzeuge 1 · Tests 2
+Aufrufer: Paket 1 · Werkzeuge 1 · Tests 3
 
 Kaltstart: den Kreis aufbrechen, ohne die Sperren aufzuweichen.
 
@@ -493,7 +493,7 @@ Gesetzlicher Hebeldeckel je Anlageklasse — geladen aus einer versionierten Dat
 ## `mt5_trading_ai/risk/limits.py`
 
 Zeilen: 174
-Aufrufer: Paket 1 · Werkzeuge 0 · Tests 3
+Aufrufer: Paket 1 · Werkzeuge 0 · Tests 4
 
 Verlustgrenzen und das **Kriterium** des Kill-Switch (Phase 6.4).
 
@@ -506,7 +506,7 @@ Verlustgrenzen und das **Kriterium** des Kill-Switch (Phase 6.4).
 ## `mt5_trading_ai/risk/sizing.py`
 
 Zeilen: 259
-Aufrufer: Paket 2 · Werkzeuge 0 · Tests 2
+Aufrufer: Paket 2 · Werkzeuge 0 · Tests 3
 
 Risiko je Trade, ausfuehrbarer Stop-Floor und Positionsgroesse (Phase 6.2/6.3).
 
@@ -521,7 +521,7 @@ Risiko je Trade, ausfuehrbarer Stop-Floor und Positionsgroesse (Phase 6.2/6.3).
 ## `mt5_trading_ai/risk/stop_budget.py`
 
 Zeilen: 357
-Aufrufer: Paket 2 · Werkzeuge 2 · Tests 6
+Aufrufer: Paket 2 · Werkzeuge 2 · Tests 7
 
 Stop-Budget je Anlageklasse — hergeleitet, nicht uebertragen (Phase 6.5).
 
@@ -586,7 +586,7 @@ Ein Terminal ohne MetaTrader: die Betriebsattrappe fuer Trockenlauf und Eichfael
 ## `mt5_trading_ai/venue/mt5.py`
 
 Zeilen: 3271
-Aufrufer: Paket 4 · Werkzeuge 7 · Tests 46
+Aufrufer: Paket 4 · Werkzeuge 7 · Tests 47
 
 MT5-Anbindung an das ``TradingVenue``-Protokoll.
 
@@ -611,7 +611,7 @@ MT5-Anbindung an das ``TradingVenue``-Protokoll.
 ## `mt5_trading_ai/venue/protocol.py`
 
 Zeilen: 547
-Aufrufer: Paket 14 · Werkzeuge 9 · Tests 58
+Aufrufer: Paket 14 · Werkzeuge 9 · Tests 59
 
 Plattformunabhaengiger Handelsplatz-Vertrag.
 

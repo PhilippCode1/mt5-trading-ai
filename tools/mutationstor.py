@@ -545,12 +545,39 @@ def _quelltext(datei: str) -> str:
     return (ROOT / datei).read_text(encoding="utf-8").replace("\r\n", "\n")
 
 
+#: Mutationen, die das Verhalten nachweislich NICHT aendern koennen. Eine solche
+#: Sonde ist kein Testloch: kein Test kann sie toeten, weil es nichts zu bemerken
+#: gibt. Sie wird darum nicht gezogen. Je Eintrag steht der Nachweis dabei; wer
+#: einen Eintrag hinzufuegt, fuehrt ihn -- eine Sonde ohne Nachweis ist ein Loch,
+#: und die Liste waere sonst die bequemste Art, die Schwelle zu unterlaufen.
+#: Beide gemessen im Lauf vom 2026-09-04 (Beleg 06-mutationsgrenzen.txt).
+AEQUIVALENT: dict[tuple[str, int, str], str] = {
+    ("mt5_trading_ai/execution/risk_manager.py", 601, "vergleich"): (
+        "if lage.trades_konto > self._trades_today_account: self._trades_today_account "
+        "= lage.trades_konto -- bei Gleichheit weist der Rumpf den Wert zu, den das "
+        "Feld schon traegt. '>' und '>=' sind verhaltensgleich."
+    ),
+    ("mt5_trading_ai/risk/leverage.py", 248, "bool"): (
+        "if value is None or value == '': return None -- mit 'and' faellt None in "
+        "den try-Block, int(float(None)) wirft TypeError, und der except-Zweig "
+        "liefert dasselbe None. Verhaltensgleich."
+    ),
+}
+
+
 def kandidaten_je_datei() -> dict[str, list[_Stelle]]:
-    """Alle Kandidatenstellen je Geldpfad-Datei, sortiert nach Zeile und Spalte."""
+    """Alle Kandidatenstellen je Geldpfad-Datei, sortiert nach Zeile und Spalte.
+
+    Ohne die nachweislich verhaltensgleichen Stellen (:data:`AEQUIVALENT`).
+    """
     aus: dict[str, list[_Stelle]] = {}
     for kurz in GELDPFAD:
         datei = f"mt5_trading_ai/{kurz}"
-        stellen = _stellen(_quelltext(datei))
+        stellen = [
+            stelle
+            for stelle in _stellen(_quelltext(datei))
+            if (datei, stelle.z1, stelle.operator) not in AEQUIVALENT
+        ]
         aus[datei] = sorted(stellen, key=lambda s: (s.z1, s.s1, s.operator))
     return aus
 
