@@ -114,3 +114,25 @@ seit T2 als „zu drei Vierteln belegt“ mit einem offenen Punkt, der jetzt rot
 Repo“ geführt. Sitzungen für das Programm starten in `C:/Users/<konto>/mt5_trading_ai` (im
 Gedächtnis vermerkt); der Live-Eichfall wird zu Beginn der nächsten Sitzung wiederholt. Bis dahin ist
 der Pre-Commit-Hook die haltende Sperre.
+
+## F-008 — Drei Fehlschlaege im Pre-Push-Lauf waren kein Codefehler, sondern eine volle Platte (2026-09-04)
+
+**Was geschah.** Der Push wurde abgewiesen: `tests/test_provenance.py` (2 Faelle) und der
+Mutationstor-Selbsttest fielen mit `error: unable to write file .git/objects/...: Permission denied`,
+`failed to insert into database`, `fatal: adding files failed`. Dieselbe Meldung hatte kurz zuvor ein
+`git add` im Hauptrepo geliefert. Die Fehlermeldung nennt ein Recht, gemeint ist der Platz.
+
+**Messung.** `Get-PSDrive C`: 2,9 GB frei von 475 GB (99,4 % belegt). Alle drei Faelle legen temporaere
+Git-Repositories an und schreiben Objekte hinein; unterhalb weniger GB scheitert das sporadisch.
+Nach dem Aufraeumen **eigener** Reste — elf beendete Git-Worktrees unter `.claude/worktrees` (ihre Arbeit
+ist eingespielt und als Patch gesichert), Klone und mypy-Caches im Scratchpad, Temp-Ordner abgebrochener
+Subagenten — waren 3,7 GB frei, und dieselben Dateien liefen: `59 passed in 117,87 s`.
+
+**Was sich aendert.** (1) Vor einer langen Messung (Suite, Mutationstor, Zweigdeckung, Push) den freien
+Platz pruefen; unter 5 GB zuerst aufraeumen. (2) Nach jeder Runde Subagenten die Worktrees entfernen,
+sobald ihre Patches eingespielt sind — sie kosten je rund 25 MB. (3) Eine Fehlermeldung ueber Rechte an
+`.git/objects` ist zuerst ein Platzverdacht, kein Rechteverdacht.
+
+**Nicht meine Sache, aber zu sagen:** die Platte ist zu 99,4 % belegt; die restlichen 470 GB sind fremde
+Daten. Wer hier weiterarbeitet, braucht Platz — das steht in `PROGRAMM/haltepunkte.md` als Hinweis, nicht
+als Handlung von mir.

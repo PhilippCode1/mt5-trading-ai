@@ -41,3 +41,11 @@ dieses Repositories. Das Programm hängt nicht daran.
   MT5-Terminal mit angemeldetem Demokonto (Übersicht §2.4). Ich starte das Terminal
   bei Bedarf, melde aber kein Konto an. Fehlt die Anmeldung, ist A9 rot und steht so in
   der Meldung.
+
+## Hinweis (kein Haltepunkt): Platte zu 99,4 % belegt — 2026-09-04
+
+`Get-PSDrive C`: 2,9 GB frei von 475 GB. Drei Testfaelle, die temporaere Git-Repositories anlegen, fielen
+deshalb im Pre-Push-Lauf (F-008); nach dem Aufraeumen eigener Reste (3,7 GB frei) liefen sie gruen. Die
+restlichen rund 470 GB sind Daten ausserhalb dieses Programms — ich raeume dort nichts. Auftrag 1 kommt
+mit dem jetzigen Platz durch; die Zweigdeckung und das Mutationstor kopieren das Repository mehrfach, und
+unter etwa 3 GB wird das wieder scheitern.
