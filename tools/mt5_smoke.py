@@ -9,6 +9,19 @@ Voraussetzung: ein installiertes MT5-Terminal, **im Demokonto angemeldet**, plus
 Paket ``MetaTrader5`` (``pip install MetaTrader5``). Der Smoke haengt sich an das
 laufende Terminal — es werden **keine** Zugangsdaten auf der Kommandozeile erwartet.
 
+Der lesende Lauf prueft jedes Katalogsymbol einzeln (``symbol_<NAME>`` mit
+``currency_profit`` und ``currency_margin``) und misst den Serverzeitversatz
+(Tick-Zeit des Terminals gegen die lokale UTC-Uhr, Sekunden) -- Abnahmekatalog A9.
+
+Rueckgabewerte:
+
+* 0 -- alle Schritte gruen;
+* 1 -- der Bericht traegt einen roten Schritt (steht mit Namen in der Ausgabe);
+* 2 -- **kein Terminal**: genau eine Zeile ``FEHLGESCHLAGEN -- MT5-Terminal nicht
+  erreichbar: <Grund>`` auf stderr, kein Traceback (Abnahmekatalog A12). Das deckt
+  beide Ausgaenge von ``RealMt5Terminal.initialize`` ab: die Ausnahme
+  ``VenueUnavailableError`` (Paket fehlt) und ``False`` (Terminal nicht gestartet).
+
 Beispiele::
 
     python tools/mt5_smoke.py                 # nur lesend, Symbol EURUSD
@@ -28,6 +41,9 @@ from mt5_trading_ai.execution.risk_manager import RiskManager  # noqa: E402
 from mt5_trading_ai.venue.catalog import load_instrument_catalog  # noqa: E402
 from mt5_trading_ai.venue.mt5 import Mt5Venue, RealMt5Terminal  # noqa: E402
 from mt5_trading_ai.venue.smoke import run_smoke  # noqa: E402
+
+#: Rueckgabewert, wenn das Terminal nicht erreichbar ist (A12).
+EXIT_KEIN_TERMINAL = 2
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -49,6 +65,7 @@ def main(argv: list[str] | None = None) -> int:
         path=args.path,
         allow_write=args.allow_write,
     )
+    katalog = load_instrument_catalog()
     # Die Risikoschicht ist seit Paket 2 fuer JEDE eroeffnende Order Pflicht -- auch
     # auf dem Demokonto. Ohne Manager lehnt der Order-Pfad fail-closed ab; die
     # Schreib-Probe wuerde also gar nicht erst laufen. Standard-Politik: die Probe
@@ -56,11 +73,26 @@ def main(argv: list[str] | None = None) -> int:
     venue = Mt5Venue(
         name="mt5",
         terminal=terminal,
-        catalog=load_instrument_catalog(),
+        catalog=katalog,
         risk_manager=RiskManager(),
     )
 
-    report = run_smoke(venue, symbol=args.symbol, allow_write=args.allow_write)
+    report = run_smoke(
+        venue,
+        symbol=args.symbol,
+        allow_write=args.allow_write,
+        symbole=sorted(katalog),
+    )
+    # ``run_smoke`` faengt den Verbindungsaufbau selbst ab und bricht dann mit genau
+    # einem Schritt ab. Das ist der Fall "kein Terminal" -- eine Zeile, Exit 2, kein
+    # Bericht, der wie ein gelaufener Rauchtest aussieht.
+    if report.steps and report.steps[0].name == "connect" and not report.steps[0].ok:
+        print(
+            "FEHLGESCHLAGEN -- MT5-Terminal nicht erreichbar: "
+            f"{report.steps[0].detail}",
+            file=sys.stderr,
+        )
+        return EXIT_KEIN_TERMINAL
     for step in report.steps:
         print(f"{'OK ' if step.ok else '!! '}{step.name}: {step.detail}")
     print("SMOKE OK" if report.ok else "SMOKE FEHLGESCHLAGEN")

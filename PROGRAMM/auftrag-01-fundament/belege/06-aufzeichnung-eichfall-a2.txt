@@ -1,0 +1,61 @@
+# T6 Familie Aufzeichnung: Eichfall A2 (0 Tests, die sich selbst ueberspringen) an den vier Dauertor-Dateien
+# Worktree ohne betrieb/ (wie ein frischer Klon), Windows, Python 3.11.7, pytest 8.3.4, 2026-09-03
+# Vor Auftrag 1 (Beleg 03-grundmessung-pytest-worktree.txt): 12 skipped in genau diesen vier Dateien.
+
+== ROT: Aufzeichnung umbenannt -> die Dauertore muessen SCHEITERN, nicht ueberspringen
+$ python -m pytest -q -rs -p no:cacheprovider tests/test_laufabschluss.py tests/test_buchtreue.py tests/test_ausstiegsdeckung.py tests/test_journal_leser.py
+  F.FFFFFFF.F......F....F............F.................................... [ 96%]
+  ..F                                                                      [100%]
+  ================================== FAILURES ===================================
+  ____________ test_die_kennungen_zeigen_auf_die_benannten_journale _____________
+  
+  >       laeufe = _kopf()["laeufe"]
+  
+  tests\test_laufabschluss.py:112: 
+  _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+  tests\test_laufabschluss.py:86: in _kopf
+  _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+  
+    ... (107 Zeilen ausgelassen) ...
+  
+  tests\test_buchtreue.py:166: 
+  _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+  
+  >       assert AUFZEICHNUNG.is_file(), (
+  
+  tests\test_buchtreue.py:64: AssertionError
+  ____ test_auf_den_echten_journalen_sitzen_die_sperren_im_ueberholten_code _____
+  
+  >       staende = nach_codestand(_aufzeichnung_zeilen())
+  
+  tests\test_buchtreue.py:251: 
+  _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+  
+  >       assert AUFZEICHNUNG.is_file(), (
+  
+  tests\test_buchtreue.py:64: AssertionError
+  ________ test_rot_die_neue_regel_schlaegt_auf_den_echten_journalen_an _________
+  
+  >       assert AUFZEICHNUNG.is_file(), (
+  
+  tests\test_ausstiegsdeckung.py:307: AssertionError
+  _____________________ test_alle_echten_laeufe_sind_lesbar _____________________
+  
+  >       assert AUFZEICHNUNG.is_file(), (
+  
+  tests\test_journal_leser.py:627: AssertionError
+  13 failed, 62 passed in 3.19s
+[exit=1]
+
+== GRUEN: Aufzeichnung vorhanden -> 0 skipped
+$ python -m pytest -q -rs -p no:cacheprovider tests/test_laufabschluss.py tests/test_buchtreue.py tests/test_ausstiegsdeckung.py tests/test_journal_leser.py
+  ........................................................................ [ 96%]
+  ...                                                                      [100%]
+  75 passed in 3.84s
+[exit=0]
+
+== Urteil
+  rot  : 13 failed, 62 passed in 3.19s
+  gruen: 75 passed in 3.84s
+  rot: 13 failed, 0 skipped -> ROT wie gefordert
+  gruen: 75 passed, 0 skipped -> GRUEN wie gefordert

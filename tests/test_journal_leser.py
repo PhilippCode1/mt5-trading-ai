@@ -27,6 +27,7 @@ from typing import Any
 
 import pytest
 from mt5_trading_ai.betrieb.journal import (
+    KOPF_ART,
     QUELLE_ALTJOURNAL,
     QUELLE_BEOBACHTET,
     JournalError,
@@ -36,9 +37,12 @@ from mt5_trading_ai.betrieb.journal import (
     geldbilanz,
     lies_alle,
     lies_journal,
+    trenne_laeufe,
 )
 
 T0 = datetime(2026, 8, 17, 12, 0, tzinfo=UTC)
+ROOT = Path(__file__).resolve().parents[1]
+AUFZEICHNUNG = ROOT / "aufzeichnungen" / "demo-2026-08-17.jsonl"
 
 
 def _zeile(art: str, minute: int = 0, **felder: Any) -> str:
@@ -338,6 +342,89 @@ def test_leeres_verzeichnis_gibt_eine_leere_liste(tmp_path: Path) -> None:
     assert lies_alle(tmp_path) == []
 
 
+# --- Die Aufzeichnung: Kopfzeile und mehrere Laeufe in einer Datei -----------
+def _kopf() -> str:
+    return json.dumps({"art": KOPF_ART, "fassung": 2, "behalten_gesamt": 2})
+
+
+def test_die_kopfzeile_ist_ein_kopf_und_kein_satz(tmp_path: Path) -> None:
+    """Gruener Eichfall: die Aufzeichnung beginnt mit ``art: _kopf`` ohne ``ts``.
+
+    Vor Auftrag 1 warf der Leser hier ``ts oder art fehlt`` -- ``betrieb_auswerten.py``
+    konnte die eingecheckte Aufzeichnung nicht lesen (Bewertung, Befund T).
+    """
+    p = _schreib(tmp_path / "aufz.jsonl", _kopf(), _zeile("start"), _zeile("takt", 1))
+    lauf = lies_journal(p)
+    assert lauf.kopf is not None and lauf.kopf["fassung"] == 2
+    assert [s.art for s in lauf.saetze] == ["start", "takt"]
+
+
+def test_ein_kopf_mitten_in_den_saetzen_ist_ein_fehler(tmp_path: Path) -> None:
+    """Roter Eichfall: zwei aneinandergehaengte Aufzeichnungen haben zwei Koepfe, und
+    dann stimmt keine der beiden Zaehlungen mehr."""
+    p = _schreib(tmp_path / "aufz.jsonl", _zeile("start"), _kopf(), _zeile("takt", 1))
+    with pytest.raises(JournalError, match="nicht am Anfang"):
+        lies_journal(p)
+
+
+def test_lies_alle_trennt_eine_aufzeichnungsdatei_nach_laufkennung(
+    tmp_path: Path,
+) -> None:
+    """Eine Datei, drei Laeufe -- ueber ``lauf`` an jedem Satz, nach Startzeit sortiert.
+
+    Die Saetze stehen absichtlich nicht in Startreihenfolge: LAUF-02 beginnt frueher
+    als LAUF-01. Der Leser sortiert nach dem ersten Zeitstempel je Lauf.
+    """
+    p = _schreib(
+        tmp_path / "aufz.jsonl",
+        _kopf(),
+        _zeile("start", 10, lauf="LAUF-01"),
+        _zeile("takt", 11, lauf="LAUF-01", equity="1"),
+        _zeile("ende", 12, lauf="LAUF-01"),
+        _zeile("start", 0, lauf="LAUF-02"),
+        _zeile("takt", 1, lauf="LAUF-02", equity="2"),
+        _zeile("start", 20, lauf="LAUF-03"),
+    )
+    laeufe = lies_alle(p)
+    assert [lauf.lauf_id for lauf in laeufe] == ["LAUF-02", "LAUF-01", "LAUF-03"]
+    assert [len(lauf.saetze) for lauf in laeufe] == [2, 3, 1]
+    assert all(lauf.kopf is not None for lauf in laeufe)
+    assert all(lauf.pfad == p for lauf in laeufe)
+    assert [lauf.beendet for lauf in laeufe] == [False, True, False]
+    # Und die Luecke zwischen den Laeufen bleibt sichtbar.
+    punkte = list(durchgehende_equity(laeufe))
+    assert [luecke for _, _, luecke in punkte] == [False, True]
+
+
+def test_saetze_ohne_laufkennung_werden_an_start_getrennt(tmp_path: Path) -> None:
+    """Ein Journal ohne ``lauf``-Feld (17 der 21 alten Journale) traegt in einer
+    Datei mehrere Laeufe nur ueber seine ``start``-Saetze. Der Leser vergibt dann eine
+    Kennung je Teil -- sonst verschmoelzen zwei Laeufe in ``durchgehende_equity`` zu
+    einem, und keine Luecke wuerde je gemeldet."""
+    p = _schreib(
+        tmp_path / "zusammen.jsonl",
+        json.dumps({"ts": T0.isoformat(), "art": "start"}),
+        json.dumps({"ts": (T0 + timedelta(minutes=1)).isoformat(), "art": "ende"}),
+        json.dumps({"ts": (T0 + timedelta(hours=1)).isoformat(), "art": "start"}),
+    )
+    laeufe = trenne_laeufe(lies_journal(p))
+    assert [lauf.lauf_id for lauf in laeufe] == [
+        "zusammen.jsonl#1",
+        "zusammen.jsonl#2",
+    ]
+    assert [len(lauf.saetze) for lauf in laeufe] == [2, 1]
+
+
+def test_ein_verzeichnis_bleibt_ein_journal_je_lauf(tmp_path: Path) -> None:
+    """Der alte Weg aendert sich nicht: Verzeichnis -> ein Lauf je journal-*.jsonl,
+    auch wenn die Saetze dieselbe Kennung tragen."""
+    _schreib(tmp_path / "journal-a.jsonl", _zeile("start"))
+    _schreib(tmp_path / "journal-b.jsonl", _zeile("start", 5))
+    _schreib(tmp_path / "notiz.jsonl", _zeile("start", 9))  # kein journal-*
+    laeufe = lies_alle(tmp_path)
+    assert [lauf.pfad.name for lauf in laeufe] == ["journal-a.jsonl", "journal-b.jsonl"]
+
+
 # --- Geld: Herkunft ist Pflicht -------------------------------------------
 def test_ein_geldbetrag_ohne_herkunft_ist_ein_fehler(tmp_path: Path) -> None:
     """Der Eichfall gegen die schmeichelnde Richtung.
@@ -526,16 +613,31 @@ def test_geldbilanz_ohne_geldergebnisse_ist_leer() -> None:
     assert b.summe is None and b.hindernis is None
 
 
-# --- Gegen die echten Journale --------------------------------------------
-def test_alle_echten_journale_sind_lesbar() -> None:
-    """Positivprobe: was der Betrieb wirklich geschrieben hat, muss durchgehen."""
-    verzeichnis = Path(__file__).resolve().parents[1] / "betrieb"
-    if not verzeichnis.is_dir():
-        pytest.skip("kein betrieb/-Verzeichnis")
-    laeufe = lies_alle(verzeichnis)
-    if not laeufe:
-        pytest.skip("keine Journale vorhanden")
+# --- Gegen die echten Laeufe: die eingecheckte Aufzeichnung ---------------
+def test_alle_echten_laeufe_sind_lesbar() -> None:
+    """Positivprobe: was der Betrieb wirklich geschrieben hat, muss durchgehen.
+
+    Gelesen wird die Aufzeichnung (Auftrag 1, T6, Befund T), nicht ``betrieb/``: das
+    ist gitignoriert, und dieser Fall uebersprang sich auf jedem Klon. Fehlt die
+    Aufzeichnung, ist der Fall rot (Katalog A2). Die Zahlen sind an den 21 Journalen
+    und an der Aufzeichnung gemessen und gleich (Beleg
+    ``06-aufzeichnung-metriken-vergleich.txt``): 21 Laeufe, 32 Trades (alle
+    geschlossen), 1.360 Equity-Punkte, 19 beendet, 15 scharf.
+    """
+    assert AUFZEICHNUNG.is_file(), (
+        f"{AUFZEICHNUNG.relative_to(ROOT).as_posix()} fehlt -- kein Gegenstand fuer "
+        "die Positivprobe (Katalog A2). Erzeugen mit: python tools/aufzeichnung_redigieren.py"
+    )
+    laeufe = lies_alle(AUFZEICHNUNG)
+    assert [lauf.lauf_id for lauf in laeufe] == [f"LAUF-{n:02d}" for n in range(1, 22)]
     for lauf in laeufe:
-        assert lauf.saetze, f"{lauf.pfad.name} ist leer"
+        assert lauf.saetze, f"{lauf.lauf_id} ist leer"
+        assert lauf.kopf is not None and lauf.kopf["laeufe"][lauf.lauf_id]
         for t in lauf.trades():
             assert isinstance(t, Trade)
+    trades = [t for lauf in laeufe for t in lauf.trades()]
+    assert len(trades) == 32
+    assert sum(1 for t in trades if not t.offen) == 32
+    assert sum(len(lauf.equity_reihe()) for lauf in laeufe) == 1360
+    assert sum(1 for lauf in laeufe if lauf.beendet) == 19
+    assert sum(1 for lauf in laeufe if lauf.scharf) == 15

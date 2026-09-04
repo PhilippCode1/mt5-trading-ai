@@ -1,0 +1,330 @@
+# T6 Familie Aufzeichnung: die Werkzeuge mit der Aufzeichnung als Eingabe
+# Worktree ohne betrieb/ (wie ein frischer Klon), Windows, Python 3.11.7, 2026-09-03
+# Je Aufruf: Befehl, Ausgabe (gekuerzt), Exit. Pfade mit <konto> redigiert.
+
+$ python tools/betrieb_auswerten.py --help   # A13: --help
+  usage: betrieb_auswerten.py [-h] [--lauf KENNUNG] [--liste] [journal]
+  
+  Einen Betriebslauf auswerten -- Journal oder Aufzeichnung.
+    ... (10 Zeilen ausgelassen) ...
+[exit=0]
+
+$ python tools/betrieb_reihe.py --help   # A13: --help
+  usage: betrieb_reihe.py [-h] [--verzeichnis QUELLE] [--nur-scharf]
+  
+  Alle Betriebslaeufe hintereinander
+    ... (7 Zeilen ausgelassen) ...
+[exit=0]
+
+$ python tools/dienstguete.py --help   # A13: --help
+  usage: dienstguete.py [-h] [--journal JOURNAL] [--alarmdatei ALARMDATEI]
+  
+  Dienstgueteziele und Alarme
+    ... (5 Zeilen ausgelassen) ...
+[exit=0]
+
+$ python tools/torzaehlung.py --help   # A13: --help
+  usage: torzaehlung.py [-h] [--journal JOURNAL]
+  
+  Tore ohne Ausloesung melden
+    ... (4 Zeilen ausgelassen) ...
+[exit=0]
+
+$ python tools/auswertung.py --help   # A13: --help
+  usage: auswertung.py [-h] --journal JOURNAL [--csv CSV]
+  
+  Auswertung mit Herkunftsspalte
+    ... (5 Zeilen ausgelassen) ...
+[exit=0]
+
+$ python tools/journal_sichern.py --help   # A13: --help
+  usage: journal_sichern.py [-h] --ziel ZIEL [--pruefen]
+  
+  Betriebsjournale sichern und pruefen
+    ... (5 Zeilen ausgelassen) ...
+[exit=0]
+
+$ python tools/aufzeichnung_redigieren.py --help   # A13: --help
+  usage: aufzeichnung_redigieren.py [-h] [--quelle QUELLE] [--ziel ZIEL]
+                                    [--pruefen]
+  
+    ... (9 Zeilen ausgelassen) ...
+[exit=0]
+
+$ python tools/betrieb_auswerten.py aufzeichnungen/demo-2026-08-17.jsonl --liste   # Laeufe der Aufzeichnung
+  21 Laeufe in demo-2026-08-17.jsonl:
+    LAUF-01    2026-08-17 14:21:37     14 Saetze     4 Takte trocken 
+    LAUF-02    2026-08-17 14:23:11     12 Saetze     5 Takte scharf  
+    LAUF-03    2026-08-17 14:41:15     11 Saetze     3 Takte trocken 
+    LAUF-04    2026-08-17 14:43:55      8 Saetze     3 Takte trocken 
+    LAUF-05    2026-08-17 14:47:18     10 Saetze     4 Takte scharf  
+    LAUF-06    2026-08-17 14:50:21      8 Saetze     3 Takte scharf  
+    LAUF-07    2026-08-17 14:53:30      8 Saetze     3 Takte scharf  
+    LAUF-08    2026-08-17 14:56:06      7 Saetze     3 Takte scharf  
+    LAUF-09    2026-08-17 14:58:22      5 Saetze     1 Takte scharf  
+    LAUF-10    2026-08-17 15:00:24      9 Saetze     5 Takte scharf  
+    LAUF-11    2026-08-17 15:04:28      7 Saetze     1 Takte trocken 
+    LAUF-12    2026-08-17 15:05:13     28 Saetze     6 Takte scharf    OHNE ENDEINTRAG
+    LAUF-13    2026-08-17 15:10:45      5 Saetze     0 Takte scharf  
+    LAUF-14    2026-08-17 15:11:27     13 Saetze     1 Takte scharf  
+    LAUF-15    2026-08-17 15:13:24    205 Saetze    49 Takte scharf  
+    LAUF-16    2026-08-17 16:02:53    328 Saetze    87 Takte scharf  
+    LAUF-17    2026-08-17 17:30:32     57 Saetze    12 Takte scharf  
+    LAUF-18    2026-08-17 17:34:13      6 Saetze     1 Takte trocken 
+    LAUF-19    2026-08-17 17:43:05    185 Saetze    46 Takte scharf  
+    LAUF-20    2026-08-17 18:28:00      5 Saetze     1 Takte trocken 
+    LAUF-21    2026-08-17 18:29:51   4882 Saetze  1122 Takte scharf    OHNE ENDEINTRAG
+[exit=0]
+
+$ python tools/betrieb_auswerten.py aufzeichnungen/demo-2026-08-17.jsonl   # ohne --lauf: der letzte Lauf
+  Aufzeichnung mit 21 Laeufen; ausgewertet wird LAUF-21 (der letzte). --liste zeigt alle, --lauf KENNUNG waehlt.
+  
+  ==============================================================================
+  BETRIEBSLAUF demo-2026-08-17.jsonl  (LAUF-21)
+  ==============================================================================
+  Konto        : KONTO-1 (Demo: True)
+  Instrumente  : EURGBP, EURUSD, GBPUSD, US500, USDJPY, XAUUSD
+  Strategie    : moving_average_crossover(12,26)
+  Codestand    : d5c7133
+  Lauf-Kennung : LAUF-21
+  Dauer        : 1122.8 min ueber 1122 Takte
+  Scharf       : JA
+    Zulassung uebergangen: Maschinenprobe-Demo-24h-2026-08-17
+    Zum Zeitpunkt dieses Laufs war KEINE Strategie nach §9.3 zugelassen. Siehe ABSCHLUSS-3a/05-URTEIL.md.
+    ... (64 Zeilen ausgelassen) ...
+    gates/criteria.py gebaut.
+  
+    Ueber ALLE Laeufe: python tools/betrieb_reihe.py
+[exit=0]
+
+$ python tools/betrieb_auswerten.py aufzeichnungen/demo-2026-08-17.jsonl --lauf LAUF-18   # LAUF-18 = journal-20260817T173413 (drei Positionen offen gelassen)
+  Aufzeichnung mit 21 Laeufen; ausgewertet wird LAUF-18 (gewaehlt). --liste zeigt alle, --lauf KENNUNG waehlt.
+  
+  ==============================================================================
+  BETRIEBSLAUF demo-2026-08-17.jsonl  (LAUF-18)
+  ==============================================================================
+  Konto        : KONTO-1 (Demo: True)
+  Instrumente  : EURUSD
+  Strategie    : moving_average_crossover(12,26)
+  Codestand    : 4ad1683+aenderungen
+  Lauf-Kennung : LAUF-18
+  Dauer        : 0.2 min ueber 1 Takte
+  Scharf       : nein (trocken)
+  
+  ------------------------------------------------------------------------------
+  1. LIEF DIE MASCHINE SAUBER?
+  ------------------------------------------------------------------------------
+    Takte gesamt              : 1
+    Takte mit Fehler          : 0
+    Takte im Halt             : 0
+    Schliessen fehlgeschlagen : 3
+    Eroeffnen fehlgeschlagen  : 0
+    Geordnet beendet          : ja
+    URTEIL: mit Stoerungen
+  
+  ------------------------------------------------------------------------------
+  2. WAS HAT SIE GETAN?
+  ------------------------------------------------------------------------------
+    Eroeffnungsversuche : 0
+    davon eroeffnet     : 0
+  
+    Trades geschlossen  : 0
+  
+  ------------------------------------------------------------------------------
+  3. WAS SAGT DAS ERGEBNIS?
+  ------------------------------------------------------------------------------
+    Equity   : 49994.41 -> 49995.01   (+0.60)
+    ... (16 Zeilen ausgelassen) ...
+[exit=0]
+
+$ python tools/betrieb_auswerten.py aufzeichnungen/demo-2026-08-17.jsonl --lauf LAUF-99   # unbekannte Kennung
+  
+  [stderr]
+  FEHLGESCHLAGEN — Lauf 'LAUF-99' gibt es in demo-2026-08-17.jsonl nicht. Vorhanden: LAUF-01, LAUF-02, LAUF-03, LAUF-04, LAUF-05, LAUF-06, LAUF-07, LAUF-08, LAUF-09, LAUF-10, LAUF-11, LAUF-12, LAUF-13, LAUF-14, LAUF-15, LAUF-16, LAUF-17, LAUF-18, LAUF-19, LAUF-20, LAUF-21
+[exit=1]
+
+$ python tools/betrieb_auswerten.py   # Vorgabe betrieb/, hier nicht vorhanden
+  
+  [stderr]
+  FEHLGESCHLAGEN — kein Journal unter C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_358a8ac6-c0a-5\betrieb. Die eingecheckte Aufzeichnung: aufzeichnungen/demo-2026-08-17.jsonl
+[exit=1]
+
+$ python tools/betrieb_reihe.py --journal aufzeichnungen/demo-2026-08-17.jsonl   # alle Laeufe der Aufzeichnung
+  ====================================================================================================
+  BETRIEBSREIHE — 21 Laeufe
+  ====================================================================================================
+  Lauf       Beginn            Dauer  Art      Takte    Trades       Equity  Codestand
+  ----------------------------------------------------------------------------------------------------
+    LAUF-01    17.08 14:21     1.0 min  trocken     4 Takte    0 Trades (0 zu)      +0.00  —                   
+    LAUF-02    17.08 14:23     2.0 min  scharf      5 Takte    0 Trades (0 zu)      +0.00  —                   
+    LAUF-03    17.08 14:41     0.8 min  trocken     3 Takte    0 Trades (0 zu)      +0.00  —                   
+    LAUF-04    17.08 14:43     0.7 min  trocken     3 Takte    0 Trades (0 zu)      +0.00  —                   
+    LAUF-05    17.08 14:47     1.5 min  scharf      4 Takte    0 Trades (0 zu)      +0.00  —                   
+    LAUF-06    17.08 14:50     0.8 min  scharf      3 Takte    0 Trades (0 zu)      +0.00  —                   
+    LAUF-07    17.08 14:53     0.8 min  scharf      3 Takte    0 Trades (0 zu)      +0.00  —                   
+    LAUF-08    17.08 14:56     0.8 min  scharf      3 Takte    0 Trades (0 zu)      -1.04  —                   
+    LAUF-09    17.08 14:58     0.0 min  scharf      1 Takte    0 Trades (0 zu)      +0.00  —                   
+    LAUF-10    17.08 15:00     2.0 min  scharf      5 Takte    1 Trades (1 zu)      +0.76  —                   
+    LAUF-11    17.08 15:04     0.0 min  trocken     1 Takte    0 Trades (0 zu)      +0.00  —                   
+    LAUF-12    17.08 15:05     5.0 min  scharf      6 Takte    0 Trades (0 zu)      -1.42  —                     OHNE ENDEINTRAG
+    LAUF-13    17.08 15:10     0.0 min  scharf      0 Takte    3 Trades (3 zu)      +0.00  —                   
+    LAUF-14    17.08 15:11     0.0 min  scharf      1 Takte    3 Trades (3 zu)      +0.00  —                   
+    LAUF-15    17.08 15:13    48.1 min  scharf     49 Takte    3 Trades (3 zu)     +13.47  —                   
+    LAUF-16    17.08 16:02    86.1 min  scharf     87 Takte    3 Trades (3 zu)     -13.24  —                   
+    LAUF-17    17.08 17:30    11.0 min  scharf     12 Takte    3 Trades (3 zu)     -16.07  —                   
+    LAUF-18    17.08 17:34     0.0 min  trocken     1 Takte    0 Trades (0 zu)      +0.00  4ad1683+aenderungen 
+    LAUF-19    17.08 17:43    45.1 min  scharf     46 Takte    3 Trades (3 zu)     -15.45  4ad1683+aenderungen 
+    LAUF-20    17.08 18:28     0.0 min  trocken     1 Takte    0 Trades (0 zu)      +0.00  767ff87+aenderungen 
+    LAUF-21    17.08 18:29  1122.8 min  scharf   1122 Takte   13 Trades (13 zu)      +8.76  d5c7133               OHNE ENDEINTRAG
+  
+  ----------------------------------------------------------------------------------------------------
+  EQUITY UEBER ALLE LAEUFE
+  ----------------------------------------------------------------------------------------------------
+    1360 Messpunkte von 17.08 14:21 bis 18.08 13:12
+    50000.0 -> 49975.75   (-24.25)
+    ... (23 Zeilen ausgelassen) ...
+      traegt, ist der zuletzt beobachtete Buchwert vor dem Verschwinden:
+      der BETRAG ist eine Schaetzung und geht in keinen Median, das
+      VORZEICHEN geht in den Trefferanteil. Ohne das fielen genau die
+      Stop-Outs -- die Verlierer -- aus jeder Statistik heraus.
+      Ohne jedes Ergebnis heisst UNBEKANNT. Solche Trades gehen NICHT als
+      Ergebnis null durch und zaehlen in keine Zahl unten hinein.
+        17x  lauf_beendet
+         7x  haltedauer_4.0h
+         5x  ?
+         2x  signalwechsel
+         1x  uebernommen
+  
+    Median-Preisergebnis : +1.99 bp ueber 11
+    Spanne               : -5.98 .. +12.18 bp
+    Trefferanteil        : 50.0 % ueber 16 beurteilbare (davon 5 per Geldschaetzung)
+    Geldergebnisse       : 5 (5 vom Broker geschlossen, 0 selbst geschlossen)
+           5x  Herkunft: altjournal:zuletzt_unrealisiert
+    Keine Summe: mindestens ein Betrag kommt ohne Waehrungsangabe (Altjournal).
+  
+    ACHTUNG, was diese Zahlen NICHT sind: sie rechnen die Preisdifferenz
+    und lassen Kommission und Swap aussen vor. Sie sind das BRUTTO einer
+    Handvoll Beobachtungen, kein Ertrag. Fuer die gebuchte Zahl braeuchte
+    es die Kontohistorie des Brokers (history_deals_get), die dieses Repo
+    nicht abruft.
+[exit=0]
+
+$ python tools/betrieb_reihe.py   # Vorgabe betrieb/, hier nicht vorhanden
+  
+  [stderr]
+  FEHLGESCHLAGEN — C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_358a8ac6-c0a-5\betrieb gibt es nicht.
+[exit=1]
+
+$ python tools/dienstguete.py --journal aufzeichnungen/demo-2026-08-17.jsonl --alarmdatei C:\Users\<konto>\AppData\Local\Temp\t6-werkzeuge-5hgmljk5\ALARME.txt   # Dienstguete (Exit 1 = Alarm steht, so gewollt)
+  ==============================================================================
+  DIENSTGUETE — Ziele, Fehlerbudget, Alarme
+  ==============================================================================
+  Quelle: aufzeichnungen\demo-2026-08-17.jsonl
+  
+  Ziel                              Ist    Soll   Budget  verbraucht
+  Buchtreue                       98.8%   99.0%     1.0%        118%  <== gerissen
+  Ausstiegsverlaesslichkeit       78.8%   95.0%     5.0%        424%  <== gerissen
+  Laufabschluss                   90.5%   95.0%     5.0%        190%  <== gerissen
+  Ausstiegsdeckung                72.7%  100.0%     0.0%          --
+  
+    Buchtreue: 1340 von 1356 Takte
+      NICHT BEURTEILBAR: 4 weitere Vorgaenge -- die Aufzeichnung gibt es nicht her, nicht im Nenner
+      Warum diese Schwelle: Ein Halt sperrt jede Eroeffnung. Mehr als ein Prozent gesperrte Takte heisst, dass der Betrieb ueberwiegend mit dem Aufraeumen beschaeftigt ist.
+    Ausstiegsverlaesslichkeit: 26 von 33 Schliessversuche
+      Warum diese Schwelle: Ein misslungener Ausstieg laesst Geld am Markt, waehrend das System glaubt, es sei drauszen. Fuenf Prozent sind schon viel; strenger waere vertretbar.
+    Laufabschluss: 19 von 21 Laeufe
+      Warum diese Schwelle: Ein Lauf ohne Endsatz zwingt den Wiederanlauf, das Buch vom Broker zu uebernehmen statt es fortzuschreiben.
+    Ausstiegsdeckung: 8 von 11 Laeufe mit Position
+      NICHT BEURTEILBAR: 10 weitere Vorgaenge -- die Aufzeichnung gibt es nicht her, nicht im Nenner
+      Warum diese Schwelle: Das einzige Ziel ohne Fehlerbudget, und das mit Absicht: ein Lauf, der eine Position offen zuruecklaesst, laesst Geld am Markt OHNE beaufsichtigenden Prozess. Dafuer gibt es keinen vertretbaren Anteil -- jeder einzelne Fall ist einer zu viel. Die Schwelle wurde NACH der Messung gesetzt (3 von 11 beurteilbaren Laeufen gerissen) und ist strenger als der Befund; eine nachtraeglich VERSCHAERFTE Schwelle ist nicht die Anpassung, die V6 verbietet.
+  
+  ------------------------------------------------------------------------------
+  AUFSCHLUESSELUNG NACH CODESTAND (Diagnose, NICHT das Urteil)
+  ------------------------------------------------------------------------------
+  Codestand                    Buchtreue Ausstiegsverl Laufabschluss Ausstiegsdeck
+  4ad1683+aenderungen         91.5% (47)     40.0% (5)    100.0% (2)     50.0% (2)  !! nicht reproduzierbar (Arbeitsverzeichnis war unsauber)
+  767ff87+aenderungen         100.0% (1)      0.0% (2)    100.0% (1)      0.0% (1)  !! nicht reproduzierbar (Arbeitsverzeichnis war unsauber)
+  d5c7133                  100.0% (1118)    100.0% (9)      0.0% (1)    100.0% (1)
+  ohne Stempel               93.7% (190)    88.2% (17)    94.1% (17)     85.7% (7)  !! vor der Versionsstempelung
+  
+  Die Gesamtzahl oben bleibt das Urteil. Diese Tabelle sagt nur, WO die
+  Fehlschlaege sitzen -- an lebendem Code oder an einem ueberholten Stand.
+  
+    ... (6 Zeilen ausgelassen) ...
+  ALARM laeufe_brechen_ab: 90.5% (19/21 Laeufe), Schwelle 95.0%. Laeufe enden ohne Endsatz; der Wiederanlauf muss das Buch uebernehmen. -> Handlung: Kein Sicherheitsalarm: die Kennzahl sagt nicht, ob Geld am Markt blieb (Nachtrag Laufabschluss des Altstands). Pruefen, ob der Rechner in den Standby ging (Windows-Ereignisprotokoll, Kernel-Power 42) oder der Prozess hart beendet wurde. Fuer offene Positionen gilt der Alarm 'Position offen geblieben'.
+  
+  Zugestellt nach: C:\Users\<konto>\AppData\Local\Temp\t6-werkzeuge-5hgmljk5\ALARME.txt
+  
+  [stderr]
+  FEHLGESCHLAGEN — Alarm steht. Die Handlung steht in der Alarmzeile.
+[exit=1]
+
+$ python tools/torzaehlung.py   # Torzaehlung (Vorgabe: die Aufzeichnung)
+  ==============================================================================
+  TORZAEHLUNG — welches Tor hat je ausgeloest?
+  ==============================================================================
+  Journal: C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_358a8ac6-c0a-5\aufzeichnungen\demo-2026-08-17.jsonl
+  Ablehnungsgruende im Code: 41
+  Zur Laufzeit zusammengesetzt (nicht aufzaehlbar): 9 Stellen
+    Sie entstehen aus fremdem Text. Kein Test
+    kann sie gezielt ausloesen, und keine Auswertung sie vorher kennen.
+    ... (48 Zeilen ausgelassen) ...
+  
+  Im Betrieb aufgetaucht, aber KEIN Grund dieses Hauses: 9
+    Das sind durchgereichte Brokertexte. Sie tragen keinen Code, an dem
+    eine Auswertung sie zaehlen koennte:
+          5x  AutoTrading disabled by client
+          1x  Done
+          1x  Done (retcode=0)
+          3x  No money
+        753x  Trade disabled (retcode=10017)
+          4x  Unsupported filling mode
+        376x  risk_concurrent_position_cap
+         58x  throttle_cooldown_active
+  
+  ok — jedes Tor hat einen Test, der es ausloest.
+[exit=0]
+
+$ python tools/auswertung.py --journal aufzeichnungen/demo-2026-08-17.jsonl   # Auswertung mit Herkunftsspalte
+  ==========================================================================
+  AUSWERTUNG MIT HERKUNFTSSPALTE
+  ==========================================================================
+  Quelle : aufzeichnungen\demo-2026-08-17.jsonl
+  Zeilen : 4343
+    gefahren         32  ( 0.74 %)
+    erkundet          0  ( 0.00 %)
+    abgelehnt      4311  (99.26 %)
+  
+  Handelsquote (trade_rate)    : 0.74 % der Bewertungen
+  Zeilen MIT Ergebnis          : 11
+  Anteil erkundender Beobachtungen: 0.00 %
+  Gewichteter Mittelwert       : 2.5950
+  
+  Ablehnungsgruende -- die Zeilen, ueber die es sonst nichts gaebe:
+    cost_unverifiable                                2258
+    throttle_instrument_daily_cap                     828
+    Trade disabled (retcode=10017)                    753
+    risk_concurrent_position_cap                      376
+    throttle_cooldown_active                           58
+    strategy_not_admitted                              21
+    AutoTrading disabled by client                      5
+    Unsupported filling mode                            4
+    No money                                            3
+    insufficient_margin                                 3
+    Done                                                1
+    Done (retcode=0)                                    1
+[exit=0]
+
+$ python tools/journal_sichern.py --ziel C:\Users\<konto>\AppData\Local\Temp\t6-werkzeuge-5hgmljk5\sicherung   # Vorgabe betrieb/, hier nicht vorhanden
+  
+  [stderr]
+  Nichts zu sichern — C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_358a8ac6-c0a-5\betrieb ist leer.
+[exit=1]
+
+$ python tools/aufzeichnung_redigieren.py --pruefen   # Worktree ohne betrieb/: Eigenpruefung
+  ok — aufzeichnungen/demo-2026-08-17.jsonl eigengeprueft: 5813 Saetze in 21 Laeufen, Kopf und Inhalt stimmen ueberein, keine unredigierten Muster. Quelle betrieb/ fehlt -- der Abgleich gegen die Journale ist hier nicht moeglich.
+[exit=0]
+
+$ python tools/aufzeichnung_redigieren.py --quelle C:\Users\<konto>\mt5_trading_ai\betrieb --pruefen   # Abgleich gegen die 21 Journale (nur lesend)
+  ok — aufzeichnungen/demo-2026-08-17.jsonl: 5813 redigierte Saetze in 21 Laeufen, wortgleich mit den Journalen; Eigenpruefung ohne Befund.
+[exit=0]

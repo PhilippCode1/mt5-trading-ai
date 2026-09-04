@@ -1,0 +1,85 @@
+# T6 Familie Aufzeichnung: dieselben Zahlen aus den Originaljournalen (nur gelesen) und aus der eingecheckten Aufzeichnung (Kopf-Fassung 2)
+# Befehl: python PROGRAMM/auftrag-01-fundament/belege/06-aufzeichnung-vergleich.py --betrieb C:\Users\<konto>\mt5_trading_ai\betrieb --aufzeichnung aufzeichnungen\demo-2026-08-17.jsonl
+# Windows, Python 3.11.7, 2026-09-03. Metriken: mt5_trading_ai/betrieb/dienstguete.py; Leser: mt5_trading_ai/betrieb/journal.py
+betrieb      : C:\Users\<konto>\mt5_trading_ai\betrieb  (21 Journale, 17166 Saetze)
+aufzeichnung : aufzeichnungen\demo-2026-08-17.jsonl  (21 Laeufe, 5813 Saetze; Kopf: behalten 5813, weggelassen 11353)
+
+Metriken (gelungen, gesamt, unbeurteilbar):
+  gleich    buchtreue                                            betrieb=(1340, 1356, 4)  aufzeichnung=(1340, 1356, 4)
+  gleich    ausstiegsverlaesslichkeit                            betrieb=(26, 33, 0)  aufzeichnung=(26, 33, 0)
+  gleich    laufabschluss                                        betrieb=(19, 21, 0)  aufzeichnung=(19, 21, 0)
+  gleich    ausstiegsdeckung                                     betrieb=(8, 11, 10)  aufzeichnung=(8, 11, 10)
+  gleich    buchtreue Anteil                                     betrieb=0.988201  aufzeichnung=0.988201
+  gleich    ausstiegsverlaesslichkeit Anteil                     betrieb=0.787879  aufzeichnung=0.787879
+  gleich    laufabschluss Anteil                                 betrieb=0.904762  aufzeichnung=0.904762
+  gleich    ausstiegsdeckung Anteil                              betrieb=0.727273  aufzeichnung=0.727273
+
+Nach Codestand (buchtreue gelungen/gesamt je Stand):
+  gleich    Staende                                              betrieb=['4ad1683+aenderungen', '767ff87+aenderungen', 'd5c7133', 'ohne Stempel']  aufzeichnung=['4ad1683+aenderungen', '767ff87+aenderungen', 'd5c7133', 'ohne Stempel']
+  gleich      4ad1683+aenderungen                                betrieb=(43, 47)  aufzeichnung=(43, 47)
+  gleich      767ff87+aenderungen                                betrieb=(1, 1)  aufzeichnung=(1, 1)
+  gleich      d5c7133                                            betrieb=(1118, 1118)  aufzeichnung=(1118, 1118)
+  gleich      ohne Stempel                                       betrieb=(178, 190)  aufzeichnung=(178, 190)
+
+Dauertore je Lauf (test_laufabschluss.py):
+  (info)    journal-20260817T142137.jsonl -> LAUF-01 Saetze      betrieb=22  aufzeichnung=14
+  gleich    journal-20260817T142137.jsonl -> LAUF-01             betrieb={'hat_ende': True, 'offen_geblieben': 0, 'laufabschluss': 1.0, 'ausstiegsdeckung': None, 'letzter_takt_positionen': None}  aufzeichnung={'hat_ende': True, 'offen_geblieben': 0, 'laufabschluss': 1.0, 'ausstiegsdeckung': None, 'letzter_takt_positionen': None}
+  (info)    journal-20260817T142311.jsonl -> LAUF-02 Saetze      betrieb=17  aufzeichnung=12
+  gleich    journal-20260817T142311.jsonl -> LAUF-02             betrieb={'hat_ende': True, 'offen_geblieben': 0, 'laufabschluss': 1.0, 'ausstiegsdeckung': None, 'letzter_takt_positionen': None}  aufzeichnung={'hat_ende': True, 'offen_geblieben': 0, 'laufabschluss': 1.0, 'ausstiegsdeckung': None, 'letzter_takt_positionen': None}
+  (info)    journal-20260817T144115.jsonl -> LAUF-03 Saetze      betrieb=17  aufzeichnung=11
+  gleich    journal-20260817T144115.jsonl -> LAUF-03             betrieb={'hat_ende': True, 'offen_geblieben': 0, 'laufabschluss': 1.0, 'ausstiegsdeckung': None, 'letzter_takt_positionen': None}  aufzeichnung={'hat_ende': True, 'offen_geblieben': 0, 'laufabschluss': 1.0, 'ausstiegsdeckung': None, 'letzter_takt_positionen': None}
+  (info)    journal-20260817T144355.jsonl -> LAUF-04 Saetze      betrieb=11  aufzeichnung=8
+  gleich    journal-20260817T144355.jsonl -> LAUF-04             betrieb={'hat_ende': True, 'offen_geblieben': 0, 'laufabschluss': 1.0, 'ausstiegsdeckung': None, 'letzter_takt_positionen': None}  aufzeichnung={'hat_ende': True, 'offen_geblieben': 0, 'laufabschluss': 1.0, 'ausstiegsdeckung': None, 'letzter_takt_positionen': None}
+  (info)    journal-20260817T144718.jsonl -> LAUF-05 Saetze      betrieb=14  aufzeichnung=10
+  gleich    journal-20260817T144718.jsonl -> LAUF-05             betrieb={'hat_ende': True, 'offen_geblieben': 0, 'laufabschluss': 1.0, 'ausstiegsdeckung': None, 'letzter_takt_positionen': None}  aufzeichnung={'hat_ende': True, 'offen_geblieben': 0, 'laufabschluss': 1.0, 'ausstiegsdeckung': None, 'letzter_takt_positionen': None}
+  (info)    journal-20260817T145021.jsonl -> LAUF-06 Saetze      betrieb=11  aufzeichnung=8
+  gleich    journal-20260817T145021.jsonl -> LAUF-06             betrieb={'hat_ende': True, 'offen_geblieben': 0, 'laufabschluss': 1.0, 'ausstiegsdeckung': None, 'letzter_takt_positionen': None}  aufzeichnung={'hat_ende': True, 'offen_geblieben': 0, 'laufabschluss': 1.0, 'ausstiegsdeckung': None, 'letzter_takt_positionen': None}
+  (info)    journal-20260817T145330.jsonl -> LAUF-07 Saetze      betrieb=11  aufzeichnung=8
+  gleich    journal-20260817T145330.jsonl -> LAUF-07             betrieb={'hat_ende': True, 'offen_geblieben': 0, 'laufabschluss': 1.0, 'ausstiegsdeckung': None, 'letzter_takt_positionen': None}  aufzeichnung={'hat_ende': True, 'offen_geblieben': 0, 'laufabschluss': 1.0, 'ausstiegsdeckung': None, 'letzter_takt_positionen': None}
+  (info)    journal-20260817T145606.jsonl -> LAUF-08 Saetze      betrieb=8  aufzeichnung=7
+  gleich    journal-20260817T145606.jsonl -> LAUF-08             betrieb={'hat_ende': True, 'offen_geblieben': 0, 'laufabschluss': 1.0, 'ausstiegsdeckung': None, 'letzter_takt_positionen': None}  aufzeichnung={'hat_ende': True, 'offen_geblieben': 0, 'laufabschluss': 1.0, 'ausstiegsdeckung': None, 'letzter_takt_positionen': None}
+  (info)    journal-20260817T145822.jsonl -> LAUF-09 Saetze      betrieb=6  aufzeichnung=5
+  gleich    journal-20260817T145822.jsonl -> LAUF-09             betrieb={'hat_ende': True, 'offen_geblieben': 0, 'laufabschluss': 1.0, 'ausstiegsdeckung': None, 'letzter_takt_positionen': None}  aufzeichnung={'hat_ende': True, 'offen_geblieben': 0, 'laufabschluss': 1.0, 'ausstiegsdeckung': None, 'letzter_takt_positionen': None}
+  (info)    journal-20260817T150024.jsonl -> LAUF-10 Saetze      betrieb=10  aufzeichnung=9
+  gleich    journal-20260817T150024.jsonl -> LAUF-10             betrieb={'hat_ende': True, 'offen_geblieben': 0, 'laufabschluss': 1.0, 'ausstiegsdeckung': 1.0, 'letzter_takt_positionen': None}  aufzeichnung={'hat_ende': True, 'offen_geblieben': 0, 'laufabschluss': 1.0, 'ausstiegsdeckung': 1.0, 'letzter_takt_positionen': None}
+  (info)    journal-20260817T150428.jsonl -> LAUF-11 Saetze      betrieb=11  aufzeichnung=7
+  gleich    journal-20260817T150428.jsonl -> LAUF-11             betrieb={'hat_ende': True, 'offen_geblieben': 0, 'laufabschluss': 1.0, 'ausstiegsdeckung': None, 'letzter_takt_positionen': None}  aufzeichnung={'hat_ende': True, 'offen_geblieben': 0, 'laufabschluss': 1.0, 'ausstiegsdeckung': None, 'letzter_takt_positionen': None}
+  (info)    journal-20260817T150513.jsonl -> LAUF-12 Saetze      betrieb=49  aufzeichnung=28
+  gleich    journal-20260817T150513.jsonl -> LAUF-12             betrieb={'hat_ende': False, 'offen_geblieben': 0, 'laufabschluss': 0.0, 'ausstiegsdeckung': 0.0, 'letzter_takt_positionen': None}  aufzeichnung={'hat_ende': False, 'offen_geblieben': 0, 'laufabschluss': 0.0, 'ausstiegsdeckung': 0.0, 'letzter_takt_positionen': None}
+  (info)    journal-20260817T151045.jsonl -> LAUF-13 Saetze      betrieb=5  aufzeichnung=5
+  gleich    journal-20260817T151045.jsonl -> LAUF-13             betrieb={'hat_ende': True, 'offen_geblieben': 0, 'laufabschluss': 1.0, 'ausstiegsdeckung': 1.0, 'letzter_takt_positionen': None}  aufzeichnung={'hat_ende': True, 'offen_geblieben': 0, 'laufabschluss': 1.0, 'ausstiegsdeckung': 1.0, 'letzter_takt_positionen': None}
+  (info)    journal-20260817T151127.jsonl -> LAUF-14 Saetze      betrieb=19  aufzeichnung=13
+  gleich    journal-20260817T151127.jsonl -> LAUF-14             betrieb={'hat_ende': True, 'offen_geblieben': 0, 'laufabschluss': 1.0, 'ausstiegsdeckung': 1.0, 'letzter_takt_positionen': None}  aufzeichnung={'hat_ende': True, 'offen_geblieben': 0, 'laufabschluss': 1.0, 'ausstiegsdeckung': 1.0, 'letzter_takt_positionen': None}
+  (info)    journal-20260817T151324.jsonl -> LAUF-15 Saetze      betrieb=355  aufzeichnung=205
+  gleich    journal-20260817T151324.jsonl -> LAUF-15             betrieb={'hat_ende': True, 'offen_geblieben': 0, 'laufabschluss': 1.0, 'ausstiegsdeckung': 1.0, 'letzter_takt_positionen': None}  aufzeichnung={'hat_ende': True, 'offen_geblieben': 0, 'laufabschluss': 1.0, 'ausstiegsdeckung': 1.0, 'letzter_takt_positionen': None}
+  (info)    journal-20260817T160253.jsonl -> LAUF-16 Saetze      betrieb=562  aufzeichnung=328
+  gleich    journal-20260817T160253.jsonl -> LAUF-16             betrieb={'hat_ende': True, 'offen_geblieben': 0, 'laufabschluss': 1.0, 'ausstiegsdeckung': 1.0, 'letzter_takt_positionen': None}  aufzeichnung={'hat_ende': True, 'offen_geblieben': 0, 'laufabschluss': 1.0, 'ausstiegsdeckung': 1.0, 'letzter_takt_positionen': None}
+  (info)    journal-20260817T173032.jsonl -> LAUF-17 Saetze      betrieb=96  aufzeichnung=57
+  gleich    journal-20260817T173032.jsonl -> LAUF-17             betrieb={'hat_ende': True, 'offen_geblieben': 0, 'laufabschluss': 1.0, 'ausstiegsdeckung': 1.0, 'letzter_takt_positionen': None}  aufzeichnung={'hat_ende': True, 'offen_geblieben': 0, 'laufabschluss': 1.0, 'ausstiegsdeckung': 1.0, 'letzter_takt_positionen': None}
+  (info)    journal-20260817T173413.jsonl -> LAUF-18 Saetze      betrieb=7  aufzeichnung=6
+  gleich    journal-20260817T173413.jsonl -> LAUF-18             betrieb={'hat_ende': True, 'offen_geblieben': 3, 'laufabschluss': 1.0, 'ausstiegsdeckung': 0.0, 'letzter_takt_positionen': 3}  aufzeichnung={'hat_ende': True, 'offen_geblieben': 3, 'laufabschluss': 1.0, 'ausstiegsdeckung': 0.0, 'letzter_takt_positionen': 3}
+  (info)    journal-20260817T174305.jsonl -> LAUF-19 Saetze      betrieb=590  aufzeichnung=185
+  gleich    journal-20260817T174305.jsonl -> LAUF-19             betrieb={'hat_ende': True, 'offen_geblieben': 0, 'laufabschluss': 1.0, 'ausstiegsdeckung': 1.0, 'letzter_takt_positionen': 2}  aufzeichnung={'hat_ende': True, 'offen_geblieben': 0, 'laufabschluss': 1.0, 'ausstiegsdeckung': 1.0, 'letzter_takt_positionen': 2}
+  (info)    journal-20260817T182800.jsonl -> LAUF-20 Saetze      betrieb=6  aufzeichnung=5
+  gleich    journal-20260817T182800.jsonl -> LAUF-20             betrieb={'hat_ende': True, 'offen_geblieben': 2, 'laufabschluss': 1.0, 'ausstiegsdeckung': 0.0, 'letzter_takt_positionen': 2}  aufzeichnung={'hat_ende': True, 'offen_geblieben': 2, 'laufabschluss': 1.0, 'ausstiegsdeckung': 0.0, 'letzter_takt_positionen': 2}
+  (info)    journal-20260817T182951.jsonl -> LAUF-21 Saetze      betrieb=15339  aufzeichnung=4882
+  gleich    journal-20260817T182951.jsonl -> LAUF-21             betrieb={'hat_ende': False, 'offen_geblieben': 0, 'laufabschluss': 0.0, 'ausstiegsdeckung': 1.0, 'letzter_takt_positionen': 0}  aufzeichnung={'hat_ende': False, 'offen_geblieben': 0, 'laufabschluss': 0.0, 'ausstiegsdeckung': 1.0, 'letzter_takt_positionen': 0}
+  gleich    stoppdatei_laeufe                                    betrieb=5  aufzeichnung=5
+  gleich    stoppdatei_laeufe_mit_ende                           betrieb=5  aufzeichnung=5
+  gleich    laeufe_ohne_ende                                     betrieb=2  aufzeichnung=2
+  gleich    laeufe_ohne_ende_mit_stoppdatei                      betrieb=0  aufzeichnung=0
+  gleich    ohne ende LAUF-12: gelaufen h, geplant h             betrieb=(0.0836, 24.0)  aufzeichnung=(0.0836, 24.0)
+  gleich    ohne ende LAUF-21: gelaufen h, geplant h             betrieb=(18.7139, 24.0)  aufzeichnung=(18.7139, 24.0)
+  (gelaufen = letzter Satz minus start; die Aufzeichnung laesst kurs/signal weg, der letzte Satz kann frueher liegen)
+
+Journal-Leser (lies_alle):
+  gleich    Laeufe                                               betrieb=21  aufzeichnung=21
+  (info)    Saetze gesamt (kurs/signal weggelassen)              betrieb=17166  aufzeichnung=5813
+  gleich    Trades gesamt                                        betrieb=32  aufzeichnung=32
+  gleich    Trades geschlossen                                   betrieb=32  aufzeichnung=32
+  gleich    Equity-Punkte                                        betrieb=1360  aufzeichnung=1360
+  gleich    Laeufe beendet                                       betrieb=19  aufzeichnung=19
+  gleich    Laeufe scharf                                        betrieb=15  aufzeichnung=15
+  (info)    Kennungen der Aufzeichnung                           betrieb=None  aufzeichnung=['LAUF-01', 'LAUF-02', 'LAUF-03', 'LAUF-04', 'LAUF-05', 'LAUF-06', 'LAUF-07', 'LAUF-08', 'LAUF-09', 'LAUF-10', 'LAUF-11', 'LAUF-12', 'LAUF-13', 'LAUF-14', 'LAUF-15', 'LAUF-16', 'LAUF-17', 'LAUF-18', 'LAUF-19', 'LAUF-20', 'LAUF-21']
+
+Vergleich: 46 Zahlen gleich, 0 ungleich; (info)-Zeilen sind Auskuenfte ohne Gleichheitsforderung

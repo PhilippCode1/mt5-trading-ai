@@ -49,9 +49,30 @@ from mt5_trading_ai.data.quality import BarRow, SessionPredicate  # noqa: E402
 
 _UA = {"User-Agent": "Mozilla/5.0 (mt5-trading-ai data fetch)"}
 
+#: Abrufversuche je Datei (Vorgabe); ``--versuche`` stellt sie um.
+VERSUCHE = 6
 
-def http_get(url: str, *, tries: int = 6, timeout: int = 30) -> bytes:
-    """GET mit Backoff bei 503/429/500 (Dukascopy rate-limitet zeitweise)."""
+
+class AbrufError(DataLoadError):
+    """Die Datenquelle ist nicht erreichbar (Netz, DNS, HTTP-Fehler).
+
+    Getrennt von den uebrigen ``DataLoadError`` (Qualitaetstor, Dekodierung), weil
+    der Ausgang ein anderer ist: eine benannte Zeile und Exit 2 statt Exit 1. Dieses
+    Werkzeug braucht kein Terminal, aber ohne seine Quelle scheitert es genauso
+    benannt (Abnahmekatalog A12, sinngemaess).
+    """
+
+
+def http_get(url: str, *, tries: int = VERSUCHE, timeout: int = 30) -> bytes:
+    """GET mit Backoff bei 503/429/500 (Dukascopy rate-limitet zeitweise).
+
+    Jeder Fehlausgang ist ein :class:`AbrufError` -- auch ein HTTP-Fehler ohne
+    Wiederholung (404) und ein Zeitablauf beim Lesen (``TimeoutError`` ist kein
+    ``URLError``; bisher fiel er als Traceback durch). Gewartet wird nur, wenn noch
+    ein Versuch folgt: nach dem letzten Fehlschlag gibt es nichts abzuwarten.
+    """
+    if tries < 1:
+        raise ValueError(f"tries muss >= 1 sein, nicht {tries}")
     last: Exception | None = None
     for i in range(tries):
         try:
@@ -60,22 +81,23 @@ def http_get(url: str, *, tries: int = 6, timeout: int = 30) -> bytes:
                 return bytes(resp.read())
         except urllib.error.HTTPError as exc:
             last = exc
-            if exc.code in (503, 429, 500):
-                time.sleep(2.0 * (i + 1))
-                continue
-            raise
-        except urllib.error.URLError as exc:
+            if exc.code not in (503, 429, 500):
+                raise AbrufError(f"HTTP {exc.code} bei {url}") from exc
+        except OSError as exc:  # URLError, TimeoutError, ConnectionError
             last = exc
+        if i + 1 < tries:
             time.sleep(2.0 * (i + 1))
-    raise DataLoadError(f"Abruf fehlgeschlagen nach {tries} Versuchen: {url} ({last})")
+    raise AbrufError(f"Abruf fehlgeschlagen nach {tries} Versuchen: {url} ({last})")
 
 
-def fetch_dukascopy_year(instrument: str, year: int) -> list[BarRow]:
+def fetch_dukascopy_year(
+    instrument: str, year: int, *, versuche: int = VERSUCHE
+) -> list[BarRow]:
     url = (
         f"https://datafeed.dukascopy.com/datafeed/{instrument}"
         f"/{year}/BID_candles_day_1.bi5"
     )
-    raw = http_get(url)
+    raw = http_get(url, tries=versuche)
     return decode_dukascopy_candles(
         raw,
         period_start=datetime(year, 1, 1, tzinfo=UTC),
@@ -84,7 +106,12 @@ def fetch_dukascopy_year(instrument: str, year: int) -> list[BarRow]:
 
 
 def fetch_dukascopy_month_hours(
-    instrument: str, year: int, month: int, cache: Path | None = None
+    instrument: str,
+    year: int,
+    month: int,
+    cache: Path | None = None,
+    *,
+    versuche: int = VERSUCHE,
 ) -> list[BarRow]:
     """Stundenkerzen eines Monats. Dukascopy legt sie **monatsweise** ab, nicht wie die
     Tageskerzen jahresweise, und zaehlt den Monat ab 0.
@@ -104,7 +131,7 @@ def fetch_dukascopy_month_hours(
     if datei is not None and datei.is_file() and datei.stat().st_size > 0:
         roh = datei.read_bytes()
     if roh is None:
-        roh = http_get(url)
+        roh = http_get(url, tries=versuche)
         if datei is not None:
             datei.parent.mkdir(parents=True, exist_ok=True)
             datei.write_bytes(roh)
@@ -131,14 +158,16 @@ def drop_filler_bars(bars: list[BarRow]) -> list[BarRow]:
     return [b for b in bars if b.volume is not None and b.volume > 0.0]
 
 
-def fetch_yahoo_daily(instrument: str, start: datetime, end: datetime) -> list[BarRow]:
+def fetch_yahoo_daily(
+    instrument: str, start: datetime, end: datetime, *, versuche: int = VERSUCHE
+) -> list[BarRow]:
     p1 = int(start.timestamp())
     p2 = int(end.timestamp())
     url = (
         f"https://query1.finance.yahoo.com/v8/finance/chart/{instrument}=X"
         f"?period1={p1}&period2={p2}&interval=1d"
     )
-    payload = json.loads(http_get(url).decode("utf-8"))
+    payload = json.loads(http_get(url, tries=versuche).decode("utf-8"))
     return parse_yahoo_daily(payload)
 
 
@@ -180,8 +209,32 @@ def main() -> int:
         default=None,
         help="Verzeichnis fuer die rohen .bi5-Dateien (spart Abrufe beim Wiederanlauf)",
     )
+    ap.add_argument(
+        "--versuche",
+        type=int,
+        default=VERSUCHE,
+        help=f"Abrufversuche je Datei mit Backoff (Vorgabe {VERSUCHE}, mindestens 1)",
+    )
     args = ap.parse_args()
+    if args.versuche < 1:
+        print("FEHLGESCHLAGEN -- --versuche muss mindestens 1 sein", file=sys.stderr)
+        return 1
 
+    # Ohne Quelle keine Reihe -- und keine Ausnahme, die wie ein Programmfehler
+    # aussieht: eine benannte Zeile, Exit 2 (Quelle nicht erreichbar) oder Exit 1
+    # (Daten da, aber Tor oder Dekodierung nicht bestanden).
+    try:
+        return _abruf(args)
+    except AbrufError as exc:
+        print(f"FEHLGESCHLAGEN -- Datenquelle nicht erreichbar: {exc}", file=sys.stderr)
+        return 2
+    except DataLoadError as exc:
+        print(f"FEHLGESCHLAGEN -- {exc}", file=sys.stderr)
+        return 1
+
+
+def _abruf(args: argparse.Namespace) -> int:
+    """Der eigentliche Lauf; jeder ``DataLoadError`` geht an ``main`` nach oben."""
     tf = args.timeframe.upper()
     if tf not in ("D1", "H1"):
         raise DataLoadError(f"Zeitrahmen {tf} wird nicht abgerufen (D1 oder H1)")
@@ -194,7 +247,9 @@ def main() -> int:
             if not erster:
                 time.sleep(3)  # hoeflich: Dukascopy rate-limitet schnelle Abrufe
             erster = False
-            year_bars = fetch_dukascopy_year(args.instrument, year)
+            year_bars = fetch_dukascopy_year(
+                args.instrument, year, versuche=args.versuche
+            )
             if len(year_bars) < 300:
                 raise DataLoadError(
                     f"Jahr {year} unvollstaendig: nur {len(year_bars)} "
@@ -210,7 +265,11 @@ def main() -> int:
                 erster = False
                 year_bars.extend(
                     fetch_dukascopy_month_hours(
-                        args.instrument, year, month, cache=args.cache
+                        args.instrument,
+                        year,
+                        month,
+                        cache=args.cache,
+                        versuche=args.versuche,
                     )
                 )
         raw_bars.extend(year_bars)
@@ -265,7 +324,9 @@ def main() -> int:
 
     print("\nGegenprobe R2.2 (Dukascopy vs Yahoo, Close-zu-Close):")
     try:
-        yahoo_raw = fetch_yahoo_daily(args.instrument, bars[0].ts, bars[-1].ts)
+        yahoo_raw = fetch_yahoo_daily(
+            args.instrument, bars[0].ts, bars[-1].ts, versuche=args.versuche
+        )
         yahoo = [
             b
             for b in yahoo_raw

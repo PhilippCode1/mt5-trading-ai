@@ -61,6 +61,19 @@ Geldsumme aus.
 
 Was dagegen belastbar ist: die **Equity-Reihe**. Sie kommt aus dem Kontostand je Takt
 und haengt ueber Laeufe hinweg lueckenlos aneinander.
+
+ZWEI QUELLEN, EIN LESER
+-----------------------
+Ein Betriebsjournal (``betrieb/journal-*.jsonl``, gitignoriert, eine Datei je Lauf)
+und die eingecheckte **Aufzeichnung** (``aufzeichnungen/demo-2026-08-17.jsonl``,
+redigiert von ``tools/aufzeichnung_redigieren.py``, alle Laeufe in einer Datei) sind
+dieselben Saetze in zwei Ablagen. Der Leser kennt beide: ``lies_journal`` versteht
+die Kopfzeile ``art: _kopf`` der Aufzeichnung als Kopf und nicht als Satz, und
+``lies_alle`` nimmt ein Verzeichnis ODER eine Aufzeichnungsdatei und liefert in beiden
+Faellen die Laeufe getrennt -- in der Aufzeichnung nach der Laufkennung ``lauf``,
+die dort an jedem Satz steht (``trenne_laeufe``). Die Dauertore lesen seit Auftrag 1
+die Aufzeichnung und scheitern ohne sie, statt ``betrieb/`` zu lesen und sich auf
+jedem Klon zu ueberspringen (Katalog A2).
 """
 
 from __future__ import annotations
@@ -74,7 +87,11 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
 
-JOURNAL_LESER_VERSION = "journal-leser-v1"
+JOURNAL_LESER_VERSION = "journal-leser-v2"
+
+#: Satzart der Kopfzeile einer Aufzeichnung. Sie traegt keinen Zeitstempel und ist
+#: kein Ereignis: sie sagt, was die Datei enthaelt und was ihr fehlt.
+KOPF_ART = "_kopf"
 
 #: Herkunftsmarke fuer ein Geldergebnis, das der Schreiber ALS ERGEBNIS gemeint hat.
 #: Sie steht so im Journal; der Leser gibt sie nur weiter.
@@ -291,14 +308,25 @@ class Trade:
 
 @dataclass
 class Lauf:
-    """Ein Betriebslauf: eine Journaldatei."""
+    """Ein Betriebslauf: eine Journaldatei -- oder ein Lauf aus einer Aufzeichnung."""
 
     pfad: Path
     saetze: list[Satz] = field(default_factory=list)
+    #: Kopfzeile der Aufzeichnung (``art: _kopf``), aus der dieser Lauf stammt:
+    #: Zaehlung je Satzart, weggelassene Felder, Laufkennung -> Journalname.
+    #: ``None`` bei einem Betriebsjournal, das keinen Kopf hat.
+    kopf: dict[str, Any] | None = None
+    #: Kennung, die der LESER vergeben hat -- nur wenn eine Datei mehrere Laeufe
+    #: traegt und die Saetze keine ``lauf``-Kennung haben (``trenne_laeufe``). Sie hat
+    #: Vorrang vor der Kennung aus den Saetzen, damit zwei Laeufe derselben Datei
+    #: in ``durchgehende_equity`` nicht zu einem verschmelzen.
+    kennung: str | None = None
 
     # -- Kopfdaten ---------------------------------------------------------
     @property
     def lauf_id(self) -> str | None:
+        if self.kennung is not None:
+            return self.kennung
         for s in self.saetze:
             if s.lauf:
                 return s.lauf
@@ -440,10 +468,16 @@ def lies_journal(pfad: Path) -> Lauf:
 
     Eine stillschweigend uebersprungene Zeile ist die schlimmste Sorte Datenverlust:
     die Auswertung sieht vollstaendig aus und ist es nicht.
+
+    Eine Kopfzeile (``art: _kopf``, ohne ``ts``) ist nur als **erste** Zeile ein Kopf
+    und landet in ``Lauf.kopf``; weiter hinten ist sie ein Fehler -- ein zweiter Kopf
+    mitten in den Saetzen hiesse, dass zwei Dateien aneinandergehaengt wurden, und
+    dann stimmt keine der beiden Zaehlungen mehr.
     """
     if not pfad.is_file():
         raise JournalError(f"{pfad} gibt es nicht")
     saetze: list[Satz] = []
+    kopf: dict[str, Any] | None = None
     for nr, roh in enumerate(
         pfad.read_text(encoding="utf-8", errors="replace").splitlines(), 1
     ):
@@ -454,6 +488,13 @@ def lies_journal(pfad: Path) -> Lauf:
             d = json.loads(roh)
         except json.JSONDecodeError as exc:
             raise JournalError(f"{pfad.name}:{nr} ist kein JSON: {exc}") from exc
+        if isinstance(d, dict) and d.get("art") == KOPF_ART:
+            if kopf is not None or saetze:
+                raise JournalError(
+                    f"{pfad.name}:{nr}: Kopfzeile ({KOPF_ART}) nicht am Anfang"
+                )
+            kopf = d
+            continue
         if not isinstance(d, dict) or "ts" not in d or "art" not in d:
             raise JournalError(f"{pfad.name}:{nr}: ts oder art fehlt")
         ts = _zeit(d["ts"])
@@ -477,14 +518,54 @@ def lies_journal(pfad: Path) -> Lauf:
                 },
             )
         )
-    return Lauf(pfad=pfad, saetze=saetze)
+    return Lauf(pfad=pfad, saetze=saetze, kopf=kopf)
 
 
-def lies_alle(verzeichnis: Path) -> list[Lauf]:
-    """Alle Journale eines Verzeichnisses, nach Startzeit sortiert."""
-    if not verzeichnis.is_dir():
+def trenne_laeufe(lauf: Lauf) -> list[Lauf]:
+    """Eine Datei mit mehreren Laeufen (Aufzeichnung) in ihre Laeufe zerlegen.
+
+    Ein Lauf ist die Folge der Saetze mit derselben Laufkennung ``lauf`` -- in der
+    Aufzeichnung steht sie an jedem Satz (``LAUF-01`` ...). Saetze **ohne** Kennung
+    werden an ``start``-Saetzen getrennt (wie ``dienstguete._laeufe``) und bekommen
+    eine vom Leser vergebene Kennung ``<datei>#n``; Saetze vor dem ersten ``start``
+    bilden einen eigenen Lauf, damit nichts verschwindet. Die Reihenfolge der Saetze
+    je Lauf ist die der Datei; jeder Teillauf traegt den Kopf der Datei.
+    """
+    gruppen: dict[str, Lauf] = {}
+    ohne_kennung = 0
+    aktuell: str | None = None
+    for s in lauf.saetze:
+        if s.lauf is not None:
+            schluessel = s.lauf
+            vergeben = None
+        else:
+            if s.art == "start" or aktuell is None:
+                ohne_kennung += 1
+                aktuell = f"{lauf.pfad.name}#{ohne_kennung}"
+            schluessel = aktuell
+            vergeben = aktuell
+        gruppe = gruppen.get(schluessel)
+        if gruppe is None:
+            gruppe = Lauf(pfad=lauf.pfad, kopf=lauf.kopf, kennung=vergeben)
+            gruppen[schluessel] = gruppe
+        gruppe.saetze.append(s)
+    return list(gruppen.values())
+
+
+def lies_alle(pfad: Path) -> list[Lauf]:
+    """Alle Laeufe unter ``pfad``, nach Startzeit sortiert.
+
+    ``pfad`` ist ein Verzeichnis mit ``journal-*.jsonl`` (ein Journal = ein Lauf)
+    ODER eine Aufzeichnungsdatei mit mehreren Laeufen (``trenne_laeufe``). Ein Pfad,
+    den es nicht gibt, liefert die leere Liste; die Werkzeuge melden das als
+    Fehlschlag -- eine leere Reihe ist kein „alles gruen".
+    """
+    if pfad.is_dir():
+        laeufe = [lies_journal(p) for p in sorted(pfad.glob("journal-*.jsonl"))]
+    elif pfad.is_file():
+        laeufe = trenne_laeufe(lies_journal(pfad))
+    else:
         return []
-    laeufe = [lies_journal(p) for p in sorted(verzeichnis.glob("journal-*.jsonl"))]
     return sorted(
         [lauf for lauf in laeufe if lauf.saetze],
         key=lambda lauf: lauf.saetze[0].ts,

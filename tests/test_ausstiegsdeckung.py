@@ -63,7 +63,12 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 from live_betrieb import ausstiegszusage_pruefen  # noqa: E402
 
-JOURNALE = ROOT / "betrieb"
+#: Der Gegenstand des Dauertors auf den „echten Journalen" (Auftrag 1, T6, Befund T):
+#: die eingecheckte Aufzeichnung mit ``takt``-Saetzen, nicht das gitignorierte
+#: ``betrieb/``. Gemessen (Beleg ``06-aufzeichnung-metriken-vergleich.txt``):
+#: Ausstiegsdeckung 8 von 11 Laeufen mit Position, 10 unbeurteilbar -- an den 21
+#: Journalen wie an der Aufzeichnung.
+AUFZEICHNUNG = ROOT / "aufzeichnungen" / "demo-2026-08-17.jsonl"
 
 
 # =====================================================================
@@ -299,16 +304,22 @@ def test_rot_die_neue_regel_schlaegt_auf_den_echten_journalen_an() -> None:
     Ohne diesen Fall koennte die Metrik an den echten Daten voellig stumm bleiben und
     trotzdem alle Einzeltests bestehen.
     """
-    zeilen: list[str] = []
-    for datei in sorted(JOURNALE.glob("*.jsonl")):
-        zeilen.extend(datei.read_text(encoding="utf-8").splitlines())
-    if not zeilen:
-        pytest.skip("keine Betriebsjournale im Arbeitsbaum")
-    werte = erhebe(zeilen)
+    assert AUFZEICHNUNG.is_file(), (
+        f"{AUFZEICHNUNG.relative_to(ROOT).as_posix()} fehlt -- kein Gegenstand fuer "
+        "das Dauertor (Katalog A2). Erzeugen mit: python tools/aufzeichnung_redigieren.py"
+    )
+    zeilen = [
+        z for z in AUFZEICHNUNG.read_text(encoding="utf-8").splitlines() if z.strip()
+    ]
+    assert zeilen and json.loads(zeilen[0]).get("art") == "_kopf"
+    werte = erhebe(zeilen[1:])
     wert = werte["ausstiegsdeckung"]
-    assert wert.gesamt >= 2
+    # 3 gerissene Laeufe: 150513 (hart gestorben, drei offen), 173413 und 182800
+    # (ende-Satz mit offen_geblieben). 10 der 21 Laeufe sind unbeurteilbar (alte
+    # Journale ohne Positionsfeld und ohne offen_geblieben).
+    assert (wert.gelungen, wert.gesamt, wert.unbeurteilbar) == (8, 11, 10)
     assert wert.anteil is not None and wert.anteil < 1.0, (
-        "Die Metrik sieht die zwei Laeufe vom 2026-08-17 nicht mehr."
+        "Die Metrik sieht die Laeufe vom 2026-08-17 nicht mehr."
     )
     namen = [a.regel.name for a in pruefe_alarme(werte)]
     assert "position_offen_geblieben" in namen

@@ -1,0 +1,49 @@
+# Beleg 06-werkzeuge: statische Tore und Suite im Worktree der Familie Werkzeuge (2026-09-03, HEAD 97ee206 + Patch)
+# Umgebung: Windows 11, Python 3.11.7, ruff 0.9.2, mypy 1.14.1, pytest 8.3.4; PYTHONDONTWRITEBYTECODE=1.
+# Waehrend der Suite liefen drei weitere pytest-Prozesse anderer Familien auf demselben Rechner (Laufzeit darum 285 s statt 110 s in T3).
+
+$ python -m ruff format .
+1 file reformatted, 167 files left unchanged   (zweiter Lauf: 168 files already formatted)
+[exit=0]
+
+$ python -m ruff check .
+All checks passed!
+[exit=0]
+
+$ python -m mypy --strict mt5_trading_ai tools PROGRAMM/hooks
+Success: no issues found in 81 source files
+[exit=0]
+
+$ python -m pytest -q -p no:cacheprovider -rf tests/eichfall_werkzeuge.py
+5 failed, 46 passed in 122.76s   (vollstaendig: 06-werkzeuge-pytest.txt)
+  rot, alle in Dateien anderer Familien:
+    test_help_antwortet_mit_exit_0_und_usage[betrieb_auswerten.py]   kein argparse; "--help" wird als Journalpfad gelesen, Exit 1
+    test_help_antwortet_mit_exit_0_und_usage[check_doc_numbers.py]   kein argparse; faehrt den Zahlenabgleich (Exit 1: README-Block 1313 Tests/16342 Zeilen, Code 1330/16453 -- Block wird zentral erzeugt)
+    test_help_antwortet_mit_exit_0_und_usage[check_docs_claims.py]   kein argparse; faehrt die Pruefung (Exit 0, aber keine usage-Zeile)
+    test_help_antwortet_mit_exit_0_und_usage[geheimnis_scan.py]      kein argparse; faehrt den Scan (T3: 241 s) -- Zeitschranke 60 s gerissen
+    test_ohne_terminal_eine_benannte_zeile_und_exit_2[live_betrieb]  Traceback aus venue/mt5.py:2156, Exit 1 (Familie live_betrieb)
+  gruen (46): Shim-Wache 1; --help 25 von 29 Werkzeugen; ohne Terminal 6 von 7 Aufrufen (atr_messung, aufloesung, aufloesung --gegenprobe,
+    ereignisstudie --alle, live_konsole, mt5_smoke); fetch_data ohne Quelle 1; Terminalwerkzeug-Erfassung 1; Pruefer rot/gruen 3; Smoke A9 gegen Fake-Terminal 8.
+[exit=1]
+
+$ python -m pytest -q -p no:cacheprovider -m "not slow"        (ganze Suite; tests/eichfall_werkzeuge.py wird OHNE python_files-Eintrag nicht gesammelt, siehe "offen")
+2 failed, 1498 passed, 12 skipped, 1 deselected in 285.31s (0:04:45)
+  FAILED tests/test_readme_numbers.py::test_readme_test_function_count_matches_code   assert 1313 == 1330  (+17 Testfunktionen aus tests/eichfall_werkzeuge.py)
+  FAILED tests/test_readme_numbers.py::test_readme_source_lines_matches_code          assert 16342 == 16453 (+111 Quellzeilen: smoke.py, sieben Werkzeuge)
+  -> README-Kennzahlenblock wird zentral erzeugt (tools/gen_docs.py); nicht Teil dieses Patches.
+  12 skipped: die Dauertore auf betrieb/ (im Worktree nicht vorhanden; Familie Skips/Aufzeichnung).
+[exit=1]
+
+$ python -m pytest -q -p no:cacheprovider tests/test_mt5_smoke.py tests/test_rauchtest_schaerfe.py tests/test_ereignisstudie_werkzeug.py tests/test_aufloesung_werkzeug.py tests/test_edge_test_cli.py tests/test_zeitschranken.py tests/test_orderpfad_verdrahtung.py
+125 passed in 13.14s        (die bestehenden Tests der geaenderten Module, unveraendert gruen)
+[exit=0]
+
+$ python -m pytest --collect-only -q -m "not slow" | grep -c eichfall_werkzeuge
+0                            (pyproject.toml: python_files fehlt -> tests/eichfall_*.py werden von der Suite nicht gesammelt)
+
+# Zaehlungen
+Werkzeuge mit main() unter tools/: 29 (tools/__init__.py und tools/doku_menge.py ohne main)
+Terminalwerkzeuge (Import von RealMt5Terminal, per ast): 6 = atr_messung, aufloesung, ereignisstudie, live_betrieb, live_konsole, mt5_smoke; paper_run nennt die Klasse nur im Modulkopf
+Aufrufe ohne Terminal im Eichfall: 7 (aufloesung zweimal: messen und --gegenprobe) + fetch_data ohne Quelle
+Roter Eichfall (06-werkzeuge-rot.txt): 306bbaa 0 von 2 --help (edge_test, betrieb_auswerten) und 0 von 8 ohne Terminal; 97ee206 24 von 29 --help und 0 von 8 ohne Terminal
+Gruener Eichfall (06-werkzeuge-gruen.txt): Arbeitsbaum 25 von 29 --help, 7 von 8 ohne Terminal -- die roten Reste liegen in Dateien anderer Familien (siehe oben)

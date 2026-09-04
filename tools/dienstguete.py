@@ -29,6 +29,7 @@ Aufruf::
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -44,16 +45,38 @@ from mt5_trading_ai.betrieb.dienstguete import (  # noqa: E402
     pruefe_alarme,
     stelle_zu,
 )
+from mt5_trading_ai.betrieb.journal import KOPF_ART  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def _ist_kopf(zeile: str) -> bool:
+    """Die Kopfzeile der Aufzeichnung ist kein Satz -- sie zaehlt in keiner Metrik.
+
+    Ohne diese Weiche liefe sie unter ``nach_codestand`` in die Gruppe „ohne Stempel"
+    und zaehlte dort als ein Satz ohne Zeitstempel. Keine Metrik liest sie, aber eine
+    Auswertung, die einen Kopf als Ereignis fuehrt, hat ihre Eingabe nicht verstanden.
+    """
+    if f'"{KOPF_ART}"' not in zeile:
+        return False
+    try:
+        satz = json.loads(zeile)
+    except json.JSONDecodeError:
+        return False
+    return isinstance(satz, dict) and satz.get("art") == KOPF_ART
+
+
 def _zeilen(quelle: Path) -> list[str]:
+    """Alle Satzzeilen der Quelle: Verzeichnis mit Journalen oder EINE Aufzeichnung."""
     dateien = sorted(quelle.glob("*.jsonl")) if quelle.is_dir() else [quelle]
     aus: list[str] = []
     for datei in dateien:
         if datei.is_file():
-            aus.extend(datei.read_text(encoding="utf-8").splitlines())
+            aus.extend(
+                z
+                for z in datei.read_text(encoding="utf-8").splitlines()
+                if not _ist_kopf(z)
+            )
     return aus
 
 

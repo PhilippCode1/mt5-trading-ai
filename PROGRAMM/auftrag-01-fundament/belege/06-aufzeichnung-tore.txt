@@ -1,0 +1,24 @@
+# T6 Familie Aufzeichnung: die vier Tore im Worktree (ohne betrieb/), Windows, Python 3.11.7, ruff 0.9.2, mypy 1.14.1, pytest 8.3.4, 2026-09-03
+# PYTHONDONTWRITEBYTECODE=1. Je Befehl: letzte Zeilen, Dauer, Exit.
+
+$ python -m ruff format --check .   # ruff format --check
+  167 files already formatted
+[exit=0, 1.2 s]
+
+$ python -m ruff check .   # ruff check
+  All checks passed!
+[exit=0, 1.3 s]
+
+$ python -m mypy --strict mt5_trading_ai tools PROGRAMM/hooks   # mypy --strict
+  Success: no issues found in 81 source files
+[exit=0, 22.9 s]
+
+$ python -m pytest -q -rs -p no:cacheprovider tests/test_laufabschluss.py tests/test_buchtreue.py tests/test_ausstiegsdeckung.py tests/test_journal_leser.py tests/test_stufe5_ausfuehrung.py tests/test_stufe7_kaltstart.py   # pytest (die sechs Dateien der Familie, -rs)
+  ........................................................................ [ 53%]
+  ..............................................................           [100%]
+  134 passed in 19.81s
+[exit=0, 54.0 s]
+
+$ python -c import re,pathlib;print({p: len(re.findall(r'pytest\.skip\(', pathlib.Path(p).read_text(encoding='utf-8'))) for p in ['tests/test_laufabschluss.py', 'tests/test_buchtreue.py', 'tests/test_ausstiegsdeckung.py', 'tests/test_journal_leser.py', 'tests/test_stufe5_ausfuehrung.py', 'tests/test_stufe7_kaltstart.py']})   # pytest -rs, nur die Skip-Zaehlung: pytest.skip-Stellen in den sechs Dateien
+  {'tests/test_laufabschluss.py': 0, 'tests/test_buchtreue.py': 0, 'tests/test_ausstiegsdeckung.py': 0, 'tests/test_journal_leser.py': 0, 'tests/test_stufe5_ausfuehrung.py': 0, 'tests/test_stufe7_kaltstart.py': 0}
+[exit=0, 0.4 s]

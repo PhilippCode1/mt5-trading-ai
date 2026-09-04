@@ -37,10 +37,28 @@ ist, und sonst nichts. Sie fragen jetzt das, wofuer der Betreiber sie liest:
   ``allow_write`` ist ein gruener Bericht.
 * ``adopt_book`` -- das uebernommene Buch muss dieselben Symbole fuehren wie die
   Positionsmeldung des Brokers, gegen die es gebaut wurde.
+
+KATALOGSYMBOLE UND SERVERZEITVERSATZ (Abnahmekatalog A9, Auftrag 1)
+--------------------------------------------------------------------
+Zwei Messungen, die der lesende Lauf bisher nicht machte:
+
+* **Je Katalogsymbol ein eigener Schritt** ``symbol_<NAME>`` mit ``currency_profit``
+  und ``currency_margin``. Ein Symbol, das das Terminal nicht aufloest (am
+  Demoterminal dieses Rechners heute ``BTCUSD``), ist ein **roter Schritt mit Namen**;
+  die uebrigen Symbole werden trotzdem geprueft. ``currency_profit`` ist das Feld, das
+  ``RealMt5Terminal._to_symbol`` als ``quote_currency`` einliest; ``currency_margin``
+  wird gelesen, sobald der Adapter es fuehrt (Befund D3) -- bis dahin steht
+  ``unbekannt`` im Bericht, nicht ein geratener Wert.
+* **Serverzeitversatz**: die Tick-Zeit des Terminals gegen die lokale UTC-Uhr, in
+  Sekunden, gemessen am ersten aufloesbaren Katalogsymbol (bevorzugt dem Probesymbol).
+  Ohne ``server_tz`` am Terminal ist das der Versatz der Broker-Serverzone (am
+  2026-09-03 gemessen: +10796 s); mit ``server_tz`` bleibt der Uhrenversatz. Der Wert
+  steht als ``SmokeReport.serverzeitversatz_s`` fuer weitere Leser bereit.
 """
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from decimal import ROUND_DOWN, Decimal
@@ -64,7 +82,9 @@ from mt5_trading_ai.venue.protocol import (
     Quote,
     Timeframe,
     TradingVenue,
+    UnknownInstrumentError,
     VenueError,
+    VenueUnavailableError,
 )
 
 
@@ -114,6 +134,9 @@ class SmokeReport:
     steps: list[SmokeStep] = field(default_factory=list)
     #: Ergebnis des Demo-Reife-Tors, falls ``run_smoke`` mit ``demo`` gefahren wurde.
     demo_readiness: DemoReadiness | None = None
+    #: Tick-Zeit des Terminals minus lokale UTC-Uhr, in Sekunden; ``None``, solange
+    #: kein Tick zu haben war (dann ist der Schritt ``serverzeitversatz`` rot).
+    serverzeitversatz_s: float | None = None
 
     @property
     def ok(self) -> bool:
@@ -130,9 +153,15 @@ def run_smoke(
     allow_write: bool = False,
     now: datetime | None = None,
     demo: DemoRunInputs | None = None,
+    symbole: Sequence[str] | None = None,
 ) -> SmokeReport:
     """Fahre die Smoke-Folge. Standardmaessig nur lesend; ``allow_write`` schaltet die
     Schreib-Probe frei (die dennoch ein Demokonto verlangt).
+
+    ``symbole`` sind die Katalogsymbole, die je einen eigenen Schritt bekommen
+    (``symbol_<NAME>``, siehe Modulkopf). Ohne Angabe ist es nur das Probesymbol.
+    Der Serverzeitversatz wird am ersten aufloesbaren dieser Symbole gemessen, auch
+    wenn ein anderes fehlt.
 
     ``demo`` fuettert die Naht §8.5->§7: die Harness registriert die Strategie fuer den
     Demo-Betrieb (``register_for_demo`` -- fail-closed ohne bestandenen Edge, auf dem
@@ -216,6 +245,13 @@ def run_smoke(
                     ", ".join(readiness.reasons) or "reif fuer Live-Frage",
                 )
 
+        # A9: jedes Katalogsymbol einzeln, damit ein fehlendes einen Namen hat und die
+        # uebrigen trotzdem geprueft werden. ``list_instruments`` darunter bleibt die
+        # harte Antwort des Adapters (vollstaendige Liste oder Fehler) -- es laeuft
+        # NACH dem Versatz, damit der auch bei einem fehlenden Symbol gemessen ist.
+        aufgeloest = _katalogsymbole(venue, report, symbole or (symbol,))
+        _serverzeitversatz(venue, report, aufgeloest, symbol, now)
+
         instruments = venue.list_instruments()
         report.add(
             "list_instruments", len(instruments) > 0, f"{len(instruments)} Instrumente"
@@ -265,6 +301,81 @@ def run_smoke(
         except VenueError as exc:
             report.add("disconnect", False, str(exc))
     return report
+
+
+def _waehrungen(instrument: Instrument) -> str:
+    """``currency_profit`` und ``currency_margin`` eines Instruments, wie gelesen.
+
+    ``quote_currency`` IST ``currency_profit``: ``RealMt5Terminal._to_symbol`` fuellt
+    es aus ``symbol_info.currency_profit``. ``currency_margin`` fuehrt der Adapter erst
+    mit Befund D3; solange das Feld fehlt, steht hier ``unbekannt`` -- kein Rueckfall
+    auf die Basiswaehrung, denn bei CFDs (US500: Marge in USD) waere der falsch.
+    """
+    profit = instrument.quote_currency or "unbekannt"
+    margin = getattr(instrument, "currency_margin", None) or "unbekannt"
+    return f"currency_profit={profit} currency_margin={margin}"
+
+
+def _katalogsymbole(
+    venue: Mt5Venue, report: SmokeReport, symbole: Sequence[str]
+) -> list[str]:
+    """Ein Schritt je Katalogsymbol; zurueck kommen die aufgeloesten Namen.
+
+    Ein Symbol, das das Terminal nicht kennt, ist ein roter Schritt mit Namen und
+    Grund -- und die Schleife laeuft weiter. Andere ``VenueError`` (Sitzung weg) gehen
+    nach oben: die beantwortet der Aufrufer als ``error``-Schritt, wie bisher.
+    """
+    aufgeloest: list[str] = []
+    for name in symbole:
+        try:
+            instrument = venue.get_instrument(name)
+        except UnknownInstrumentError as exc:
+            report.add(f"symbol_{name}", False, str(exc))
+            continue
+        aufgeloest.append(name)
+        report.add(f"symbol_{name}", True, _waehrungen(instrument))
+    return aufgeloest
+
+
+def _serverzeitversatz(
+    venue: Mt5Venue,
+    report: SmokeReport,
+    aufgeloest: Sequence[str],
+    probesymbol: str,
+    now: datetime | None,
+) -> None:
+    """Tick-Zeit des Terminals gegen die lokale UTC-Uhr, in Sekunden.
+
+    Die lokale Uhr wird **unmittelbar nach** dem Tick gelesen (oder ist ``now``, wenn
+    der Aufrufer die Uhr stellt); so misst die Zahl den Versatz und nicht die Dauer
+    der vorigen Schritte. Ohne aufloesbares Symbol oder ohne Tick ist der Schritt rot
+    und ``serverzeitversatz_s`` bleibt ``None`` -- kein Versatz ist nicht null Versatz.
+    """
+    if probesymbol in aufgeloest:
+        symbol = probesymbol
+    elif aufgeloest:
+        symbol = aufgeloest[0]
+    else:
+        report.add(
+            "serverzeitversatz",
+            False,
+            "kein aufloesbares Katalogsymbol -- Versatz nicht messbar",
+        )
+        return
+    try:
+        quote = venue.get_quote(symbol)
+    except VenueUnavailableError as exc:
+        report.add("serverzeitversatz", False, f"kein Tick fuer {symbol}: {exc}")
+        return
+    lokal = now if now is not None else datetime.now(UTC)
+    versatz = (quote.ts - lokal).total_seconds()
+    report.serverzeitversatz_s = versatz
+    report.add(
+        "serverzeitversatz",
+        True,
+        f"{versatz:+.1f} s (Tick {symbol} {quote.ts.isoformat()} gegen lokale "
+        f"UTC-Uhr {lokal.isoformat()})",
+    )
 
 
 def _probe_stop(instrument: Instrument, quote: Quote) -> Decimal:

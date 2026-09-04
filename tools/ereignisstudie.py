@@ -96,10 +96,25 @@ from mt5_trading_ai.gates.trials import (  # noqa: E402
 from mt5_trading_ai.venue.mt5 import RealMt5Terminal  # noqa: E402
 from mt5_trading_ai.venue.protocol import (  # noqa: E402
     Timeframe,
+    VenueUnavailableError,
     ist_abgeschlossen,
 )
 
 from tools.aufloesung import _kosten_bps  # noqa: E402
+
+
+class TerminalNichtErreichbar(StudienError):
+    """Kein MT5-Terminal -- die Studie kann nicht einmal beginnen.
+
+    Eine ``StudienError``-Ableitung, damit jeder Leser, der Studienfehler faengt, sie
+    weiter faengt; ``main`` unterscheidet sie, weil sie einen anderen Ausgang hat:
+    eine benannte Zeile und Exit 2 (Abnahmekatalog A12) statt Exit 1.
+    """
+
+    def __init__(self, grund: str) -> None:
+        super().__init__(f"Terminal nicht erreichbar: {grund}")
+        self.grund = grund
+
 
 REPO = Path(__file__).resolve().parents[1]
 MANIFESTE = REPO / "config" / "reihen"
@@ -217,8 +232,18 @@ def _lade_kerzen(symbol: str) -> list[Kerze]:
     ``protocol.ist_abgeschlossen``.
     """
     terminal = RealMt5Terminal(allow_write=False)
-    if not terminal.initialize():
-        raise StudienError("Terminal nicht erreichbar")
+    # Beide Fehlausgaenge von ``initialize`` -- Ausnahme (Paket ``MetaTrader5``
+    # fehlt) und ``False`` (Terminal nicht gestartet) -- werden zu EINEM benannten
+    # Fehler; ``main`` macht daraus eine Zeile und Exit 2 statt eines Tracebacks.
+    try:
+        verbunden = terminal.initialize()
+    except VenueUnavailableError as exc:
+        raise TerminalNichtErreichbar(str(exc)) from exc
+    if not verbunden:
+        raise TerminalNichtErreichbar(
+            "initialize() lieferte False -- Terminal nicht initialisierbar (laeuft "
+            "terminal64.exe, und ist ein Demokonto angemeldet?)"
+        )
     try:
         tick = terminal.tick(symbol)
         if tick is None:
@@ -516,6 +541,14 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--kandidat", default=None)
     p.add_argument("--instrument", default=None)
     p.add_argument("--alle", action="store_true", help="alle Kandidaten des Feldes")
+    p.add_argument(
+        "--register",
+        type=Path,
+        default=None,
+        metavar="PFAD",
+        help="Versuchsregister (Vorgabe: TRIALS.jsonl im Repo); muss existieren, "
+        "ein leeres ist zulaessig -- angelegt wird es hier nie",
+    )
     args = p.parse_args(argv)
 
     if args.selbsttest:
@@ -535,7 +568,7 @@ def main(argv: list[str] | None = None) -> int:
     # derselbe Abbruch, nur eine halbe Stunde spaeter.
     try:
         _pruefe_paare(paare)
-        register = verlange_register()
+        register = verlange_register(args.register)
     except StudienError as exc:
         print(f"FEHLGESCHLAGEN — {exc}", file=sys.stderr)
         return 1
@@ -548,7 +581,19 @@ def main(argv: list[str] | None = None) -> int:
     schlecht = 0
     for k, symbol in paare:
         if symbol not in reihen:
-            reihen[symbol] = _lade_kerzen(symbol)
+            # Kein Terminal: eine Zeile, Exit 2, kein Traceback (A12). Ein anderer
+            # Studienfehler beim Laden (kein Tick fuer das Symbol): eine Zeile, Exit 1.
+            try:
+                reihen[symbol] = _lade_kerzen(symbol)
+            except TerminalNichtErreichbar as exc:
+                print(
+                    f"FEHLGESCHLAGEN -- MT5-Terminal nicht erreichbar: {exc.grund}",
+                    file=sys.stderr,
+                )
+                return 2
+            except StudienError as exc:
+                print(f"FEHLGESCHLAGEN — {exc}", file=sys.stderr)
+                return 1
         schlecht += _lauf(k, symbol, reihen[symbol], kosten, register_pfad=register)
         print()
     # Frueher: ``1 if schlecht == len(paare) else 0`` — gruen, solange auch nur eine

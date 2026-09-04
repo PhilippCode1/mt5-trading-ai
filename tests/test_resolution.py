@@ -667,8 +667,9 @@ def test_die_echte_aufloesungsdatei_ist_in_sich_stimmig() -> None:
     """
     import json
 
-    if not ECHTE_DATEI.is_file():
-        pytest.skip("config/aufloesung.json nicht vorhanden")
+    # Eingecheckt (git ls-files: config/aufloesung.json). Fehlt die Datei, fehlt der
+    # Gegenstand dieses Tests -- das ist ein Fehlschlag, kein Skip (A2).
+    assert ECHTE_DATEI.is_file(), f"{ECHTE_DATEI} fehlt, ist aber eingecheckt"
     roh = json.loads(ECHTE_DATEI.read_text(encoding="utf-8"))
     eintraege = roh["entries"]
     assert eintraege, "Datei ohne Eintraege"
@@ -711,8 +712,9 @@ def test_monatliche_kandidaten_loesen_nur_im_stundenfenster_auf() -> None:
     """
     import json
 
-    if not ECHTE_DATEI.is_file():
-        pytest.skip("config/aufloesung.json nicht vorhanden")
+    # Eingecheckt (git ls-files: config/aufloesung.json). Fehlt die Datei, fehlt der
+    # Gegenstand dieses Tests -- das ist ein Fehlschlag, kein Skip (A2).
+    assert ECHTE_DATEI.is_file(), f"{ECHTE_DATEI} fehlt, ist aber eingecheckt"
     roh = json.loads(ECHTE_DATEI.read_text(encoding="utf-8"))
     monatlich = [e for e in roh["entries"] if e["frequency"] == "monatlich"]
     assert monatlich, "keine monatlichen Kombinationen in der Datei"
@@ -745,8 +747,9 @@ def test_eurusd_reihe_beginnt_nicht_vor_dem_euro() -> None:
     import json
 
     manifeste = sorted((REPO / "config" / "reihen").glob("EURUSD_*.manifest.json"))
-    if not manifeste:
-        pytest.skip("keine EURUSD-Manifeste vorhanden")
+    # Eingecheckt (git ls-files: config/reihen/EURUSD_{D1,H1,H4}.manifest.json = 3).
+    # Fehlen sie, fehlt der Gegenstand -- Fehlschlag, kein Skip (A2).
+    assert len(manifeste) == 3, f"EURUSD-Manifeste unter config/reihen: {manifeste}"
     for pfad in manifeste:
         man = json.loads(pfad.read_text(encoding="utf-8"))
         assert man["first"] >= "1999-01-01", (
@@ -764,8 +767,9 @@ def test_wurzel_t_naeherung_ist_kein_ersatz_fuer_die_messung() -> None:
     """
     import json
 
-    if not ECHTE_DATEI.is_file():
-        pytest.skip("config/aufloesung.json nicht vorhanden")
+    # Eingecheckt (git ls-files: config/aufloesung.json). Fehlt die Datei, fehlt der
+    # Gegenstand dieses Tests -- das ist ein Fehlschlag, kein Skip (A2).
+    assert ECHTE_DATEI.is_file(), f"{ECHTE_DATEI} fehlt, ist aber eingecheckt"
     roh = json.loads(ECHTE_DATEI.read_text(encoding="utf-8"))
     gemessen = {
         (e["instrument"], e["window"]): e["dispersion_bps"] for e in roh["entries"]

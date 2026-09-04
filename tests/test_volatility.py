@@ -312,8 +312,9 @@ def test_unlesbare_zahl_ist_ein_fehler(tmp_path: Path) -> None:
 # --- gegen die echte Datei ------------------------------------------------
 def test_die_echte_messdatei_ist_ladbar_und_traegt_begruendete_luecken() -> None:
     """Positivtest gegen die im Repo liegende Messung -- kein Fixture-Ersatz."""
-    if not ECHTE_DATEI.is_file():
-        pytest.skip("config/atr_measurements.json nicht vorhanden")
+    # Eingecheckt (git ls-files: config/atr_measurements.json). Fehlt die Datei, fehlt
+    # der Gegenstand -- Fehlschlag, kein Skip (A2).
+    assert ECHTE_DATEI.is_file(), f"{ECHTE_DATEI} fehlt, ist aber eingecheckt"
     messungen = load_atr_measurements(ECHTE_DATEI)
     assert messungen, "Messdatei ohne Instrumente"
     for messung in messungen.values():

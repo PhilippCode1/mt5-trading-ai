@@ -281,9 +281,18 @@ def test_die_eingecheckte_aufzeichnung_traegt_die_abgelehnten_signale() -> None:
 
 
 def test_die_aufzeichnung_weist_auch_weggelassene_FELDER_aus() -> None:
-    """Ein weggelassenes Feld ist so verschwiegen wie ein weggelassener Satz."""
+    """Ein weggelassenes Feld ist so verschwiegen wie ein weggelassener Satz.
+
+    Seit Kopf-Fassung 2 steht je Feld die Zahl der Saetze, in denen es fiel: jeder
+    der 4.343 Eroeffnungsversuche hat sein ``schritte`` verloren -- und kein anderes
+    Feld ist weggefallen.
+    """
     kopf = json.loads(AUFZEICHNUNG.read_text(encoding="utf-8").splitlines()[0])
-    assert kopf["felder_weggelassen"] == ["schritte"]
+    assert kopf["fassung"] == 2
+    assert kopf["felder_weggelassen"] == {
+        "schritte": kopf["saetze_behalten"]["eroeffnungsversuch"]
+    }
+    assert kopf["saetze_behalten"]["eroeffnungsversuch"] == 4343
 
 
 def test_die_auswertung_laeuft_gegen_die_eingecheckte_aufzeichnung() -> None:

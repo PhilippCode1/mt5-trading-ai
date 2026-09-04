@@ -70,7 +70,11 @@ from mt5_trading_ai.execution.runner import RunnerConfig, run_signal  # noqa: E4
 from mt5_trading_ai.gates.criteria import CriteriaVerdict  # noqa: E402
 from mt5_trading_ai.venue.catalog import load_instrument_catalog  # noqa: E402
 from mt5_trading_ai.venue.mt5 import Mt5Venue, RealMt5Terminal  # noqa: E402
-from mt5_trading_ai.venue.protocol import Timeframe, VenueError  # noqa: E402
+from mt5_trading_ai.venue.protocol import (  # noqa: E402
+    Timeframe,
+    VenueError,
+    VenueUnavailableError,
+)
 
 #: Trendfolge-Parameter. Konvention, NICHT auf die Daten optimiert -- wie in
 #: ``backtest/strategies.py`` begruendet. Sie sind hier zum Zusehen da und nicht als
@@ -274,6 +278,26 @@ def takt(
     print()
 
 
+def _terminal_grund(terminal: RealMt5Terminal) -> str | None:
+    """Warum das Terminal nicht erreichbar ist -- oder ``None``, wenn es das ist.
+
+    ``RealMt5Terminal.initialize`` hat zwei Fehlausgaenge: ``VenueUnavailableError``
+    (das Paket ``MetaTrader5`` fehlt) und ``False`` (Terminal nicht gestartet, kein
+    Konto). Beide enden hier in **einer** benannten Zeile und Exit 2 statt in einem
+    Traceback (Abnahmekatalog A12).
+    """
+    try:
+        verbunden = terminal.initialize()
+    except VenueUnavailableError as exc:
+        return str(exc)
+    if not verbunden:
+        return (
+            "initialize() lieferte False -- Terminal nicht initialisierbar (laeuft "
+            "terminal64.exe, und ist ein Demokonto angemeldet?)"
+        )
+    return None
+
+
 def main() -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -304,11 +328,10 @@ def main() -> int:
     # allow_write ist hier KEIN Schalter. Eine Konsole zum Zusehen darf nicht
     # versehentlich handeln koennen -- auch nicht auf einem Demokonto.
     terminal = RealMt5Terminal(allow_write=False, server_tz=SERVER_TZ_NAME)
-    if not terminal.initialize():
+    grund = _terminal_grund(terminal)
+    if grund is not None:
         print(
-            "FEHLGESCHLAGEN — MT5-Terminal nicht erreichbar. Laeuft es, und ist es "
-            "im Demokonto angemeldet?",
-            file=sys.stderr,
+            f"FEHLGESCHLAGEN -- MT5-Terminal nicht erreichbar: {grund}", file=sys.stderr
         )
         return 2
     manager = RiskManager()
@@ -318,7 +341,13 @@ def main() -> int:
         catalog=load_instrument_catalog(),
         risk_manager=manager,
     )
-    venue.connect()
+    try:
+        venue.connect()
+    except VenueUnavailableError as exc:
+        print(
+            f"FEHLGESCHLAGEN -- MT5-Terminal nicht erreichbar: {exc}", file=sys.stderr
+        )
+        return 2
     symbole = args.symbol or sorted(load_instrument_catalog())
     leit = args.leit or ("EURUSD" if "EURUSD" in symbole else symbole[0])
     print(

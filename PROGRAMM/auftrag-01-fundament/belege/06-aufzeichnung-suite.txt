@@ -1,0 +1,45 @@
+# T6 Familie Aufzeichnung: die ganze Suite ohne slow im Worktree (ohne betrieb/, wie ein frischer Klon), Windows, Python 3.11.7, pytest 8.3.4, 2026-09-03
+# Befehl (PowerShell, ausserhalb der Bash-Sandbox des Subagenten): PYTHONDONTWRITEBYTECODE=1 python -m pytest -q -rs -p no:cacheprovider -m "not slow"
+# Ergebnis: 2 failed (tests/test_readme_numbers.py: README-Kennzahlenblock wird zentral erzeugt -- test_function_count 1313 -> 1325, source_lines 16342 -> 16423), 1522 passed, 0 skipped, 1 deselected (slow).
+# Vor Auftrag 1 im selben Aufbau (Beleg 03-grundmessung-pytest-worktree.txt): 12 skipped.
+# Ein erster Lauf derselben Suite in der Bash-Sandbox des Subagenten zeigte zusaetzlich 3 failed in tests/test_provenance.py (git: 'unable to write file .git/objects/...: Permission denied' in tmp_path -- Sandbox, nicht Code; via PowerShell 9 passed) und 1x den bekannten Flake tests/test_live_betrieb.py::test_der_takt_schreibt_den_kontozustand (Erkundung zufaellig, T3: 3/100; danach 3/3 gruen).
+........................................................................ [  4%]
+........................................................................ [  9%]
+........................................................................ [ 14%]
+........................................................................ [ 18%]
+........................................................................ [ 23%]
+........................................................................ [ 28%]
+........................................................................ [ 33%]
+........................................................................ [ 37%]
+........................................................................ [ 42%]
+........................................................................ [ 47%]
+........................................................................ [ 51%]
+........................................................................ [ 56%]
+..............................................FF........................ [ 61%]
+........................................................................ [ 66%]
+........................................................................ [ 70%]
+........................................................................ [ 75%]
+........................................................................ [ 80%]
+........................................................................ [ 85%]
+........................................................................ [ 89%]
+........................................................................ [ 94%]
+........................................................................ [ 99%]
+............                                                             [100%]
+================================== FAILURES ===================================
+________________ test_readme_test_function_count_matches_code _________________
+
+    def test_readme_test_function_count_matches_code() -> None:
+>       assert _declared()["test_function_count"] == _test_function_count()
+E       assert 1313 == 1325
+E        +  where 1325 = _test_function_count()
+
+tests\test_readme_numbers.py:92: AssertionError
+____________________ test_readme_source_lines_matches_code ____________________
+
+    def test_readme_source_lines_matches_code() -> None:
+>       assert _declared()["source_lines"] == _source_lines()
+E       assert 16342 == 16423
+E        +  where 16423 = _source_lines()
+
+tests\test_readme_numbers.py:96: AssertionError
+2 failed, 1522 passed, 1 deselected in 296.79s (0:04:56)

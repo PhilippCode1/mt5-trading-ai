@@ -892,7 +892,7 @@ def _autotrading_an() -> bool:
     scharfer Lauf ueberhaupt handeln kann.
     """
     try:
-        import MetaTrader5 as mt5  # type: ignore[import-untyped]  # noqa: N813
+        import MetaTrader5 as mt5  # noqa: N813
     except ImportError:
         return False
     info = mt5.terminal_info()

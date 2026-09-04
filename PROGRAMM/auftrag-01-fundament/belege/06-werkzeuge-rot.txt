@@ -1,0 +1,174 @@
+==============================================================================
+ROTER EICHFALL Familie Werkzeuge -- Staende VOR der Aenderung, 2026-09-03
+==============================================================================
+Pruefer: tests/eichfall_werkzeuge.py (pruefe_help, pruefe_benannt); Kriterien: --help Exit 0 + 'usage'; ohne Terminal Exit 2, genau eine Zeile 'FEHLGESCHLAGEN -- MT5-Terminal nicht erreichbar: <Grund>', kein Traceback.
+
+Hinweis: leeres TRIALS.jsonl an der Repo-Wurzel angelegt (gitignoriert), damit die alten ereignisstudie-Staende bis zum Terminal kommen; wird am Ende entfernt.
+
+==============================================================================
+[A] Stand 306bbaa (Bewertung), 9 Werkzeuge -- 30 Dateien per git show
+==============================================================================
+## A13 --help (2 Werkzeuge mit main())
+  [ROT  ] betrieb_auswerten.py: exit=1, usage=nein, stderr: C:\Users\<konto>\AppData\Local\Temp\eichfall-werkzeuge-spb2h6p2\306bbaa\betrieb\--help gibt es nicht.
+           | C:\Users\<konto>\AppData\Local\Temp\eichfall-werkzeuge-spb2h6p2\306bbaa\betrieb\--help gibt es nicht.
+  [ROT  ] edge_test.py: exit=1, usage=nein, stderr: ValueError: unsupported format character 'v' (0x76) at index 53
+           |     help_text = self._expand_help(action)
+           |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+           |   File "C:\Users\<konto>\AppData\Local\Programs\Python\Python311\Lib\argparse.py", line 640, in _expand_help
+           |     return self._get_help_string(action) % params
+           |            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~
+           | ValueError: unsupported format character 'v' (0x76) at index 53
+  => 0 von 2 gruen, 10 s
+
+## A12 ohne Terminal (Shim: import MetaTrader5 wirft ImportError)
+  [ROT  ] atr_messung.py: exit=2 (verlangt 2), benannte Zeilen=0 (verlangt 1), FEHLGESCHLAGEN-Zeilen=1 (verlangt 1), Traceback=nein (verlangt nein)
+           | FEHLGESCHLAGEN — MetaTrader5 nicht installiert (pip install MetaTrader5)
+           | Keine Ersatzzahlen. Ohne Terminal keine Volatilitaet.
+  [ROT  ] aufloesung.py: exit=2 (verlangt 2), benannte Zeilen=0 (verlangt 1), FEHLGESCHLAGEN-Zeilen=1 (verlangt 1), Traceback=nein (verlangt nein)
+           | FEHLGESCHLAGEN — MetaTrader5 nicht installiert (pip install MetaTrader5)
+  [ROT  ] aufloesung.py --gegenprobe C:\Users\<konto>\AppData\Local\Temp\eichfall-werkzeuge-spb2h6p2\daten-306bbaa\EURUSD_H1.csv: exit=1 (verlangt 2), benannte Zeilen=0 (verlangt 1), FEHLGESCHLAGEN-Zeilen=0 (verlangt 1), Traceback=ja (verlangt nein)
+           |   File "C:\Users\<konto>\AppData\Local\Temp\eichfall-werkzeuge-spb2h6p2\306bbaa\tools\aufloesung.py", line 542, in gegenprobe
+           |     if not terminal.initialize():
+           |            ^^^^^^^^^^^^^^^^^^^^^
+           |   File "C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_358a8ac6-c0a-1\mt5_trading_ai\venue\mt5.py", line 2158, in initialize
+           |     raise VenueUnavailableError(
+           | mt5_trading_ai.venue.protocol.VenueUnavailableError: MetaTrader5 nicht installiert (pip install MetaTrader5)
+  [ROT  ] ereignisstudie.py --alle: exit=1 (verlangt 2), benannte Zeilen=0 (verlangt 1), FEHLGESCHLAGEN-Zeilen=0 (verlangt 1), Traceback=ja (verlangt nein)
+           |   File "C:\Users\<konto>\AppData\Local\Temp\eichfall-werkzeuge-spb2h6p2\306bbaa\tools\ereignisstudie.py", line 217, in _lade_kerzen
+           |     if not terminal.initialize():
+           |            ^^^^^^^^^^^^^^^^^^^^^
+           |   File "C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_358a8ac6-c0a-1\mt5_trading_ai\venue\mt5.py", line 2158, in initialize
+           |     raise VenueUnavailableError(
+           | mt5_trading_ai.venue.protocol.VenueUnavailableError: MetaTrader5 nicht installiert (pip install MetaTrader5)
+  [ROT  ] live_betrieb.py --dauer 0.001 --takt 1: exit=1 (verlangt 2), benannte Zeilen=0 (verlangt 1), FEHLGESCHLAGEN-Zeilen=0 (verlangt 1), Traceback=ja (verlangt nein)
+           |   File "C:\Users\<konto>\AppData\Local\Temp\eichfall-werkzeuge-spb2h6p2\306bbaa\tools\live_betrieb.py", line 829, in main
+           |     if not terminal.initialize():
+           |            ^^^^^^^^^^^^^^^^^^^^^
+           |   File "C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_358a8ac6-c0a-1\mt5_trading_ai\venue\mt5.py", line 2158, in initialize
+           |     raise VenueUnavailableError(
+           | mt5_trading_ai.venue.protocol.VenueUnavailableError: MetaTrader5 nicht installiert (pip install MetaTrader5)
+  [ROT  ] live_konsole.py --takte 1: exit=1 (verlangt 2), benannte Zeilen=0 (verlangt 1), FEHLGESCHLAGEN-Zeilen=0 (verlangt 1), Traceback=ja (verlangt nein)
+           |   File "C:\Users\<konto>\AppData\Local\Temp\eichfall-werkzeuge-spb2h6p2\306bbaa\tools\live_konsole.py", line 270, in main
+           |     if not terminal.initialize():
+           |            ^^^^^^^^^^^^^^^^^^^^^
+           |   File "C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_358a8ac6-c0a-1\mt5_trading_ai\venue\mt5.py", line 2158, in initialize
+           |     raise VenueUnavailableError(
+           | mt5_trading_ai.venue.protocol.VenueUnavailableError: MetaTrader5 nicht installiert (pip install MetaTrader5)
+  [ROT  ] mt5_smoke.py: exit=1 (verlangt 2), benannte Zeilen=0 (verlangt 1), FEHLGESCHLAGEN-Zeilen=1 (verlangt 1), Traceback=nein (verlangt nein)
+           | !! connect: MetaTrader5 nicht installiert (pip install MetaTrader5)
+           | SMOKE FEHLGESCHLAGEN
+  [ROT  ] fetch_data.py --from-year 2024 --to-year 2024 --out C:\Users\<konto>\AppData\Local\Temp\eichfall-werkzeuge-spb2h6p2\daten-306bbaa\daten: exit=1 (verlangt 2), benannte Zeilen=0 (verlangt 1), FEHLGESCHLAGEN-Zeilen=0 (verlangt 1), Traceback=ja (verlangt nein)
+           |   File "C:\Users\<konto>\AppData\Local\Temp\eichfall-werkzeuge-spb2h6p2\306bbaa\tools\fetch_data.py", line 78, in fetch_dukascopy_year
+           |     raw = http_get(url)
+           |           ^^^^^^^^^^^^^
+           |   File "C:\Users\<konto>\AppData\Local\Temp\eichfall-werkzeuge-spb2h6p2\306bbaa\tools\fetch_data.py", line 70, in http_get
+           |     raise DataLoadError(f"Abruf fehlgeschlagen nach {tries} Versuchen: {url} ({last})")
+           | mt5_trading_ai.data.loader.DataLoadError: Abruf fehlgeschlagen nach 6 Versuchen: https://datafeed.dukascopy.com/datafeed/EURUSD/2024/BID_candles_day_1.bi5 (<urlopen error [WinError 10061] Es konnte keine Verbindung hergestellt werden, da der Zielcomputer die Verbindung verweigerte>)
+  => 0 von 8 gruen, 68 s
+
+==============================================================================
+[B] Stand 97ee206 (HEAD vor der Aenderung) -- 31 Dateien per git show
+==============================================================================
+## A13 --help (29 Werkzeuge mit main())
+  [gruen] archiv_manifest.py: exit=0, usage=ja
+  [gruen] atr_messung.py: exit=0, usage=ja
+  [gruen] aufloesung.py: exit=0, usage=ja
+  [gruen] aufzeichnung_redigieren.py: exit=0, usage=ja
+  [gruen] auswertung.py: exit=0, usage=ja
+  [ROT  ] betrieb_auswerten.py: exit=1, usage=nein, stderr: C:\Users\<konto>\AppData\Local\Temp\eichfall-werkzeuge-spb2h6p2\97ee206\betrieb\--help gibt es nicht.
+           | C:\Users\<konto>\AppData\Local\Temp\eichfall-werkzeuge-spb2h6p2\97ee206\betrieb\--help gibt es nicht.
+  [gruen] betrieb_reihe.py: exit=0, usage=ja
+  [ROT  ] check_doc_numbers.py: exit=1, usage=nein, stderr: FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\<konto>\\AppData\\Local\\Temp\\eichfall-werkzeuge-spb2h6p2\\97ee206\\README.md'
+           |     with self.open(mode='r', encoding=encoding, errors=errors) as f:
+           |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+           |   File "C:\Users\<konto>\AppData\Local\Programs\Python\Python311\Lib\pathlib.py", line 1044, in open
+           |     return io.open(self, mode, buffering, encoding, errors, newline)
+           |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+           | FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\<konto>\\AppData\\Local\\Temp\\eichfall-werkzeuge-spb2h6p2\\97ee206\\README.md'
+  [ROT  ] check_docs_claims.py: exit=1, usage=nein, stderr: subprocess.CalledProcessError: Command '['git', 'ls-files', '*.md']' returned non-zero exit status 128.
+           |   File "C:\Users\<konto>\AppData\Local\Temp\eichfall-werkzeuge-spb2h6p2\97ee206\tools\doku_menge.py", line 60, in verfolgte_markdown
+           |     out = subprocess.run(
+           |           ^^^^^^^^^^^^^^^
+           |   File "C:\Users\<konto>\AppData\Local\Programs\Python\Python311\Lib\subprocess.py", line 571, in run
+           |     raise CalledProcessError(retcode, process.args,
+           | subprocess.CalledProcessError: Command '['git', 'ls-files', '*.md']' returned non-zero exit status 128.
+  [gruen] dienstguete.py: exit=0, usage=ja
+  [ROT  ] edge_test.py: exit=1, usage=nein, stderr: ValueError: unsupported format character 'v' (0x76) at index 53
+           |     help_text = self._expand_help(action)
+           |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+           |   File "C:\Users\<konto>\AppData\Local\Programs\Python\Python311\Lib\argparse.py", line 640, in _expand_help
+           |     return self._get_help_string(action) % params
+           |            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~
+           | ValueError: unsupported format character 'v' (0x76) at index 53
+  [gruen] ereignisstudie.py: exit=0, usage=ja
+  [gruen] fetch_data.py: exit=0, usage=ja
+  [ROT  ] geheimnis_scan.py: exit=0, usage=nein
+           | weder lokal noch am Remote. Es gibt in diesem Repo keinen Alt-Baum, der
+           | mitgeprueft werden koennte -- die Pruefung deckt damit alles ab, was da ist.
+           | 
+           | ==========================================================================================
+           | ERGEBNIS: 0 Funde bei 0 verfolgten Dateien und 0 Blobs im Verlauf.
+           | ==========================================================================================
+  [gruen] gen_docs.py: exit=0, usage=ja
+  [gruen] journal_sichern.py: exit=0, usage=ja
+  [gruen] katalog_hash.py: exit=0, usage=ja
+  [gruen] kopien_abgleichen.py: exit=0, usage=ja
+  [gruen] kostentor.py: exit=0, usage=ja
+  [gruen] live_betrieb.py: exit=0, usage=ja
+  [gruen] live_konsole.py: exit=0, usage=ja
+  [gruen] mt5_smoke.py: exit=0, usage=ja
+  [gruen] multi_instrument_edge.py: exit=0, usage=ja
+  [gruen] mutationstor.py: exit=0, usage=ja
+  [gruen] paper_run.py: exit=0, usage=ja
+  [gruen] torerfuellbarkeit.py: exit=0, usage=ja
+  [gruen] torzaehlung.py: exit=0, usage=ja
+  [gruen] wiederanlaufprobe.py: exit=0, usage=ja
+  [gruen] zweigdeckung.py: exit=0, usage=ja
+  => 24 von 29 gruen, 34 s
+
+## A12 ohne Terminal (Shim: import MetaTrader5 wirft ImportError)
+  [ROT  ] atr_messung.py: exit=2 (verlangt 2), benannte Zeilen=0 (verlangt 1), FEHLGESCHLAGEN-Zeilen=1 (verlangt 1), Traceback=nein (verlangt nein)
+           | FEHLGESCHLAGEN — MetaTrader5 nicht installiert (pip install MetaTrader5)
+           | Keine Ersatzzahlen. Ohne Terminal keine Volatilitaet.
+  [ROT  ] aufloesung.py: exit=2 (verlangt 2), benannte Zeilen=0 (verlangt 1), FEHLGESCHLAGEN-Zeilen=1 (verlangt 1), Traceback=nein (verlangt nein)
+           | FEHLGESCHLAGEN — MetaTrader5 nicht installiert (pip install MetaTrader5)
+  [ROT  ] aufloesung.py --gegenprobe C:\Users\<konto>\AppData\Local\Temp\eichfall-werkzeuge-spb2h6p2\daten-97ee206\EURUSD_H1.csv: exit=1 (verlangt 2), benannte Zeilen=0 (verlangt 1), FEHLGESCHLAGEN-Zeilen=0 (verlangt 1), Traceback=ja (verlangt nein)
+           |   File "C:\Users\<konto>\AppData\Local\Temp\eichfall-werkzeuge-spb2h6p2\97ee206\tools\aufloesung.py", line 567, in gegenprobe
+           |     if not terminal.initialize():
+           |            ^^^^^^^^^^^^^^^^^^^^^
+           |   File "C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_358a8ac6-c0a-1\mt5_trading_ai\venue\mt5.py", line 2158, in initialize
+           |     raise VenueUnavailableError(
+           | mt5_trading_ai.venue.protocol.VenueUnavailableError: MetaTrader5 nicht installiert (pip install MetaTrader5)
+  [ROT  ] ereignisstudie.py --alle: exit=1 (verlangt 2), benannte Zeilen=0 (verlangt 1), FEHLGESCHLAGEN-Zeilen=0 (verlangt 1), Traceback=ja (verlangt nein)
+           |   File "C:\Users\<konto>\AppData\Local\Temp\eichfall-werkzeuge-spb2h6p2\97ee206\tools\ereignisstudie.py", line 220, in _lade_kerzen
+           |     if not terminal.initialize():
+           |            ^^^^^^^^^^^^^^^^^^^^^
+           |   File "C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_358a8ac6-c0a-1\mt5_trading_ai\venue\mt5.py", line 2158, in initialize
+           |     raise VenueUnavailableError(
+           | mt5_trading_ai.venue.protocol.VenueUnavailableError: MetaTrader5 nicht installiert (pip install MetaTrader5)
+  [ROT  ] live_betrieb.py --dauer 0.001 --takt 1: exit=1 (verlangt 2), benannte Zeilen=0 (verlangt 1), FEHLGESCHLAGEN-Zeilen=0 (verlangt 1), Traceback=ja (verlangt nein)
+           |   File "C:\Users\<konto>\AppData\Local\Temp\eichfall-werkzeuge-spb2h6p2\97ee206\tools\live_betrieb.py", line 988, in main
+           |     if not terminal.initialize():
+           |            ^^^^^^^^^^^^^^^^^^^^^
+           |   File "C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_358a8ac6-c0a-1\mt5_trading_ai\venue\mt5.py", line 2158, in initialize
+           |     raise VenueUnavailableError(
+           | mt5_trading_ai.venue.protocol.VenueUnavailableError: MetaTrader5 nicht installiert (pip install MetaTrader5)
+  [ROT  ] live_konsole.py --takte 1: exit=1 (verlangt 2), benannte Zeilen=0 (verlangt 1), FEHLGESCHLAGEN-Zeilen=0 (verlangt 1), Traceback=ja (verlangt nein)
+           |   File "C:\Users\<konto>\AppData\Local\Temp\eichfall-werkzeuge-spb2h6p2\97ee206\tools\live_konsole.py", line 307, in main
+           |     if not terminal.initialize():
+           |            ^^^^^^^^^^^^^^^^^^^^^
+           |   File "C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_358a8ac6-c0a-1\mt5_trading_ai\venue\mt5.py", line 2158, in initialize
+           |     raise VenueUnavailableError(
+           | mt5_trading_ai.venue.protocol.VenueUnavailableError: MetaTrader5 nicht installiert (pip install MetaTrader5)
+  [ROT  ] mt5_smoke.py: exit=1 (verlangt 2), benannte Zeilen=0 (verlangt 1), FEHLGESCHLAGEN-Zeilen=1 (verlangt 1), Traceback=nein (verlangt nein)
+           | !! connect: MetaTrader5 nicht installiert (pip install MetaTrader5)
+           | SMOKE FEHLGESCHLAGEN
+  [ROT  ] fetch_data.py --from-year 2024 --to-year 2024 --out C:\Users\<konto>\AppData\Local\Temp\eichfall-werkzeuge-spb2h6p2\daten-97ee206\daten: exit=1 (verlangt 2), benannte Zeilen=0 (verlangt 1), FEHLGESCHLAGEN-Zeilen=0 (verlangt 1), Traceback=ja (verlangt nein)
+           |   File "C:\Users\<konto>\AppData\Local\Temp\eichfall-werkzeuge-spb2h6p2\97ee206\tools\fetch_data.py", line 78, in fetch_dukascopy_year
+           |     raw = http_get(url)
+           |           ^^^^^^^^^^^^^
+           |   File "C:\Users\<konto>\AppData\Local\Temp\eichfall-werkzeuge-spb2h6p2\97ee206\tools\fetch_data.py", line 70, in http_get
+           |     raise DataLoadError(f"Abruf fehlgeschlagen nach {tries} Versuchen: {url} ({last})")
+           | mt5_trading_ai.data.loader.DataLoadError: Abruf fehlgeschlagen nach 6 Versuchen: https://datafeed.dukascopy.com/datafeed/EURUSD/2024/BID_candles_day_1.bi5 (<urlopen error [WinError 10061] Es konnte keine Verbindung hergestellt werden, da der Zielcomputer die Verbindung verweigerte>)
+  => 0 von 8 gruen, 64 s
+

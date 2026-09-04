@@ -1,0 +1,77 @@
+# T6 "T", Stub stubs/MetaTrader5.pyi + mypy_path: mypy --strict auf einem Rechner OHNE MetaTrader5
+# (Python 3.13.2, Paket nicht installiert), frischer Cache je Lauf; Gegenprobe Python 3.11.7 MIT Paket 5.0.6090.
+# Worktree HEAD (T5) + Patch 06-stub-skipgate, 2026-09-03.
+# VORHER (HEAD vor T6, Beleg 03-nachstellung/03-mypy-linuxfall.txt): tools/live_betrieb.py:893 import-not-found
+#   + 'Error code import-not-found not covered by type: ignore comment' -> Found 2 errors in 1 file (checked 82 source files), exit 1.
+
+$ <Python313> -c "import importlib.util, sys; print(sys.version.split()[0]); print(importlib.util.find_spec('MetaTrader5'))"
+3.13.2
+None
+[exit=0]
+
+$ python -m mypy --strict --cache-dir <frisch> --python-executable <Python313> mt5_trading_ai tools
+Success: no issues found in 79 source files
+[exit=0]
+
+$ python -m mypy --strict --cache-dir <frisch> --python-executable <Python313> mt5_trading_ai tools PROGRAMM/hooks   (Befehl des Pre-Commit-Hooks)
+Success: no issues found in 81 source files
+[exit=0]
+
+$ python -m mypy --strict --cache-dir <frisch> mt5_trading_ai tools PROGRAMM/hooks   (Python 3.11.7, MetaTrader5 installiert)
+Success: no issues found in 81 source files
+[exit=0]
+
+$ python -c "import MetaTrader5, sys; print(sys.version.split()[0], MetaTrader5.__version__)"
+3.11.7 5.0.6090
+[exit=0]
+
+# Die geaenderte Importzeile (tools/live_betrieb.py):
+  894: import MetaTrader5 as mt5  # noqa: N813
+# pyproject.toml [tool.mypy]:
+  mypy_path = "stubs"
+
+# Stub-Umfang (stubs/MetaTrader5.pyi), gezaehlt:
+  Funktionen (def):          27
+  Konstanten (Final[int]):   98
+  Strukturklassen (class):   9
+  Zeilen:                    705
+
+# Namen, die mt5_trading_ai/ und tools/ am Modul benutzen (grep 'mt5.<name>', 'self._mt5.<name>', getattr(mt5, '<NAME>'),
+#   TIMEFRAME_<Timeframe.value> fuer M1 M5 M15 M30 H1 H4 D1) -- jeder im Stub:
+  ACCOUNT_TRADE_MODE_DEMO      im Stub
+  ORDER_FILLING_FOK            im Stub
+  ORDER_FILLING_IOC            im Stub
+  ORDER_FILLING_RETURN         im Stub
+  ORDER_TIME_GTC               im Stub
+  ORDER_TYPE_BUY               im Stub
+  ORDER_TYPE_BUY_LIMIT         im Stub
+  ORDER_TYPE_SELL              im Stub
+  ORDER_TYPE_SELL_LIMIT        im Stub
+  POSITION_TYPE_BUY            im Stub
+  TIMEFRAME_D1                 im Stub
+  TIMEFRAME_H1                 im Stub
+  TIMEFRAME_H4                 im Stub
+  TIMEFRAME_M1                 im Stub
+  TIMEFRAME_M15                im Stub
+  TIMEFRAME_M30                im Stub
+  TIMEFRAME_M5                 im Stub
+  TRADE_ACTION_DEAL            im Stub
+  TRADE_ACTION_PENDING         im Stub
+  TRADE_ACTION_REMOVE          im Stub
+  TRADE_ACTION_SLTP            im Stub
+  TRADE_RETCODE_DONE           im Stub
+  TRADE_RETCODE_DONE_PARTIAL   im Stub
+  TRADE_RETCODE_PLACED         im Stub
+  account_info                 im Stub
+  copy_rates_range             im Stub
+  initialize                   im Stub
+  last_error                   im Stub
+  order_send                   im Stub
+  orders_get                   im Stub
+  positions_get                im Stub
+  shutdown                     im Stub
+  symbol_info                  im Stub
+  symbol_info_tick             im Stub
+  symbols_get                  im Stub
+  terminal_info                im Stub
+  gesamt 36 Namen, fehlend im Stub: 0 []

@@ -1,0 +1,115 @@
+# T6 "T", die sechs config-Skips (test_resolution 4, test_studienreihe_pruefsumme 1, test_volatility 1) -> assert <datei>.is_file().
+# Gegenstand ist eingecheckt: config/aufloesung.json, config/reihen/EURUSD_*.manifest.json, config/atr_measurements.json.
+
+## 1. Eingecheckt (git ls-files)
+$ git ls-files -- config/aufloesung.json
+config/aufloesung.json
+  -> 1 Datei(en)
+$ git ls-files -- config/reihen/EURUSD_*.manifest.json
+config/reihen/EURUSD_D1.manifest.json
+config/reihen/EURUSD_H1.manifest.json
+config/reihen/EURUSD_H4.manifest.json
+  -> 3 Datei(en)
+$ git ls-files -- config/atr_measurements.json
+config/atr_measurements.json
+  -> 1 Datei(en)
+
+## 2. Verbleibende pytest.skip(-Stellen in tests/ (alle journalabhaengig, Familie Aufzeichnung)
+  tests/test_ausstiegsdeckung.py:306: pytest.skip("keine Betriebsjournale im Arbeitsbaum")
+  tests/test_buchtreue.py:147: pytest.skip("keine Betriebsjournale im Arbeitsbaum")
+  tests/test_buchtreue.py:234: pytest.skip("keine Betriebsjournale im Arbeitsbaum")
+  tests/test_journal_leser.py:534: pytest.skip("kein betrieb/-Verzeichnis")
+  tests/test_journal_leser.py:537: pytest.skip("keine Journale vorhanden")
+  tests/test_laufabschluss.py:84: pytest.skip("keine Betriebsjournale im Arbeitsbaum")
+  tests/test_laufabschluss.py:113: pytest.skip("keine Betriebsjournale im Arbeitsbaum")
+  tests/test_laufabschluss.py:138: pytest.skip("keine Betriebsjournale im Arbeitsbaum")
+  tests/test_laufabschluss.py:168: pytest.skip("keine Betriebsjournale im Arbeitsbaum")
+  tests/test_laufabschluss.py:172: pytest.skip(f"{name} fehlt im Arbeitsbaum")
+  tests/test_laufabschluss.py:193: pytest.skip("journal-20260817T182951.jsonl fehlt im Arbeitsbaum")
+  tests/test_laufabschluss.py:220: pytest.skip("keine Betriebsjournale im Arbeitsbaum")
+  tests/test_laufabschluss.py:237: pytest.skip("keine Betriebsjournale im Arbeitsbaum")
+  tests/test_laufabschluss.py:270: pytest.skip("keine Betriebsjournale im Arbeitsbaum")
+  -> 14 Stellen (vorher 20; 6 config-Stellen entfernt)
+
+## 3. Die sechs umgebauten Tests, mit aktivem conftest (Skip = Fehlschlag)
+$ python -m pytest -p no:cacheprovider -v -rs tests/test_resolution.py::test_die_echte_aufloesungsdatei_ist_in_sich_stimmig tests/test_resolution.py::test_monatliche_kandidaten_loesen_nur_im_stundenfenster_auf tests/test_resolution.py::test_eurusd_reihe_beginnt_nicht_vor_dem_euro tests/test_resolution.py::test_wurzel_t_naeherung_ist_kein_ersatz_fuer_die_messung tests/test_studienreihe_pruefsumme.py::test_die_manifest_pruefsumme_ist_nicht_die_gemessene tests/test_volatility.py::test_die_echte_messdatei_ist_ladbar_und_traegt_begruendete_luecken
+============================= test session starts =============================
+platform win32 -- Python 3.11.7, pytest-8.3.4, pluggy-1.6.0 -- C:\Users\<konto>\AppData\Local\Programs\Python\Python311\python.exe
+Waechter A2 (tests/conftest.py): Skip = Fehlschlag.
+Waechter A10 (tests/conftest.py): Zustandsordner C:\Users\<konto>\AppData\Local\mt5_trading_ai\risiko (vorhanden: ja, 0 Dateien) und Arbeitsbaum C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_358a8ac6-c0a-4 bleiben unveraendert.
+rootdir: C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_358a8ac6-c0a-4
+configfile: pyproject.toml
+plugins: anyio-4.8.0, base-url-2.1.0, cov-6.0.0, playwright-0.7.2
+collecting ... collected 6 items
+
+tests/test_resolution.py::test_die_echte_aufloesungsdatei_ist_in_sich_stimmig PASSED [ 16%]
+tests/test_resolution.py::test_monatliche_kandidaten_loesen_nur_im_stundenfenster_auf PASSED [ 33%]
+tests/test_resolution.py::test_eurusd_reihe_beginnt_nicht_vor_dem_euro PASSED [ 50%]
+tests/test_resolution.py::test_wurzel_t_naeherung_ist_kein_ersatz_fuer_die_messung PASSED [ 66%]
+tests/test_studienreihe_pruefsumme.py::test_die_manifest_pruefsumme_ist_nicht_die_gemessene PASSED [ 83%]
+tests/test_volatility.py::test_die_echte_messdatei_ist_ladbar_und_traegt_begruendete_luecken PASSED [100%]
+
+============================== 6 passed in 1.46s ==============================
+[exit=0]
+
+## 4. Die Aenderungen (git diff -U1)
+diff --git a/tests/test_resolution.py b/tests/test_resolution.py
+index ef48127..160c4d2 100644
+--- a/tests/test_resolution.py
++++ b/tests/test_resolution.py
+@@ -669,4 +669,5 @@ def test_die_echte_aufloesungsdatei_ist_in_sich_stimmig() -> None:
+ 
+-    if not ECHTE_DATEI.is_file():
+-        pytest.skip("config/aufloesung.json nicht vorhanden")
++    # Eingecheckt (git ls-files: config/aufloesung.json). Fehlt die Datei, fehlt der
++    # Gegenstand dieses Tests -- das ist ein Fehlschlag, kein Skip (A2).
++    assert ECHTE_DATEI.is_file(), f"{ECHTE_DATEI} fehlt, ist aber eingecheckt"
+     roh = json.loads(ECHTE_DATEI.read_text(encoding="utf-8"))
+@@ -713,4 +714,5 @@ def test_monatliche_kandidaten_loesen_nur_im_stundenfenster_auf() -> None:
+ 
+-    if not ECHTE_DATEI.is_file():
+-        pytest.skip("config/aufloesung.json nicht vorhanden")
++    # Eingecheckt (git ls-files: config/aufloesung.json). Fehlt die Datei, fehlt der
++    # Gegenstand dieses Tests -- das ist ein Fehlschlag, kein Skip (A2).
++    assert ECHTE_DATEI.is_file(), f"{ECHTE_DATEI} fehlt, ist aber eingecheckt"
+     roh = json.loads(ECHTE_DATEI.read_text(encoding="utf-8"))
+@@ -747,4 +749,5 @@ def test_eurusd_reihe_beginnt_nicht_vor_dem_euro() -> None:
+     manifeste = sorted((REPO / "config" / "reihen").glob("EURUSD_*.manifest.json"))
+-    if not manifeste:
+-        pytest.skip("keine EURUSD-Manifeste vorhanden")
++    # Eingecheckt (git ls-files: config/reihen/EURUSD_{D1,H1,H4}.manifest.json = 3).
++    # Fehlen sie, fehlt der Gegenstand -- Fehlschlag, kein Skip (A2).
++    assert len(manifeste) == 3, f"EURUSD-Manifeste unter config/reihen: {manifeste}"
+     for pfad in manifeste:
+@@ -766,4 +769,5 @@ def test_wurzel_t_naeherung_ist_kein_ersatz_fuer_die_messung() -> None:
+ 
+-    if not ECHTE_DATEI.is_file():
+-        pytest.skip("config/aufloesung.json nicht vorhanden")
++    # Eingecheckt (git ls-files: config/aufloesung.json). Fehlt die Datei, fehlt der
++    # Gegenstand dieses Tests -- das ist ein Fehlschlag, kein Skip (A2).
++    assert ECHTE_DATEI.is_file(), f"{ECHTE_DATEI} fehlt, ist aber eingecheckt"
+     roh = json.loads(ECHTE_DATEI.read_text(encoding="utf-8"))
+diff --git a/tests/test_studienreihe_pruefsumme.py b/tests/test_studienreihe_pruefsumme.py
+index e4e7a94..bfe0be8 100644
+--- a/tests/test_studienreihe_pruefsumme.py
++++ b/tests/test_studienreihe_pruefsumme.py
+@@ -136,4 +136,5 @@ def test_die_manifest_pruefsumme_ist_nicht_die_gemessene() -> None:
+     """
+-    if not EURUSD_MANIFEST.is_file():
+-        pytest.skip("config/reihen/EURUSD_H1.manifest.json nicht vorhanden")
++    # Eingecheckt (git ls-files: config/reihen/EURUSD_H1.manifest.json). Fehlt die
++    # Datei, fehlt der Gegenstand -- Fehlschlag, kein Skip (A2).
++    assert EURUSD_MANIFEST.is_file(), f"{EURUSD_MANIFEST} fehlt, ist aber eingecheckt"
+     manifest = json.loads(EURUSD_MANIFEST.read_text(encoding="utf-8"))
+diff --git a/tests/test_volatility.py b/tests/test_volatility.py
+index c83cf1f..ea22b98 100644
+--- a/tests/test_volatility.py
++++ b/tests/test_volatility.py
+@@ -314,4 +314,5 @@ def test_die_echte_messdatei_ist_ladbar_und_traegt_begruendete_luecken() -> None
+     """Positivtest gegen die im Repo liegende Messung -- kein Fixture-Ersatz."""
+-    if not ECHTE_DATEI.is_file():
+-        pytest.skip("config/atr_measurements.json nicht vorhanden")
++    # Eingecheckt (git ls-files: config/atr_measurements.json). Fehlt die Datei, fehlt
++    # der Gegenstand -- Fehlschlag, kein Skip (A2).
++    assert ECHTE_DATEI.is_file(), f"{ECHTE_DATEI} fehlt, ist aber eingecheckt"
+     messungen = load_atr_measurements(ECHTE_DATEI)

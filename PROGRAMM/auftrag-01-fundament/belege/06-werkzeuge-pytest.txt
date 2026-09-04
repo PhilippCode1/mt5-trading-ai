@@ -1,0 +1,136 @@
+# Beleg 06-werkzeuge: pytest der Eichfall-Datei tests/eichfall_werkzeuge.py (Worktree, 2026-09-03)
+# Befehl: PYTHONDONTWRITEBYTECODE=1 python -m pytest -q -p no:cacheprovider -rf tests/eichfall_werkzeuge.py
+# Die 5 roten Faelle liegen in Dateien anderer Familien (betrieb_auswerten.py, check_doc_numbers.py,
+# check_docs_claims.py, geheimnis_scan.py: kein argparse -- --help wird ignoriert und der volle Lauf gefahren;
+# live_betrieb.py: Traceback aus venue/mt5.py:2156 bei fehlendem Paket). Pfade redigiert.
+
+.......F.FF....F....................F..............                      [100%]
+================================== FAILURES ===================================
+_______ test_help_antwortet_mit_exit_0_und_usage[betrieb_auswerten.py] ________
+
+werkzeug = WindowsPath('C:/Users/<konto>/mt5_trading_ai/.claude/worktrees/wf_358a8ac6-c0a-1/tools/betrieb_auswerten.py')
+tmp_path = WindowsPath('C:/Users/<konto>/AppData/Local/Temp/pytest-of-Acer/pytest-265/test_help_antwortet_mit_exit_05')
+
+    @pytest.mark.parametrize("werkzeug", WERKZEUGE, ids=[w.name for w in WERKZEUGE])
+    def test_help_antwortet_mit_exit_0_und_usage(werkzeug: Path, tmp_path: Path) -> None:
+        befund = pruefe_help(werkzeug, env=shim_umgebung(tmp_path / "shim"), cwd=REPO)
+>       assert befund.gruen, f"{befund.werkzeug}: {befund.grund}\n{befund.lauf.ausgabe}"
+E       AssertionError: betrieb_auswerten.py: exit=1, usage=nein, stderr: C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_358a8ac6-c0a-1\betrieb\--help gibt es nicht.
+E         C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_358a8ac6-c0a-1\betrieb\--help gibt es nicht.
+E         
+E       assert False
+E        +  where False = Befund(werkzeug='betrieb_auswerten.py', gruen=False, grund='exit=1, usage=nein, stderr: C:\Users\<konto>\\mt5_trading_a...'', stderr='C:\Users\<konto>\\mt5_trading_ai\\.claude\\worktrees\\wf_358a8ac6-c0a-1\\betrieb\\--help gibt es nicht.\n')).gruen
+
+tests\eichfall_werkzeuge.py:361: AssertionError
+_______ test_help_antwortet_mit_exit_0_und_usage[check_doc_numbers.py] ________
+
+werkzeug = WindowsPath('C:/Users/<konto>/mt5_trading_ai/.claude/worktrees/wf_358a8ac6-c0a-1/tools/check_doc_numbers.py')
+tmp_path = WindowsPath('C:/Users/<konto>/AppData/Local/Temp/pytest-of-Acer/pytest-265/test_help_antwortet_mit_exit_07')
+
+    @pytest.mark.parametrize("werkzeug", WERKZEUGE, ids=[w.name for w in WERKZEUGE])
+    def test_help_antwortet_mit_exit_0_und_usage(werkzeug: Path, tmp_path: Path) -> None:
+        befund = pruefe_help(werkzeug, env=shim_umgebung(tmp_path / "shim"), cwd=REPO)
+>       assert befund.gruen, f"{befund.werkzeug}: {befund.grund}\n{befund.lauf.ausgabe}"
+E       AssertionError: check_doc_numbers.py: exit=1, usage=nein
+E         FEHLGESCHLAGEN - Zahlen-Drift zwischen Doku und Code:
+E         
+E           README.md: test_function_count = 1313 im Block, Code sagt 1330
+E           README.md: source_lines = 16342 im Block, Code sagt 16453
+E         
+E         Kennzahlen leben im README-KENNZAHLEN-Block; andere Wurzeldokumente verweisen. Archiv und Eingaenge sind per Manifest gesichert (A14).
+E         
+E       assert False
+E        +  where False = Befund(werkzeug='check_doc_numbers.py', gruen=False, grund='exit=1, usage=nein', lauf=Lauf(befehl=('C:\Users\<konto>\\A...ZAHLEN-Block; andere Wurzeldokumente verweisen. Archiv und Eingaenge sind per Manifest gesichert (A14).\n', stderr='')).gruen
+
+tests\eichfall_werkzeuge.py:361: AssertionError
+_______ test_help_antwortet_mit_exit_0_und_usage[check_docs_claims.py] ________
+
+werkzeug = WindowsPath('C:/Users/<konto>/mt5_trading_ai/.claude/worktrees/wf_358a8ac6-c0a-1/tools/check_docs_claims.py')
+tmp_path = WindowsPath('C:/Users/<konto>/AppData/Local/Temp/pytest-of-Acer/pytest-265/test_help_antwortet_mit_exit_08')
+
+    @pytest.mark.parametrize("werkzeug", WERKZEUGE, ids=[w.name for w in WERKZEUGE])
+    def test_help_antwortet_mit_exit_0_und_usage(werkzeug: Path, tmp_path: Path) -> None:
+        befund = pruefe_help(werkzeug, env=shim_umgebung(tmp_path / "shim"), cwd=REPO)
+>       assert befund.gruen, f"{befund.werkzeug}: {befund.grund}\n{befund.lauf.ausgabe}"
+E       AssertionError: check_docs_claims.py: exit=0, usage=nein
+E         ok - 13/32 lebende Markdown-Dateien (Wurzel: README.md, MODULES.md, CLAUDE.md), keine Zusicherung ohne Beleg; per Manifest gesichert statt gescannt: archiv, PROGRAMM/eingang, PROGRAMM/masterprompts
+E         
+E       assert False
+E        +  where False = Befund(werkzeug='check_docs_claims.py', gruen=False, grund='exit=0, usage=nein', lauf=Lauf(befehl=('C:\Users\<konto>\\A...ung ohne Beleg; per Manifest gesichert statt gescannt: archiv, PROGRAMM/eingang, PROGRAMM/masterprompts\n', stderr='')).gruen
+
+tests\eichfall_werkzeuge.py:361: AssertionError
+_________ test_help_antwortet_mit_exit_0_und_usage[geheimnis_scan.py] _________
+
+werkzeug = WindowsPath('C:/Users/<konto>/mt5_trading_ai/.claude/worktrees/wf_358a8ac6-c0a-1/tools/geheimnis_scan.py')
+tmp_path = WindowsPath('C:/Users/<konto>/AppData/Local/Temp/pytest-of-Acer/pytest-265/test_help_antwortet_mit_exit_013')
+
+    @pytest.mark.parametrize("werkzeug", WERKZEUGE, ids=[w.name for w in WERKZEUGE])
+    def test_help_antwortet_mit_exit_0_und_usage(werkzeug: Path, tmp_path: Path) -> None:
+        befund = pruefe_help(werkzeug, env=shim_umgebung(tmp_path / "shim"), cwd=REPO)
+>       assert befund.gruen, f"{befund.werkzeug}: {befund.grund}\n{befund.lauf.ausgabe}"
+E       AssertionError: geheimnis_scan.py: exit=None, usage=nein, stderr: <Zeitschranke 60 s ueberschritten>
+E         
+E         <Zeitschranke 60 s ueberschritten>
+E       assert False
+E        +  where False = Befund(werkzeug='geheimnis_scan.py', gruen=False, grund='exit=None, usage=nein, stderr: <Zeitschranke 60 s ueberschrit...8ac6-c0a-1\\tools\\geheimnis_scan.py', '--help'), exit=None, stdout='', stderr='\n<Zeitschranke 60 s ueberschritten>')).gruen
+
+tests\eichfall_werkzeuge.py:361: AssertionError
+_______ test_ohne_terminal_eine_benannte_zeile_und_exit_2[live_betrieb] _______
+
+aufruf = Terminalaufruf(datei='live_betrieb.py', kennung='live_betrieb', argumente=<function <lambda> at 0x0000022737151800>)
+tmp_path = WindowsPath('C:/Users/<konto>/AppData/Local/Temp/pytest-of-Acer/pytest-265/test_ohne_terminal_eine_benann4')
+
+    @pytest.mark.parametrize(
+        "aufruf", TERMINALAUFRUFE, ids=[a.kennung for a in TERMINALAUFRUFE]
+    )
+    def test_ohne_terminal_eine_benannte_zeile_und_exit_2(
+        aufruf: Terminalaufruf, tmp_path: Path
+    ) -> None:
+        env = shim_umgebung(tmp_path / "shim")
+        befund = pruefe_benannt(
+            TOOLS / aufruf.datei, aufruf.argumente(tmp_path), env=env, cwd=REPO
+        )
+>       assert befund.gruen, f"{befund.werkzeug}: {befund.grund}\n{befund.lauf.ausgabe}"
+E       AssertionError: live_betrieb.py --dauer 0.001 --takt 1: exit=1 (verlangt 2), benannte Zeilen=0 (verlangt 1), FEHLGESCHLAGEN-Zeilen=0 (verlangt 1), Traceback=ja (verlangt nein)
+E         Traceback (most recent call last):
+E           File "C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_358a8ac6-c0a-1\mt5_trading_ai\venue\mt5.py", line 2156, in initialize
+E             mt5: Any = importlib.import_module("MetaTrader5")
+E                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           File "C:\Users\<konto>\AppData\Local\Programs\Python\Python311\Lib\importlib\__init__.py", line 126, in import_module
+E             return _bootstrap._gcd_import(name[level:], package, level)
+E                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           File "<frozen importlib._bootstrap>", line 1204, in _gcd_import
+E           File "<frozen importlib._bootstrap>", line 1176, in _find_and_load
+E           File "<frozen importlib._bootstrap>", line 1147, in _find_and_load_unlocked
+E           File "<frozen importlib._bootstrap>", line 690, in _load_unlocked
+E           File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+E           File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+E           File "C:\Users\<konto>\AppData\Local\Temp\pytest-of-Acer\pytest-265\test_ohne_terminal_eine_benann4\shim\MetaTrader5.py", line 2, in <module>
+E             raise ImportError("MetaTrader5 (Shim der Eichfaelle): Paket absichtlich unsichtbar")
+E         ImportError: MetaTrader5 (Shim der Eichfaelle): Paket absichtlich unsichtbar
+E         
+E         The above exception was the direct cause of the following exception:
+E         
+E         Traceback (most recent call last):
+E           File "C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_358a8ac6-c0a-1\tools\live_betrieb.py", line 1250, in <module>
+E             sys.exit(main())
+E                      ^^^^^^
+E           File "C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_358a8ac6-c0a-1\tools\live_betrieb.py", line 988, in main
+E             if not terminal.initialize():
+E                    ^^^^^^^^^^^^^^^^^^^^^
+E           File "C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_358a8ac6-c0a-1\mt5_trading_ai\venue\mt5.py", line 2158, in initialize
+E             raise VenueUnavailableError(
+E         mt5_trading_ai.venue.protocol.VenueUnavailableError: MetaTrader5 nicht installiert (pip install MetaTrader5)
+E         
+E       assert False
+E        +  where False = Befund(werkzeug='live_betrieb.py --dauer 0.001 --takt 1', gruen=False, grund='exit=1 (verlangt 2), benannte Zeilen=0 (...ror(\nmt5_trading_ai.venue.protocol.VenueUnavailableError: MetaTrader5 nicht installiert (pip install MetaTrader5)\n')).gruen
+
+tests\eichfall_werkzeuge.py:386: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/eichfall_werkzeuge.py::test_help_antwortet_mit_exit_0_und_usage[betrieb_auswerten.py]
+FAILED tests/eichfall_werkzeuge.py::test_help_antwortet_mit_exit_0_und_usage[check_doc_numbers.py]
+FAILED tests/eichfall_werkzeuge.py::test_help_antwortet_mit_exit_0_und_usage[check_docs_claims.py]
+FAILED tests/eichfall_werkzeuge.py::test_help_antwortet_mit_exit_0_und_usage[geheimnis_scan.py]
+FAILED tests/eichfall_werkzeuge.py::test_ohne_terminal_eine_benannte_zeile_und_exit_2[live_betrieb]
+5 failed, 46 passed in 122.76s (0:02:02)
+exit=1

@@ -1,0 +1,74 @@
+# T6 "T", Windows-Pfad-Test plattformneutral (tests/test_risiko_zustand.py::test_localappdata_wird_nur_unter_windows_gefragt).
+# VORHER: rot auf ubuntu-latest (CI-Lauf 4d02db3, Beleg 00-ci-nach-t0.txt Z. 22-24): assert ('/', 'home', ..., 'state') == ('C:\\Users\\...Data\\Local',)
+# Ursache risiko_zustand.py standard_zustandsordner: Path(roh).is_absolute() mit dem Path der LAUFENDEN Plattform; unter POSIX ist 'C:\Users\...' relativ.
+# NACHHER: die Pfadregel der GEFRAGTEN Plattform entscheidet (PureWindowsPath fuer ist_windows=True, PurePosixPath sonst); der Test vergleicht in denselben Regeln.
+
+## 1. Simulation der POSIX-Sicht (PurePosixPath als Path der laufenden Plattform)
+$ python posix_sicht.py <worktree>
+LOCALAPPDATA (Testwert): 'C:\\Users\\Test\\AppData\\Local'
+PurePosixPath(LOKAL).is_absolute()   = False
+PureWindowsPath(LOKAL).is_absolute() = True
+Path(LOKAL).is_absolute() auf diesem Rechner (win32) = True
+
+ALT, Windows-Zweig unter POSIX: /home/runner/.local/state/mt5_trading_ai/risiko
+  parts[:-2] = ('/', 'home', 'runner', '.local', 'state')
+  erwartet   = ('C:\\Users\\Test\\AppData\\Local',)  -> gleich: False
+  (das ist die Assertion aus dem CI-Beleg 00-ci-nach-t0.txt, Zeile 22)
+NEU, Windows-Zweig unter POSIX: C:\Users\Test\AppData\Local/mt5_trading_ai/risiko
+  PureWindowsPath(str(neu)) == PureWindowsPath(LOKAL, 'mt5_trading_ai', 'risiko'): True
+  PureWindowsPath(str(neu)).is_absolute(): True
+NEU, POSIX-Zweig unter POSIX (XDG_STATE_HOME=/home/runner/eigener-zustand): /home/runner/eigener-zustand/mt5_trading_ai/risiko
+
+Echte Funktion auf diesem Rechner:
+  ist_windows=True : C:\Users\Test\AppData\Local\mt5_trading_ai\risiko
+  ist_windows=False: \home\test\eigener-zustand\mt5_trading_ai\risiko
+  PureWindowsPath(str(w)) == PureWindowsPath(LOKAL, 'mt5_trading_ai', 'risiko'): True
+  PurePosixPath(p.as_posix()) == PurePosixPath(XDG, 'mt5_trading_ai', 'risiko'): True
+  'AppData' not in str(p): True
+
+Gegenprobe der alten Testfassung (XDG = Path.home()/'eigener-zustand', nur auf dem
+laufenden Rechner absolut) gegen die neue Regel auf diesem Rechner:
+  PurePosixPath('C:\\Users\\<konto>\\eigener-zustand').is_absolute() = False
+  -> der POSIX-Zweig nimmt den Heimatpfad; darum traegt der Test jetzt einen POSIX-Pfad.
+
+## 2. Der Test auf diesem Rechner (Windows), mit aktivem conftest
+$ python -m pytest -p no:cacheprovider -v tests/test_risiko_zustand.py -k localappdata or unbrauchbare_systemvariable or relativer_pfad or paketbaum
+============================= test session starts =============================
+platform win32 -- Python 3.11.7, pytest-8.3.4, pluggy-1.6.0 -- C:\Users\<konto>\AppData\Local\Programs\Python\Python311\python.exe
+Waechter A2 (tests/conftest.py): Skip = Fehlschlag.
+Waechter A10 (tests/conftest.py): Zustandsordner C:\Users\<konto>\AppData\Local\mt5_trading_ai\risiko (vorhanden: ja, 0 Dateien) und Arbeitsbaum C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_358a8ac6-c0a-4 bleiben unveraendert.
+rootdir: C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_358a8ac6-c0a-4
+configfile: pyproject.toml
+plugins: anyio-4.8.0, base-url-2.1.0, cov-6.0.0, playwright-0.7.2
+collecting ... collected 47 items / 43 deselected / 4 selected
+
+tests/test_risiko_zustand.py::test_localappdata_wird_nur_unter_windows_gefragt PASSED [ 25%]
+tests/test_risiko_zustand.py::test_eine_unbrauchbare_systemvariable_wird_uebergangen PASSED [ 50%]
+tests/test_risiko_zustand.py::test_relativer_pfad_aus_der_umgebung_wird_abgewiesen PASSED [ 75%]
+tests/test_risiko_zustand.py::test_ein_pfad_im_paketbaum_wird_abgewiesen PASSED [100%]
+
+====================== 4 passed, 43 deselected in 1.55s =======================
+[exit=0]
+
+## 3. Die geaenderte Stelle (git diff -U2 der Funktion)
+diff --git a/mt5_trading_ai/execution/risiko_zustand.py b/mt5_trading_ai/execution/risiko_zustand.py
+index 1f2e426..ffc5999 100644
+--- a/mt5_trading_ai/execution/risiko_zustand.py
++++ b/mt5_trading_ai/execution/risiko_zustand.py
+@@ -405,5 +405,15 @@ def standard_zustandsordner(
+     plattform = "LOCALAPPDATA" if windows else "XDG_STATE_HOME"
+     roh = umg.get(plattform)
+-    if roh and Path(roh).is_absolute():
++    # Ob der Kandidat absolut ist, entscheiden die Pfadregeln der GEFRAGTEN Plattform,
++    # nicht die der laufenden: ``Path("C:\\Users\\...").is_absolute()`` ist unter POSIX
++    # ``False`` (dort ist ein Windows-Pfad ein relatives Namensstueck), und genau daran
++    # fiel der Test dieser Regel auf ubuntu-latest (CI-Lauf 4d02db3): der
++    # Windows-Zweig nahm den Heimatpfad statt ``%LOCALAPPDATA%``. ``PureWindowsPath``
++    # und ``PurePosixPath`` rechnen auf jedem Rechner gleich; ``os.name`` bleibt
++    # unangetastet, und das zurueckgegebene ``Path`` ist weiter das der Plattform.
++    from pathlib import PurePosixPath, PureWindowsPath
++
++    rein = PureWindowsPath if windows else PurePosixPath
++    if roh and rein(roh).is_absolute():
+         return Path(roh) / "mt5_trading_ai" / "risiko"
+     return Path.home() / ".local" / "state" / "mt5_trading_ai" / "risiko"

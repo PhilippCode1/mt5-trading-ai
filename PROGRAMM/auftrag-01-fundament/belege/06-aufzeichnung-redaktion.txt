@@ -1,0 +1,69 @@
+# T6 Familie Aufzeichnung: die neue Redaktion (Kopf-Fassung 2) gegen die alte (Kopf-Fassung 1)
+# Quelle: 21 Journale unter C:\Users\<konto>\mt5_trading_ai\betrieb (nur gelesen; gitignoriert, mit Kontonummer)
+# Befehl: python tools/aufzeichnung_redigieren.py --quelle C:/Users/<konto>/mt5_trading_ai/betrieb --ziel aufzeichnungen/demo-2026-08-17.jsonl
+# Windows, Python 3.11.7, 2026-09-03
+
+NEU  aufzeichnungen/demo-2026-08-17.jsonl
+  Zeilen 5814 (1 Kopf + 5813 Saetze), 2048568 Bytes, SHA-256 b4735a7c23285c94e5e0d9e1c0d68fd24f680a6e9af2b1bcee3e2b31dbbb0f4b
+  Kopf-Fassung 2; behalten_gesamt 5813, weggelassen_gesamt 11353
+  saetze_behalten     : {"buch_uebernommen": 6, "ende": 19, "eroeffnet": 16, "eroeffnungsversuch": 4343, "geschlossen": 26, "halt_erklaert": 4, "schliessen_fehlgeschlagen": 7, "start": 21, "stoppdatei": 5, "takt": 1360, "vom_broker_geschlossen": 6}
+  saetze_weggelassen  : {"kurs": 7010, "signal": 4343}
+  felder_weggelassen  : {"schritte": 4343}
+  felder_entfernt     : {"pfad": 5}
+  felder_ersetzt      : {"client_order_id": 27, "konto": 1, "lauf": 21, "order_id": 42, "position_id": 19}
+  quelle              : {"journale": 21, "saetze": 17166}
+  gezaehlt am Inhalt  : {"buch_uebernommen": 6, "ende": 19, "eroeffnet": 16, "eroeffnungsversuch": 4343, "geschlossen": 26, "halt_erklaert": 4, "schliessen_fehlgeschlagen": 7, "start": 21, "stoppdatei": 5, "takt": 1360, "vom_broker_geschlossen": 6}  -> stimmt mit Kopf
+  Laufkennungen       : 21 verschiedene; ohne Kennung: 0 Saetze; erste drei: ['LAUF-01', 'LAUF-02', 'LAUF-03']
+  takt-Saetze         : 1360; davon mit 'positionen' 1170, mit 'halt' 1360, mit 'equity' 1360
+
+ALT  archiv/aufzeichnungen/demo-2026-08-17.v1.jsonl
+  Zeilen 4454 (1 Kopf + 4453 Saetze), 1209181 Bytes, SHA-256 f3e032ebc1980065feb9767d23456a5ffd40075d6d818652068ba59eef84c527
+  Kopf-Fassung 1; behalten_gesamt 4453, weggelassen_gesamt 12713
+  saetze_behalten     : {"buch_uebernommen": 6, "ende": 19, "eroeffnet": 16, "eroeffnungsversuch": 4343, "geschlossen": 26, "halt_erklaert": 4, "schliessen_fehlgeschlagen": 7, "start": 21, "stoppdatei": 5, "vom_broker_geschlossen": 6}
+  saetze_weggelassen  : {"kurs": 7010, "signal": 4343, "takt": 1360}
+  felder_weggelassen  : ["schritte"]
+  gezaehlt am Inhalt  : {"buch_uebernommen": 6, "ende": 19, "eroeffnet": 16, "eroeffnungsversuch": 4343, "geschlossen": 26, "halt_erklaert": 4, "schliessen_fehlgeschlagen": 7, "start": 21, "stoppdatei": 5, "vom_broker_geschlossen": 6}  -> stimmt mit Kopf
+  Laufkennungen       : 5 verschiedene; ohne Kennung: 545 Saetze; erste drei: ['LAUF-01', 'LAUF-02', 'LAUF-03']
+  takt-Saetze         : 0; davon mit 'positionen' 0, mit 'halt' 0, mit 'equity' 0
+
+Laufkennung -> Journal (Kopf 'laeufe' der neuen Fassung; Zeitreihenfolge = Namensreihenfolge):
+  LAUF-01  journal-20260817T142137.jsonl
+  LAUF-02  journal-20260817T142311.jsonl
+  LAUF-03  journal-20260817T144115.jsonl
+  LAUF-04  journal-20260817T144355.jsonl
+  LAUF-05  journal-20260817T144718.jsonl
+  LAUF-06  journal-20260817T145021.jsonl
+  LAUF-07  journal-20260817T145330.jsonl
+  LAUF-08  journal-20260817T145606.jsonl
+  LAUF-09  journal-20260817T145822.jsonl
+  LAUF-10  journal-20260817T150024.jsonl
+  LAUF-11  journal-20260817T150428.jsonl
+  LAUF-12  journal-20260817T150513.jsonl
+  LAUF-13  journal-20260817T151045.jsonl
+  LAUF-14  journal-20260817T151127.jsonl
+  LAUF-15  journal-20260817T151324.jsonl
+  LAUF-16  journal-20260817T160253.jsonl
+  LAUF-17  journal-20260817T173032.jsonl
+  LAUF-18  journal-20260817T173413.jsonl
+  LAUF-19  journal-20260817T174305.jsonl
+  LAUF-20  journal-20260817T182800.jsonl
+  LAUF-21  journal-20260817T182951.jsonl
+
+Was die Metriken lesen (mt5_trading_ai/betrieb/dienstguete.py, nur gelesen):
+  buchtreue           : takt.halt, halt_erklaert.weiter_gesperrt (Fenster bis zum naechsten takt)
+  ausstiegsdeckung    : start, eroeffnungsversuch.eroeffnet, geschlossen/vom_broker_geschlossen, ende.offen_geblieben, takt.positionen
+  laufabschluss       : start, ende;  ausstiegsverlaesslichkeit: geschlossen, schliessen_fehlgeschlagen
+  nach_codestand      : version je Satz;  journal.py equity_reihe: takt.equity, takt.ts
+  -> alle diese Felder bleiben in der neuen Fassung; redigiert werden konto, order_id, position_id (auch takt.positionen[].position_id), client_order_id, pfad; lauf wird je Journal gesetzt.
+
+Nicht umkehrbar: 0 Treffer der Muster \b\d{6,12}\b, [A-Za-z]:\\, "(open|close|fl)-, \b[0-9a-f]{32}\b im Text der neuen Fassung (tests/test_stufe5_ausfuehrung.py::test_die_aufzeichnung_traegt_keine_unredigierten_kennungen und die Eigenpruefung des Werkzeugs).
+
+Archiv: archiv/aufzeichnungen/demo-2026-08-17.v1.jsonl per git mv, archiv/aufzeichnungen/HERKUNFT.txt, Manifest erneuert:
+  ok - archiv: 162 Dateien unveraendert
+  ok - PROGRAMM/eingang: 73 Dateien unveraendert
+  ok - PROGRAMM/masterprompts: 10 Dateien unveraendert
+  [exit=0]
+  f3e032ebc1980065feb9767d23456a5ffd40075d6d818652068ba59eef84c527  aufzeichnungen/demo-2026-08-17.v1.jsonl
+  3db732f2425659c7bce577de99b8cccb2f0d4fc267ccdbb9d6b7a1e5065a1040  aufzeichnungen/HERKUNFT.txt
+
+--pruefen (Worktree ohne betrieb/ -> Eigenpruefung; mit --quelle Hauptrepo -> Abgleich Byte fuer Byte): siehe 06-aufzeichnung-werkzeuge.txt

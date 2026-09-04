@@ -134,8 +134,9 @@ def test_die_manifest_pruefsumme_ist_nicht_die_gemessene() -> None:
     es von Bauart her nicht sein. Der Registereintrag traegt sie trotzdem noch; das ist
     der offene Rest von E3 und steht im Modulkopf von ``backtest/ereignisstudie.py``.
     """
-    if not EURUSD_MANIFEST.is_file():
-        pytest.skip("config/reihen/EURUSD_H1.manifest.json nicht vorhanden")
+    # Eingecheckt (git ls-files: config/reihen/EURUSD_H1.manifest.json). Fehlt die
+    # Datei, fehlt der Gegenstand -- Fehlschlag, kein Skip (A2).
+    assert EURUSD_MANIFEST.is_file(), f"{EURUSD_MANIFEST} fehlt, ist aber eingecheckt"
     manifest = json.loads(EURUSD_MANIFEST.read_text(encoding="utf-8"))
     aus_dem_manifest = str(manifest["checksum"])
     assert _studie(_kerzen(300)) != aus_dem_manifest

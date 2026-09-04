@@ -30,6 +30,15 @@ richtig: erst sperren, dann **genau den einen** erkannten gutartigen Fall aufloe
 Geaendert wurde deshalb nicht die Ordnung, sondern die **Aufzeichnung**: der
 ``halt_erklaert``-Satz traegt jetzt ``weiter_gesperrt`` -- den Zustand, der die
 Eintritte wirklich regiert.
+
+WORAN GEMESSEN WIRD (Auftrag 1, T6, Befund T)
+---------------------------------------------
+Die zwei Faelle auf den „echten Journalen" lesen die eingecheckte Aufzeichnung
+``aufzeichnungen/demo-2026-08-17.jsonl`` (Kopf-Fassung 2, mit ``takt``-Saetzen), nicht
+mehr ``betrieb/`` -- das ist gitignoriert, und die Faelle uebersprangen sich auf jedem
+Klon. Gemessen (Beleg ``06-aufzeichnung-metriken-vergleich.txt``): Buchtreue an den 21
+Journalen 1.340 von 1.356 Takten, 4 unbeurteilbar; an der Aufzeichnung dieselben
+Zahlen. Fehlt die Aufzeichnung, scheitern die Faelle (Katalog A2).
 """
 
 from __future__ import annotations
@@ -47,7 +56,21 @@ from mt5_trading_ai.betrieb.dienstguete import (
 )
 
 ROOT = Path(__file__).resolve().parents[1]
-JOURNALE = ROOT / "betrieb"
+AUFZEICHNUNG = ROOT / "aufzeichnungen" / "demo-2026-08-17.jsonl"
+
+
+def _aufzeichnung_zeilen() -> list[str]:
+    """Die Satzzeilen der Aufzeichnung ohne Kopfzeile. Fehlt sie: rot, nicht skip."""
+    assert AUFZEICHNUNG.is_file(), (
+        f"{AUFZEICHNUNG.relative_to(ROOT).as_posix()} fehlt -- kein Gegenstand fuer "
+        "die Dauertore (Katalog A2). Erzeugen mit: python tools/aufzeichnung_redigieren.py"
+    )
+    zeilen = [
+        z for z in AUFZEICHNUNG.read_text(encoding="utf-8").splitlines() if z.strip()
+    ]
+    assert zeilen and json.loads(zeilen[0]).get("art") == "_kopf"
+    assert len(zeilen) > 1, "Aufzeichnung ohne Saetze"
+    return zeilen[1:]
 
 
 def _z(**felder: object) -> str:
@@ -140,12 +163,10 @@ def test_die_korrektur_rettet_das_ziel_NICHT() -> None:
     Korrektur die Zahl ueber die Schwelle gehoben, waere sie eine
     Schwellenverschiebung durch die Hintertuer gewesen -- egal wie gut begruendet.
     """
-    zeilen: list[str] = []
-    for datei in sorted(JOURNALE.glob("*.jsonl")):
-        zeilen.extend(datei.read_text(encoding="utf-8").splitlines())
-    if not zeilen:
-        pytest.skip("keine Betriebsjournale im Arbeitsbaum")
-    wert = buchtreue([json.loads(z) for z in zeilen if z.strip()])
+    wert = buchtreue([json.loads(z) for z in _aufzeichnung_zeilen()])
+    # Gemessen an den 21 Journalen wie an der Aufzeichnung: 1.340 sauber, 16 gesperrt,
+    # 4 unbeurteilbar (halt_erklaert ohne weiter_gesperrt, vor dem Feld geschrieben).
+    assert (wert.gelungen, wert.gesamt, wert.unbeurteilbar) == (1340, 1356, 4)
     assert wert.anteil is not None
     assert wert.anteil < 0.99, (
         f"Die Buchtreue liegt bei {wert.anteil:.4%} und damit ueber der Schwelle -- "
@@ -227,18 +248,20 @@ def test_auf_den_echten_journalen_sitzen_die_sperren_im_ueberholten_code() -> No
     neuer Betriebslauf dazugekommen (dann gehoert er neu bewertet) oder die Sperre ist
     zurueck.
     """
-    zeilen: list[str] = []
-    for datei in sorted(JOURNALE.glob("*.jsonl")):
-        zeilen.extend(datei.read_text(encoding="utf-8").splitlines())
-    if not zeilen:
-        pytest.skip("keine Betriebsjournale im Arbeitsbaum")
-    staende = nach_codestand(zeilen)
+    staende = nach_codestand(_aufzeichnung_zeilen())
     sauber_gestempelt = {
         stand: gruppe
         for stand, gruppe in staende.items()
         if stand != OHNE_STEMPEL and NICHT_REPRODUZIERBAR not in stand
     }
-    assert sauber_gestempelt, "kein einziger sauber gestempelter Lauf"
+    # Gemessen: vier Staende, davon EINER sauber gestempelt (d5c7133, der lange Lauf
+    # mit 1.118 Takten); die 16 Sperren sitzen in 'ohne Stempel' (178 von 190) und
+    # '4ad1683+aenderungen' (43 von 47).
+    assert len(staende) == 4
+    assert sorted(sauber_gestempelt) == ["d5c7133"], (
+        "kein einziger sauber gestempelter Lauf -- oder ein neuer ist dazugekommen"
+    )
+    assert sauber_gestempelt["d5c7133"]["buchtreue"].gesamt == 1118
     for stand, gruppe in sauber_gestempelt.items():
         wert = gruppe["buchtreue"]
         assert wert.anteil == pytest.approx(1.0), (

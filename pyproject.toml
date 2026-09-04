@@ -8,6 +8,9 @@ readme = "README.md"
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+# Eichfaelle des Programms NEUAUFBAU liegen in eigenen Dateien tests/eichfall_*.py
+# (Plan Auftrag 1, Entscheidung 3); ohne diesen Eintrag sammelte pytest sie nicht.
+python_files = ["test_*.py", "eichfall_*.py"]
 filterwarnings = ["ignore::DeprecationWarning"]
 # ``slow`` markiert die Faelle, die einen Unterprozess ueber die ganze Suite fahren
 # (das Mutationstor). Sie laufen mit -- die Marke ist dafuer da, sie bei Bedarf
@@ -39,6 +42,11 @@ select = ["E", "F", "I", "UP", "B"]
 [tool.mypy]
 python_version = "3.11"
 strict = true
+# ``MetaTrader5`` liegt nur auf Windows-Rechnern mit Terminal und ohne Typinformation.
+# Der Stub unter stubs/ laesst den Import auf jedem Rechner gleich aufloesen -- die
+# Linux-CI meldete sonst ``import-not-found`` in tools/live_betrieb.py (T6 "T",
+# Beleg belege/03-nachstellung/03-mypy-linuxfall.txt).
+mypy_path = "stubs"
 
 [tool.black]
 line-length = 88

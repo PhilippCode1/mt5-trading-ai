@@ -1,0 +1,79 @@
+# T6 "T", Waechter A2/A10 (tests/conftest.py) ueber der ganzen Suite ohne slow -- Worktree OHNE betrieb/ (wie ein Klon), PYTHONDONTWRITEBYTECODE=1, -p no:cacheprovider.
+
+## 0. Grundlauf VOR dem Einbau von tests/conftest.py (derselbe Baum, sonst gleich)
+$ python -m pytest -q -p no:cacheprovider -m "not slow" -rs
+  2 failed, 1498 passed, 12 skipped, 1 deselected in 200.43s (0:03:20)   (time real 3m23.481s)
+  SKIPPED-Zeilen: 12
+    SKIPPED [1] tests\test_ausstiegsdeckung.py:306: keine Betriebsjournale im Arbeitsbaum
+    SKIPPED [1] tests\test_buchtreue.py:147: keine Betriebsjournale im Arbeitsbaum
+    SKIPPED [1] tests\test_buchtreue.py:234: keine Betriebsjournale im Arbeitsbaum
+    SKIPPED [1] tests\test_journal_leser.py:534: kein betrieb/-Verzeichnis
+    SKIPPED [1] tests\test_laufabschluss.py:84: keine Betriebsjournale im Arbeitsbaum
+    SKIPPED [1] tests\test_laufabschluss.py:113: keine Betriebsjournale im Arbeitsbaum
+    SKIPPED [1] tests\test_laufabschluss.py:138: keine Betriebsjournale im Arbeitsbaum
+    SKIPPED [1] tests\test_laufabschluss.py:168: keine Betriebsjournale im Arbeitsbaum
+    SKIPPED [1] tests\test_laufabschluss.py:193: journal-20260817T182951.jsonl fehlt im Arbeitsbaum
+    SKIPPED [1] tests\test_laufabschluss.py:220: keine Betriebsjournale im Arbeitsbaum
+    SKIPPED [1] tests\test_laufabschluss.py:237: keine Betriebsjournale im Arbeitsbaum
+    SKIPPED [1] tests\test_laufabschluss.py:270: keine Betriebsjournale im Arbeitsbaum
+  FAILED/ERROR-Knoten: 2
+    test_localappdata_wird_nur_unter_windows_gefragt
+    test_readme_source_lines_matches_code
+
+## 1. Mit Waechtern, OHNE Deselect: die 12 journalabhaengigen Tests werden ROT (gewollt)
+$ python -m pytest -p no:cacheprovider -m "not slow" -rs --durations=0 --durations-min=0
+  14 failed, 1504 passed, 1 deselected in 456.79s (0:07:36)   (time real 7m39.908s)
+  FAILED/ERROR-Knoten: 14
+    test_readme_source_lines_matches_code  <- README-Kennzahlenblock (zentral erzeugt; Zeilen +10 durch risiko_zustand.py, Tests +6 durch eichfall_skipgate.py)
+    test_readme_test_function_count_matches_code  <- README-Kennzahlenblock (zentral erzeugt; Zeilen +10 durch risiko_zustand.py, Tests +6 durch eichfall_skipgate.py)
+    tests/test_ausstiegsdeckung.py::test_rot_die_neue_regel_schlaegt_auf_den_echten_journalen_an  <- journalabhaengig, Skip -> Fehlschlag durch Waechter A2 (Familie Aufzeichnung baut um)
+    tests/test_buchtreue.py::test_auf_den_echten_journalen_sitzen_die_sperren_im_ueberholten_code  <- journalabhaengig, Skip -> Fehlschlag durch Waechter A2 (Familie Aufzeichnung baut um)
+    tests/test_buchtreue.py::test_die_korrektur_rettet_das_ziel_NICHT  <- journalabhaengig, Skip -> Fehlschlag durch Waechter A2 (Familie Aufzeichnung baut um)
+    tests/test_journal_leser.py::test_alle_echten_journale_sind_lesbar  <- journalabhaengig, Skip -> Fehlschlag durch Waechter A2 (Familie Aufzeichnung baut um)
+    tests/test_laufabschluss.py::test_GRUEN_dieselben_trockenlaeufe_heben_die_ausstiegsdeckung_NICHT  <- journalabhaengig, Skip -> Fehlschlag durch Waechter A2 (Familie Aufzeichnung baut um)
+    tests/test_laufabschluss.py::test_ROT_neunzehn_trockenlaeufe_heben_laufabschluss_ueber_die_schwelle  <- journalabhaengig, Skip -> Fehlschlag durch Waechter A2 (Familie Aufzeichnung baut um)
+    tests/test_laufabschluss.py::test_beide_abbrueche_lagen_weit_vor_der_geplanten_dauer  <- journalabhaengig, Skip -> Fehlschlag durch Waechter A2 (Familie Aufzeichnung baut um)
+    tests/test_laufabschluss.py::test_der_harmlose_abbruch_zaehlt_bei_laufabschluss_als_GESCHEITERT  <- journalabhaengig, Skip -> Fehlschlag durch Waechter A2 (Familie Aufzeichnung baut um)
+    tests/test_laufabschluss.py::test_die_gefaehrlichen_laeufe_zaehlen_bei_laufabschluss_als_GELUNGEN  <- journalabhaengig, Skip -> Fehlschlag durch Waechter A2 (Familie Aufzeichnung baut um)
+    tests/test_laufabschluss.py::test_die_zahl_bleibt_gerissen  <- journalabhaengig, Skip -> Fehlschlag durch Waechter A2 (Familie Aufzeichnung baut um)
+    tests/test_laufabschluss.py::test_jeder_stoppdatei_lauf_hat_einen_endsatz  <- journalabhaengig, Skip -> Fehlschlag durch Waechter A2 (Familie Aufzeichnung baut um)
+    tests/test_laufabschluss.py::test_kein_lauf_ohne_endsatz_hatte_eine_stoppdatei  <- journalabhaengig, Skip -> Fehlschlag durch Waechter A2 (Familie Aufzeichnung baut um)
+  davon in der Deselect-Liste: 12 von 12
+  Ausloesungen Waechter A2 (Skip -> Fehlschlag): 12
+  Ausloesungen Waechter A10 (Schreiben ausserhalb tmp_path): 0
+  Beispiel einer A2-Meldung:
+    Waechter A2 (tests/conftest.py): ein uebersprungener Test ist ein Fehlschlag.
+    C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_358a8ac6-c0a-4\tests\test_ausstiegsdeckung.py:306: Skipped: keine Betriebsjournale im Arbeitsbaum
+
+## 2. Kosten der Waechter (aus --durations=0 des Laufs 1; teardown = im Wesentlichen der A10-Schnappschuss)
+  Summe setup 11.8 s, call 294.5 s, teardown 131.9 s ueber 1518 Tests
+  teardown je Test im Mittel 87 ms
+  (Grundlauf und Lauf 1 liefen auf einem Rechner mit parallel arbeitenden Agenten; die
+   Gesamtzeiten sind darum nur grob vergleichbar -- die Fixture-Summe ist die belastbare Zahl.)
+
+## 3. Mit Waechtern, MIT Deselect der 12 journalabhaengigen Tests (Aufzeichnung baut sie um)
+$ python -m pytest -q -p no:cacheprovider -m "not slow" -rs --deselect <12 Knoten, s. u.>
+  2 failed, 1504 passed, 13 deselected in 393.44s (0:06:33)   (time real 7m6.101s)
+  SKIPPED-Zeilen: 0
+  FAILED/ERROR-Knoten: 2
+    test_readme_source_lines_matches_code  <- README-Kennzahlenblock, zentral erzeugt (nicht in dieser Familie)
+    test_readme_test_function_count_matches_code  <- README-Kennzahlenblock, zentral erzeugt (nicht in dieser Familie)
+  Ausgabe test_readme_test_function_count_matches_code:
+        def test_readme_test_function_count_matches_code() -> None:
+    >       assert _declared()["test_function_count"] == _test_function_count()
+    E       assert 1313 == 1319
+    E        +  where 1319 = _test_function_count()
+    tests\test_readme_numbers.py:92: AssertionError
+  Deselect-Liste (12):
+    tests/test_ausstiegsdeckung.py::test_rot_die_neue_regel_schlaegt_auf_den_echten_journalen_an
+    tests/test_buchtreue.py::test_die_korrektur_rettet_das_ziel_NICHT
+    tests/test_buchtreue.py::test_auf_den_echten_journalen_sitzen_die_sperren_im_ueberholten_code
+    tests/test_journal_leser.py::test_alle_echten_journale_sind_lesbar
+    tests/test_laufabschluss.py::test_die_zahl_bleibt_gerissen
+    tests/test_laufabschluss.py::test_ROT_neunzehn_trockenlaeufe_heben_laufabschluss_ueber_die_schwelle
+    tests/test_laufabschluss.py::test_GRUEN_dieselben_trockenlaeufe_heben_die_ausstiegsdeckung_NICHT
+    tests/test_laufabschluss.py::test_die_gefaehrlichen_laeufe_zaehlen_bei_laufabschluss_als_GELUNGEN
+    tests/test_laufabschluss.py::test_der_harmlose_abbruch_zaehlt_bei_laufabschluss_als_GESCHEITERT
+    tests/test_laufabschluss.py::test_jeder_stoppdatei_lauf_hat_einen_endsatz
+    tests/test_laufabschluss.py::test_kein_lauf_ohne_endsatz_hatte_eine_stoppdatei
+    tests/test_laufabschluss.py::test_beide_abbrueche_lagen_weit_vor_der_geplanten_dauer

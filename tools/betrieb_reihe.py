@@ -28,6 +28,11 @@ Aufruf::
 
     python tools/betrieb_reihe.py
     python tools/betrieb_reihe.py --nur-scharf
+    python tools/betrieb_reihe.py --journal aufzeichnungen/demo-2026-08-17.jsonl
+
+Die Quelle ist ein Verzeichnis mit ``journal-*.jsonl`` oder die eingecheckte
+Aufzeichnung (alle Laeufe in einer Datei, getrennt nach Laufkennung -- siehe
+``betrieb/journal.py::lies_alle``).
 """
 
 from __future__ import annotations
@@ -42,6 +47,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from mt5_trading_ai.betrieb.journal import (  # noqa: E402
+    JournalError,
     Lauf,
     Trade,
     bilanz,
@@ -64,8 +70,9 @@ def _kopfzeile(lauf: Lauf) -> str:
     zu = [t for t in trades if not t.offen]
     marke = "scharf" if lauf.scharf else "trocken"
     schluss = "" if lauf.beendet else "  OHNE ENDEINTRAG"
+    kennung = (lauf.lauf_id or "—")[:10]
     return (
-        f"{von:%d.%m %H:%M}  {dauer:>6.1f} min  {marke:<8}"
+        f"{kennung:<11}{von:%d.%m %H:%M}  {dauer:>6.1f} min  {marke:<8}"
         f"{len(lauf.art('takt')):>5} Takte {len(trades):>4} Trades "
         f"({len(zu)} zu)  {veraenderung:>+9.2f}  "
         f"{(lauf.version or '—'):<20}{schluss}"
@@ -110,8 +117,8 @@ def auswerten(laeufe: list[Lauf], *, nur_scharf: bool) -> int:
     print(f"BETRIEBSREIHE — {len(laeufe)} Laeufe")
     print("=" * 100)
     print(
-        f"{'Beginn':<13}{'Dauer':>10}  {'Art':<8}{'Takte':>6}{'Trades':>10}"
-        f"{'Equity':>13}  Codestand"
+        f"{'Lauf':<11}{'Beginn':<13}{'Dauer':>10}  {'Art':<8}{'Takte':>6}"
+        f"{'Trades':>10}{'Equity':>13}  Codestand"
     )
     print("-" * 100)
     for lauf in laeufe:
@@ -207,10 +214,28 @@ def main() -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser(description="Alle Betriebslaeufe hintereinander")
-    ap.add_argument("--verzeichnis", type=Path, default=JOURNALE)
+    ap.add_argument(
+        "--verzeichnis",
+        "--journal",
+        dest="quelle",
+        type=Path,
+        default=JOURNALE,
+        help=(
+            "Verzeichnis mit journal-*.jsonl ODER eine Aufzeichnungsdatei "
+            "(Vorgabe: betrieb/)"
+        ),
+    )
     ap.add_argument("--nur-scharf", action="store_true", help="Trockenlaeufe auslassen")
     args = ap.parse_args()
-    return auswerten(lies_alle(args.verzeichnis), nur_scharf=args.nur_scharf)
+    if not args.quelle.exists():
+        print(f"FEHLGESCHLAGEN — {args.quelle} gibt es nicht.", file=sys.stderr)
+        return 1
+    try:
+        laeufe = lies_alle(args.quelle)
+    except JournalError as exc:
+        print(f"FEHLGESCHLAGEN — {exc}", file=sys.stderr)
+        return 1
+    return auswerten(laeufe, nur_scharf=args.nur_scharf)
 
 
 if __name__ == "__main__":

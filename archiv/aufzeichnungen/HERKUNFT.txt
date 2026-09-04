@@ -1,0 +1,7 @@
+Erste Fassung (Kopf-Fassung 1) der redigierten Aufzeichnung aufzeichnungen/demo-2026-08-17.jsonl,
+erzeugt im Altstand 306bbaa von tools/aufzeichnung_redigieren.py: 4.453 Saetze aus 21 Journalen,
+OHNE takt-Saetze (1.360 weggelassen) und mit Laufkennungen nach erstem Auftreten. Verschoben am
+2026-09-03 in Auftrag 1 des Programms NEUAUFBAU (Plan T6, Befund T, Katalog A2): die neue Fassung
+(Kopf-Fassung 2) traegt die takt-Saetze und je Satz eine stabile Laufkennung LAUF-01 ... LAUF-21,
+damit die Dauertore sie statt des gitignorierten betrieb/ lesen. Inhalt unveraendert (git mv);
+Unveraendertheit sichert archiv/MANIFEST.sha256.

@@ -94,7 +94,9 @@ def main() -> int:
         "--oos-csv",
         type=Path,
         default=None,
-        help="frischer OoS-Block (eigene Datei); sonst letzte 30 % von --csv",
+        # ``%%``: argparse formatiert Hilfetexte mit ``%``-Platzhaltern; ein nacktes
+        # ``%`` liess ``--help`` mit ``ValueError`` abbrechen (Abnahmekatalog A13).
+        help="frischer OoS-Block (eigene Datei); sonst letzte 30 %% von --csv",
     )
     ap.add_argument("--data-checksum", default="")
     ap.add_argument("--code-commit", default="")

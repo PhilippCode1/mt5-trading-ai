@@ -404,7 +404,17 @@ def standard_zustandsordner(
     # relativ), gilt der naechste Kandidat -- am Ende immer ein absoluter Heimatpfad.
     plattform = "LOCALAPPDATA" if windows else "XDG_STATE_HOME"
     roh = umg.get(plattform)
-    if roh and Path(roh).is_absolute():
+    # Ob der Kandidat absolut ist, entscheiden die Pfadregeln der GEFRAGTEN Plattform,
+    # nicht die der laufenden: ``Path("C:\\Users\\...").is_absolute()`` ist unter POSIX
+    # ``False`` (dort ist ein Windows-Pfad ein relatives Namensstueck), und genau daran
+    # fiel der Test dieser Regel auf ubuntu-latest (CI-Lauf 4d02db3): der
+    # Windows-Zweig nahm den Heimatpfad statt ``%LOCALAPPDATA%``. ``PureWindowsPath``
+    # und ``PurePosixPath`` rechnen auf jedem Rechner gleich; ``os.name`` bleibt
+    # unangetastet, und das zurueckgegebene ``Path`` ist weiter das der Plattform.
+    from pathlib import PurePosixPath, PureWindowsPath
+
+    rein = PureWindowsPath if windows else PurePosixPath
+    if roh and rein(roh).is_absolute():
         return Path(roh) / "mt5_trading_ai" / "risiko"
     return Path.home() / ".local" / "state" / "mt5_trading_ai" / "risiko"
 

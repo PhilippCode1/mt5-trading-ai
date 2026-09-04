@@ -219,22 +219,32 @@ def _bericht(messung: AtrMeasurement) -> str:
     )
 
 
+def _terminal_grund(terminal: RealMt5Terminal) -> str | None:
+    """Warum das Terminal nicht erreichbar ist -- oder ``None``, wenn es das ist."""
+    try:
+        verbunden = terminal.initialize()
+    except VenueUnavailableError as exc:
+        return str(exc)
+    if not verbunden:
+        return (
+            "initialize() lieferte False -- Terminal nicht initialisierbar (laeuft "
+            "terminal64.exe, und ist ein Demokonto angemeldet?)"
+        )
+    return None
+
+
 def messen(monate: int) -> int:
     ende = datetime.now(UTC)
     start = ende - timedelta(days=int(round(monate * 30.44)))
 
     terminal = RealMt5Terminal(allow_write=False)
-    try:
-        verbunden = terminal.initialize()
-    except VenueUnavailableError as exc:
-        print(f"FEHLGESCHLAGEN — {exc}", file=sys.stderr)
-        print("Keine Ersatzzahlen. Ohne Terminal keine Volatilitaet.", file=sys.stderr)
-        return 2
-    if not verbunden:
+    # Beide Fehlausgaenge von ``initialize`` -- Ausnahme (Paket fehlt) und ``False``
+    # (Terminal nicht gestartet) -- enden in EINER benannten Zeile und Exit 2 (A12).
+    # Keine Ersatzzahlen: ein Kostentor auf geratener Volatilitaet ist wertlos.
+    grund = _terminal_grund(terminal)
+    if grund is not None:
         print(
-            "FEHLGESCHLAGEN — MT5-Terminal nicht initialisierbar. "
-            "Keine Ersatzzahlen: ein Kostentor auf geratener Volatilitaet ist wertlos.",
-            file=sys.stderr,
+            f"FEHLGESCHLAGEN -- MT5-Terminal nicht erreichbar: {grund}", file=sys.stderr
         )
         return 2
 

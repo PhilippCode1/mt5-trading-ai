@@ -16,7 +16,7 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any
 
 import pytest
@@ -181,18 +181,41 @@ def test_localappdata_wird_nur_unter_windows_gefragt() -> None:
     Beide Plattformen werden hier **explizit** gefahren, nicht die des Testlaeufers:
     die Regel muss auf beiden gelten, und ``os.name`` laesst sich nicht umbiegen, ohne
     ``pathlib`` mitzureissen.
+
+    Bis T6 fiel dieser Test auf ubuntu-latest (CI-Lauf 4d02db3, Beleg
+    ``00-ci-nach-t0.txt``): ``standard_zustandsordner`` pruefte den Windows-Kandidaten
+    mit dem ``Path`` der laufenden Plattform, und ``PurePosixPath("C:\\\\...")`` ist
+    nicht absolut -- der Windows-Zweig nahm dort den Heimatpfad. Seitdem entscheidet
+    die Pfadregel der GEFRAGTEN Plattform (``PureWindowsPath`` bzw. ``PurePosixPath``),
+    und dieser Test gibt jedem Zweig einen Pfad, der in dessen Regeln absolut ist, und
+    vergleicht in denselben Regeln -- so prueft er auf beiden Rechnern dasselbe. Die
+    fruehere Fassung nahm ``Path.home()`` als XDG-Wert; der ist nur auf dem Rechner
+    absolut, auf dem der Test gerade laeuft.
     """
-    lokal = r"C:\Users\Test\AppData\Local"
-    xdg = Path.home() / "eigener-zustand"  # auf beiden Plattformen absolut
-    umgebung = {"LOCALAPPDATA": lokal, "XDG_STATE_HOME": str(xdg)}
+    lokal = r"C:\Users\Test\AppData\Local"  # absolut nur in Windows-Regeln
+    xdg = "/home/test/eigener-zustand"  # absolut nur in POSIX-Regeln
+    umgebung = {"LOCALAPPDATA": lokal, "XDG_STATE_HOME": xdg}
     windows = standard_zustandsordner(umgebung=umgebung, ist_windows=True)
     posix = standard_zustandsordner(umgebung=umgebung, ist_windows=False)
 
-    # Unter Windows zaehlt LOCALAPPDATA ...
-    assert windows.parts[:-2] == Path(lokal).parts
+    # Der Grund des frueheren Fehlschlags, auf jedem Rechner nachrechenbar: die
+    # POSIX-Sicht haelt den Windows-Pfad fuer relativ, die Windows-Sicht fuer absolut.
+    assert PurePosixPath(lokal).is_absolute() is False
+    assert PureWindowsPath(lokal).is_absolute() is True
+
+    # Unter Windows zaehlt LOCALAPPDATA -- verglichen in Windows-Pfadregeln, in denen
+    # ``/`` und ``\\`` gleichermassen trennen; so gilt die Aussage auch dort, wo das
+    # zurueckgegebene ``Path`` ein PosixPath mit einem Windows-Namensstueck ist.
+    assert PureWindowsPath(str(windows)) == PureWindowsPath(
+        lokal, "mt5_trading_ai", "risiko"
+    )
+    assert PureWindowsPath(str(windows)).is_absolute()
     # ... unter POSIX zaehlt XDG, und der Windows-Pfad taucht nirgends auf -- auch
     # nicht als relatives Stueck, das ``resolve()`` ins Repo haengen wuerde.
-    assert posix == xdg / "mt5_trading_ai" / "risiko"
+    assert PurePosixPath(posix.as_posix()) == PurePosixPath(
+        xdg, "mt5_trading_ai", "risiko"
+    )
+    assert PurePosixPath(posix.as_posix()).is_absolute()
     assert "AppData" not in str(posix)
 
 

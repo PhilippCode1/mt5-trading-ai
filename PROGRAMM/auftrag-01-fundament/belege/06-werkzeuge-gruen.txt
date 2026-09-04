@@ -1,0 +1,63 @@
+==============================================================================
+GRUENER EICHFALL Familie Werkzeuge -- Arbeitsbaum (dieser Patch), 2026-09-03
+==============================================================================
+HEAD: 97ee206
+
+## A13 --help (29 Werkzeuge mit main())
+  [gruen] archiv_manifest.py: exit=0, usage=ja
+  [gruen] atr_messung.py: exit=0, usage=ja
+  [gruen] aufloesung.py: exit=0, usage=ja
+  [gruen] aufzeichnung_redigieren.py: exit=0, usage=ja
+  [gruen] auswertung.py: exit=0, usage=ja
+  [ROT  ] betrieb_auswerten.py: exit=1, usage=nein, stderr: C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_358a8ac6-c0a-1\betrieb\--help gibt es nicht.
+           | C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_358a8ac6-c0a-1\betrieb\--help gibt es nicht.
+  [gruen] betrieb_reihe.py: exit=0, usage=ja
+  [ROT  ] check_doc_numbers.py: exit=1, usage=nein
+           | FEHLGESCHLAGEN - Zahlen-Drift zwischen Doku und Code:
+           | 
+           |   README.md: test_function_count = 1313 im Block, Code sagt 1330
+           |   README.md: source_lines = 16342 im Block, Code sagt 16453
+           | 
+           | Kennzahlen leben im README-KENNZAHLEN-Block; andere Wurzeldokumente verweisen. Archiv und Eingaenge sind per Manifest gesichert (A14).
+  [ROT  ] check_docs_claims.py: exit=0, usage=nein
+           | ok - 13/32 lebende Markdown-Dateien (Wurzel: README.md, MODULES.md, CLAUDE.md), keine Zusicherung ohne Beleg; per Manifest gesichert statt gescannt: archiv, PROGRAMM/eingang, PROGRAMM/masterprompts
+  [gruen] dienstguete.py: exit=0, usage=ja
+  [gruen] edge_test.py: exit=0, usage=ja
+  [gruen] ereignisstudie.py: exit=0, usage=ja
+  [gruen] fetch_data.py: exit=0, usage=ja
+  [ROT  ] geheimnis_scan.py: exit=None, usage=nein, stderr: <Zeitschranke 60 s ueberschritten>
+           | <Zeitschranke 60 s ueberschritten>
+  [gruen] gen_docs.py: exit=0, usage=ja
+  [gruen] journal_sichern.py: exit=0, usage=ja
+  [gruen] katalog_hash.py: exit=0, usage=ja
+  [gruen] kopien_abgleichen.py: exit=0, usage=ja
+  [gruen] kostentor.py: exit=0, usage=ja
+  [gruen] live_betrieb.py: exit=0, usage=ja
+  [gruen] live_konsole.py: exit=0, usage=ja
+  [gruen] mt5_smoke.py: exit=0, usage=ja
+  [gruen] multi_instrument_edge.py: exit=0, usage=ja
+  [gruen] mutationstor.py: exit=0, usage=ja
+  [gruen] paper_run.py: exit=0, usage=ja
+  [gruen] torerfuellbarkeit.py: exit=0, usage=ja
+  [gruen] torzaehlung.py: exit=0, usage=ja
+  [gruen] wiederanlaufprobe.py: exit=0, usage=ja
+  [gruen] zweigdeckung.py: exit=0, usage=ja
+  => 25 von 29 gruen, 88 s
+
+## A12 ohne Terminal (Shim: import MetaTrader5 wirft ImportError)
+  [gruen] atr_messung.py: exit=2 (verlangt 2), benannte Zeilen=1 (verlangt 1), FEHLGESCHLAGEN-Zeilen=1 (verlangt 1), Traceback=nein (verlangt nein)
+  [gruen] aufloesung.py: exit=2 (verlangt 2), benannte Zeilen=1 (verlangt 1), FEHLGESCHLAGEN-Zeilen=1 (verlangt 1), Traceback=nein (verlangt nein)
+  [gruen] aufloesung.py --gegenprobe C:\Users\<konto>\AppData\Local\Temp\eichfall-werkzeuge-spb2h6p2\daten-neu\EURUSD_H1.csv: exit=2 (verlangt 2), benannte Zeilen=1 (verlangt 1), FEHLGESCHLAGEN-Zeilen=1 (verlangt 1), Traceback=nein (verlangt nein)
+  [gruen] ereignisstudie.py --alle --register C:\Users\<konto>\AppData\Local\Temp\eichfall-werkzeuge-spb2h6p2\daten-neu\TRIALS.jsonl: exit=2 (verlangt 2), benannte Zeilen=1 (verlangt 1), FEHLGESCHLAGEN-Zeilen=1 (verlangt 1), Traceback=nein (verlangt nein)
+  [ROT  ] live_betrieb.py --dauer 0.001 --takt 1: exit=1 (verlangt 2), benannte Zeilen=0 (verlangt 1), FEHLGESCHLAGEN-Zeilen=0 (verlangt 1), Traceback=ja (verlangt nein)
+           |   File "C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_358a8ac6-c0a-1\tools\live_betrieb.py", line 988, in main
+           |     if not terminal.initialize():
+           |            ^^^^^^^^^^^^^^^^^^^^^
+           |   File "C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_358a8ac6-c0a-1\mt5_trading_ai\venue\mt5.py", line 2158, in initialize
+           |     raise VenueUnavailableError(
+           | mt5_trading_ai.venue.protocol.VenueUnavailableError: MetaTrader5 nicht installiert (pip install MetaTrader5)
+  [gruen] live_konsole.py --takte 1: exit=2 (verlangt 2), benannte Zeilen=1 (verlangt 1), FEHLGESCHLAGEN-Zeilen=1 (verlangt 1), Traceback=nein (verlangt nein)
+  [gruen] mt5_smoke.py: exit=2 (verlangt 2), benannte Zeilen=1 (verlangt 1), FEHLGESCHLAGEN-Zeilen=1 (verlangt 1), Traceback=nein (verlangt nein)
+  [gruen] fetch_data.py --from-year 2024 --to-year 2024 --out C:\Users\<konto>\AppData\Local\Temp\eichfall-werkzeuge-spb2h6p2\daten-neu\daten --versuche 1: exit=2 (verlangt 2), benannte Zeilen=1 (verlangt 1), FEHLGESCHLAGEN-Zeilen=1 (verlangt 1), Traceback=nein (verlangt nein)
+  => 7 von 8 gruen, 11 s
+

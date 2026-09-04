@@ -151,8 +151,8 @@ Alarmregeln, Dienstgüteziele und Fehlerbudget -- aus dem Betriebsjournal.
 
 ## `mt5_trading_ai/betrieb/journal.py`
 
-Zeilen: 630
-Aufrufer: Paket 0 · Werkzeuge 2 · Tests 2
+Zeilen: 711
+Aufrufer: Paket 0 · Werkzeuge 3 · Tests 2
 
 Betriebsjournale lesen -- die eine Stelle, an der aus Zeilen Aussagen werden.
 
@@ -161,6 +161,7 @@ Betriebsjournale lesen -- die eine Stelle, an der aus Zeilen Aussagen werden.
 - `class Trade`
 - `class Lauf`
 - `def lies_journal`
+- `def trenne_laeufe`
 - `def lies_alle`
 - `def durchgehende_equity`
 - `class Bilanz`
@@ -318,8 +319,8 @@ Mehrteilige Freigabe fuer Order-Submit an einen echten Markt.
 
 ## `mt5_trading_ai/execution/risiko_zustand.py`
 
-Zeilen: 1586
-Aufrufer: Paket 3 · Werkzeuge 1 · Tests 9
+Zeilen: 1596
+Aufrufer: Paket 3 · Werkzeuge 1 · Tests 10
 
 Der Risikozustand, der einen Neustart ueberdauert -- und wie er fail-closed liest.
 
@@ -338,7 +339,7 @@ Der Risikozustand, der einen Neustart ueberdauert -- und wie er fail-closed lies
 ## `mt5_trading_ai/execution/risk_manager.py`
 
 Zeilen: 1192
-Aufrufer: Paket 3 · Werkzeuge 5 · Tests 22
+Aufrufer: Paket 3 · Werkzeuge 5 · Tests 23
 
 Risikoschicht am Order-Pfad: die vier Grenzen als letzte Verteidigungslinie.
 
@@ -552,7 +553,7 @@ Paket 5: Registrierung und Fortschritts-Tor des Demo-Betriebs (§8.5).
 ## `mt5_trading_ai/venue/mt5.py`
 
 Zeilen: 2785
-Aufrufer: Paket 3 · Werkzeuge 7 · Tests 34
+Aufrufer: Paket 3 · Werkzeuge 7 · Tests 35
 
 MT5-Anbindung an das ``TradingVenue``-Protokoll.
 
@@ -573,7 +574,7 @@ MT5-Anbindung an das ``TradingVenue``-Protokoll.
 ## `mt5_trading_ai/venue/protocol.py`
 
 Zeilen: 547
-Aufrufer: Paket 12 · Werkzeuge 8 · Tests 45
+Aufrufer: Paket 12 · Werkzeuge 8 · Tests 46
 
 Plattformunabhaengiger Handelsplatz-Vertrag.
 
@@ -600,8 +601,8 @@ Plattformunabhaengiger Handelsplatz-Vertrag.
 
 ## `mt5_trading_ai/venue/smoke.py`
 
-Zeilen: 358
-Aufrufer: Paket 0 · Werkzeuge 1 · Tests 2
+Zeilen: 469
+Aufrufer: Paket 0 · Werkzeuge 1 · Tests 3
 
 Demo-Smoke-Test der MT5-Bindung — die Orchestrierung, terminalunabhaengig.
 

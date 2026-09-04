@@ -247,15 +247,31 @@ def _manifest(symbol: str, tf: Timeframe, reihe: tuple[Mt5Rate, ...]) -> dict[st
     }
 
 
-def messen() -> int:
-    terminal = RealMt5Terminal(allow_write=False)
+def _terminal_grund(terminal: RealMt5Terminal) -> str | None:
+    """Warum das Terminal nicht erreichbar ist -- oder ``None``, wenn es das ist.
+
+    Beide Fehlausgaenge von ``initialize`` (Ausnahme: Paket fehlt; ``False``: Terminal
+    nicht gestartet) enden beim Aufrufer in EINER benannten Zeile und Exit 2 (A12).
+    """
     try:
         verbunden = terminal.initialize()
     except VenueUnavailableError as exc:
-        print(f"FEHLGESCHLAGEN — {exc}", file=sys.stderr)
-        return 2
+        return str(exc)
     if not verbunden:
-        print("FEHLGESCHLAGEN — MT5-Terminal nicht initialisierbar.", file=sys.stderr)
+        return (
+            "initialize() lieferte False -- Terminal nicht initialisierbar (laeuft "
+            "terminal64.exe, und ist ein Demokonto angemeldet?)"
+        )
+    return None
+
+
+def messen() -> int:
+    terminal = RealMt5Terminal(allow_write=False)
+    grund = _terminal_grund(terminal)
+    if grund is not None:
+        print(
+            f"FEHLGESCHLAGEN -- MT5-Terminal nicht erreichbar: {grund}", file=sys.stderr
+        )
         return 2
 
     kosten = load_broker_costs()
@@ -564,8 +580,11 @@ def gegenprobe(csv_pfad: Path, *, schwelle: float = 2.0) -> int:
         return 1
 
     terminal = RealMt5Terminal(allow_write=False)
-    if not terminal.initialize():
-        print("FEHLGESCHLAGEN — Terminal nicht erreichbar.", file=sys.stderr)
+    grund = _terminal_grund(terminal)
+    if grund is not None:
+        print(
+            f"FEHLGESCHLAGEN -- MT5-Terminal nicht erreichbar: {grund}", file=sys.stderr
+        )
         return 2
     try:
         beginn = min(fremd) - timedelta(days=3)

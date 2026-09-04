@@ -15,14 +15,25 @@ liefert ein Tag hoechstens zehn Beobachtungen. Aus zehn Trades laesst sich ueber
 Vorteil nichts sagen -- das ist keine Vorsicht, das ist Arithmetik. Diese Auswertung
 beziffert darum die Unsicherheit, statt eine Zahl allein stehen zu lassen.
 
+EIN JOURNAL ODER DIE AUFZEICHNUNG
+---------------------------------
+Die Eingabe ist ein Betriebsjournal (ein Lauf) oder die eingecheckte Aufzeichnung
+(``aufzeichnungen/demo-2026-08-17.jsonl``, 21 Laeufe mit stabilen Kennungen
+``LAUF-01`` ... ``LAUF-21``). Bei mehreren Laeufen wird der **letzte** ausgewertet,
+und das steht in der Ausgabe; ``--lauf`` waehlt einen anderen, ``--liste`` zeigt alle.
+Frueher warf dieses Werkzeug auf der Kopfzeile der Aufzeichnung (``JournalError``).
+
 Aufruf::
 
     python tools/betrieb_auswerten.py                       # neuestes Journal
     python tools/betrieb_auswerten.py journal-2026...jsonl
+    python tools/betrieb_auswerten.py aufzeichnungen/demo-2026-08-17.jsonl --liste
+    python tools/betrieb_auswerten.py <aufzeichnung> --lauf LAUF-18
 """
 
 from __future__ import annotations
 
+import argparse
 import math
 import statistics
 import sys
@@ -33,14 +44,17 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from mt5_trading_ai.betrieb.journal import (  # noqa: E402
+    JournalError,
+    Lauf,
     Trade,
     bilanz,
     geldbilanz,
-    lies_journal,
+    lies_alle,
 )
 
 REPO = Path(__file__).resolve().parents[1]
 JOURNALE = REPO / "betrieb"
+AUFZEICHNUNG = REPO / "aufzeichnungen" / "demo-2026-08-17.jsonl"
 
 
 def _geldbericht(trades: list[Trade]) -> None:
@@ -75,18 +89,15 @@ def _geldbericht(trades: list[Trade]) -> None:
     )
 
 
-def auswerten(pfad: Path) -> int:
-    lauf = lies_journal(pfad)
-    if not lauf.saetze:
-        print(f"FEHLGESCHLAGEN — {pfad} ist leer.", file=sys.stderr)
-        return 1
+def lauf_auswerten(lauf: Lauf) -> int:
+    """Die drei Fragen fuer EINEN Lauf."""
     start, ende = lauf.start, lauf.ende
     takte, versuche = lauf.art("takt"), lauf.art("eroeffnungsversuch")
     trades = lauf.trades()
     zu = [t for t in trades if not t.offen]
 
     print("=" * 78)
-    print(f"BETRIEBSLAUF {pfad.name}")
+    print(f"BETRIEBSLAUF {lauf.pfad.name}  ({lauf.lauf_id or 'ohne Kennung'})")
     print("=" * 78)
     print(
         f"Konto        : {start['konto'] if start else '—'} "
@@ -136,6 +147,8 @@ def auswerten(pfad: Path) -> int:
         for v in versuche:
             if v["eroeffnet"]:
                 continue
+            # Die Aufzeichnung traegt ``schritte`` nicht (im Kopf ausgewiesen); dann
+            # bleibt der Grund, und der steht im selben Satz.
             letzte = next(
                 (x["naht"] for x in reversed(v["schritte"] or []) if not x["ok"]),
                 str(v["grund"] or "?"),
@@ -232,23 +245,120 @@ def auswerten(pfad: Path) -> int:
     return 0
 
 
-def main() -> int:
-    if hasattr(sys.stdout, "reconfigure"):
-        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-    if len(sys.argv) > 1:
-        pfad = Path(sys.argv[1])
-        if not pfad.is_absolute() and not pfad.exists():
-            pfad = JOURNALE / pfad
-    else:
-        kandidaten = sorted(JOURNALE.glob("journal-*.jsonl"))
-        if not kandidaten:
-            print(f"Kein Journal in {JOURNALE}.", file=sys.stderr)
-            return 1
-        pfad = kandidaten[-1]
-    if not pfad.is_file():
-        print(f"{pfad} gibt es nicht.", file=sys.stderr)
+def auswerten(pfad: Path, kennung: str | None = None) -> int:
+    """Einen Lauf aus ``pfad`` auswerten -- ein Journal oder eine Aufzeichnung.
+
+    Traegt die Datei mehrere Laeufe, wird ohne ``kennung`` der letzte (juengste)
+    genommen, und die Ausgabe sagt das. Eine unbekannte Kennung ist ein Fehlschlag mit
+    der Liste der vorhandenen -- kein stiller Rueckfall auf irgendeinen Lauf.
+    """
+    laeufe = lies_alle(pfad)
+    if not laeufe:
+        print(f"FEHLGESCHLAGEN — {pfad} traegt keinen Lauf.", file=sys.stderr)
         return 1
-    return auswerten(pfad)
+    if kennung is None:
+        lauf = laeufe[-1]
+    else:
+        gefunden = [lf for lf in laeufe if lf.lauf_id == kennung]
+        if not gefunden:
+            print(
+                f"FEHLGESCHLAGEN — Lauf {kennung!r} gibt es in {pfad.name} nicht. "
+                f"Vorhanden: {', '.join(str(lf.lauf_id) for lf in laeufe)}",
+                file=sys.stderr,
+            )
+            return 1
+        lauf = gefunden[0]
+    if len(laeufe) > 1:
+        print(
+            f"Aufzeichnung mit {len(laeufe)} Laeufen; ausgewertet wird "
+            f"{lauf.lauf_id} ({'gewaehlt' if kennung else 'der letzte'}). "
+            "--liste zeigt alle, --lauf KENNUNG waehlt."
+        )
+        print()
+    return lauf_auswerten(lauf)
+
+
+def liste(pfad: Path) -> int:
+    laeufe = lies_alle(pfad)
+    if not laeufe:
+        print(f"FEHLGESCHLAGEN — {pfad} traegt keinen Lauf.", file=sys.stderr)
+        return 1
+    print(f"{len(laeufe)} Laeufe in {pfad.name}:")
+    for lauf in laeufe:
+        start = lauf.saetze[0].ts
+        print(
+            f"  {lauf.lauf_id or '—':<10} {start:%Y-%m-%d %H:%M:%S} "
+            f"{len(lauf.saetze):>6} Saetze {len(lauf.art('takt')):>5} Takte "
+            f"{'scharf' if lauf.scharf else 'trocken':<8}"
+            f"{'' if lauf.beendet else '  OHNE ENDEINTRAG'}"
+        )
+    return 0
+
+
+def _eingabe(arg: Path | None) -> Path | None:
+    """Die Datei, die ausgewertet wird -- oder ``None`` mit Meldung."""
+    if arg is None:
+        kandidaten = sorted(JOURNALE.glob("journal-*.jsonl"))
+        if kandidaten:
+            return kandidaten[-1]
+        print(
+            f"FEHLGESCHLAGEN — kein Journal unter {JOURNALE}. Die eingecheckte "
+            f"Aufzeichnung: {AUFZEICHNUNG.relative_to(REPO).as_posix()}",
+            file=sys.stderr,
+        )
+        return None
+    pfad = arg
+    if not pfad.is_absolute() and not pfad.exists():
+        pfad = JOURNALE / pfad
+    if pfad.is_dir():
+        kandidaten = sorted(pfad.glob("journal-*.jsonl"))
+        if not kandidaten:
+            print(f"FEHLGESCHLAGEN — kein Journal unter {pfad}.", file=sys.stderr)
+            return None
+        return kandidaten[-1]
+    if not pfad.is_file():
+        print(f"FEHLGESCHLAGEN — {arg} gibt es nicht.", file=sys.stderr)
+        return None
+    return pfad
+
+
+def main() -> int:
+    for strom in (sys.stdout, sys.stderr):
+        if hasattr(strom, "reconfigure"):
+            strom.reconfigure(encoding="utf-8", errors="replace")
+    ap = argparse.ArgumentParser(
+        description="Einen Betriebslauf auswerten -- Journal oder Aufzeichnung."
+    )
+    ap.add_argument(
+        "journal",
+        nargs="?",
+        type=Path,
+        default=None,
+        help=(
+            "Journaldatei, Aufzeichnung oder Verzeichnis (Vorgabe: das neueste "
+            "Journal unter betrieb/)"
+        ),
+    )
+    ap.add_argument(
+        "--lauf",
+        default=None,
+        metavar="KENNUNG",
+        help=(
+            "bei mehreren Laeufen in der Datei: diesen auswerten (Vorgabe: der letzte)"
+        ),
+    )
+    ap.add_argument(
+        "--liste", action="store_true", help="nur die Laeufe der Datei auflisten"
+    )
+    args = ap.parse_args()
+    pfad = _eingabe(args.journal)
+    if pfad is None:
+        return 1
+    try:
+        return liste(pfad) if args.liste else auswerten(pfad, args.lauf)
+    except JournalError as exc:
+        print(f"FEHLGESCHLAGEN — {exc}", file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":

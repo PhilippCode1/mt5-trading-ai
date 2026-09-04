@@ -1,0 +1,15 @@
+# T6 "T", Waechter A10: Kosten je Schnappschuss des Arbeitsbaums -- os.scandir (tests/conftest.py) gegen git status, je 20 Wiederholungen, Worktree (510 verfolgte Dateien).
+# Rechnerlast waehrend der Messung: keine eigene Suite aktiv; andere Agenten arbeiten parallel auf demselben Rechner (T6-Familien)
+conftest._schnappschuss(REPO): 60.4 ms je Aufruf, 513 Dateien erfasst
+git status --porcelain: 152.3 ms je Aufruf
+git status --porcelain --ignored --untracked-files=all: 171.0 ms je Aufruf
+conftest._schnappschuss(ZUSTANDSORDNER=C:\Users\<konto>\AppData\Local\mt5_trading_ai\risiko): 0.61 ms je Aufruf
+-> je Test ein Baum-Schnappschuss (Vorher = Nachher des Vorgaengers) + zwei Zustandsordner-Schnappschuesse: 61.6 ms; bei 1.505 Tests 93 s
+-> zum Vergleich git status --porcelain je Test: 257 s
+
+# Fruehere Messung derselben Groessen OHNE parallele Laeufe (vor dem Bau des conftest, Skript
+# mess_scandir.py mit identischer Ausnahmeliste, je 10 Wiederholungen bzw. 5 fuer git):
+#   os.scandir-Schnappschuss Worktree: 19,7 ms (510 Dateien); Hauptrepo mit betrieb/: 23,3 ms (582 Dateien)
+#   git status --porcelain: 130 ms; --untracked-files=all: 126 ms; --ignored --untracked-files=all: 128 ms
+# -> Verhaeltnis in beiden Messungen 2,8 bis 6,5 zugunsten des scandir-Schnappschusses.
+# Gemessene Fixture-Summe in der Suite (Lauf 1, --durations=0, unter Last): teardown 131,9 s ueber 1.518 Tests = 87 ms je Test.

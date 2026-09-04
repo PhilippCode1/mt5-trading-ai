@@ -1,0 +1,146 @@
+# T6 "T", Eichfaelle der Waechter A2/A10 (tests/eichfall_skipgate.py), 6 Tests, mit -s: die Ausgaben der pytest-Unterprozesse stehen mit dabei.
+# Rot = der Waechter loest im Unterprozess aus (der Unterprozess endet rot, der Eichfall selbst PASSED); Gruen = ein sauberer Lauf bleibt gruen.
+$ python -m pytest -p no:cacheprovider -v -s tests/eichfall_skipgate.py   (PYTHONDONTWRITEBYTECODE=1)
+============================= test session starts =============================
+platform win32 -- Python 3.11.7, pytest-8.3.4, pluggy-1.6.0 -- C:\Users\<konto>\AppData\Local\Programs\Python\Python311\python.exe
+Waechter A2 (tests/conftest.py): Skip = Fehlschlag.
+Waechter A10 (tests/conftest.py): Zustandsordner C:\Users\<konto>\AppData\Local\mt5_trading_ai\risiko (vorhanden: ja, 0 Dateien) und Arbeitsbaum C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_358a8ac6-c0a-4 bleiben unveraendert.
+rootdir: C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_358a8ac6-c0a-4
+configfile: pyproject.toml
+plugins: anyio-4.8.0, base-url-2.1.0, cov-6.0.0, playwright-0.7.2
+collecting ... collected 6 items
+
+tests/eichfall_skipgate.py::test_beide_waechter_sind_in_diesem_lauf_aktiv PASSED
+tests/eichfall_skipgate.py::test_rot_a2_jede_skip_art_wird_zum_fehlschlag running: C:\Users\<konto>\AppData\Local\Programs\Python\Python311\python.exe -mpytest --basetemp=C:\Users\<konto>\AppData\Local\Temp\pytest-of-<konto>\pytest-279\test_rot_a2_jede_skip_art_wird_zum_fehlschlag0\runpytest-0 -p conftest -p no:cacheprovider -rs test_eichfall.py
+     in: C:\Users\<konto>\AppData\Local\Temp\pytest-of-<konto>\pytest-279\test_rot_a2_jede_skip_art_wird_zum_fehlschlag0
+============================= test session starts =============================
+platform win32 -- Python 3.11.7, pytest-8.3.4, pluggy-1.6.0
+Waechter A2 (tests/conftest.py): Skip = Fehlschlag.
+Waechter A10 (tests/conftest.py): Zustandsordner C:\Users\<konto>\AppData\Local\mt5_trading_ai\risiko (vorhanden: ja, 0 Dateien) und Arbeitsbaum C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_358a8ac6-c0a-4 bleiben unveraendert.
+rootdir: C:\Users\<konto>\AppData\Local\Temp\pytest-of-<konto>\pytest-279\test_rot_a2_jede_skip_art_wird_zum_fehlschlag0
+plugins: anyio-4.8.0, base-url-2.1.0, cov-6.0.0, playwright-0.7.2
+collected 5 items
+
+test_eichfall.py FEEFE                                                   [100%]
+
+=================================== ERRORS ====================================
+______________________ ERROR at setup of test_mark_skip _______________________
+Waechter A2 (tests/conftest.py): ein uebersprungener Test ist ein Fehlschlag.
+C:\Users\<konto>\AppData\Local\Temp\pytest-of-<konto>\pytest-279\test_rot_a2_jede_skip_art_wird_zum_fehlschlag0\test_eichfall.py:6: Skipped: Eichfall mark.skip
+Eine Pruefung ohne Gegenstand besteht nicht (CLAUDE.md, Regel 4). Den Gegenstand bereitstellen -- oder sein Fehlen mit assert benennen, nicht mit skip.
+________________________ ERROR at setup of test_skipif ________________________
+Waechter A2 (tests/conftest.py): ein uebersprungener Test ist ein Fehlschlag.
+C:\Users\<konto>\AppData\Local\Temp\pytest-of-<konto>\pytest-279\test_rot_a2_jede_skip_art_wird_zum_fehlschlag0\test_eichfall.py:10: Skipped: Eichfall skipif
+Eine Pruefung ohne Gegenstand besteht nicht (CLAUDE.md, Regel 4). Den Gegenstand bereitstellen -- oder sein Fehlen mit assert benennen, nicht mit skip.
+_________________ ERROR at setup of test_skip_in_der_fixture __________________
+Waechter A2 (tests/conftest.py): ein uebersprungener Test ist ein Fehlschlag.
+C:\Users\<konto>\AppData\Local\Temp\pytest-of-<konto>\pytest-279\test_rot_a2_jede_skip_art_wird_zum_fehlschlag0\test_eichfall.py:21: Skipped: Eichfall Skip in der Fixture
+Eine Pruefung ohne Gegenstand besteht nicht (CLAUDE.md, Regel 4). Den Gegenstand bereitstellen -- oder sein Fehlen mit assert benennen, nicht mit skip.
+================================== FAILURES ===================================
+______________________________ test_skip_im_test ______________________________
+Waechter A2 (tests/conftest.py): ein uebersprungener Test ist ein Fehlschlag.
+C:\Users\<konto>\AppData\Local\Temp\pytest-of-<konto>\pytest-279\test_rot_a2_jede_skip_art_wird_zum_fehlschlag0\test_eichfall.py:4: Skipped: Gegenstand fehlt (Eichfall pytest.skip)
+Eine Pruefung ohne Gegenstand besteht nicht (CLAUDE.md, Regel 4). Den Gegenstand bereitstellen -- oder sein Fehlen mit assert benennen, nicht mit skip.
+______________________________ test_importorskip ______________________________
+Waechter A2 (tests/conftest.py): ein uebersprungener Test ist ein Fehlschlag.
+C:\Users\<konto>\AppData\Local\Temp\pytest-of-<konto>\pytest-279\test_rot_a2_jede_skip_art_wird_zum_fehlschlag0\test_eichfall.py:15: Skipped: could not import 'modul_das_es_nicht_gibt_4711': No module named 'modul_das_es_nicht_gibt_4711'
+Eine Pruefung ohne Gegenstand besteht nicht (CLAUDE.md, Regel 4). Den Gegenstand bereitstellen -- oder sein Fehlen mit assert benennen, nicht mit skip.
+========================= 2 failed, 3 errors in 0.37s =========================
+PASSED
+tests/eichfall_skipgate.py::test_rot_a2_skip_auf_modulebene_bricht_das_sammeln running: C:\Users\<konto>\AppData\Local\Programs\Python\Python311\python.exe -mpytest --basetemp=C:\Users\<konto>\AppData\Local\Temp\pytest-of-<konto>\pytest-279\test_rot_a2_skip_auf_modulebene_bricht_das_sammeln0\runpytest-0 -p conftest -p no:cacheprovider -rs test_eichfall.py
+     in: C:\Users\<konto>\AppData\Local\Temp\pytest-of-<konto>\pytest-279\test_rot_a2_skip_auf_modulebene_bricht_das_sammeln0
+============================= test session starts =============================
+platform win32 -- Python 3.11.7, pytest-8.3.4, pluggy-1.6.0
+Waechter A2 (tests/conftest.py): Skip = Fehlschlag.
+Waechter A10 (tests/conftest.py): Zustandsordner C:\Users\<konto>\AppData\Local\mt5_trading_ai\risiko (vorhanden: ja, 0 Dateien) und Arbeitsbaum C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_358a8ac6-c0a-4 bleiben unveraendert.
+rootdir: C:\Users\<konto>\AppData\Local\Temp\pytest-of-<konto>\pytest-279\test_rot_a2_skip_auf_modulebene_bricht_das_sammeln0
+plugins: anyio-4.8.0, base-url-2.1.0, cov-6.0.0, playwright-0.7.2
+collected 0 items / 1 error
+
+=================================== ERRORS ====================================
+______________________ ERROR collecting test_eichfall.py ______________________
+Waechter A2 (tests/conftest.py): ein uebersprungener Sammelschritt (Skip auf Modulebene) ist ein Fehlschlag.
+C:\Users\<konto>\AppData\Local\Temp\pytest-of-<konto>\pytest-279\test_rot_a2_skip_auf_modulebene_bricht_das_sammeln0\test_eichfall.py:3: Skipped: could not import 'modul_das_es_nicht_gibt_4711': No module named 'modul_das_es_nicht_gibt_4711'
+Eine Pruefung ohne Gegenstand besteht nicht (CLAUDE.md, Regel 4). Den Gegenstand bereitstellen -- oder sein Fehlen mit assert benennen, nicht mit skip.
+!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+============================== 1 error in 0.83s ===============================
+PASSED
+tests/eichfall_skipgate.py::test_gruen_a2_und_a10_ein_sauberer_lauf_bleibt_gruen running: C:\Users\<konto>\AppData\Local\Programs\Python\Python311\python.exe -mpytest --basetemp=C:\Users\<konto>\AppData\Local\Temp\pytest-of-<konto>\pytest-279\test_gruen_a2_und_a10_ein_sauberer_lauf_bleibt_gruen0\runpytest-0 -p conftest -p no:cacheprovider -rs test_eichfall.py
+     in: C:\Users\<konto>\AppData\Local\Temp\pytest-of-<konto>\pytest-279\test_gruen_a2_und_a10_ein_sauberer_lauf_bleibt_gruen0
+============================= test session starts =============================
+platform win32 -- Python 3.11.7, pytest-8.3.4, pluggy-1.6.0
+Waechter A2 (tests/conftest.py): Skip = Fehlschlag.
+Waechter A10 (tests/conftest.py): Zustandsordner C:\Users\<konto>\AppData\Local\mt5_trading_ai\risiko (vorhanden: ja, 0 Dateien) und Arbeitsbaum C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_358a8ac6-c0a-4 bleiben unveraendert.
+rootdir: C:\Users\<konto>\AppData\Local\Temp\pytest-of-<konto>\pytest-279\test_gruen_a2_und_a10_ein_sauberer_lauf_bleibt_gruen0
+plugins: anyio-4.8.0, base-url-2.1.0, cov-6.0.0, playwright-0.7.2
+collected 2 items
+
+test_eichfall.py ..                                                      [100%]
+
+============================== 2 passed in 0.32s ==============================
+PASSED
+tests/eichfall_skipgate.py::test_rot_a10_schreiben_in_den_zustandsordner_faellt running: C:\Users\<konto>\AppData\Local\Programs\Python\Python311\python.exe -mpytest --basetemp=C:\Users\<konto>\AppData\Local\Temp\pytest-of-<konto>\pytest-279\test_rot_a10_schreiben_in_den_zustandsordner_faellt0\runpytest-0 -p conftest -p no:cacheprovider -rs test_eichfall.py
+     in: C:\Users\<konto>\AppData\Local\Temp\pytest-of-<konto>\pytest-279\test_rot_a10_schreiben_in_den_zustandsordner_faellt0
+============================= test session starts =============================
+platform win32 -- Python 3.11.7, pytest-8.3.4, pluggy-1.6.0
+Waechter A2 (tests/conftest.py): Skip = Fehlschlag.
+Waechter A10 (tests/conftest.py): Zustandsordner C:\Users\<konto>\AppData\Local\Temp\pytest-of-<konto>\pytest-279\test_rot_a10_schreiben_in_den_zustandsordner_faellt0\zustand-attrappe (vorhanden: nein, 0 Dateien) und Arbeitsbaum C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_358a8ac6-c0a-4 bleiben unveraendert.
+rootdir: C:\Users\<konto>\AppData\Local\Temp\pytest-of-<konto>\pytest-279\test_rot_a10_schreiben_in_den_zustandsordner_faellt0
+plugins: anyio-4.8.0, base-url-2.1.0, cov-6.0.0, playwright-0.7.2
+collected 1 item
+
+test_eichfall.py .E                                                      [100%]
+
+=================================== ERRORS ====================================
+__________ ERROR at teardown of test_schreibt_in_den_zustandsordner ___________
+Waechter A10 (tests/conftest.py): test_eichfall.py::test_schreibt_in_den_zustandsordner hat ausserhalb von tmp_path geschrieben.
+Zustandsordner des Benutzers veraendert (C:\Users\<konto>\AppData\Local\Temp\pytest-of-<konto>\pytest-279\test_rot_a10_schreiben_in_den_zustandsordner_faellt0\zustand-attrappe):
+  Ordner angelegt
+  neu: risikozustand.json
+========================= 1 passed, 1 error in 0.25s ==========================
+PASSED
+tests/eichfall_skipgate.py::test_rot_a10_schreiben_in_den_arbeitsbaum_faellt running: C:\Users\<konto>\AppData\Local\Programs\Python\Python311\python.exe -mpytest --basetemp=C:\Users\<konto>\AppData\Local\Temp\pytest-of-<konto>\pytest-279\test_rot_a10_schreiben_in_den_arbeitsbaum_faellt0\runpytest-0 -p conftest -p no:cacheprovider -rs test_eichfall.py
+     in: C:\Users\<konto>\AppData\Local\Temp\pytest-of-<konto>\pytest-279\test_rot_a10_schreiben_in_den_arbeitsbaum_faellt0
+============================= test session starts =============================
+platform win32 -- Python 3.11.7, pytest-8.3.4, pluggy-1.6.0
+Waechter A2 (tests/conftest.py): Skip = Fehlschlag.
+Waechter A10 (tests/conftest.py): Zustandsordner C:\Users\<konto>\AppData\Local\mt5_trading_ai\risiko (vorhanden: ja, 0 Dateien) und Arbeitsbaum C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_358a8ac6-c0a-4 bleiben unveraendert.
+rootdir: C:\Users\<konto>\AppData\Local\Temp\pytest-of-<konto>\pytest-279\test_rot_a10_schreiben_in_den_arbeitsbaum_faellt0
+plugins: anyio-4.8.0, base-url-2.1.0, cov-6.0.0, playwright-0.7.2
+collected 1 item
+
+test_eichfall.py .E                                                      [100%]
+
+=================================== ERRORS ====================================
+____________ ERROR at teardown of test_schreibt_in_den_arbeitsbaum ____________
+Waechter A10 (tests/conftest.py): test_eichfall.py::test_schreibt_in_den_arbeitsbaum hat ausserhalb von tmp_path geschrieben.
+Arbeitsbaum veraendert (C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_358a8ac6-c0a-4):
+  neu: eichfall-a10-arbeitsbaum.tmp
+  git status --porcelain --ignored --untracked-files=all:
+  M mt5_trading_ai/execution/risiko_zustand.py
+   M pyproject.toml
+   M tests/test_resolution.py
+   M tests/test_risiko_zustand.py
+   M tests/test_studienreihe_pruefsumme.py
+   M tests/test_volatility.py
+   M tools/live_betrieb.py
+  ?? eichfall-a10-arbeitsbaum.tmp
+  ?? stubs/MetaTrader5.pyi
+  ?? tests/conftest.py
+  ?? tests/eichfall_skipgate.py
+  !! .ruff_cache/.gitignore
+  !! .ruff_cache/0.9.2/10707548125127437847
+  !! .ruff_cache/0.9.2/13799467608321676614
+  !! .ruff_cache/0.9.2/13953010540685943614
+  !! .ruff_cache/0.9.2/17190268376759098151
+  !! .ruff_cache/0.9.2/4594814227826326265
+  !! .ruff_cache/0.9.2/5245566829210220695
+  !! .ruff_cache/CACHEDIR.TAG
+  !! mt5_trading_ai/__pycache__/__init__.cpython-311.pyc
+  !! mt5_trading_ai/execution/__pycache__/__init__.cpython-311.pyc
+  !! mt5_trading_ai/execution/__pycache__/risiko_zustand.cpython-311.pyc
+  !! tests/__pycache__/conftest.cpython-311.pyc
+========================= 1 passed, 1 error in 0.28s ==========================
+PASSED
+
+============================= 6 passed in 20.34s ==============================
