@@ -331,3 +331,27 @@ Vertrag. (c) Anderen Broker/Server wählen — Haltepunkt (Broker/Klasse), nicht
 
 **Umsetzung.** Nach dem Einspielen der T6-Familien (berührt `venue/mt5.py`), mit Eichfall rot/grün
 (`tests/eichfall_katalog_angebot.py`) und Smoke-Lauf 2 (`belege/09-smoke.txt`). Bis dahin ist A9 rot.
+
+## E-020 — Der Geldpfad ist eine Menge mit Kriterium, keine gepflegte Liste: neue Module dieses Auftrags kommen hinein (2026-09-04)
+
+**Anlass.** `tools/zweigdeckung.py::GELDPFAD` führte 11 Dateien (aus dem Altstand, minus der in T5
+gelöschten `gates/herausforderer.py`). In Auftrag 1 sind drei Module dazugekommen, die Geld bewegen oder
+seine Bewegung sperren: `risk/waehrung.py` (D3: Beträge und Umrechnungskurse), `execution/handelspause.py`
+(D13: die Sperre vor der Wochenendlücke) und — schon vorher da, aber nie in der Liste —
+`execution/reconcile.py` (D7/D8: Positionsbuch und Startabgleich; es entscheidet, ob eine Position als
+offen gilt). Bliebe die Liste, wie sie war, sänken A15 und A17 still: neuer Geldpfad ohne Deckung und
+ohne Sonden.
+
+**Kriterium (statt Liste).** Zum Geldpfad gehört eine Datei, wenn ein Fehler in ihr eine Order, ihre
+Größe, ihren Stop, ihre Sperre oder die Buchführung über eine offene Position verändern kann. Nach
+diesem Kriterium sind die drei Module Geldpfad; `venue/catalog.py` (liest Stammdaten, entscheidet nichts),
+`betrieb/journal.py` (schreibt mit, entscheidet nichts) und die Werkzeuge sind es nicht.
+
+**Entscheidung.** `GELDPFAD` wird um die drei Dateien erweitert (14 statt 11). Damit gilt für sie
+Zweigdeckung ≥ 90 % (A15) und ≥ 3 Mutationssonden (A17). Die Sonden erzeugt das Werkzeug selbst;
+fehlende Deckung wird gemessen und im Bericht benannt — sie wird nicht durch eine kleinere Liste
+weggerechnet. Wer künftig ein Modul in `mt5_trading_ai/` anlegt, prüft dieses Kriterium.
+
+**Verworfen.** (a) Liste lassen und die neuen Module „später“ aufnehmen — genau die stille Absenkung,
+die Regel 6 verbietet. (b) Alle Paketdateien aufnehmen — dann misst die Schwelle nicht mehr den
+Geldpfad, sondern das Paket, und die Zahl verliert ihre Aussage.

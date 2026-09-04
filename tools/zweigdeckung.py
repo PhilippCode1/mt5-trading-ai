@@ -90,6 +90,10 @@ GELDPFAD: tuple[str, ...] = (
     "risk/leverage.py",
     "costs/model.py",
     "gates/erkundung.py",
+    # E-020: in Auftrag 1 dazugekommen bzw. nach dem Kriterium nachgetragen.
+    "risk/waehrung.py",
+    "execution/handelspause.py",
+    "execution/reconcile.py",
 )
 
 #: Verzeichnisse, die zusaetzlich zu den verfolgten Dateien in die Kopie wandern
