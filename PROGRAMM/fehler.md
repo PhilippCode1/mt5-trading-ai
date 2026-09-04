@@ -88,6 +88,14 @@ Push wurde abgewiesen. Inhaltlich richtig (Regel 5), zeitlich mein Fehler.
 keine neue; Entwuerfe entstehen im Scratchpad oder unter PROGRAMM/, nie unter mt5_trading_ai/, tools/
 oder tests/.
 
+**Wiederholung am 2026-09-04 (dieselbe Klasse, anderer Anlass).** Waehrend eines Suitelaufs im Hintergrund
+habe ich `tools/zweigdeckung.py` und `PROGRAMM/entscheidungen.md` geaendert und zweimal committet. Der Lauf
+meldete `2 failed, 1731 passed, 1 error` und einen Verstoss gegen Waechter A10 (`.pytest_cache/v/cache/lastfailed`
+im Arbeitsbaum) -- kein Befund am Code, sondern ein Messfehler an mir. Der saubere Lauf ohne Nebenarbeit:
+`1733 passed, 5 deselected in 594,95 s`, 0 uebersprungen. Die Regel gilt also nicht nur fuer Pushs, sondern
+fuer jede laufende Messung: **waehrend eine Suite, ein Tor oder ein Push laeuft, wird am Arbeitsbaum nichts
+geaendert und nichts committet.** Ein Messwert aus einem veraenderten Baum ist kein Messwert.
+
 ## F-007 — Der Claude-Code-Wächter (PreToolUse) war in dieser Sitzung nicht aktiv; ich hatte ihn als aktiv angenommen (2026-09-04)
 
 **Was geschah.** Der Live-Eichfall aus T2 (`echo x >> PROGRAMM/abnahmekatalog.md` über das
