@@ -307,12 +307,14 @@ def _waehrungen(instrument: Instrument) -> str:
     """``currency_profit`` und ``currency_margin`` eines Instruments, wie gelesen.
 
     ``quote_currency`` IST ``currency_profit``: ``RealMt5Terminal._to_symbol`` fuellt
-    es aus ``symbol_info.currency_profit``. ``currency_margin`` fuehrt der Adapter erst
-    mit Befund D3; solange das Feld fehlt, steht hier ``unbekannt`` -- kein Rueckfall
-    auf die Basiswaehrung, denn bei CFDs (US500: Marge in USD) waere der falsch.
+    es aus ``symbol_info.currency_profit``; ``margin_currency`` seit D3 aus
+    ``symbol_info.currency_margin``. Meldet das Terminal keine Margenwaehrung, steht
+    hier ``unbekannt`` -- kein Rueckfall auf die Basiswaehrung, denn bei CFDs (US500:
+    Marge in USD) waere der falsch. (Lauf 1 des Smoke am Terminal, 2026-09-04, las das
+    Feld unter dem MT5-Namen und zeigte darum ``unbekannt``: belege/09-smoke-lauf1.txt.)
     """
     profit = instrument.quote_currency or "unbekannt"
-    margin = getattr(instrument, "currency_margin", None) or "unbekannt"
+    margin = instrument.margin_currency or "unbekannt"
     return f"currency_profit={profit} currency_margin={margin}"
 
 

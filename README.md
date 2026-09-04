@@ -38,7 +38,7 @@ Erzeugt von `tools/gen_docs.py`, geprüft von `tools/check_doc_numbers.py` und `
 <!-- KENNZAHLEN-ANFANG (erzeugt von tools/gen_docs.py, geprueft von tests/test_readme_numbers.py) -->
 - module_count: 40
 - test_function_count: 1365
-- source_lines: 16827
+- source_lines: 16829
 <!-- KENNZAHLEN-ENDE -->
 
 ## Zustand außerhalb des Arbeitsbaums

@@ -35,7 +35,6 @@ Zustands-Umgebungsvariablen des Entwicklers werden dem Unterprozess nicht mitgeg
 from __future__ import annotations
 
 import ast
-import dataclasses
 import os
 import socket
 import subprocess
@@ -48,7 +47,7 @@ from pathlib import Path
 import pytest
 from mt5_trading_ai.execution.risk_manager import RiskManager
 from mt5_trading_ai.venue.mt5 import CatalogEntry, Mt5Tick, Mt5Venue
-from mt5_trading_ai.venue.protocol import AssetClass, Instrument
+from mt5_trading_ai.venue.protocol import AssetClass
 from mt5_trading_ai.venue.smoke import run_smoke
 
 from test_mt5_venue import TS, FakeMt5Terminal, _catalog, _fees
@@ -593,9 +592,10 @@ def test_smoke_versatz_ohne_ein_einziges_aufloesbares_symbol_ist_rot() -> None:
 
 
 def test_smoke_nennt_je_katalogsymbol_currency_profit_und_currency_margin() -> None:
-    """``currency_profit`` ist das gelesene Feld (``quote_currency`` des Adapters).
-    ``currency_margin`` fuehrt der Adapter erst mit Befund D3 -- bis dahin steht
-    ``unbekannt`` da, kein geratener Wert; danach der gelesene."""
+    """``currency_profit`` ist das gelesene Feld (``quote_currency`` des Adapters);
+    ``currency_margin`` ist ``Instrument.margin_currency`` (D3). Das Fake meldet EUR
+    fuer EURUSD; ein Terminal ohne Angabe ergibt ``unbekannt``, nie einen geratenen
+    Wert (Smoke-Lauf 1 am Terminal las den falschen Feldnamen: 09-smoke-lauf1.txt)."""
     report = run_smoke(
         _venue(FakeMt5Terminal(is_demo=True), _catalog()),
         symbol="EURUSD",
@@ -606,13 +606,8 @@ def test_smoke_nennt_je_katalogsymbol_currency_profit_und_currency_margin() -> N
     btcusd = _schritt(report, "symbol_BTCUSD").detail  # type: ignore[attr-defined]
     assert "currency_profit=USD" in eurusd
     assert "currency_profit=USD" in btcusd
-    adapter_kennt_marge = "currency_margin" in {
-        f.name for f in dataclasses.fields(Instrument)
-    }
-    if adapter_kennt_marge:
-        assert "currency_margin=unbekannt" not in eurusd
-    else:
-        assert "currency_margin=unbekannt" in eurusd
+    assert "currency_margin=EUR" in eurusd
+    assert "currency_margin=unbekannt" not in eurusd
 
 
 def test_smoke_ohne_symbole_prueft_das_probesymbol() -> None:

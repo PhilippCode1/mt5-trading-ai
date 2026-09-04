@@ -601,7 +601,7 @@ Plattformunabhaengiger Handelsplatz-Vertrag.
 
 ## `mt5_trading_ai/venue/smoke.py`
 
-Zeilen: 469
+Zeilen: 471
 Aufrufer: Paket 0 · Werkzeuge 1 · Tests 3
 
 Demo-Smoke-Test der MT5-Bindung — die Orchestrierung, terminalunabhaengig.

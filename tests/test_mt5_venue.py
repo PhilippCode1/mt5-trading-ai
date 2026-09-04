@@ -80,6 +80,7 @@ def _eurusd_symbol() -> Mt5Symbol:
         volume_max=Decimal("100"),
         base_currency="EUR",
         quote_currency="USD",
+        margin_currency="EUR",
         stop_level_points=10,
         freeze_level_points=0,
         visible=True,

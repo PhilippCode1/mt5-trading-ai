@@ -1,0 +1,19 @@
+# T9 Lesender Smoke-Test (Katalog A9), Lauf 1, 2026-09-04 ~01:05 UTC, Stand af61a35, Terminal lief bereits (terminal64.exe), Demokonto angemeldet.
+# Kein --allow-write: nichts wird gesendet. Kontonummer und Kontoname redigiert.
+$ python tools/mt5_smoke.py
+OK connect: mt5
+OK healthy: 
+OK account: <nr> equity=49975.75
+OK demo_guard: Demokonto bestaetigt
+!! symbol_BTCUSD: Unbekanntes Instrument: BTCUSD
+OK symbol_EURGBP: currency_profit=GBP currency_margin=unbekannt
+OK symbol_EURUSD: currency_profit=USD currency_margin=unbekannt
+OK symbol_GBPUSD: currency_profit=USD currency_margin=unbekannt
+OK symbol_US500: currency_profit=USD currency_margin=unbekannt
+OK symbol_USDJPY: currency_profit=JPY currency_margin=unbekannt
+OK symbol_XAUUSD: currency_profit=USD currency_margin=unbekannt
+OK serverzeitversatz: +10795.5 s (Tick EURUSD 2026-09-04T04:05:22+00:00 gegen lokale UTC-Uhr 2026-09-04T01:05:26.<nr>+00:00)
+!! error: Katalogsymbole, die dieses Terminal nicht aufloest: BTCUSD. Der Katalog ist die belegte Quelle des Universums -- ein Eintrag, den der Adapter nicht findet, ist ein Defekt der Datenlage (Broker-Suffix? MarketWatch?), kein Grund, das Symbol still wegzulassen.
+OK disconnect: 
+SMOKE FEHLGESCHLAGEN
+[exit=1]

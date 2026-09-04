@@ -70,7 +70,20 @@ Korrektur an mir selbst (Regel 9): meine erste Erwartung für die USDJPY-Marge w
 
 ## 4 · Ehrliche CI (T7), Persistenz-Eichfall (T8), Smoke-Test (T9)
 
-(folgt)
+### 4c · Lesender Smoke-Test (T9, A9) — Lauf 1 am 2026-09-04, rot
+
+`python tools/mt5_smoke.py` ohne `--allow-write` gegen das laufende Terminal (Demokonto, Server MetaQuotes-Demo); Ausgabe redigiert in `belege/09-smoke-lauf1.txt`. Ergebnis `SMOKE FEHLGESCHLAGEN`, Exit 1.
+
+| Schritt | Ergebnis | Messwert |
+|---|---|---|
+| connect, healthy, account, demo_guard | grün | Demokonto bestätigt |
+| symbol_EURGBP, EURUSD, GBPUSD, US500, USDJPY, XAUUSD | grün | `currency_profit` je Symbol gelesen; `currency_margin` stand auf „unbekannt“ — Fehler im Smoke selbst (las das Feld unter dem MT5-Namen statt `Instrument.margin_currency`), behoben in diesem Commit |
+| symbol_BTCUSD | **rot** | dieser Broker führt kein BTCUSD (12.455 Symbole in den Gruppen Forex, Indexes, Metals, Nasdaq; `BTC` ist dort ein Nasdaq-ETF, kein Krypto-CFD) |
+| serverzeitversatz | grün | +10.795,5 s = +3 h (Tick EURUSD gegen lokale UTC-Uhr; deckt sich mit der Messung an Tageskerzen in `backtest/kalender.py`: Sommer +3 h) |
+| list_instruments | **rot** | Adaptervertrag: ein Katalogsymbol, das das Terminal nicht auflöst, ist ein Defekt der Datenlage |
+
+Folge: A9 ist an diesem Broker erst grün, wenn der Katalog die Datenlage trägt — Entscheidung dazu (BTCUSD als „bei diesem Broker nicht angeboten“ mit Messung markieren und Adapter/Smoke lassen das benannt durch, statt still wegzulassen) folgt nach dem Einspielen der T6-Familien, weil sie `venue/mt5.py` berührt. Ein zweiter Lauf wird als `09-smoke.txt` abgelegt.
+
 
 ## 5 · Katalog und Wächter (T2)
 
@@ -78,6 +91,8 @@ Korrektur an mir selbst (Regel 9): meine erste Erwartung für die USDJPY-Marge w
 - Wächter-Hook (`PROGRAMM/hooks/waechter.py`): Selbsttest 11 von 11 Fällen wie erwartet; stdin-Aufruf mit `Write` auf den Katalog → Exit 2 (`02-hook-waechter-selbsttest.txt`). **Live-Abweisung durch Claude Code in dieser Sitzung nicht belegt**: Hooks werden beim Sitzungsstart geladen, `.claude/settings.json` entstand in der Sitzung — der Schreibversuch über das Bash-Werkzeug ging durch und wurde zurückgenommen (`02-eichfall-live-arbeitsrepo.txt`). Wiederholung zu Beginn der nächsten Sitzung.
 - Pre-Commit-Hook: im Wegwerf-Klon 3 Abweisungen (Katalog, Live-Schalter, Vorregistrierung), 1 Annahme (README), Hash-Tor rot nach Änderung / grün danach (`02-eichfall-pre-commit.txt`); live im Arbeitsrepo: Commit mit geändertem Katalog abgewiesen (`02-eichfall-live-arbeitsrepo.txt`). Acht Tore in 2,2–2,6 s je Commit.
 - Pre-Push-Hook: volle Suite, 1629 passed in 130 s, 0 Bytecode geschrieben (`02-pre-push-erster-lauf.txt`).
+
+**Nachtrag 2026-09-04 (Live-Eichfall des Claude-Hooks, rot).** Der PreToolUse-Wächter hat in dieser Sitzung nicht abgewiesen: Ursache ist der Sitzungsstart im Altbestand-Ordner, nicht die Logik (F-007, `belege/02-hook-live-naechste-sitzung.txt`). Stand A7: Git-Pre-Commit-Hook mit Katalog-Hash belegt (Commit mit geändertem Katalog abgewiesen, `belege/02-pre-commit-erster-lauf.txt`); `katalog_hash.py --pruefen` in jedem Torlauf; Claude-Hook nur bei Sitzungsstart im Repo — Wiederholung zu Beginn der nächsten Sitzung.
 
 ## 6 · Gegenlese (T10)
 

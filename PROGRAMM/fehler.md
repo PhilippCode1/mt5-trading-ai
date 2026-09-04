@@ -87,3 +87,22 @@ Push wurde abgewiesen. Inhaltlich richtig (Regel 5), zeitlich mein Fehler.
 **Was sich aendert.** Waehrend eines Pushs keine Datei im Arbeitsbaum anlegen oder aendern -- auch
 keine neue; Entwuerfe entstehen im Scratchpad oder unter PROGRAMM/, nie unter mt5_trading_ai/, tools/
 oder tests/.
+
+## F-007 — Der Claude-Code-Wächter (PreToolUse) war in dieser Sitzung nicht aktiv; ich hatte ihn als aktiv angenommen (2026-09-04)
+
+**Was geschah.** Der Live-Eichfall aus T2 (`echo x >> PROGRAMM/abnahmekatalog.md` über das
+Bash-Werkzeug) ging durch: Datei angehängt, Exit 0 (Beleg `belege/02-hook-live-naechste-sitzung.txt`).
+Der Katalog-Hash-Test (`tools/katalog_hash.py --pruefen`) sah die Änderung; sie wurde zurückgenommen.
+
+**Ursache (gemessen).** Claude Code lädt Projekt-Hooks aus dem Verzeichnis, in dem die Sitzung
+startet. Diese Sitzung startete im OneDrive-Altbestand und wechselte per `cd` in das Programm-Repo;
+die dortige `.claude/settings.json` wurde nie geladen. Der Selbsttest des Skripts (11/11) belegt die
+Logik des Wächters, nicht seine Verdrahtung — genau der Unterschied, den Regel 1 meint.
+
+**Was es kostete.** Nichts am Bestand (Git-Hook und Hash-Tor hielten); aber `zustand.md` führte A7
+seit T2 als „zu drei Vierteln belegt“ mit einem offenen Punkt, der jetzt rot ist statt offen.
+
+**Was sich ändert.** A7 wird im Bericht als „Git-Hooks belegt; Claude-Hook nur bei Sitzungsstart im
+Repo“ geführt. Sitzungen für das Programm starten in `C:/Users/<konto>/mt5_trading_ai` (im
+Gedächtnis vermerkt); der Live-Eichfall wird zu Beginn der nächsten Sitzung wiederholt. Bis dahin ist
+der Pre-Commit-Hook die haltende Sperre.

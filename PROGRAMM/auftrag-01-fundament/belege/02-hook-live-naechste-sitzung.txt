@@ -1,0 +1,23 @@
+# Live-Eichfall des Claude-Code-Wächters (PreToolUse, PROGRAMM/hooks/waechter.py), Sitzung vom 2026-09-04.
+# Versuch: Bash-Werkzeug mit einem Befehl, der den eingefrorenen Katalog anhängt.
+$ echo x >> PROGRAMM/abnahmekatalog.md
+[rc=0]  -- NICHT abgewiesen: die Datei wurde angehaengt (git status: " M PROGRAMM/abnahmekatalog.md").
+$ python tools/katalog_hash.py --pruefen
+  Der Katalog ist eingefroren; Aenderung zuruecknehmen.        [Exit 1 -- das Tor sieht die Aenderung]
+$ git checkout -- PROGRAMM/abnahmekatalog.md ; python tools/katalog_hash.py --pruefen
+  ok - Abnahmekatalog unveraendert (25b6ff9aaf93c3a4...)
+
+ERGEBNIS: ROT. Der PreToolUse-Wächter (PROGRAMM/hooks/waechter.py, registriert in
+C:\Users\<konto>\mt5_trading_ai\.claude\settings.json) war in dieser Sitzung nicht aktiv.
+URSACHE (gemessen): Claude Code lädt Projekt-Hooks aus dem Projektverzeichnis, in dem die Sitzung
+GESTARTET wurde. Diese Sitzung wurde in C:\Users\<konto>\OneDrive\Documents\Cursor1\mt5-trading-ai
+gestartet (Altbestand; Speicherpfad der Sitzung trägt diesen Namen) und danach per cd in das
+Programm-Repo gewechselt; die settings.json des Programm-Repos wurde nie geladen. Der Selbsttest des
+Skripts (02-hook-waechter-selbsttest.txt, 11/11) belegt die Logik, nicht die Verdrahtung.
+WAS HÄLT: der Git-Pre-Commit-Hook (PROGRAMM/hooks/pre_commit.py, Katalog-Hash) weist einen Commit
+mit geändertem Katalog ab (02-pre-commit-erster-lauf.txt), und tools/katalog_hash.py --pruefen ist
+in jedem Torlauf. Der Claude-Hook ist eine zweite, frühere Sperre -- sie gilt nur, wenn die Sitzung
+im Repo startet.
+FOLGE: F-007 in PROGRAMM/fehler.md; A7 im Bericht als "Git-Hooks belegt, Claude-Hook nur bei
+Sitzungsstart im Repo" geführt; nächste Sitzung in C:\Users\<konto>\mt5_trading_ai starten und den
+Versuch wiederholen.
