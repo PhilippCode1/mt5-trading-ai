@@ -1,0 +1,12 @@
+# A18 ROT am Stand vor der Verschiebung (HEAD a8c46fa + Arbeitsbaum), 2026-09-05 -- Gegenlese T10, E14: der Altbestand betrieb/ lag im Baum.
+$ python -m pytest -q -p no:cacheprovider --tb=line tests/test_a18_laufzeitdaten.py
+C:/Users/<konto>\mt5_trading_ai\tests\test_a18_laufzeitdaten.py:123: AssertionError: tools/journal_sichern.py: JOURNALE zeigt in den Arbeitsbaum (betrieb)
+=========================== short test summary info ===========================
+FAILED tests/test_a18_laufzeitdaten.py::test_das_verzeichnis_betrieb_gibt_es_im_arbeitsbaum_nicht
+FAILED tests/test_a18_laufzeitdaten.py::test_keine_datei_im_arbeitsbaum_sieht_nach_laufzeitdaten_aus
+FAILED tests/test_a18_laufzeitdaten.py::test_die_vorgabe_des_werkzeugs_liegt_ausserhalb_des_arbeitsbaums[tools/aufzeichnung_redigieren.py-QUELLE]
+FAILED tests/test_a18_laufzeitdaten.py::test_die_vorgabe_des_werkzeugs_liegt_ausserhalb_des_arbeitsbaums[tools/betrieb_auswerten.py-JOURNALE]
+FAILED tests/test_a18_laufzeitdaten.py::test_die_vorgabe_des_werkzeugs_liegt_ausserhalb_des_arbeitsbaums[tools/betrieb_reihe.py-JOURNALE]
+FAILED tests/test_a18_laufzeitdaten.py::test_die_vorgabe_des_werkzeugs_liegt_ausserhalb_des_arbeitsbaums[tools/journal_sichern.py-JOURNALE]
+6 failed in 2.84s
+[exit=1]

@@ -159,3 +159,89 @@ slow-Faelle einzeln, erst dann pushen.
 **Nicht meine Sache, aber zu sagen:** die Platte ist zu 99,4 % belegt; die restlichen 470 GB sind fremde
 Daten. Wer hier weiterarbeitet, braucht Platz — das steht in `PROGRAMM/haltepunkte.md` als Hinweis, nicht
 als Handlung von mir.
+
+## F-009 -- Die Pre-Commit-Tore massen den Arbeitsbaum, der Commit traegt den Index (2026-09-05)
+
+**Was geschah.** Die Gegenlese T10 (Einwand E7, S1) hat den Hook mit seinem eigenen Mittel
+ausgehebelt: eine rote Fassung stagen, die saubere im Arbeitsbaum liegen lassen (`git add x`,
+danach die Datei zuruecksetzen) -- und alle neun Tore melden gruen. Der Commit enthielt danach
+eine Datei, die `ruff check` mit neun Fehlern quittiert. Gemessen im Wegwerf-Klon, Commit f830319.
+
+**Warum ich es uebersehen habe.** Der Docstring des Hooks sagte, die Doku-Tore laesen
+`git ls-files` und damit den Index. Das gilt fuer die *Dateiliste*, nicht fuer den *Inhalt*:
+`git ls-files` nennt Pfade, die Werkzeuge oeffnen danach die Platte. Ich habe einen Satz ueber
+die Menge fuer einen Satz ueber den Inhalt gehalten -- genau die Verwechslung, gegen die
+'messen statt annehmen' steht. Der Hook war seit T2 im Einsatz und hat in dieser Zeit jeden
+Commit auf dem falschen Gegenstand geprueft.
+
+**Was sich aendert.** `PROGRAMM/hooks/pre_commit.py` checkt den Index vor dem Lauf in ein
+temporaeres Verzeichnis aus (`git checkout-index -a`), legt dort ein Wegwerf-Git an (die
+Doku-Tore brauchen `git ls-files`) und faehrt die Tore mit `cwd` auf dieser Kopie. Scheitert
+das Auschecken, wird der Commit abgewiesen -- ein Tor, das heimlich etwas anderes misst als
+angekuendigt, ist schlimmer als keines. Gegenprobe: derselbe Angriff bringt jetzt drei Tore zu
+Fall (Katalog-Hash, ruff check, ruff format), der Commit wird abgewiesen. Test:
+`tests/test_waechter_verdrahtung.py::test_die_tore_laufen_auf_dem_index_nicht_auf_dem_arbeitsbaum`.
+
+## F-010 -- Vier Waechter hatten Loecher, die genau ihre eigene Zusicherung betrafen (2026-09-05)
+
+Die Gegenlese T10 fand sie; jeder ist nachgestellt und geschlossen:
+
+- **A2 (E8, S1).** `@pytest.mark.xfail(run=False)` meldete `1 xfailed` und Exit 0 -- ein
+  Dekorator genuegte, um einen Test stillzulegen. Der Waechter prueft auf `[NOTRUN]`, kam aber
+  zu spaet: pytests eigener `makereport` ist mit `tryfirst=True` registriert und liegt aussen.
+  Jetzt faellt der Fall beim **Sammeln** auf, wo kein fremder Wrapper dazwischenliegt;
+  `pytest.xfail()` mitten im Test wird zusaetzlich zum Fehlschlag. Ein `xfail`, das wirklich
+  laeuft, bleibt erlaubt (Gegenprobe mitgetestet).
+- **A10 (E9, S2).** Drei blinde Flecken: ein Ordner mit selbstgebauter `.git`-Marke ab Tiefe 2,
+  eine beliebige Datei unter `__pycache__/`, und jeder Name mit dem Praefix `.coverage`. Jetzt
+  gelten als fremde Baeume nur die, die `git worktree list` nennt; unter `__pycache__` zaehlt
+  alles ausser Bytecode; das Praefix ist `.coverage.` statt `.coverage`.
+- **A7 (E10, S2).** Der PreToolUse-Waechter entschied nach Werkzeugnamen und kannte nur vier
+  Schreibwerkzeuge und `Bash`. Ein `Set-Content` ueber das PowerShell-Werkzeug -- auf Windows
+  der gewoehnliche Schreibweg -- lief mit Exit 0 durch. Jetzt entscheidet er ueber **Felder**:
+  jede Zeichenkette der Eingabe wird geprueft, der Matcher steht auf `.*`.
+- **A7 (E11, S2).** Kein Test fuhr die Waechter; `git config --unset core.hooksPath` schaltete
+  alle neun Tore ab, ohne dass etwas rot wurde. Neu: `tests/test_waechter_verdrahtung.py`
+  (13 Faelle) laeuft in Suite, Pre-Push und CI; der Hook meldet jede Aenderung an einer
+  Waechterdatei als eigene Zeile (`GEMELDET`).
+- **A5 (E12, S2).** Die Basislinie des Geheimnis-Scans war nach Blob geschluesselt, nicht nach
+  Ort: derselbe Inhalt liess sich aus `PROGRAMM/eingang/` an einen lebenden Pfad kopieren, und
+  der Scan meldete 0 neue Funde. Der Schluessel traegt jetzt den Ort, und der Ort eines Objekts
+  ist die **strengste** Gruppe aller seiner heutigen Pfade. Gegenprobe: derselbe Blob unter
+  `config/zugang_neu.txt` ergibt 37 neue Funde, Exit 1.
+
+## F-011 -- Die A11-Messung mass zweimal den Messaufbau statt der Suite (2026-09-05)
+
+- **Erster Anlauf:** 100 Laeufe aus einem Schnappschuss der verfolgten Dateien -- ohne `.git`.
+  Neun Tests fragen `git ls-files`/`status`/`worktree list` und fielen in JEDEM Lauf (36 von 36
+  mit denselben neun roten Faellen). Das war kein Flattern. Behoben: der Schnappschuss bekommt
+  ein Wegwerf-Git.
+- **Zweiter Anlauf:** sechs Laeufe gleichzeitig, waehrend nebenher eine Deckungsmessung und
+  eine Gegenprobe liefen. Jeder Lauf brauchte 21 statt 4 Minuten und meldete ~280 rote Faelle --
+  Unterprozess-Tests mit Zeitschranke (Eichfaelle, Werkzeuge) liefen in ihre Timeouts. Gemessen
+  wurde die Last der Maschine, nicht die Suite. Abgebrochen, Laufordner entfernt (die Platte
+  stand bei 99 %).
+- **Dritter Fall, gleiche Klasse (Aequivalenz-Nachweis E21):** Die Kopie fuer den Nachweis
+  entstand, waehrend `tests/test_a18_laufzeitdaten.py` halbfertig im Baum lag (zwei Faelle
+  dort rot: `TRIALS.jsonl` noch in der Wurzel, Modul ohne `sys.modules`-Eintrag). Beide
+  Sonden meldeten `2 failed` -- ich hatte das zuerst als „getoetet, Eintrag falsch“ gelesen.
+  Die Diagnose auf einer sauberen Kopie: 176 Risikofaelle gruen mit der Sonde. Ein
+  Ueberlebensnachweis ohne Basislauf derselben Kopie ist keiner; der Nachweis wurde mit
+  Basislauf wiederholt (`06-mutationsgrenzen.txt`).
+- **Regel daraus:** Eine Flattermessung faehrt allein und mit so viel Gleichzeitigkeit, dass
+  die Laufzeit je Lauf nahe der Einzellaufzeit bleibt; die Laufzeit steht je Lauf im Beleg,
+  damit ein Pruefer die Last sieht. Rote Faelle einer Wiederholungsmessung sind erst dann
+  „Flattern“, wenn derselbe Fall in derselben Umgebung mal rot, mal gruen ist.
+
+## F-012 -- Zwei Fehlgriffe beim Umbau des Zusicherungstors (E13), beide von Toren gefangen (2026-09-05)
+
+- **Backslash-Unfall:** Ein Heredoc-Patch schrieb `"\n".join(...)` mit echtem Zeilenumbruch in
+  `tools/check_docs_claims.py` -- die Zeichenkette `\n` war auf dem Weg durch die Shell zum
+  Zeilenumbruch geworden. ruff meldete zwoelf Syntaxfehler, das Tor selbst lief nicht mehr.
+  Behoben ueber `chr(92)`/`chr(10)`; Patches mit Escapes gehen seither als Datei, nicht als
+  Heredoc.
+- **Absatz statt Zeile:** Der erste Umbau pruefte ganze Absaetze. Damit entlastete EIN gueltiger
+  Beleg irgendwo im Absatz jede Zusicherung darin -- der rote B3-Eichfall (Beleg ins Leere,
+  `tests/test_doku_menge.py`) fiel gruen. Zurueck auf Zeilen, plus ein Fenster aus Zeile und
+  Folgezeile (mit Bindestrich-Verschmelzung), gemeldet an der ersten Zeile. Nebenbefund: das
+  Muster `vollst[aä]ndig` fing die ASCII-Schreibung `vollstaendig` nie -- verschaerft.

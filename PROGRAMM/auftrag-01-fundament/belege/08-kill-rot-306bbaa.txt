@@ -1,0 +1,7 @@
+# A6 ROT gegen 306bbaa (Referenz-Worktree), 2026-09-05 -- Gegenlese T10, E22: die rote Haelfte war behauptet, nicht gefahren.
+$ python 08-kill-rot-306bbaa.py <306bbaa-Worktree>
+Lauf 1 (306bbaa): HALT
+Abschuss: taskkill /F /T -> Rueckgabewert 1
+Lauf 2 (Neustart, volles Konto): approved=True latch_halt=False reason=None
+ROT
+# Worktree danach: 0 Eintraege in git status

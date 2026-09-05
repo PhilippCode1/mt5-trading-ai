@@ -1,8 +1,9 @@
 #!/bin/sh
 # Programm NEUAUFBAU: die volle Testsuite vor jedem Push -- dieselbe Suite wie in der CI.
-# Kein Bytecode waehrend des Laufs: das Mutationstor (slow) schreibt Mutanten in den
-# Arbeitsbaum und stellt sie zurueck; ein in derselben Sekunde erzeugter .pyc bliebe
-# sonst als Mutant liegen (Bewertung 03b). Gilt, bis T6 das Tor in eine Kopie verlegt.
+# Kein Bytecode waehrend des Laufs. Der urspruengliche Grund ist seit T6 weg (das
+# Mutationstor arbeitet in einer Kopie, F-005), der Schalter bleibt aus einem
+# zweiten: der A10-Waechter zaehlt jede Datei, die ein Lauf im Arbeitsbaum
+# hinterlaesst, und .pyc-Dateien sind genau das.
 PYTHONDONTWRITEBYTECODE=1
 export PYTHONDONTWRITEBYTECODE
 echo "pre-push: python -m pytest -q -p no:cacheprovider (PYTHONDONTWRITEBYTECODE=1)"

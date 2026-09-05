@@ -32,6 +32,7 @@ import json
 import os
 import re
 import sys
+from collections.abc import Iterator
 from pathlib import Path
 
 GESCHUETZT = (
@@ -98,7 +99,39 @@ def pruefe_bash(befehl: str, wurzel: Path) -> str | None:
     return None
 
 
+def _strings(wert: object, tiefe: int = 0) -> Iterator[str]:
+    """Jede Zeichenkette in der Werkzeugeingabe -- gleich wie tief sie liegt."""
+    if tiefe > 6:
+        return
+    if isinstance(wert, str):
+        yield wert
+    elif isinstance(wert, dict):
+        for v in wert.values():
+            yield from _strings(v, tiefe + 1)
+    elif isinstance(wert, list | tuple):
+        for v in wert:
+            yield from _strings(v, tiefe + 1)
+
+
 def entscheide(daten: dict[str, object]) -> str | None:
+    """Entscheidet ueber FELDER, nicht ueber Werkzeugnamen.
+
+    Bis zum 2026-09-05 kannte diese Funktion vier Schreibwerkzeuge und ``Bash``;
+    jeder andere Name fiel durch. Diese Sitzung hat neben ``Bash`` ein Werkzeug
+    namens ``PowerShell``, und auf einem Windows-Rechner ist ``Set-Content`` der
+    gewoehnliche Schreibweg -- keine Umgehung, sondern der Normalfall. Gemessen in
+    der Gegenlese T10 (Einwand E10): ein ``Set-Content`` auf
+    ``config/live_freigabe.json`` lief ohne Ausgabe und mit Exit 0 durch.
+
+    Jetzt gilt: (1) die bekannten Schreibwerkzeuge wie bisher ueber ihren Pfad;
+    (2) JEDE andere Eingabe wird auf ihre Zeichenketten hin durchsucht -- nennt
+    eine davon eine gesperrte Datei, entscheidet dieselbe Befehlspruefung wie bei
+    ``Bash``. Der Matcher in ``.claude/settings.json`` steht dafuer auf ``.*``.
+
+    Was das NICHT leistet, steht weiter unten am Modulkopf: eine Heuristik ueber
+    Text bleibt eine Heuristik. Sie ist die erste von drei Sperren; die zweite
+    (Pre-Commit-Hash) und die dritte (CI) haengen nicht an ihr.
+    """
     werkzeug = str(daten.get("tool_name", ""))
     eingabe = daten.get("tool_input") or {}
     if not isinstance(eingabe, dict):
@@ -109,10 +142,10 @@ def entscheide(daten: dict[str, object]) -> str | None:
         if isinstance(pfad, str) and pfad:
             return pruefe_pfad(pfad, wurzel)
         return None
-    if werkzeug == "Bash":
-        befehl = eingabe.get("command", "")
-        if isinstance(befehl, str):
-            return pruefe_bash(befehl, wurzel)
+    for text in _strings(eingabe):
+        grund = pruefe_bash(text, wurzel)
+        if grund is not None:
+            return grund
     return None
 
 

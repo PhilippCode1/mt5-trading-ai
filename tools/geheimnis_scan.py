@@ -159,9 +159,15 @@ KLASSEN: dict[str, str] = {
     ),
 }
 
+#: Objekt, Gattung, Abdruck und Ort -- der Ort seit E12 (siehe Fund.schluessel).
+Schluessel = tuple[str, str, str, str]
+
 BASISLINIE_FELDER = (
     "objekt",
     "pfad",
+    # Seit E12 im Schluessel: derselbe Blob an einem lebenden Pfad ist ein neuer
+    # Fund, auch wenn er im Archiv oder in den Eingaengen eingeordnet ist.
+    "ort",
     "zeile",
     "gattung",
     "abdruck",
@@ -184,24 +190,54 @@ class Objekt:
     im_baum: set[str] = field(default_factory=set)
     im_verlauf: bool = False
 
+    @property
+    def ort(self) -> str:
+        """Die STRENGSTE Gruppe aller Orte dieses Objekts.
+
+        Ein Blob kann an mehreren Pfaden liegen: im Verlauf unter
+        ``PROGRAMM/eingang/`` und heute zusaetzlich unter ``config/``. ``pfad``
+        nennt nur den ersten. Fuer die Basislinie zaehlt der lebende Ort, sonst
+        deckt ein als Eingang eingeordneter Fund seine eigene Kopie im lebenden
+        Teil mit ab (Gegenlese T10, E12: 29 Kontonummern wanderten nach
+        ``config/zugang_neu.txt``, der Scan meldete 0 neue Funde).
+        """
+        orte = {gruppe(p) for p in self.im_baum} or {gruppe(self.pfad)}
+        return LEBEND if LEBEND in orte else sorted(orte)[0]
+
 
 @dataclass(frozen=True)
 class Fund:
     objekt: str
     pfad: str
+    #: Die strengste Gruppe aller heutigen Orte des Objekts (siehe Objekt.ort).
+    ort: str
     zeile: int
     gattung: str
     abdruck: str
 
     @property
-    def schluessel(self) -> tuple[str, str, str]:
-        return (self.objekt, self.gattung, self.abdruck)
+    def schluessel(self) -> tuple[str, str, str, str]:
+        """Objekt, Gattung, Abdruck -- UND der Ort (``gruppe``).
+
+        Der Ort gehoert dazu, seit die Gegenlese T10 (Einwand E12) gezeigt hat,
+        was ohne ihn moeglich ist: ein Blob, dessen Funde als ``testdatum`` in
+        ``PROGRAMM/eingang/`` eingeordnet sind, laesst sich unveraendert an einen
+        lebenden Pfad kopieren -- derselbe Blob, derselbe Abdruck, also derselbe
+        Schluessel, also bekannt. Gemessen: 29 Kontonummern und 8 Adressen wandern
+        nach ``config/zugang_neu.txt``, und der Scan meldet ``0 neue Funde``.
+
+        Mit dem Ort im Schluessel deckt eine Basislinie den Fund dort, wo er
+        eingeordnet wurde, und nirgends sonst. Dieselbe Datei innerhalb ihrer
+        Gruppe zu verschieben bleibt frei -- ein Archivstueck umzubenennen ist
+        kein neuer Fund."""
+        return (self.objekt, self.gattung, self.abdruck, self.ort)
 
 
 @dataclass(frozen=True)
 class Eintrag:
     objekt: str
     pfad: str
+    ort: str
     zeile: int
     gattung: str
     abdruck: str
@@ -209,8 +245,21 @@ class Eintrag:
     begruendung: str
 
     @property
-    def schluessel(self) -> tuple[str, str, str]:
-        return (self.objekt, self.gattung, self.abdruck)
+    def schluessel(self) -> tuple[str, str, str, str]:
+        """Objekt, Gattung, Abdruck -- UND der Ort (``gruppe``).
+
+        Der Ort gehoert dazu, seit die Gegenlese T10 (Einwand E12) gezeigt hat,
+        was ohne ihn moeglich ist: ein Blob, dessen Funde als ``testdatum`` in
+        ``PROGRAMM/eingang/`` eingeordnet sind, laesst sich unveraendert an einen
+        lebenden Pfad kopieren -- derselbe Blob, derselbe Abdruck, also derselbe
+        Schluessel, also bekannt. Gemessen: 29 Kontonummern und 8 Adressen wandern
+        nach ``config/zugang_neu.txt``, und der Scan meldet ``0 neue Funde``.
+
+        Mit dem Ort im Schluessel deckt eine Basislinie den Fund dort, wo er
+        eingeordnet wurde, und nirgends sonst. Dieselbe Datei innerhalb ihrer
+        Gruppe zu verschieben bleibt frei -- ein Archivstueck umzubenennen ist
+        kein neuer Fund."""
+        return (self.objekt, self.gattung, self.abdruck, self.ort)
 
     def als_dict(self) -> dict[str, object]:
         return {name: getattr(self, name) for name in BASISLINIE_FELDER}
@@ -352,6 +401,7 @@ def runde_detect_secrets(objekte: dict[str, Objekt]) -> tuple[list[Fund], int]:
                 Fund(
                     sha,
                     objekte[sha].pfad,
+                    objekte[sha].ort,
                     int(geheimnis.line_number),
                     f"detect-secrets: {geheimnis.type}",
                     abdruck(wert.encode("utf-8")),
@@ -370,6 +420,7 @@ def runde_muster(objekte: dict[str, Objekt]) -> list[Fund]:
                     Fund(
                         sha,
                         obj.pfad,
+                        obj.ort,
                         zeile,
                         f"Muster: {titel}",
                         abdruck(treffer.group(0)),
@@ -436,7 +487,7 @@ def runde_kontoname(objekte: dict[str, Objekt]) -> Kontonamen:
 # --- Basislinie ------------------------------------------------------------------
 
 
-def basislinie_laden(pfad: Path) -> dict[tuple[str, str, str], Eintrag]:
+def basislinie_laden(pfad: Path) -> dict[Schluessel, Eintrag]:
     name = pfad.name
     if not pfad.is_file():
         raise WerkzeugFehler(
@@ -451,7 +502,7 @@ def basislinie_laden(pfad: Path) -> dict[tuple[str, str, str], Eintrag]:
     roh = daten.get("eintraege")
     if not isinstance(roh, list):
         raise WerkzeugFehler(f"Basislinie {name}: Feld 'eintraege' fehlt")
-    eintraege: dict[tuple[str, str, str], Eintrag] = {}
+    eintraege: dict[Schluessel, Eintrag] = {}
     ungeprueft = 0
     for nr, roh_eintrag in enumerate(roh, start=1):
         if not isinstance(roh_eintrag, dict) or tuple(roh_eintrag) != BASISLINIE_FELDER:
@@ -463,6 +514,7 @@ def basislinie_laden(pfad: Path) -> dict[tuple[str, str, str], Eintrag]:
             eintrag = Eintrag(
                 objekt=str(roh_eintrag["objekt"]),
                 pfad=str(roh_eintrag["pfad"]),
+                ort=str(roh_eintrag["ort"]),
                 zeile=int(roh_eintrag["zeile"]),
                 gattung=str(roh_eintrag["gattung"]),
                 abdruck=str(roh_eintrag["abdruck"]),
@@ -507,10 +559,10 @@ def basislinie_laden(pfad: Path) -> dict[tuple[str, str, str], Eintrag]:
 
 
 def basislinie_schreiben(
-    pfad: Path, funde: list[Fund], alt: dict[tuple[str, str, str], Eintrag]
+    pfad: Path, funde: list[Fund], alt: dict[Schluessel, Eintrag]
 ) -> tuple[int, int]:
     """Aktuellen Stand schreiben; (uebernommen, neu als ungeprueft)."""
-    eintraege: dict[tuple[str, str, str], Eintrag] = {}
+    eintraege: dict[Schluessel, Eintrag] = {}
     uebernommen = neu = 0
     for f in sorted(funde, key=lambda f: (f.pfad, f.zeile, f.gattung, f.objekt)):
         if f.schluessel in eintraege:
@@ -523,7 +575,14 @@ def basislinie_schreiben(
             klasse, begruendung = UNGEPRUEFT, "noch nicht eingeordnet"
             neu += 1
         eintraege[f.schluessel] = Eintrag(
-            f.objekt, f.pfad, f.zeile, f.gattung, f.abdruck, klasse, begruendung
+            f.objekt,
+            f.pfad,
+            f.ort,
+            f.zeile,
+            f.gattung,
+            f.abdruck,
+            klasse,
+            begruendung,
         )
     basislinie_speichern(pfad, list(eintraege.values()))
     return uebernommen, neu
@@ -613,7 +672,7 @@ def lauf(
     )
 
     if schreiben:
-        alt: dict[tuple[str, str, str], Eintrag] = {}
+        alt: dict[Schluessel, Eintrag] = {}
         if basislinie.is_file():
             try:
                 alt = basislinie_laden(basislinie)
@@ -626,7 +685,7 @@ def lauf(
         )
         return 0
 
-    verwendet: set[tuple[str, str, str]] = set()
+    verwendet: set[Schluessel] = set()
     neue: list[Fund] = []
     je_klasse: dict[str, int] = {}
     for f in funde:

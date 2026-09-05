@@ -26,8 +26,9 @@ ZWEI SONDEN SIND NICHT ZU TOETEN -- UND DAS IST KEIN LOCH
   ``and`` faellt ``None`` in den ``try``-Block, ``int(float(None))`` wirft ``TypeError``,
   und der ``except``-Zweig liefert dasselbe ``None``. Ebenfalls verhaltensgleich.
 
-Beides ist gemessen (Beleg) und in ``tools/mutationstor.py`` als ``AEQUIVALENT``
-eingetragen: eine Mutation, die das Verhalten nicht aendern **kann**, ist kein
+Beides ist gemessen -- jede Sonde einzeln gegen die volle Suite, mit Basislauf derselben
+Kopie (``belege/06-mutationsgrenzen.txt``, 2026-09-05) -- und in ``tools/mutationstor.py``
+als ``AEQUIVALENT`` eingetragen: eine Mutation, die das Verhalten nicht aendern **kann**, ist kein
 Testloch. Sie wird nicht mehr gezogen -- die Schwelle bleibt bei 0,90.
 """
 
@@ -372,3 +373,41 @@ def test_der_juengere_letzte_trade_gewinnt_beim_nachziehen() -> None:
         "XAUUSD": JETZT,
         "US500": JETZT,
     }
+
+
+# --- venue/mt5.py:1066  ``if request.stop_loss <= 0``  ('0' -> '1' ueberlebte) ----
+
+
+def test_ein_stop_zwischen_null_und_eins_ist_ein_gueltiger_stop() -> None:
+    """Gegenlese T10, E16: die Sonde ``stop_loss <= 1`` ueberlebte am HEAD (CI-Lauf
+    33977291625). Kein Test eroeffnete mit einem Stop unter 1,0 -- der Kurs von
+    EURGBP, USDCHF oder AUDUSD. Mit der Sonde waere jede Eroeffnung in diesen
+    Instrumenten "ohne Stop" abgewiesen, und die Suite haette es nicht bemerkt.
+
+    Der Stop 0,99 muss AN DIESEM TOR vorbei (was spaetere Tore sagen, ist hier
+    gleichgueltig); der Stop 0 und ein negativer Stop bleiben genau hier stehen.
+    """
+    from mt5_trading_ai.venue.protocol import OrderRejectedError
+
+    from test_mt5_venue import _order
+    from test_zweige_mt5 import _Terminal, _venue_mit
+
+    for stop, erwartet_missing in (
+        (Decimal("0.99"), False),
+        (Decimal("0.00001"), False),
+        (Decimal("0"), True),
+        (Decimal("-1"), True),
+    ):
+        venue = _venue_mit(_Terminal())
+        grund: str | None = "angenommen"
+        try:
+            venue.submit_order(_order(stop_loss=stop))
+        except OrderRejectedError as abgelehnt:
+            grund = abgelehnt.reason
+        if erwartet_missing:
+            assert grund == "missing_stop_loss", (stop, grund)
+        else:
+            assert grund != "missing_stop_loss", (
+                f"Stop {stop} wurde als fehlender Stop abgewiesen -- das Tor prueft "
+                "gegen 1 statt gegen 0"
+            )

@@ -59,22 +59,15 @@ OHNE_TESTPFLICHT: dict[str, str] = {
         "Setzt eine abgerissene MT5-Sitzung voraus; der Pruefstand faehrt ein "
         "Fake-Terminal, das immer verbunden ist. Nachweisbar nur am echten Terminal."
     ),
-    # Die drei folgenden sind DERSELBE Befund, dreimal: ein Waechter sitzt hinter
-    # einem strengeren Pruefer und kann deshalb nicht ausloesen. Sie stehen hier
-    # statt in einem erzwungenen Test, weil ein Test, der seinen Fall nur mit Gewalt
-    # herstellt, nichts belegt. Fuer jede der drei haelt
-    # ``tests/test_stufe9_tote_tore.py`` die VORGELAGERTE Klammer fest -- wird sie
-    # gelockert, faellt die Freistellung sofort auf.
-    "stop_price_nonpositive": (
-        "Sitzt hinter der Budgetklammer: ein Stop unterhalb von null braeuchte eine "
-        "Distanz von 10.000 bp, und ``margin_ceiling_bps`` laesst hoechstens "
-        "1.666,7 bp zu (Hebel 1). Gemessen, nicht vermutet."
-    ),
-    "margin_below_min_volume": (
-        "Sitzt hinter dem Hebel-Preflight: eine freie Marge, die den Deckel unter das "
-        "Mindestvolumen druecken wuerde, wird vorher mit ``insufficient_margin`` "
-        "abgewiesen. Gemessen mit margin_free=1."
-    ),
+    # Ein Waechter, der hinter einem strengeren Pruefer sitzt, kann nicht ausloesen.
+    # Er steht hier statt in einem erzwungenen Test, weil ein Test, der seinen Fall
+    # nur mit Gewalt herstellt, nichts belegt. Zwei weitere standen hier bis zur
+    # Gegenlese T10 (E15/E16): ``stop_price_nonpositive`` (unerreichbar, entfernt)
+    # und ``margin_below_min_volume`` -- dessen Begruendung galt nur fuer Konten OHNE
+    # gemeldeten Hebel; mit Hebel greift der Margendeckel des Runners vor dem
+    # Preflight, und der Fall hat seit E15 einen eigenen Test
+    # (``tests/test_orderpfad_zweige_e15.py``). Eine Freistellung, deren Klammer nur
+    # fuer einen Teil der Konten gilt, ist keine.
     "risk_sizing_no_volume": (
         "Sitzt hinter der Risikoschicht: eine genehmigte Autorisierung traegt immer "
         "eine Groessenberechnung; ohne sie lehnt ``authorize_opening`` bereits ab. "

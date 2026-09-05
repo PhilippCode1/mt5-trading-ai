@@ -88,6 +88,77 @@ def test_beide_waechter_sind_in_diesem_lauf_aktiv(
 # --- Waechter 1 (A2): Skip = Fehlschlag --------------------------------------------
 
 
+def test_rot_a2_ein_xfail_ohne_lauf_haelt_die_sammlung_an(
+    pytester: pytest.Pytester, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """ROTER EICHFALL (Gegenlese T10, E8): ``xfail(run=False)`` ist ein Skip mit
+    anderem Namen. Bis zum 2026-09-05 meldete so ein Fall ``1 xfailed`` und Exit 0 --
+    ein Dekorator genuegte, um einen Test stillzulegen, ohne dass ein Tor anschlug.
+    Der Wrapper unten kam zu spaet: pytests eigener ``makereport`` liegt aussen.
+    Jetzt faellt es beim SAMMELN auf, wo kein fremder Wrapper dazwischenliegt.
+    """
+    ergebnis = _lauf(
+        pytester,
+        monkeypatch,
+        """
+        import pytest
+
+        @pytest.mark.xfail(run=False, reason="Eichfall xfail ohne Lauf")
+        def test_xfail_ohne_lauf():
+            assert False
+        """,
+    )
+
+    assert ergebnis.ret != 0, ergebnis.outlines
+    ergebnis.stderr.fnmatch_lines(["*Waechter A2*xfail(run=False)*"])
+    assert _zaehlung(ergebnis)["skipped"] == 0
+
+
+def test_rot_a2_ein_imperatives_xfail_ist_ein_fehlschlag(
+    pytester: pytest.Pytester, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Der zweite Weg in denselben Zustand: ``pytest.xfail()`` mitten im Test bricht
+    ab, und was danach steht, wird nie geprueft (Gegenlese T10, E8).
+    """
+    ergebnis = _lauf(
+        pytester,
+        monkeypatch,
+        """
+        import pytest
+
+        def test_imperatives_xfail():
+            pytest.xfail("Eichfall pytest.xfail")
+            assert False  # wird nie erreicht
+        """,
+    )
+
+    assert _zaehlung(ergebnis)["failed"] == 1, ergebnis.outlines
+    assert _zaehlung(ergebnis)["skipped"] == 0
+    ergebnis.stdout.fnmatch_lines(["*Waechter A2*pytest.xfail()*"])
+
+
+def test_gruen_a2_ein_xfail_das_laeuft_bleibt_erlaubt(
+    pytester: pytest.Pytester, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Die Gegenprobe, ohne die das Verbot zu breit waere: ein erwarteter Fehlschlag,
+    der wirklich gefahren wird, ist eine Messung und bleibt zulaessig.
+    """
+    ergebnis = _lauf(
+        pytester,
+        monkeypatch,
+        """
+        import pytest
+
+        @pytest.mark.xfail(reason="Eichfall xfail MIT Lauf")
+        def test_xfail_mit_lauf():
+            assert False
+        """,
+    )
+
+    assert ergebnis.ret == 0, ergebnis.outlines
+    assert _zaehlung(ergebnis)["failed"] == 0
+
+
 def test_rot_a2_jede_skip_art_wird_zum_fehlschlag(
     pytester: pytest.Pytester, monkeypatch: pytest.MonkeyPatch
 ) -> None:

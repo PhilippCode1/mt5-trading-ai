@@ -1,0 +1,19 @@
+# Befund T, ROT gegen 306bbaa (Referenz-Worktree, ohne betrieb/, wie ein Klon), 2026-09-05.
+# Gegenlese T10, E2: der bisher als rot gefuehrte Beleg war ein HEAD-Lauf. Hier der echte Altstand:
+# die vier Dauertor-Dateien ueberspringen sich, weil sie betrieb/ lesen (Katalog A2 verlangt 0 Skips).
+$ python -m pytest -q -p no:cacheprovider -rs tests/test_laufabschluss.py tests/test_buchtreue.py tests/test_ausstiegsdeckung.py tests/test_journal_leser.py
+SKIPPED [1] tests\test_laufabschluss.py:83: keine Betriebsjournale im Arbeitsbaum
+SKIPPED [1] tests\test_laufabschluss.py:112: keine Betriebsjournale im Arbeitsbaum
+SKIPPED [1] tests\test_laufabschluss.py:136: keine Betriebsjournale im Arbeitsbaum
+SKIPPED [1] tests\test_laufabschluss.py:165: keine Betriebsjournale im Arbeitsbaum
+SKIPPED [1] tests\test_laufabschluss.py:190: journal-20260817T182951.jsonl fehlt im Arbeitsbaum
+SKIPPED [1] tests\test_laufabschluss.py:217: keine Betriebsjournale im Arbeitsbaum
+SKIPPED [1] tests\test_laufabschluss.py:233: keine Betriebsjournale im Arbeitsbaum
+SKIPPED [1] tests\test_laufabschluss.py:276: keine Betriebsjournale im Arbeitsbaum
+SKIPPED [1] tests\test_buchtreue.py:142: keine Betriebsjournale im Arbeitsbaum
+SKIPPED [1] tests\test_buchtreue.py:223: keine Betriebsjournale im Arbeitsbaum
+SKIPPED [1] tests\test_ausstiegsdeckung.py:281: keine Betriebsjournale im Arbeitsbaum
+SKIPPED [1] tests\test_journal_leser.py:409: kein betrieb/-Verzeichnis
+57 passed, 12 skipped in 10.31s
+[exit=0]
+# Worktree danach: 0 Eintraege in git status

@@ -13,6 +13,8 @@ import time
 from pathlib import Path
 
 import pytest
+
+NL = chr(10)
 from tools import archiv_manifest, check_doc_numbers, check_docs_claims, doku_menge
 
 REPO = Path(__file__).resolve().parents[1]
@@ -87,6 +89,55 @@ def test_eigene_programmdatei_bleibt_scharf_geprueft(
     probleme = check_docs_claims.check_file(datei)
     assert probleme, "eine Zusicherung ohne Beleg muss gemeldet werden"
     assert any("produktionsreif" in p for p in probleme)
+
+
+def test_eine_ueber_zeilen_umgebrochene_zusicherung_faellt_auf(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """ROTER EICHFALL (Gegenlese T10, E13): Markdown setzt Zeilen zu einem Absatz
+    zusammen -- das Tor muss es auch. "vollstaendig" / "implementiert" auf zwei Zeilen
+    und "produktions-" / "reif" mit Bindestrich-Umbruch kamen zeilenweise durch.
+    Gemeldet wird an der Zeile, in der die Zusicherung beginnt (3 und 4)."""
+    monkeypatch.setattr(check_docs_claims, "REPO", tmp_path)
+    ordner = tmp_path / "PROGRAMM"
+    ordner.mkdir()
+    datei = ordner / "bericht.md"
+    zeilen = [
+        "# Auftrag 1",
+        "",
+        "Der Geldpfad ist vollstaendig",
+        "implementiert und damit produktions-",
+        "reif.",
+        "",
+    ]
+    datei.write_text(NL.join(zeilen), encoding="utf-8")
+    probleme = check_docs_claims.check_file(datei)
+    zeilen = sorted(int(p.split(":")[1]) for p in probleme)
+    assert zeilen == [3, 4], probleme
+    assert any("vollstaendig implementiert" in p for p in probleme), probleme
+    assert any("produktionsreif" in p for p in probleme), probleme
+
+
+def test_ein_beleg_unmittelbar_nach_dem_absatz_entlastet_ihn(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """GRUENE GEGENPROBE: der Beleg in den zwei Zeilen nach der Zusicherung entlastet
+    sie -- auch wenn sie ueber den Umbruch geht. Das Fenster darf nicht strenger sein
+    als die Zeile, fuer die der Beleg schon galt."""
+    monkeypatch.setattr(check_docs_claims, "REPO", tmp_path)
+    ordner = tmp_path / "PROGRAMM"
+    ordner.mkdir()
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests" / "test_beleg.py").write_text("def test_x(): pass" + NL)
+    datei = ordner / "bericht.md"
+    zeilen = [
+        "Der Geldpfad ist vollstaendig",
+        "implementiert.",
+        "Beleg: `tests/test_beleg.py::test_x`",
+        "",
+    ]
+    datei.write_text(NL.join(zeilen), encoding="utf-8")
+    assert check_docs_claims.check_file(datei) == []
 
 
 def test_fremde_eingaenge_werden_nicht_gescannt_sondern_gesichert() -> None:

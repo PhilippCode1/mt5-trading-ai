@@ -1,0 +1,7 @@
+# Gegenprobe (Gegenlese T10, E3 und E16): die neuen Faelle toeten die zwei ueberlebenden Sonden -- Kopie des Arbeitsbaums, Sonde gesetzt, Testdatei gefahren. 2026-09-05.
+# E3 Frischebeweis: mt5_trading_ai/venue/mt5.py  'if zweite.tick_ms <= erste.tick_ms:\n                raise ServerversatzFehler(' -> 'if False:\n                raise ServerversatzFehler('
+  ohne Sonde: ['5 passed in 5.55s'] exit=0
+  mit Sonde:  ['1 failed, 4 passed in 4.76s'] exit=1  -> GETOETET
+# E16 Stop-Grenze: mt5_trading_ai/venue/mt5.py  'if request.stop_loss <= 0:' -> 'if request.stop_loss <= 1:'
+  ohne Sonde: ['12 passed in 11.54s'] exit=0
+  mit Sonde:  ['1 failed, 11 passed in 9.09s'] exit=1  -> GETOETET

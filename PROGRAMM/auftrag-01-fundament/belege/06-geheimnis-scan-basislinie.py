@@ -111,7 +111,14 @@ def main() -> int:
         regeln[(e.gattung, begruendung[:60])] += 1
         neu.append(
             Eintrag(
-                e.objekt, e.pfad, e.zeile, e.gattung, e.abdruck, klasse, begruendung
+                e.objekt,
+                e.pfad,
+                e.ort,
+                e.zeile,
+                e.gattung,
+                e.abdruck,
+                klasse,
+                begruendung,
             )
         )
     basislinie_speichern(pfad, neu)

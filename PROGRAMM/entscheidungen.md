@@ -355,3 +355,29 @@ weggerechnet. Wer künftig ein Modul in `mt5_trading_ai/` anlegt, prüft dieses 
 **Verworfen.** (a) Liste lassen und die neuen Module „später“ aufnehmen — genau die stille Absenkung,
 die Regel 6 verbietet. (b) Alle Paketdateien aufnehmen — dann misst die Schwelle nicht mehr den
 Geldpfad, sondern das Paket, und die Zahl verliert ihre Aussage.
+
+## E-021 — Laufzeitdaten aus dem Arbeitsbaum: Altbestand `betrieb/` und Versuchsregister wandern in den Anwendungsordner, A18 misst den Bestand (2026-09-05)
+
+**Anlass.** Gegenlese T10, Einwand E14: A18 („keine Laufzeitdaten im Arbeitsbaum“) war nur für neue
+Schreibvorgänge geprüft — Stoppdatei, Zustand und die Journale des Live-Betriebs gehen seit T4 in den
+Zustandsordner. Der Altbestand lag weiter im Baum: `betrieb/` (21 Journale des Demolaufs vom 2026-08-17,
+Logs, `ALARME.txt`, eine `coverage.json`; 8,1 MB, gitignoriert), vier Werkzeuge zeigten mit ihrer Vorgabe
+dorthin, und `TRIALS.jsonl` (31 Versuche; der Abzug in `archiv/ABSCHLUSS-3a/` hat 7) lag in der Wurzel.
+Ein Punkt, der die Änderung misst und nicht den Bestand, ist am Tag danach wieder verletzt.
+
+**Entscheidung.** (1) Die 25 Dateien aus `betrieb/` gehen mit `tools/journal_sichern.py` (SHA-256 je
+Datei, `verzeichnis.json`) in den Journalordner des Zustandsordners — dorthin, wo `tools/live_betrieb.py`
+neue Journale schreibt; `--pruefen` bestätigt alle 25 unverändert; `ALARME.txt` und `coverage.json`
+daneben; erst dann wird `betrieb/` gelöscht. (2) `TRIALS.jsonl` geht in den Anwendungsordner neben den
+Zustandsordner (`gates/trials.py::default_ledger_path`, SHA-256 vor und nach dem Verschieben gleich,
+Beleg `06-a18-rot.txt` und Bericht §3). (3) Die Vorgaben von `aufzeichnung_redigieren.py`,
+`betrieb_auswerten.py`, `betrieb_reihe.py`, `journal_sichern.py` zeigen auf den Journalordner.
+(4) `tests/test_a18_laufzeitdaten.py` misst den **Bestand**: kein `betrieb/`, keine Datei mit
+Laufzeitnamen im Baum (außer `archiv/`, den Belegordnern und dem versiegelten Eingang — dort liegen
+Kopien als Beweis, nichts schreibt sie fort), keine Werkzeugvorgabe im Baum. ROT vor der Verschiebung
+(6 von 6 Fälle), GRÜN danach. Die `.gitignore`-Einträge bleiben als zweite Sperre.
+
+**Verworfen.** (a) Löschen — die Journale sind der einzige Beleg, dass die Maschine je lief
+(`journal_sichern.py`, Modul-Docstring). (b) Liegen lassen, weil gitignoriert — genau der ungemessene
+Zustand, den E14 beanstandet. (c) Ein eigener Ordner für den Altbestand — dann läse `betrieb_reihe.py`
+(alle Läufe) zwei Orte, und die Reihe wäre wieder unvollständig.

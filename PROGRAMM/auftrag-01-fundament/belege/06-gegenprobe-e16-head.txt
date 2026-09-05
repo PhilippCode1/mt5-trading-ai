@@ -1,0 +1,7 @@
+# Gegenprobe (E16, Lauf am HEAD): die vier ueberlebenden Sonden aus 06-mutationstor-head.txt gegen tests/test_orderpfad_zweige_e15.py, Kopie des Arbeitsbaums, 2026-09-05.
+# Zwei der vier Stellen (contract_size <= 0) gibt es nicht mehr -- die Klammer war mit der je_lot-Klammer verhaltensgleich und ist entfernt; dafuer stehen die Sonden der je_lot-Klammer hier mit.
+ohne Sonde: 17 passed in 3.98s exit=0
+Sonde runner.py price <= 0 -> <= 1 (167:69): 1 failed, 16 passed in 3.25s exit=1 -> GETOETET
+Sonde runner.py je_lot <= 0 -> < 0: 1 failed, 16 passed in 3.30s exit=1 -> GETOETET
+Sonde runner.py je_lot <= 0 -> <= 1: 1 failed, 16 passed in 3.19s exit=1 -> GETOETET
+Sonde runner.py or 'risk_halt' -> and (470:47): 1 failed, 16 passed in 2.87s exit=1 -> GETOETET

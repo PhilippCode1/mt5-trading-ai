@@ -264,7 +264,7 @@ def test_nicht_positive_sharpe_varianz_wird_abgewiesen() -> None:
 def test_beleg_die_studie_haengt_am_register_des_repos(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Ohne Pfadangabe zaehlt das Register des Repos -- an der Verdrahtung geprueft.
+    """Ohne Pfadangabe zaehlt das Register des Betreibers -- an der Verdrahtung geprueft.
 
     Geprueft wird, dass ``bestaetige(register_pfad=None)`` bei
     ``default_ledger_path`` landet, nicht bei einer Konstante. Das echte

@@ -15,6 +15,17 @@ Dateipfad (``freigabedatei=``).
 Der ``--scharf``-Lauf ist ein Unterprozess mit ``MetaTrader5``-Shim: gegen 306bbaa kaeme
 das Argument durch und ``RealMt5Terminal.initialize()`` wuerde gerufen -- mit dem Shim
 endet das in ``ImportError``, nie im Start des Terminals.
+
+WAS DER ROTE LAUF ZEIGT -- UND WAS NICHT (Gegenlese T10, E5)
+------------------------------------------------------------
+Von den acht roten Faellen gegen 306bbaa zeigt genau EINER den Befund selbst:
+``--scharf "<Text>"`` wird angenommen und laeuft bis zum Terminalstart (Zeile
+"--scharf wird angenommen" in ``06-z-rot.txt``). Ein zweiter zeigt die Oberflaeche
+(``--demo-schreiben`` fehlt in der Usage). Die uebrigen sechs fallen an Namen, die es
+bei 306bbaa nicht gab (``ZULASSUNGSFELDER``, ``lies_live_freigabe``, ``freigabedatei=``,
+``venue.fake``) -- sie belegen, dass die KLASSE der Reparatur fehlte, nicht den Schaden
+im Einzelnen. Wer den Schaden sehen will, liest den ersten Fall und die 15 von 21
+Demolaeufen in ``belege/03-nachstellung/03-befunde-v1-v9.txt``.
 """
 
 from __future__ import annotations

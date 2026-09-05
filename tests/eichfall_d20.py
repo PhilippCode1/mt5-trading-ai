@@ -180,6 +180,29 @@ def test_ausserhalb_des_fensters_stimmen_zone_und_messung_ueberein() -> None:
     _venue(terminal, uhr)._enforce_account_freshness("EURUSD")
 
 
+def test_ein_stehender_kursstrom_wird_als_solcher_benannt_und_misst_nichts() -> None:
+    """Gegenlese T10, E3: der Frischebeweis selbst (zweite Lesung muss vorgerueckt sein).
+
+    Der 40-Minuten-Fall unten faellt auch OHNE den Frischebeweis rot -- aus dem
+    Rundungszweig ("Rest ... liegt ueber 0:10:00"). Wer ``if zweite.tick_ms <=
+    erste.tick_ms`` entfernt, bekommt dort dieselbe Ausnahme und merkt nichts; die
+    Attrappe mit stehendem 60-Minuten-Tick gab dann eine MESSUNG mit Versatz 2:00:00
+    zurueck. Hier steht der Tick eine glatte Stunde, der Rundungszweig schweigt, und
+    nur der Frischebeweis kann die Messung verweigern -- und muss es beim Namen tun.
+    """
+    from mt5_trading_ai.venue.mt5 import ServerversatzFehler
+
+    uhr = _Uhr(IM_FENSTER)
+    attrappe = _Mt5Attrappe(uhr, steht=IM_FENSTER - timedelta(minutes=60))
+    terminal = RealMt5Terminal(allow_write=False, uhr=uhr, schlaf=uhr.schlaf)
+    terminal._mt5 = attrappe  # type: ignore[assignment]
+    with pytest.raises(ServerversatzFehler, match="Kursstrom steht"):
+        terminal.messe_serverversatz("EURUSD")
+    assert terminal.server_versatz is None, (
+        f"ein stehender Kursstrom hat einen Versatz gesetzt: {terminal.server_versatz}"
+    )
+
+
 def test_ein_alter_tick_setzt_keinen_versatz_und_die_eroeffnung_bleibt_abgewiesen() -> (
     None
 ):

@@ -1,11 +1,4 @@
-# Eichfall D3, GRUEN gegen den Arbeitsbaum nach dem Umbau (Basis 76568d7 + D3, 2026-09-03; Commit-Hash im bericht.md §3).
-$ python -m pytest -v -p no:cacheprovider tests/eichfall_d3.py
-tests/eichfall_d3.py::test_verlust_am_stop_bleibt_im_budget_in_kontowaehrung PASSED
-tests/eichfall_d3.py::test_kreuznotierung_ohne_kurs_sperrt PASSED
-tests/eichfall_d3.py::test_gleiche_waehrung_braucht_keinen_kurs PASSED
-tests/eichfall_d3.py::test_marge_usdjpy_in_kontowaehrung PASSED
-tests/eichfall_d3.py::test_marge_ohne_kurs_sperrt PASSED
-tests/eichfall_d3.py::test_betrag_verrechnet_keine_fremden_waehrungen PASSED
-tests/eichfall_d3.py::test_kurs_aus_ticks_direkt_kehrwert_und_fehlend PASSED
-============================== 7 passed in 1.29s ==============================
+# Eichfall D3 GRUEN gegen HEAD (Arbeitsbaum nach Gegenlese T10: E1/E23 tolerante Hilfen, E4 dritter Margenfall), 2026-09-05.
+$ python -m pytest -q -p no:cacheprovider -v tests/eichfall_d3.py
+============================== 8 passed in 1.90s ==============================
 [exit=0]

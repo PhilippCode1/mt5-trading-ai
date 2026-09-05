@@ -546,7 +546,8 @@ def main(argv: list[str] | None = None) -> int:
         type=Path,
         default=None,
         metavar="PFAD",
-        help="Versuchsregister (Vorgabe: TRIALS.jsonl im Repo); muss existieren, "
+        help="Versuchsregister (Vorgabe: TRIALS.jsonl im Anwendungsordner des "
+        "Benutzers, neben dem Zustandsordner); muss existieren, "
         "ein leeres ist zulaessig -- angelegt wird es hier nie",
     )
     args = p.parse_args(argv)

@@ -1,0 +1,33 @@
+# A15 nach E15 (Gegenlese T10): Zweigdeckung je Geldpfad-Datei, 16 Dateien (execution/leverage_preflight.py und execution/runner.py dazu), 2026-09-05, Lauf nach Lauf 2 des Mutationstors (toter Waechter in runner.py entfernt, Fall mit einem Platz).
+# Neue Tests: tests/test_orderpfad_zweige_e15.py (18 Faelle). Werkzeug: tools/zweigdeckung.py --messen (Suite ohne slow in einer Kopie unter tempfile).
+# Ein frueherer Lauf dieses Belegs war rot an tests/test_readme_numbers.py (Kennzahlenblock nach neuen Tests veraltet; tools/gen_docs.py nachgezogen) -- die Deckung ist nur mit gruener Suite ein Urteil.
+$ python tools/zweigdeckung.py --messen
+Kopie: C:/Users/<konto>\AppData\Local\Temp\zweigdeckung-_ivjyou5 (646 Dateien, 13.6 s)
+Suite unter coverage: exit=0, 1104 s -- 1901 passed, 4 deselected in 1077.33s (0:17:57)
+Bericht: C:/Users/<konto>\AppData\Local\Temp\zweigdeckung\coverage.json
+==========================================================================
+ZWEIGDECKUNG JE DATEI DES GELDPFADS
+==========================================================================
+Schwelle je Datei: 90% (Katalog A15)
+
+Datei                                      Zeilen   Zweige  fehlend
+venue/mt5.py                                99.8%   100.0%        0
+venue/protocol.py                          100.0%   100.0%        0
+execution/risk_manager.py                  100.0%   100.0%        0
+execution/schwebende_auftraege.py           96.3%    92.5%        3
+execution/cost_gate.py                     100.0%   100.0%        0
+risk/sizing.py                              97.3%    95.0%        2
+risk/stop_budget.py                         97.4%    94.4%        1
+risk/limits.py                             100.0%   100.0%        0
+risk/leverage.py                           100.0%   100.0%        0
+costs/model.py                             100.0%   100.0%        0
+gates/erkundung.py                          97.4%    93.8%        1
+risk/waehrung.py                           100.0%   100.0%        0
+execution/handelspause.py                   94.3%    90.6%        3
+execution/reconcile.py                     100.0%   100.0%        0
+execution/leverage_preflight.py            100.0%   100.0%        0
+execution/runner.py                         98.3%    95.0%        3
+
+Paket gesamt: Zeilen 95.8 %, Zweige 92.9 %
+ok — jede Datei des Geldpfads ueber der Schwelle.
+[rc=0]

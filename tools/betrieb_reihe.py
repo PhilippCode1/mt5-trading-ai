@@ -57,7 +57,18 @@ from mt5_trading_ai.betrieb.journal import (  # noqa: E402
 )
 
 REPO = Path(__file__).resolve().parents[1]
-JOURNALE = REPO / "betrieb"
+if str(REPO) not in sys.path:
+    sys.path.insert(0, str(REPO))
+from mt5_trading_ai.execution.risiko_zustand import (  # noqa: E402
+    JOURNALORDNER_NAME,
+    standard_zustandsordner,
+)
+
+#: Die Vorgabe fuer Journale: der Journalordner im Zustandsordner des Benutzers --
+#: dort schreibt ``tools/live_betrieb.py``, und dort liegt der Altbestand (A18,
+#: Gegenlese T10 E14; gesichert mit Pruefsummen durch ``tools/journal_sichern.py``).
+#: Nicht mehr ``betrieb/`` im Arbeitsbaum: Laufzeitdaten gehoeren nicht in den Baum.
+JOURNALE = standard_zustandsordner() / JOURNALORDNER_NAME
 
 
 def _kopfzeile(lauf: Lauf) -> str:
@@ -222,7 +233,7 @@ def main() -> int:
         default=JOURNALE,
         help=(
             "Verzeichnis mit journal-*.jsonl ODER eine Aufzeichnungsdatei "
-            "(Vorgabe: betrieb/)"
+            "(Vorgabe: Journalordner im Zustandsordner)"
         ),
     )
     ap.add_argument("--nur-scharf", action="store_true", help="Trockenlaeufe auslassen")

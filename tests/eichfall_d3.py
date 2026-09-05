@@ -7,15 +7,28 @@ Marge fuer USDJPY mit 30.000 statt 200 USD (Hebelklammer 5). GRUEN gegen HEAD (b
 
 Die Klasse, nicht der Fall: Betraege tragen ihre Waehrung (``risk/waehrung.py``),
 die Groesse verlangt Kontowaehrung, Notierungswaehrung und Kurs, ein fehlender Kurs
-sperrt (``fx_unverifiable``), die Marge entsteht in der Margenwaehrung des Instruments.
+sperrt (``fx_unverifiable``), die Marge entsteht in der Margenwaehrung des Instruments
+und wird mit gemessenem Kurs in die Kontowaehrung gebracht (dritter Margenfall).
+
+WARUM DIE HILFEN DEN ALTEN STAND TRAGEN (Gegenlese T10, E1/E23)
+---------------------------------------------------------------
+Der erste rote Beleg war ein Sammelfehler: ``risk/waehrung.py`` und die neuen
+Parameter gab es bei 306bbaa nicht, und ein Import, der nicht laedt, misst nichts.
+Darum laden die Hilfen unten das Alte tolerant: fehlt ein Parameter, rufen sie ohne
+ihn -- und die Zusicherung nennt dann die FALSCHE ZAHL des alten Standes (0,39 Lot,
+63,15 USD; 30.000 USD Marge), nicht einen ImportError. Am HEAD laufen dieselben
+Zusicherungen gegen die richtigen Zahlen. Ein Eichfall ist erst dann einer, wenn seine
+rote Haelfte den Befund zeigt und nicht die Kommandozeile.
 """
 
 from __future__ import annotations
 
 import sys
+from collections.abc import Callable
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
+from typing import Any, TypeVar
 
 import pytest
 
@@ -27,11 +40,15 @@ from mt5_trading_ai.execution.leverage_preflight import (  # noqa: E402
     evaluate_leverage_preflight,
 )
 from mt5_trading_ai.risk.sizing import size_position  # noqa: E402
-from mt5_trading_ai.risk.waehrung import (  # noqa: E402
-    Betrag,
-    WaehrungsFehler,
-    kurs_aus_ticks,
-)
+
+try:
+    from mt5_trading_ai.risk.waehrung import (  # noqa: E402
+        Betrag,
+        WaehrungsFehler,
+        kurs_aus_ticks,
+    )
+except ImportError:  # 306bbaa: Betraege ohne Waehrung -- der Befund selbst
+    Betrag = WaehrungsFehler = kurs_aus_ticks = None  # type: ignore[assignment,misc]
 from mt5_trading_ai.venue.protocol import (  # noqa: E402
     AccountState,
     AssetClass,
@@ -44,6 +61,25 @@ from mt5_trading_ai.venue.protocol import (  # noqa: E402
 
 TS = datetime(2026, 9, 3, 12, 0, tzinfo=UTC)
 GBPUSD = Decimal("1.27")
+_T = TypeVar("_T")
+
+
+def _ohne_unbekannte(funktion: Callable[..., _T], **kwargs: Any) -> _T:
+    """Ruft ``funktion``; kennt sie ein Schluesselwort nicht (306bbaa), faellt es weg.
+
+    So misst der rote Lauf die Zahl des alten Standes statt eines TypeError. Am HEAD
+    kennt die Funktion alle Woerter, und die Hilfe ist ein gewoehnlicher Aufruf.
+    """
+    while True:
+        try:
+            return funktion(**kwargs)
+        except TypeError as fehler:
+            text = str(fehler)
+            unbekannt = [k for k in kwargs if f"'{k}'" in text and "unexpected" in text]
+            if not unbekannt:
+                raise
+            for k in unbekannt:
+                del kwargs[k]
 
 
 def _groesse(**overrides: object):  # type: ignore[no-untyped-def]
@@ -64,7 +100,7 @@ def _groesse(**overrides: object):  # type: ignore[no-untyped-def]
         "quote_to_account_rate": GBPUSD,
     }
     kwargs.update(overrides)
-    return size_position(**kwargs)  # type: ignore[arg-type]
+    return _ohne_unbekannte(size_position, **kwargs)
 
 
 def test_verlust_am_stop_bleibt_im_budget_in_kontowaehrung() -> None:
@@ -74,16 +110,19 @@ def test_verlust_am_stop_bleibt_im_budget_in_kontowaehrung() -> None:
     stop_preis = Decimal("0.8500") * Decimal("15") / Decimal("10000")
     verlust_gbp = r.volume * Decimal("100000") * stop_preis
     verlust_usd = verlust_gbp * GBPUSD
-    assert verlust_usd <= r.risk_currency, (r.volume, verlust_usd)
-    assert r.volume == Decimal("0.30")
-    assert r.fx_rate == GBPUSD
+    assert verlust_usd <= r.risk_currency, (
+        f"Verlust am Stop {verlust_usd:.2f} USD bei {r.volume} Lot liegt ueber dem "
+        f"Budget {r.risk_currency} USD -- die Groesse kennt die Waehrung nicht"
+    )
+    assert r.volume == Decimal("0.30"), r.volume
+    assert getattr(r, "fx_rate", None) == GBPUSD, "die Groesse traegt keinen Kurs"
 
 
 def test_kreuznotierung_ohne_kurs_sperrt() -> None:
     """Fehlender Wert sperrt (Regel 7): kein Kurs GBP->USD, keine Groesse."""
     r = _groesse(quote_to_account_rate=None)
-    assert r.volume is None
-    assert "fx_unverifiable" in r.reasons
+    assert r.volume is None, f"ohne Kurs GBP->USD kam {r.volume} Lot heraus"
+    assert "fx_unverifiable" in r.reasons, r.reasons
 
 
 def test_gleiche_waehrung_braucht_keinen_kurs() -> None:
@@ -91,11 +130,14 @@ def test_gleiche_waehrung_braucht_keinen_kurs() -> None:
         quote_currency="USD", quote_to_account_rate=None, price=Decimal("1.10")
     )
     assert r.volume is not None
-    assert r.fx_rate == Decimal("1")
+    assert getattr(r, "fx_rate", None) == Decimal("1"), "gleiche Waehrung: Kurs 1"
 
 
 def _usdjpy() -> Instrument:
-    return Instrument(
+    # Ueber die tolerante Hilfe: bei 306bbaa kannte ``Instrument`` keine
+    # ``margin_currency`` -- ohne sie rechnet der alte Stand, und die Zahl wird sichtbar.
+    return _ohne_unbekannte(
+        Instrument,
         symbol="USDJPY",
         venue="x",
         asset_class=AssetClass.FX_MAJOR,
@@ -141,19 +183,54 @@ def test_marge_usdjpy_in_kontowaehrung() -> None:
     req = OrderRequest(
         "x", "USDJPY", OrderSide.BUY, OrderType.MARKET, Decimal("0.01"), Decimal("149")
     )
-    p = evaluate_leverage_preflight(
+    p = _ohne_unbekannte(
+        evaluate_leverage_preflight,
         instrument=_usdjpy(),
         request=req,
         account=_konto(),
         price=Decimal("150"),
         margin_to_account_rate=None,  # Margenwaehrung USD == Kontowaehrung
     )
-    assert p.approved is True
+    assert p.approved is True, (
+        f"{p.reason}: Marge {p.required_margin} bei Freimarge 5.000"
+    )
     assert p.required_margin is not None
     assert p.effective_leverage == 5
     nennwert_usd = Decimal("0.01") * Decimal("100000")
-    assert p.required_margin == nennwert_usd / Decimal(p.effective_leverage)
+    assert p.required_margin == nennwert_usd / Decimal(p.effective_leverage), (
+        f"Marge {p.required_margin} USD statt 200 USD -- die Notierung JPY wurde "
+        "als Kontowaehrung gelesen"
+    )
     assert p.required_margin == Decimal("200")
+
+
+def test_marge_in_fremder_margenwaehrung_wird_mit_gemessenem_kurs_umgerechnet() -> None:
+    """Dritter Margenfall (Gegenlese T10, E4): EUR-Konto, Margenwaehrung USD, Kurs
+    USD->EUR 0,90 gemessen. Marge = Nennwert * Kurs / Hebel = 1.000 * 0,90 / 5 = 180 EUR.
+
+    Die beiden anderen Faelle (gleiche Waehrung; fehlender Kurs sperrt) zeigen den Kurs
+    nicht in der Zahl. Erst dieser Fall stellt sicher, dass der Kurs MULTIPLIZIERT wird
+    und nicht ignoriert (1.000/5 = 200) oder verkehrt herum angewandt (222,22).
+    """
+    req = OrderRequest(
+        "x", "USDJPY", OrderSide.BUY, OrderType.MARKET, Decimal("0.01"), Decimal("149")
+    )
+    p = _ohne_unbekannte(
+        evaluate_leverage_preflight,
+        instrument=_usdjpy(),
+        request=req,
+        account=_konto("EUR"),
+        price=Decimal("150"),
+        margin_to_account_rate=Decimal("0.90"),
+    )
+    assert p.approved is True, (
+        f"{p.reason}: Marge {p.required_margin} bei Freimarge 5.000"
+    )
+    assert p.effective_leverage == 5
+    assert p.required_margin == Decimal("180"), (
+        f"Marge {p.required_margin} EUR statt 180 EUR -- der gemessene Kurs 0,90 "
+        "geht nicht in die Marge ein"
+    )
 
 
 def test_marge_ohne_kurs_sperrt() -> None:
@@ -161,18 +238,25 @@ def test_marge_ohne_kurs_sperrt() -> None:
     req = OrderRequest(
         "x", "USDJPY", OrderSide.BUY, OrderType.MARKET, Decimal("0.01"), Decimal("149")
     )
-    p = evaluate_leverage_preflight(
+    p = _ohne_unbekannte(
+        evaluate_leverage_preflight,
         instrument=_usdjpy(),
         request=req,
         account=_konto("EUR"),
         price=Decimal("150"),
         margin_to_account_rate=None,
     )
-    assert p.approved is False
+    assert p.approved is False, (
+        f"EUR-Konto, Marge in USD, kein Kurs -- und doch zugelassen mit "
+        f"{p.required_margin} als Marge"
+    )
     assert p.reason == "fx_unverifiable"
 
 
 def test_betrag_verrechnet_keine_fremden_waehrungen() -> None:
+    assert Betrag is not None, (
+        "risk/waehrung.py fehlt -- Betraege tragen keine Waehrung"
+    )
     with pytest.raises(WaehrungsFehler):
         Betrag(Decimal("1"), "USD") + Betrag(Decimal("1"), "EUR")
     with pytest.raises(WaehrungsFehler):
@@ -189,6 +273,7 @@ class _Tick:
 
 
 def test_kurs_aus_ticks_direkt_kehrwert_und_fehlend() -> None:
+    assert kurs_aus_ticks is not None, "risk/waehrung.py fehlt -- kein Kurs aus Ticks"
     ticks = {"GBPUSD": _Tick("1.2699", "1.2701")}
     assert kurs_aus_ticks("GBP", "USD", ticks.get) == Decimal("1.2700")
     assert kurs_aus_ticks("USD", "GBP", ticks.get) == Decimal("1") / Decimal("1.2700")

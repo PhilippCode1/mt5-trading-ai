@@ -435,12 +435,15 @@ def test_die_beiden_entfernten_waechter_waren_unerreichbar() -> None:
 
 
 def test_die_vorgelagerte_klammer_des_margendeckels_haelt() -> None:
-    """Die Freistellung von ``margin_below_min_volume`` haengt an dieser Klammer.
+    """Ohne gemeldeten Kontohebel gibt der Margendeckel des Runners auf, und eine
+    freie Marge, die kein Mindestvolumen traegt, faellt am Hebel-Preflight mit
+    ``insufficient_margin``.
 
-    Eine freie Marge, die den Deckel unter das Mindestvolumen druecken wuerde, wird
-    schon vom Hebel-Preflight mit ``insufficient_margin`` abgewiesen. Faellt dieser
-    Fall, ist der nachgelagerte Waechter wieder erreichbar -- und dann gehoert er aus
-    der Freistellungsliste heraus und in einen eigenen Test.
+    Bis zur Gegenlese T10 hing an dieser Klammer die Freistellung von
+    ``margin_below_min_volume``. Sie galt nur fuer Konten OHNE Hebel: meldet das
+    Konto einen, rechnet der Deckel VOR dem Preflight und lehnt selbst ab -- seit E15
+    mit eigenem Test (``tests/test_orderpfad_zweige_e15.py``), die Freistellung ist
+    gestrichen. Dieser Fall bleibt als Nachweis fuer die Konten ohne Hebel.
     """
     import test_paper_runner as R
 

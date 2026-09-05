@@ -245,6 +245,8 @@ def test_basislinie_fehlt_oder_ist_ungueltig_ist_werkzeugfehler(
     eintrag: dict[str, object] = {
         "objekt": "0" * 40,
         "pfad": "x",
+        # Der Ort gehoert seit E12 zum Schluessel (tools/geheimnis_scan.py).
+        "ort": "lebend",
         "zeile": 1,
         "gattung": "Muster: IP-Adresse mit Port",
         "abdruck": "0" * 16,

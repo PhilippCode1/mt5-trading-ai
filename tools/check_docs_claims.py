@@ -60,7 +60,10 @@ CLAIMS: list[tuple[str, re.Pattern[str]]] = [
     ("produktionsreif", re.compile(r"produktionsreif", re.I)),
     ("go live ready", re.compile(r"go[\s_.-]?live[\s_.-]?ready", re.I)),
     ("betriebsbereit", re.compile(r"betriebsbereit", re.I)),
-    ("vollstaendig implementiert", re.compile(r"vollst[aä]ndig\s+implementiert", re.I)),
+    (
+        "vollstaendig implementiert",
+        re.compile(r"vollst(?:ae|[aä])ndig\s+implementiert", re.I),
+    ),
     ("fully implemented", re.compile(r"fully\s+implemented", re.I)),
     # Paket 2, A4.2 des Altstands: „abnahmefertig" fehlte in dieser Liste, und ein
     # Logbuch schloss damit -- eine Reifegrad-Zusicherung ohne jeden Beleg.
@@ -129,6 +132,24 @@ def tracked_markdown() -> list[Path]:
     return doku_menge.lebende_dokumente(REPO)
 
 
+def _fenster(lines: list[str], i: int) -> str:
+    """Zeile ``i`` mit der Folgezeile verbunden -- so, wie Markdown sie setzt.
+
+    Markdown fuegt Zeilen bis zur naechsten Leerzeile zu einem Absatz zusammen; eine
+    Zusicherung aus zwei Woertern kann darum ueber einen Zeilenumbruch gehen
+    ("vollstaendig" / "implementiert"), und ein Bindestrich am Zeilenende verschmilzt
+    mit der Folgezeile ("produktions-" / "reif"). Zeilenweise Suche sah beides nicht
+    (Gegenlese T10, E13). Eine Leerzeile beendet den Absatz -- und das Fenster.
+    """
+    erste = lines[i].rstrip()
+    zweite = lines[i + 1].strip() if i + 1 < len(lines) else ""
+    if not zweite or not erste.strip():
+        return erste
+    if erste.endswith("-") and zweite[:1].isalpha():
+        return erste[:-1] + zweite
+    return erste + " " + zweite
+
+
 def check_file(path: Path) -> list[str]:
     problems: list[str] = []
     lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
@@ -140,8 +161,14 @@ def check_file(path: Path) -> list[str]:
             continue
         if WITHDRAWN.search(line):
             continue
+        naechste = _ohne_zitate(lines[i + 1]) if i + 1 < len(lines) else ""
+        fenster = _ohne_zitate(_fenster(lines, i))
         for label, rx in CLAIMS:
-            if not rx.search(_ohne_zitate(line)):
+            # In der Zeile selbst -- oder ueber den Umbruch hinweg (dann nicht schon
+            # ganz in der Folgezeile, die fuer sich geprueft wird).
+            if not rx.search(_ohne_zitate(line)) and not (
+                rx.search(fenster) and not rx.search(naechste)
+            ):
                 continue
             following = "\n".join(lines[i + 1 : i + 3])
             if hat_beleg(following) or WITHDRAWN.search(following):

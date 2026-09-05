@@ -98,7 +98,18 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
-QUELLE = ROOT / "betrieb"
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+from mt5_trading_ai.execution.risiko_zustand import (  # noqa: E402
+    JOURNALORDNER_NAME,
+    standard_zustandsordner,
+)
+
+#: Die Vorgabe fuer Journale: der Journalordner im Zustandsordner des Benutzers --
+#: dort schreibt ``tools/live_betrieb.py``, und dort liegt der Altbestand (A18,
+#: Gegenlese T10 E14; gesichert mit Pruefsummen durch ``tools/journal_sichern.py``).
+#: Nicht mehr ``betrieb/`` im Arbeitsbaum: Laufzeitdaten gehoeren nicht in den Baum.
+QUELLE = standard_zustandsordner() / JOURNALORDNER_NAME
 ZIEL = ROOT / "aufzeichnungen" / "demo-2026-08-17.jsonl"
 
 #: Fassung des Kopfes. 1: ohne ``takt``, Laufkennung nach erstem Auftreten. 2: mit
@@ -515,7 +526,7 @@ def main() -> int:
         "--quelle",
         type=Path,
         default=QUELLE,
-        help="Ordner mit journal-*.jsonl (Vorgabe: betrieb/)",
+        help="Ordner mit journal-*.jsonl (Vorgabe: Journalordner im Zustandsordner)",
     )
     ap.add_argument(
         "--ziel",

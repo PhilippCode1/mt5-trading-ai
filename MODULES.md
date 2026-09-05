@@ -25,7 +25,7 @@ Das Sechs-Bedingungen-Tor des Edge-Tests (Paket 4, §7.2).
 ## `mt5_trading_ai/backtest/engine.py`
 
 Zeilen: 731
-Aufrufer: Paket 2 · Werkzeuge 5 · Tests 10
+Aufrufer: Paket 2 · Werkzeuge 5 · Tests 11
 
 Backtest-Maschine: fuehrt Splits, Daten und Kostenmodell zusammen.
 
@@ -287,7 +287,7 @@ Handelspausen aus der Sitzungstabelle -- und die Gap-Sperre davor (Befund D13).
 ## `mt5_trading_ai/execution/leverage_preflight.py`
 
 Zeilen: 134
-Aufrufer: Paket 1 · Werkzeuge 0 · Tests 3
+Aufrufer: Paket 1 · Werkzeuge 0 · Tests 4
 
 Anschluss der Hebelklammer an den Order-Pfad.
 
@@ -308,7 +308,7 @@ Private Ereignis-Synchronisation: der Kontostrom haelt das Buch aktuell.
 ## `mt5_trading_ai/execution/reconcile.py`
 
 Zeilen: 321
-Aufrufer: Paket 3 · Werkzeuge 2 · Tests 25
+Aufrufer: Paket 3 · Werkzeuge 2 · Tests 26
 
 Order-Lebenszyklus und Reconcile: Konto gegen Buch.
 
@@ -338,7 +338,7 @@ Mehrteilige Freigabe fuer Order-Submit an einen echten Markt.
 ## `mt5_trading_ai/execution/risiko_zustand.py`
 
 Zeilen: 1722
-Aufrufer: Paket 4 · Werkzeuge 7 · Tests 40
+Aufrufer: Paket 5 · Werkzeuge 11 · Tests 41
 
 Der Risikozustand, der einen Neustart ueberdauert -- und wie er fail-closed liest.
 
@@ -361,7 +361,7 @@ Der Risikozustand, der einen Neustart ueberdauert -- und wie er fail-closed lies
 ## `mt5_trading_ai/execution/risk_manager.py`
 
 Zeilen: 1203
-Aufrufer: Paket 3 · Werkzeuge 6 · Tests 33
+Aufrufer: Paket 3 · Werkzeuge 6 · Tests 34
 
 Risikoschicht am Order-Pfad: die vier Grenzen als letzte Verteidigungslinie.
 
@@ -373,8 +373,8 @@ Risikoschicht am Order-Pfad: die vier Grenzen als letzte Verteidigungslinie.
 
 ## `mt5_trading_ai/execution/runner.py`
 
-Zeilen: 568
-Aufrufer: Paket 0 · Werkzeuge 3 · Tests 4
+Zeilen: 575
+Aufrufer: Paket 0 · Werkzeuge 3 · Tests 6
 
 Integrierender Paper/Dry-Run-Runner (Paket 7): die eine beweisbare Kette.
 
@@ -396,7 +396,7 @@ Treiber-Loop/Scheduler (Paket 7): Frische, Drift und Drawdown-Peak getaktet prue
 ## `mt5_trading_ai/execution/schwebende_auftraege.py`
 
 Zeilen: 423
-Aufrufer: Paket 1 · Werkzeuge 2 · Tests 30
+Aufrufer: Paket 1 · Werkzeuge 2 · Tests 31
 
 Auftraege, deren Sendeversuch ohne Antwort endete -- „koennte beim Broker leben".
 
@@ -409,7 +409,7 @@ Auftraege, deren Sendeversuch ohne Antwort endete -- „koennte beim Broker lebe
 ## `mt5_trading_ai/gates/criteria.py`
 
 Zeilen: 393
-Aufrufer: Paket 4 · Werkzeuge 5 · Tests 12
+Aufrufer: Paket 4 · Werkzeuge 5 · Tests 13
 
 Vorregistrierte Kriterien und ihre Auswertung (Phase 9.3).
 
@@ -426,7 +426,7 @@ Vorregistrierte Kriterien und ihre Auswertung (Phase 9.3).
 ## `mt5_trading_ai/gates/erkundung.py`
 
 Zeilen: 245
-Aufrufer: Paket 1 · Werkzeuge 1 · Tests 3
+Aufrufer: Paket 1 · Werkzeuge 1 · Tests 4
 
 Kaltstart: den Kreis aufbrechen, ohne die Sperren aufzuweichen.
 
@@ -456,7 +456,7 @@ Bewerten ist nicht handeln (Phase 8.3).
 
 ## `mt5_trading_ai/gates/trials.py`
 
-Zeilen: 319
+Zeilen: 327
 Aufrufer: Paket 2 · Werkzeuge 2 · Tests 7
 
 Trials-Ledger (Phase 9.4) — ``TRIALS.jsonl``, ausschliesslich anhaengend.
@@ -477,7 +477,7 @@ Trials-Ledger (Phase 9.4) — ``TRIALS.jsonl``, ausschliesslich anhaengend.
 ## `mt5_trading_ai/risk/leverage.py`
 
 Zeilen: 253
-Aufrufer: Paket 2 · Werkzeuge 0 · Tests 5
+Aufrufer: Paket 2 · Werkzeuge 0 · Tests 6
 
 Gesetzlicher Hebeldeckel je Anlageklasse — geladen aus einer versionierten Datei.
 
@@ -493,7 +493,7 @@ Gesetzlicher Hebeldeckel je Anlageklasse — geladen aus einer versionierten Dat
 ## `mt5_trading_ai/risk/limits.py`
 
 Zeilen: 174
-Aufrufer: Paket 1 · Werkzeuge 0 · Tests 4
+Aufrufer: Paket 1 · Werkzeuge 0 · Tests 5
 
 Verlustgrenzen und das **Kriterium** des Kill-Switch (Phase 6.4).
 
@@ -587,7 +587,7 @@ Ein Terminal ohne MetaTrader: die Betriebsattrappe fuer Trockenlauf und Eichfael
 ## `mt5_trading_ai/venue/mt5.py`
 
 Zeilen: 3305
-Aufrufer: Paket 4 · Werkzeuge 7 · Tests 47
+Aufrufer: Paket 4 · Werkzeuge 7 · Tests 49
 
 MT5-Anbindung an das ``TradingVenue``-Protokoll.
 
@@ -612,7 +612,7 @@ MT5-Anbindung an das ``TradingVenue``-Protokoll.
 ## `mt5_trading_ai/venue/protocol.py`
 
 Zeilen: 547
-Aufrufer: Paket 14 · Werkzeuge 9 · Tests 60
+Aufrufer: Paket 14 · Werkzeuge 9 · Tests 62
 
 Plattformunabhaengiger Handelsplatz-Vertrag.
 

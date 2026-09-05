@@ -1,42 +1,4 @@
-# Eichfall D20, GRUEN gegen den Arbeitsbaum nach dem Umbau (Basis 1c272fe + Familie Zeit, 2026-09-04).
-# Dazu die Messung selbst (tests/test_serverzeit_drehung.py: Frischebeweis, Rundung, Rest, Rauchtest-Haken,
-# Takt-Journal) und die Handelszeiten samt Pausenrechnung (tests/test_handelszeiten.py).
-$ python -m pytest -v -p no:cacheprovider tests/eichfall_d20.py tests/test_serverzeit_drehung.py
-============================= test session starts =============================
-platform win32 -- Python 3.11.7, pytest-8.3.4, pluggy-1.6.0 -- C:\Users\<konto>\AppData\Local\Programs\Python\Python311\python.exe
-Waechter A2 (tests/conftest.py): Skip = Fehlschlag.
-Waechter A10 (tests/conftest.py): Zustandsordner C:\Users\<konto>\AppData\Local\mt5_trading_ai\risiko (vorhanden: ja, 1 Dateien) und Arbeitsbaum C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_f2d56c67-47d-4 bleiben unveraendert.
-rootdir: C:\Users\<konto>\mt5_trading_ai\.claude\worktrees\wf_f2d56c67-47d-4
-configfile: pyproject.toml
-plugins: anyio-4.8.0, base-url-2.1.0, cov-6.0.0, playwright-0.7.2
-collecting ... collected 21 items
-
-tests/eichfall_d20.py::test_im_us_sommer_eu_winter_fenster_trifft_der_tickstempel_die_echte_utc PASSED [  4%]
-tests/eichfall_d20.py::test_der_frische_latch_sperrt_im_fenster_keinen_taufrischen_tick PASSED [  9%]
-tests/eichfall_d20.py::test_ausserhalb_des_fensters_stimmen_zone_und_messung_ueberein PASSED [ 14%]
-tests/eichfall_d20.py::test_ein_alter_tick_setzt_keinen_versatz_und_die_eroeffnung_bleibt_abgewiesen PASSED [ 19%]
-tests/test_serverzeit_drehung.py::test_ohne_messung_wird_nicht_gedreht PASSED [ 23%]
-tests/test_serverzeit_drehung.py::test_mit_uebergebenem_versatz_wird_in_beide_richtungen_gedreht PASSED [ 28%]
-tests/test_serverzeit_drehung.py::test_derselbe_wanduhrwert_ist_je_nach_versatz_eine_andere_utc_zeit PASSED [ 33%]
-tests/test_serverzeit_drehung.py::test_das_ergebnis_traegt_immer_utc PASSED [ 38%]
-tests/test_serverzeit_drehung.py::test_ein_unmoeglicher_versatz_faellt_beim_bauen_auf PASSED [ 42%]
-tests/test_serverzeit_drehung.py::test_messung_am_druckenden_strom_setzt_ganze_stunden PASSED [ 47%]
-tests/test_serverzeit_drehung.py::test_die_zweite_messung_braucht_kein_warten_wenn_der_tick_seither_vorrueckte PASSED [ 52%]
-tests/test_serverzeit_drehung.py::test_stehender_kursstrom_setzt_nichts PASSED [ 57%]
-tests/test_serverzeit_drehung.py::test_eine_gescheiterte_messung_laesst_den_frueheren_versatz_stehen PASSED [ 61%]
-tests/test_serverzeit_drehung.py::test_rest_ueber_der_toleranz_setzt_nichts PASSED [ 66%]
-tests/test_serverzeit_drehung.py::test_rest_innerhalb_der_toleranz_traegt PASSED [ 71%]
-tests/test_serverzeit_drehung.py::test_kein_zeitzonenversatz_setzt_nichts PASSED [ 76%]
-tests/test_serverzeit_drehung.py::test_negativer_versatz_wird_genauso_gemessen PASSED [ 80%]
-tests/test_serverzeit_drehung.py::test_ohne_tick_und_ohne_bindung_ist_nichts_messbar PASSED [ 85%]
-tests/test_serverzeit_drehung.py::test_die_rundung_ist_rein_rechnerisch PASSED [ 90%]
-tests/test_serverzeit_drehung.py::test_der_rauchtest_nimmt_die_messung_des_terminals PASSED [ 95%]
-tests/test_serverzeit_drehung.py::test_der_takt_misst_am_kopf_und_schreibt_das_journal PASSED [100%]
-
-============================= 21 passed in 19.02s =============================
-[exit=0]
-
-$ python -m pytest -q -p no:cacheprovider tests/test_handelszeiten.py
-..................................                                       [100%]
-34 passed in 3.12s
+# Eichfall D20 GRUEN gegen HEAD (Arbeitsbaum nach Gegenlese T10: E3 Frischebeweis als eigener Fall), 2026-09-05.
+$ python -m pytest -q -p no:cacheprovider -v tests/eichfall_d20.py
+============================== 5 passed in 2.12s ==============================
 [exit=0]

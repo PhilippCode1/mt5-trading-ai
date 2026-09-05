@@ -12,12 +12,11 @@ venv/
 .coverage
 htmlcov/
 
-# Laufzeitdaten des Versuchsregisters (anhaengend, kein Quellcode).
-# Bewusst nicht versioniert: die Datei waechst bei jedem Lauf, und ein mitwachsender
-# Arbeitsbaum liesse ``backtest/provenance.py`` bei der naechsten Studie fail-closed
-# abbrechen. Der belegkraeftige Stand liegt eingefroren in
-# ABSCHLUSS-3a/07-AUSGABEN/trials.jsonl -- diesen Abzug bei jedem Abschluss nachziehen,
-# sonst ist die Versuchszahl nach einem Rechnerwechsel nicht mehr feststellbar.
+# Versuchsregister: seit Auftrag 1 (A18, E-021) liegt es NICHT mehr im Arbeitsbaum,
+# sondern im Anwendungsordner des Benutzers (gates/trials.py::default_ledger_path);
+# tests/test_a18_laufzeitdaten.py schlaegt an, wenn es hier wieder auftaucht. Der
+# Eintrag bleibt als zweite Sperre gegen ein versehentliches Einchecken. Der
+# belegkraeftige Abzug liegt eingefroren in archiv/ABSCHLUSS-3a/07-AUSGABEN/trials.jsonl.
 # Der fuehrende Schraegstrich ist noetig: ohne ihn greift das Muster in JEDEM
 # Verzeichnis und verschluckt unter Windows (case-insensitiv) genau den Abzug,
 # der den Beleg retten soll.

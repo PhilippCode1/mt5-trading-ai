@@ -1,0 +1,39 @@
+# T7, Messung 1 (Katalog A1): GitHub Actions, frischer Ubuntu-Klon. Lauf 33977291625 fuer Commit a8c46fa, 2026-09-05.
+$ gh run view 33977291625 --json status,conclusion,createdAt,updatedAt
+status=completed conclusion=success head=a8c46fa 2026-09-05T16:15:23Z -> 2026-09-05T16:30:29Z
+$ gh run view 33977291625 --json jobs (Schritte)
+Job tore: success, 2026-09-05T16:15:26Z -> 2026-09-05T16:30:29Z
+  1   Set up job: success
+  2   Run actions/checkout@v4: success
+  3   Python 3.11: success
+  4   Werkzeuge (gepinnt): success
+  5   Abnahmekatalog eingefroren (A16): success
+  6   Archiv, Eingaenge, Vorregistrierungen unveraendert (A8, A14): success
+  7   Formatierung: success
+  8   Lint: success
+  9   Typen (strict, Paket + Werkzeuge + Hooks): success
+  10  MODULES.md und Kennzahlen erzeugt, nicht gepflegt: success
+  11  Doku-Behauptungen belegt, Mengenregel (A14): success
+  12  Doku-Zahlen = Code: success
+  13  Kopien wortgleich mit ihren Originalen: success
+  14  Tests (Skip = Fehlschlag, kein Schreiben in den Baum; tests/conftest.py): success
+  15  Zweigdeckung je Geldpfad-Datei >= 90 % (A15): success
+  16  Mutationstor (Katalog 1,0; erzeugte Sonden >= 0,90 bei >= 50) (A4, A17): success
+  17  Geheimnis-Scan ueber Baum und Historie, Exit != 0 bei neuem Fund (A5): success
+  33  Post Python 3.11: success
+  34  Post Run actions/checkout@v4: success
+  35  Complete job: success
+
+# Vergleich: die acht Laeufe davor (seit 2026-08-19) und der erste Lauf mit dem neuen ci.yml:
+  33977291625 a8c46fa success 2026-09-05T16:15:23Z
+  33846933734 7eec7d4 failure 2026-09-04T07:02:34Z
+  33809104226 f1b6353 failure 2026-09-03T21:39:22Z
+  33803794820 5f9a98c failure 2026-09-03T20:42:12Z
+  33802671786 b0a4c5b failure 2026-09-03T20:30:37Z
+  33797496990 d45d3a0 failure 2026-09-03T19:37:13Z
+  33790060905 1982492 failure 2026-09-03T18:22:00Z
+  33788682214 4d02db3 failure 2026-09-03T18:08:02Z
+  33788254661 3a268f1 failure 2026-09-03T18:03:44Z
+  33784013095 5e5628b failure 2026-09-03T17:20:54Z
+  33783868766 2f5d9db failure 2026-09-03T17:19:26Z
+  32322308655 306bbaa failure 2026-08-20T01:47:51Z

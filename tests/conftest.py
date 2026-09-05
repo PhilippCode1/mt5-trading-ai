@@ -48,6 +48,8 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+
+NL = chr(10)
 from mt5_trading_ai.execution.risiko_zustand import (
     ZustandsortFehler,
     standard_zustandsordner,
@@ -58,21 +60,62 @@ pytest_plugins = ["pytester"]
 
 REPO: Path = Path(__file__).resolve().parents[1]
 
-#: Nicht Teil des Arbeitsbaums bzw. Werkzeugcaches, die kein Test "schreibt".
+#: Nicht Teil des Arbeitsbaums bzw. Werkzeugcaches, die kein Test schreibt.
+#:
+#: Jede Ausnahme ist ein Loch, durch das ein Test unbemerkt schreiben kann; sie
+#: sind darum so eng wie moeglich gefasst (Gegenlese T10, Einwand E9). ``.git``
+#: gehoert nicht zum Arbeitsbaum; die Cacheordner gehoeren Werkzeugen, nicht
+#: Tests. **Innerhalb** dieser Ordner wird aber nur noch das ignoriert, was dort
+#: hingehoert: ``__pycache__`` deckt ``.pyc``/``.pyo``, nicht eine JSON-Datei,
+#: die jemand dort ablegt.
 _NICHT_GEZAEHLT_ORDNER = frozenset(
     {
         ".git",
-        "__pycache__",
         ".pytest_cache",
         ".mypy_cache",
         ".ruff_cache",
         "htmlcov",
     }
 )
+#: In ``__pycache__`` zaehlt alles ausser Bytecode -- eine Datei mit anderem
+#: Namen ist dort kein Cache, sondern ein Versteck (E9, gemessen: eine
+#: ``laufzeit.json`` unter ``mt5_trading_ai/__pycache__/`` blieb unbemerkt).
+_BYTECODE_ORDNER = "__pycache__"
 _NICHT_GEZAEHLT_ENDUNGEN = (".pyc", ".pyo")
-_NICHT_GEZAEHLT_PRAEFIXE = (".coverage",)
+#: Die Datendateien von ``coverage`` -- sie entstehen unter dem Werkzeug, nicht
+#: unter einem Test. Der Praefix deckt ``.coverage`` und ``.coverage.<host>``;
+#: eine ``.coverage_laufzeit.json`` faellt seit E9 NICHT mehr darunter.
+_NICHT_GEZAEHLT_DATEIEN = frozenset({".coverage"})
+_NICHT_GEZAEHLT_PRAEFIXE = (".coverage.",)
 
 Schnappschuss = dict[str, tuple[int, int]]
+
+
+def _fremde_baeume() -> frozenset[str]:
+    """Arbeitsbaeume, die git selbst kennt -- und nur die.
+
+    Eine ``.git``-Marke im Dateisystem ist kein Beleg: sie laesst sich anlegen.
+    ``git worktree list`` fragt das Repository.
+    """
+    try:
+        aus = subprocess.run(
+            ["git", "worktree", "list", "--porcelain"],
+            cwd=REPO,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout
+    except (OSError, subprocess.CalledProcessError):
+        return frozenset()
+    pfade = {
+        os.path.normpath(z[len("worktree ") :].strip())
+        for z in aus.splitlines()
+        if z.startswith("worktree ")
+    }
+    return frozenset(p for p in pfade if os.path.normpath(p) != str(REPO))
+
+
+_FREMDE_BAEUME = _fremde_baeume()
 
 
 def _zustandsordner_der_umgebung() -> Path:
@@ -108,15 +151,20 @@ def _schnappschuss(wurzel: Path) -> Schnappschuss | None:
             name = e.name
             if (
                 name in _NICHT_GEZAEHLT_ORDNER
-                or name.endswith(_NICHT_GEZAEHLT_ENDUNGEN)
+                or name in _NICHT_GEZAEHLT_DATEIEN
                 or name.startswith(_NICHT_GEZAEHLT_PRAEFIXE)
+                or (
+                    os.path.basename(ordner) == _BYTECODE_ORDNER
+                    and name.endswith(_NICHT_GEZAEHLT_ENDUNGEN)
+                )
             ):
                 continue
             if e.is_dir(follow_symlinks=False):
-                # Ein Unterordner mit eigenem .git ist ein anderer Arbeitsbaum.
-                if ordner != wurzel_str and os.path.exists(
-                    os.path.join(e.path, ".git")
-                ):
+                # Ein fremder Arbeitsbaum gehoert nicht hierher -- aber nur einer,
+                # den git selbst kennt. Eine ``.git``-Marke genuegte bis E9: ein
+                # Test legte ``mt5_trading_ai/laufzeit/.git`` an und schrieb
+                # daneben, ohne dass der Waechter etwas sah.
+                if e.path in _FREMDE_BAEUME:
                     continue
                 stapel.append(e.path)
                 continue
@@ -185,12 +233,57 @@ def _als_fehlschlag(report: Any, art: str) -> None:
     )
 
 
+def _xfail_ohne_lauf(item: pytest.Item) -> str | None:
+    """Traegt dieses Element ein ``xfail(run=False)``? Dann laeuft es nie.
+
+    Gegenlese T10, Einwand E8 (S1): der Wrapper unten sah den Fall nicht. Pytests
+    eigener ``pytest_runtest_makereport`` ist mit ``tryfirst=True`` registriert und
+    liegt damit AUSSEN -- wenn dieser Wrapper laeuft, steht ``report.outcome`` noch
+    nicht auf ``skipped``, und die Pruefung auf ``[NOTRUN]`` lief ins Leere.
+    Gemessen: ein Test mit ``@pytest.mark.xfail(run=False)`` meldete
+    ``1 xfailed``, Exit 0. Ein Dekorator genuegte, um einen Test stillzulegen.
+
+    Darum wird der Fall hier beim SAMMELN abgefangen, wo kein fremder Wrapper
+    dazwischenliegt. ``xfail`` mit Lauf bleibt erlaubt: ein erwarteter Fehlschlag,
+    der wirklich gefahren wird, ist eine Messung.
+    """
+    for marke in item.iter_markers(name="xfail"):
+        if marke.kwargs.get("run", True) is False:
+            return str(marke.kwargs.get("reason") or "ohne Begruendung")
+    return None
+
+
+def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
+    """``xfail(run=False)`` ist ein Skip mit anderem Namen -- und hier verboten."""
+    verboten = [(i, g) for i in items if (g := _xfail_ohne_lauf(i)) is not None]
+    if not verboten:
+        return
+    zeilen = NL.join(f"  {i.nodeid}: {g}" for i, g in verboten)
+    raise pytest.UsageError(
+        f"Waechter A2 (tests/conftest.py): {len(verboten)} Fall/Faelle mit "
+        "xfail(run=False) -- ein Test, der nie laeuft, ist ein Skip mit anderem "
+        f"Namen (Katalog A2, CLAUDE.md Regel 4).{NL}{zeilen}{NL}"
+        "Entweder den Fall laufen lassen (xfail ohne run=False) oder das fehlende "
+        "Stueck mit assert benennen."
+    )
+
+
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_makereport(
     item: pytest.Item, call: pytest.CallInfo[None]
 ) -> Generator[None, Any, None]:
     ergebnis = yield
     report: pytest.TestReport = ergebnis.get_result()
+    # Der zweite Weg in denselben Zustand: ``pytest.xfail()`` mitten im Test. Er
+    # bricht mit ``XFailed`` ab, und der Rest des Falles laeuft nicht mehr.
+    if call.excinfo is not None and call.excinfo.typename == "XFailed":
+        report.outcome = "failed"
+        report.longrepr = (
+            "Waechter A2 (tests/conftest.py): pytest.xfail() bricht den Fall ab -- "
+            "was danach steht, wird nie geprueft. Das ist ein Skip mit anderem "
+            f"Namen (Katalog A2).{NL}{call.excinfo.value}"
+        )
+        return
     if report.outcome != "skipped":
         return
     xfail = getattr(report, "wasxfail", None)

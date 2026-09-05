@@ -94,6 +94,12 @@ GELDPFAD: tuple[str, ...] = (
     "risk/waehrung.py",
     "execution/handelspause.py",
     "execution/reconcile.py",
+    # Gegenlese T10, E15: nach demselben Kriterium -- der Hebel-/Margenanschluss
+    # entscheidet, ob eine eroeffnende Order zulaessig ist; der Runner baut die Order,
+    # setzt ihren Stop und sendet sie. Beide waren die am schlechtesten gedeckten
+    # Module des Orderpfads (75,0 % und 56,5 %) und standen nicht in der Menge.
+    "execution/leverage_preflight.py",
+    "execution/runner.py",
 )
 
 #: Verzeichnisse, die zusaetzlich zu den verfolgten Dateien in die Kopie wandern

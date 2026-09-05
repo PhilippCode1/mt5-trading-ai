@@ -550,7 +550,8 @@ def _quelltext(datei: str) -> str:
 #: gibt. Sie wird darum nicht gezogen. Je Eintrag steht der Nachweis dabei; wer
 #: einen Eintrag hinzufuegt, fuehrt ihn -- eine Sonde ohne Nachweis ist ein Loch,
 #: und die Liste waere sonst die bequemste Art, die Schwelle zu unterlaufen.
-#: Beide gemessen im Lauf vom 2026-09-04 (Beleg 06-mutationsgrenzen.txt).
+#: Beide einzeln gegen die volle Suite gefahren, mit Basislauf derselben Kopie
+#: (2026-09-05, Beleg PROGRAMM/auftrag-01-fundament/belege/06-mutationsgrenzen.txt).
 AEQUIVALENT: dict[tuple[str, int, str], str] = {
     ("mt5_trading_ai/execution/risk_manager.py", 601, "vergleich"): (
         "if lage.trades_konto > self._trades_today_account: self._trades_today_account "

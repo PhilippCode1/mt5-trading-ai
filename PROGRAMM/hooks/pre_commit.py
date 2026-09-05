@@ -13,14 +13,29 @@ Zwei Haelften:
    Datei unter ``PROGRAMM/vorregistrierung/``.
 2. **Tore.** Jedes Tor laeuft einzeln, mit Dauer; der Commit haengt an der Summe der
    Rueckgabewerte (F-002: keine ``&&``-Ketten, keine Pipes vor dem Exit-Code). Die
-   Doku-Tore lesen ``git ls-files`` -- also den Index, nicht den Arbeitsbaum (F-001,
-   F-003). Die volle Testsuite laeuft im Pre-Push-Hook und in der CI, nicht hier.
+   volle Testsuite laeuft im Pre-Push-Hook und in der CI, nicht hier.
+
+   **Sie laufen auf dem INDEX, nicht auf dem Arbeitsbaum** (F-009). Bis zum
+   2026-09-05 stand hier, ``git ls-files`` lese ohnehin den Index -- das gilt fuer
+   die *Dateiliste*, nicht fuer den *Inhalt*: die Werkzeuge oeffneten die Dateien
+   auf der Platte. Wer eine rote Fassung stagt und eine saubere im Arbeitsbaum
+   liegen laesst (``git add x`` und danach die Datei zuruecksetzen), kam damit an
+   allen neun Toren vorbei -- gemessen in der Gegenlese T10, Einwand E7, mit einem
+   Commit, dessen Inhalt ``ruff check`` mit neun Fehlern quittiert. Genau die
+   Fehlerklasse, die dieser Hook schliessen soll (F-001, F-003, F-004).
+
+   Darum wird der Index vor dem Lauf in ein temporaeres Verzeichnis ausgecheckt
+   (``git checkout-index -a``), dort ein Wegwerf-Git angelegt (die Doku-Tore
+   brauchen ``git ls-files``), und die Tore laufen mit ``cwd`` auf dieser Kopie.
+   Was gemessen wird, ist damit genau das, was committet wird.
 """
 
 from __future__ import annotations
 
+import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -32,6 +47,20 @@ GESPERRT = (
     "config/live_freigabe.json",
 )
 UNVERAENDERLICH = "PROGRAMM/vorregistrierung/"
+
+#: Aenderbar, aber nie unbemerkt: wer einen Waechter anfasst, sieht eine Zeile
+#: darueber im Commit-Lauf. Gegenlese T10, E11: ein Commit, der .githooks/pre-commit
+#: leert, lief bis dahin durch den Hook, den er gerade entfernte -- und niemand sah
+#: es. Sperren waere falsch (die Waechter muessen sich weiterentwickeln lassen);
+#: stillschweigen ist es auch.
+GEMELDET = (
+    "PROGRAMM/hooks/waechter.py",
+    "PROGRAMM/hooks/pre_commit.py",
+    ".githooks/pre-commit",
+    ".githooks/pre-push",
+    ".claude/settings.json",
+    ".github/workflows/ci.yml",
+)
 
 TORE: tuple[tuple[str, list[str]], ...] = (
     ("Katalog-Hash", [sys.executable, "tools/katalog_hash.py", "--pruefen"]),
@@ -90,17 +119,63 @@ def sperren() -> list[str]:
     return befunde
 
 
-def tore() -> int:
+def index_auschecken() -> tuple[Path, str]:
+    """Den Index in ein temporaeres Verzeichnis legen -- mit Wegwerf-Git.
+
+    Rueckgabe: Pfad und eine Zeile fuer die Ausgabe. Scheitert das Auschecken,
+    ist das ein Fehler und kein Rueckfall auf den Arbeitsbaum: ein Tor, das
+    heimlich etwas anderes misst als angekuendigt, ist schlimmer als keines.
+    """
+    ziel = Path(tempfile.mkdtemp(prefix="pre-commit-index-"))
+    aus = subprocess.run(
+        ["git", "checkout-index", "-a", "-f", "--prefix", ziel.as_posix() + "/"],
+        cwd=REPO,
+        capture_output=True,
+        text=True,
+    )
+    if aus.returncode != 0:
+        raise RuntimeError(f"git checkout-index: {(aus.stderr or '').strip()}")
+    # Die Doku-Tore lesen `git ls-files`; ohne eigenes Git saehen sie nichts.
+    for befehl in (
+        ["git", "init", "-q"],
+        ["git", "-c", "core.longpaths=true", "add", "-A"],
+    ):
+        for versuch in range(6):
+            lauf = subprocess.run(befehl, cwd=ziel, capture_output=True, text=True)
+            if lauf.returncode == 0:
+                break
+            if versuch == 5:
+                raise RuntimeError(
+                    f"Wegwerf-Git: {' '.join(befehl)} -> "
+                    f"{(lauf.stderr or '').strip()[:300]}"
+                )
+            time.sleep(0.5 * 2**versuch)  # F-008: der Virenscanner haelt Dateien
+    anzahl = len(list(ziel.rglob("*")))
+    return ziel, f"Index ausgecheckt: {anzahl} Eintraege in <temp>/{ziel.name}"
+
+
+def gemeldete() -> list[str]:
+    """Welche Waechterdateien liegen im Index dieses Commits?"""
+    aus = subprocess.run(
+        ["git", "diff", "--cached", "--name-only"],
+        cwd=REPO,
+        capture_output=True,
+        text=True,
+    ).stdout.split()
+    return [p for p in aus if p in GEMELDET]
+
+
+def tore(auf: Path) -> int:
     fehler = 0
     for name, befehl in TORE:
         if (
             name == "Katalog-Hash"
-            and not (REPO / "PROGRAMM" / "abnahmekatalog.sha256").is_file()
+            and not (auf / "PROGRAMM" / "abnahmekatalog.sha256").is_file()
         ):
             print(f"  --  {name}: noch nicht eingefroren, uebersprungen")
             continue
         start = time.perf_counter()
-        lauf = subprocess.run(befehl, cwd=REPO, capture_output=True, text=True)
+        lauf = subprocess.run(befehl, cwd=auf, capture_output=True, text=True)
         dauer = time.perf_counter() - start
         letzte = (
             lauf.stdout.strip().splitlines() or lauf.stderr.strip().splitlines() or [""]
@@ -117,6 +192,8 @@ def tore() -> int:
 def main() -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    for pfad in gemeldete():
+        print(f"  HINWEIS ein Waechter wird geaendert: {pfad}")
     print("pre-commit: Sperren")
     befunde = sperren()
     for b in befunde:
@@ -128,9 +205,22 @@ def main() -> int:
             "Verschaerfung nur in PROGRAMM/abnahmekatalog-verschaerfungen.md."
         )
         return 1
-    print("pre-commit: Tore (ueber den Index)")
+    print("pre-commit: Tore -- gefahren auf dem INDEX, nicht auf dem Arbeitsbaum")
     start = time.perf_counter()
-    fehler = tore()
+    try:
+        auf, zeile = index_auschecken()
+    except RuntimeError as exc:
+        print(f"  ABGEWIESEN Index nicht auscheckbar: {exc}")
+        print(
+            "Commit abgewiesen: ohne Kopie des Index messen die Tore den "
+            "Arbeitsbaum, und genau das war der Weg an ihnen vorbei (F-009)."
+        )
+        return 1
+    print(f"  {zeile}")
+    try:
+        fehler = tore(auf)
+    finally:
+        shutil.rmtree(auf, ignore_errors=True)
     dauer = time.perf_counter() - start
     print(f"pre-commit: {len(TORE)} Tore in {dauer:.1f} s, {fehler} rot")
     return 0 if fehler == 0 else 1

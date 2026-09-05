@@ -1,0 +1,14 @@
+# AEQUIVALENT-Nachweis (Gegenlese T10, E21), 2026-09-05: Kopie des Arbeitsbaums (Stand a8c46fa + Arbeitsbaum, 641 Dateien, Wegwerf-Git), Suite ohne slow, ohne die zwei Kopie-fahrenden Dateien.
+# Erst der Basislauf OHNE Sonde, dann jede Sonde einzeln. Eine Sonde ist erst dann nachweislich verhaltensgleich, wenn die Suite mit ihr genau so gruen ist wie ohne sie.
+# (Der erste Anlauf lief auf einer Kopie mit halbfertigem A18-Test und meldete 2 failed fuer beide Sonden -- das war der Test, nicht die Sonde; F-011.)
+
+Basislauf ohne Sonde: 1850 passed, 56 deselected in 634.69s (0:10:34)  exit=0  [641 s]
+
+Sonde mt5_trading_ai/execution/risk_manager.py:601  'if lage.trades_konto > self._trades_today_account:'  ->  'if lage.trades_konto >= self._trades_today_account:'
+  Suite mit der Sonde: 1850 passed, 56 deselected in 590.10s (0:09:50)  exit=0  [597 s]
+  -> UEBERLEBT: kein Fall wird rot, der es ohne Sonde nicht war -- verhaltensgleich, Eintrag in AEQUIVALENT gerechtfertigt
+
+Sonde mt5_trading_ai/risk/leverage.py:248  'if value is None or value == "":'  ->  'if value is None and value == "":'
+  Suite mit der Sonde: 1850 passed, 56 deselected in 603.70s (0:10:03)  exit=0  [618 s]
+  -> UEBERLEBT: kein Fall wird rot, der es ohne Sonde nicht war -- verhaltensgleich, Eintrag in AEQUIVALENT gerechtfertigt
+# fertig

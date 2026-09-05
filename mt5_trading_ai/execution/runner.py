@@ -166,7 +166,7 @@ def _margen_deckel(
     """
     if account.leverage is None or account.leverage <= 0 or price <= 0:
         return None
-    if instrument.contract_size <= 0 or plaetze < 1:
+    if plaetze < 1:
         return None
     anteil = account.margin_free / Decimal(plaetze) * _MARGEN_SICHERHEIT
     # D3: Marge je Lot in Margenwaehrung, dann in Kontowaehrung (kein Kurs = kein
@@ -185,6 +185,10 @@ def _margen_deckel(
     else:
         return None
     je_lot = je_lot_margen * kurs / Decimal(account.leverage)
+    # Eine Kontraktgroesse von 0 (oder darunter) kommt hier als Marge 0 je Lot an --
+    # DIESE Klammer faengt sie. Eine zweite davor (``contract_size <= 0``) war mit ihr
+    # verhaltensgleich und stand als unbemerkbare Sonde im Mutationstor (E16, Lauf
+    # am HEAD): zwei Waechter fuer denselben Fall sind einer zu viel.
     if je_lot <= 0:
         return None
     roh = anteil / je_lot
@@ -430,8 +434,11 @@ def run_signal(
             if side_enum is OrderSide.BUY
             else stop_loss + instrument.tick_size
         )
-        if stop_loss <= 0:
-            return report._reject("stop-preis", "stop_price_nonpositive")
+        # Kein Waechter gegen einen Stop <= 0 auch hier: der Schritt veraendert den
+        # Stop um EINEN Tick, und er greift nur bei einem Abstand unter der
+        # Untergrenze -- also bei Kursen von vielen Ticks. Ein zweiter solcher Waechter
+        # stand hier und war unerreichbar (Lauf 2 des Mutationstors am HEAD:
+        # unbemerkbare Sonde; ``tools/torzaehlung.py`` fuehrte ihn als freigestellt).
         wirksam_bps = abs(ref - stop_loss) / ref * Decimal("10000")
     report.add("stop-preis", True, f"{wirksam_bps:.1f}bps -> stop={stop_loss}")
 

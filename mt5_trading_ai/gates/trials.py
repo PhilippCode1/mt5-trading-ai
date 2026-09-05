@@ -114,11 +114,19 @@ def new_trial(
 
 
 def default_ledger_path() -> Path:
-    here = Path(__file__).resolve()
-    for parent in here.parents:
-        if (parent / "pyproject.toml").is_file() and (parent / ".git").exists():
-            return parent / DEFAULT_LEDGER_NAME
-    return Path.cwd() / DEFAULT_LEDGER_NAME
+    """Das Register ohne Pfadangabe: ``TRIALS.jsonl`` im Anwendungsordner des Benutzers.
+
+    Bis Auftrag 1 lag es in der Wurzel des Repos (gitignoriert). Das verletzte A18
+    (keine Laufzeitdaten im Arbeitsbaum): die Datei waechst mit jedem Lauf, und ein
+    Beleg, der nur auf einer Platte im Arbeitsbaum liegt, ist keiner (Gegenlese T10,
+    E14; E-021). Jetzt liegt es neben dem Zustandsordner -- unter Windows
+    ``%LOCALAPPDATA%/mt5_trading_ai/TRIALS.jsonl`` -- ausserhalb jedes Klons, und ein
+    Klon findet es nicht "zufaellig" ueber ``Path.cwd()``. Wer es woanders fuehrt,
+    gibt den Pfad an (``--register``, ``--ledger``).
+    """
+    from mt5_trading_ai.execution.risiko_zustand import standard_zustandsordner
+
+    return standard_zustandsordner().parent / DEFAULT_LEDGER_NAME
 
 
 def append(trial: Trial, path: Path | str | None = None) -> Path:

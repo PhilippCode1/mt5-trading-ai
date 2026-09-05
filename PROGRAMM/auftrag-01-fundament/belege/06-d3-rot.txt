@@ -1,15 +1,24 @@
-# Eichfall D3, ROT gegen 306bbaa (Worktree, 2026-09-03): tests/eichfall_d3.py dort ausgefuehrt.
-# Bei 306bbaa gibt es weder risk/waehrung.py noch die Waehrungsparameter von size_position und
-# evaluate_leverage_preflight: die Datei scheitert schon beim Import (Sammelfehler = rot).
-# Die Messwerte des Befunds selbst stehen in 03-nachstellung/03-befunde-v1-v9.txt (V3: 0,39 Lot, 63,15 USD
-# statt 50 USD; V3c: required_margin 30000 statt 200 USD -- Hebelklammer 5 auf 1.000 USD Nennwert;
-# die Zahl 33 USD in der Bewertung und in 03-befunde-v1-v9.txt rechnet mit dem Kontohebel 30).
-$ python -m pytest -q -p no:cacheprovider tests/eichfall_d3.py
-=================================== ERRORS ====================================
-____________________ ERROR collecting tests/eichfall_d3.py ____________________
-ImportError while importing test module 'C:\Users\<konto>\nachstellung-306bbaa\tests\eichfall_d3.py'.
-E   ModuleNotFoundError: No module named 'mt5_trading_ai.risk.waehrung'
-ERROR tests/eichfall_d3.py
-!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
-1 error in 2.06s
-[exit=2]
+# Eichfall D3 ROT gegen 306bbaa (Referenz-Worktree), 2026-09-05 -- Gegenlese T10, E1/E23: der fruehere Beleg war ein Sammelfehler (ImportError), kein Befund.
+# Die Hilfen rufen den alten Stand ohne die neuen Parameter; die Zusicherungen nennen die gemessene FALSCHE Zahl.
+$ cd <306bbaa-Worktree> && python -m pytest -q -p no:cacheprovider --tb=line tests/eichfall_d3.py
+FFFFFFFF                                                                 [100%]
+================================== FAILURES ===================================
+eichfall_d3.py:113: AssertionError: Verlust am Stop 63.15 USD bei 0.39 Lot liegt ueber dem Budget 50.000 USD -- die Groesse kennt die Waehrung nicht
+eichfall_d3.py:124: AssertionError: ohne Kurs GBP->USD kam 0.39 Lot heraus
+eichfall_d3.py:133: AssertionError: gleiche Waehrung: Kurs 1
+eichfall_d3.py:194: AssertionError: insufficient_margin: Marge 30000.00 bei Freimarge 5.000
+eichfall_d3.py:226: AssertionError: insufficient_margin: Marge 30000.00 bei Freimarge 5.000
+eichfall_d3.py:253: AssertionError: assert 'insufficient_margin' == 'fx_unverifiable'
+eichfall_d3.py:257: AssertionError: risk/waehrung.py fehlt -- Betraege tragen keine Waehrung
+eichfall_d3.py:276: AssertionError: risk/waehrung.py fehlt -- kein Kurs aus Ticks
+=========================== short test summary info ===========================
+FAILED tests/eichfall_d3.py::test_verlust_am_stop_bleibt_im_budget_in_kontowaehrung
+FAILED tests/eichfall_d3.py::test_kreuznotierung_ohne_kurs_sperrt - Assertion...
+FAILED tests/eichfall_d3.py::test_gleiche_waehrung_braucht_keinen_kurs - Asse...
+FAILED tests/eichfall_d3.py::test_marge_usdjpy_in_kontowaehrung - AssertionEr...
+FAILED tests/eichfall_d3.py::test_marge_in_fremder_margenwaehrung_wird_mit_gemessenem_kurs_umgerechnet
+FAILED tests/eichfall_d3.py::test_marge_ohne_kurs_sperrt - AssertionError: as...
+FAILED tests/eichfall_d3.py::test_betrag_verrechnet_keine_fremden_waehrungen
+FAILED tests/eichfall_d3.py::test_kurs_aus_ticks_direkt_kehrwert_und_fehlend
+8 failed in 3.18s
+[exit=0]
