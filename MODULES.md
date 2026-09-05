@@ -547,13 +547,14 @@ Geldbetraege tragen ihre Waehrung; ein Kurs ist ein Messwert oder eine Sperre.
 
 ## `mt5_trading_ai/venue/catalog.py`
 
-Zeilen: 347
-Aufrufer: Paket 3 · Werkzeuge 4 · Tests 14
+Zeilen: 393
+Aufrufer: Paket 3 · Werkzeuge 4 · Tests 15
 
 Instrumentenkatalog — die Metadaten, die MT5 nicht liefert.
 
 - `class InstrumentCatalogError`
 - `class GapSperre`
+- `class Angebotsbefund`
 - `class CatalogEntry`
 - `def default_catalog_path`
 - `def load_instrument_catalog`
@@ -585,7 +586,7 @@ Ein Terminal ohne MetaTrader: die Betriebsattrappe fuer Trockenlauf und Eichfael
 
 ## `mt5_trading_ai/venue/mt5.py`
 
-Zeilen: 3271
+Zeilen: 3305
 Aufrufer: Paket 4 · Werkzeuge 7 · Tests 47
 
 MT5-Anbindung an das ``TradingVenue``-Protokoll.
@@ -611,7 +612,7 @@ MT5-Anbindung an das ``TradingVenue``-Protokoll.
 ## `mt5_trading_ai/venue/protocol.py`
 
 Zeilen: 547
-Aufrufer: Paket 14 · Werkzeuge 9 · Tests 59
+Aufrufer: Paket 14 · Werkzeuge 9 · Tests 60
 
 Plattformunabhaengiger Handelsplatz-Vertrag.
 
@@ -638,7 +639,7 @@ Plattformunabhaengiger Handelsplatz-Vertrag.
 
 ## `mt5_trading_ai/venue/smoke.py`
 
-Zeilen: 517
+Zeilen: 601
 Aufrufer: Paket 0 · Werkzeuge 1 · Tests 4
 
 Demo-Smoke-Test der MT5-Bindung — die Orchestrierung, terminalunabhaengig.

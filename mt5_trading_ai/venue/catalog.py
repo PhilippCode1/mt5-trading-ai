@@ -90,6 +90,22 @@ GAP_SPERRE_SCHLUESSEL = "_gap_sperre"
 
 
 @dataclass(frozen=True)
+class Angebotsbefund:
+    """Die Messung, dass ein Katalogsymbol bei einem Broker nicht handelbar ist.
+
+    Ein Symbol still wegzulassen ist verboten (siehe
+    :meth:`Mt5Venue.list_instruments`); ein Symbol als nicht angeboten zu fuehren,
+    ohne das gemessen zu haben, waere dieselbe Luecke mit besserem Gewissen.
+    Darum sind alle drei Angaben Pflicht: WER (Broker), WANN (Datum), WOMIT
+    (Beleg im Repo). Fehlt eine, ist die Katalogdatei unbrauchbar.
+    """
+
+    broker: str
+    gemessen_am: date
+    beleg: str
+
+
+@dataclass(frozen=True)
 class CatalogEntry:
     """Metadaten je Symbol, die MT5 nicht liefert: Klasse, Kosten, Handelszeiten.
 
@@ -102,6 +118,9 @@ class CatalogEntry:
     fees: FeeSchedule
     sessions: tuple[TradingSession, ...]
     gap_sperre: GapSperre = GAP_SPERRE_STANDARD
+    #: ``None`` = angeboten (der Normalfall). Sonst die Messung, die belegt,
+    #: dass dieser Broker das Symbol nicht fuehrt (E-019).
+    nicht_angeboten: Angebotsbefund | None = None
 
 
 def default_catalog_path() -> Path:
@@ -226,6 +245,33 @@ def _parse_entry(
         fees=_parse_fees(symbol, entry.get("fees")),
         sessions=_parse_sessions(symbol, entry.get("sessions")),
         gap_sperre=gap,
+        nicht_angeboten=_parse_angebot(symbol, entry.get("nicht_angeboten")),
+    )
+
+
+def _parse_angebot(symbol: str, wert: Any) -> Angebotsbefund | None:
+    """Der Block ``nicht_angeboten`` -- fehlt er, ist das Symbol angeboten.
+
+    Jeder Defekt ist ein Fehler, kein Default: ein halb ausgefuellter Block
+    (Broker ohne Datum, Datum ohne Beleg) wuerde ein Symbol aus dem Universum
+    nehmen, ohne dass jemand die Messung nachschlagen kann.
+    """
+    if wert is None:
+        return None
+    if not isinstance(wert, dict):
+        raise InstrumentCatalogError(f"{symbol}: nicht_angeboten ist kein Objekt")
+    fehlend = [f for f in ("broker", "gemessen_am", "beleg") if not wert.get(f)]
+    if fehlend:
+        raise InstrumentCatalogError(
+            f"{symbol}: nicht_angeboten ohne {', '.join(fehlend)} -- ohne Broker, "
+            "Datum und Beleg ist das keine Messung, sondern eine Behauptung"
+        )
+    return Angebotsbefund(
+        broker=str(wert["broker"]),
+        gemessen_am=_pruefe_datum(
+            f"{symbol}.nicht_angeboten.gemessen_am", wert["gemessen_am"]
+        ),
+        beleg=str(wert["beleg"]),
     )
 
 

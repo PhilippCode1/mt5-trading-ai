@@ -85,6 +85,7 @@ from mt5_trading_ai.venue.mt5 import (
     Mt5Venue,
     Serverversatz,
     ServerversatzFehler,
+    _sitzung_deckt,
     serverversatz_runden,
 )
 from mt5_trading_ai.venue.protocol import (
@@ -293,7 +294,15 @@ def run_smoke(
         )
         report.add("get_bars", len(bars) > 0, f"{len(bars)} Bars")
         offen = venue.is_trading_open(symbol, at=at)
-        report.add("is_trading_open", offen, str(offen))
+        # Rot bleibt rot: ein Lauf am geschlossenen Platz belegt die
+        # Schreibfaehigkeit nicht (tests/test_rauchtest_schaerfe.py). Der Grund
+        # steht im Text, damit ein Wochenende nicht wie ein Defekt aussieht.
+        geschlossen = None if offen else _platz_geschlossen(venue, symbol, at)
+        report.add(
+            "is_trading_open",
+            offen,
+            str(offen) if geschlossen is None else f"False -- {geschlossen}",
+        )
 
         positionen = venue.get_positions()
         adopted = venue.adopt_book()
@@ -347,14 +356,73 @@ def _katalogsymbole(
     """
     aufgeloest: list[str] = []
     for name in symbole:
+        befund = getattr(venue.catalog.get(name), "nicht_angeboten", None)
         try:
             instrument = venue.get_instrument(name)
         except UnknownInstrumentError as exc:
+            if befund is not None:
+                # Gemessen, dass dieser Broker es nicht fuehrt (E-019): gruen mit
+                # der Messung im Text, nicht stillschweigend uebergangen.
+                report.add(
+                    f"symbol_{name}",
+                    True,
+                    f"laut Katalog bei {befund.broker} nicht angeboten "
+                    f"(gemessen {befund.gemessen_am}, {befund.beleg})",
+                )
+                continue
             report.add(f"symbol_{name}", False, str(exc))
+            continue
+        if befund is not None:
+            report.add(
+                f"symbol_{name}",
+                False,
+                f"laut Katalog bei {befund.broker} nicht angeboten "
+                f"(gemessen {befund.gemessen_am}), das Terminal loest es aber auf "
+                "-- die Messung ist veraltet",
+            )
             continue
         aufgeloest.append(name)
         report.add(f"symbol_{name}", True, _waehrungen(instrument))
     return aufgeloest
+
+
+def _platz_geschlossen(
+    venue: Mt5Venue, symbol: str, jetzt: datetime | None
+) -> str | None:
+    """Ist der Platz nachweislich geschlossen -- oder ist etwas kaputt?
+
+    Die Antwort faerbt keinen Schritt gruen: ein Lauf am geschlossenen Platz
+    belegt nichts ueber den Platz. Sie steht im Text, damit ein Wochenende nicht
+    wie ein haengendes Terminal aussieht -- und umgekehrt.
+
+    Zwei unabhaengige Belege muessen zusammenkommen, sonst ist die Antwort
+    ``None`` (und der Aufrufer bleibt rot):
+
+    * die **Sitzungstabelle** des Katalogs deckt diesen Zeitpunkt nicht, und
+    * der **letzte Tick** ist aelter als eine Stunde.
+
+    Die Tabelle allein genuegt nicht (sie ist eine konservative Annahme, kein
+    Beleg), der Tick allein auch nicht (ein haengendes Terminal sieht genauso
+    aus). Zusammen unterscheiden sie das Wochenende von einem Defekt.
+    """
+    at = jetzt or datetime.now(UTC)
+    try:
+        instrument = venue.get_instrument(symbol)
+    except VenueError:
+        return None
+    if _sitzung_deckt(instrument.sessions, at.astimezone(UTC)):
+        return None
+    tick = venue.terminal.tick(symbol)
+    if tick is None:
+        return None
+    alter = at.astimezone(UTC) - tick.ts
+    if alter < timedelta(hours=1):
+        return None
+    zeitpunkt = at.astimezone(UTC).isoformat(timespec="seconds")
+    return (
+        f"Sitzungstabelle deckt {zeitpunkt} nicht, "
+        f"letzter Tick {symbol} {alter.total_seconds() / 3600:.1f} h alt"
+    )
 
 
 def _serverzeitversatz(
@@ -394,6 +462,22 @@ def _serverzeitversatz(
         try:
             gemessen = messen(symbol)
         except ServerversatzFehler as exc:
+            geschlossen = _platz_geschlossen(venue, symbol, now)
+            if geschlossen is not None:
+                # Ein stehender Kursstrom bei geschlossenem Platz ist die
+                # richtige Antwort des Marktes, kein Defekt am Terminal. Der
+                # Versatz bleibt trotzdem ungesetzt: ohne Messung wird nicht
+                # gedreht und nicht eroeffnet (D20). Der Unterschied steht im
+                # Text -- nicht bloss ein gruener Haken.
+                report.add(
+                    "serverzeitversatz",
+                    False,
+                    f"nicht messbar, weil der Platz geschlossen ist: {geschlossen}. "
+                    "Kein Versatz gesetzt -- der Eintrittspfad bleibt zu (D20); "
+                    "die Zahl ist erst bei offenem Markt zu haben. Das ist kein "
+                    "Defekt am Terminal, aber auch kein bestandener Rauchtest.",
+                )
+                return
             report.add("serverzeitversatz", False, str(exc))
             return
         roh = (gemessen.versatz + gemessen.rest).total_seconds()

@@ -1,0 +1,33 @@
+# T9 Lesender Smoke-Test (Katalog A9) -- Lauf 2, 2026-09-05 15:5x UTC (Samstag), Stand nach E-019.
+# Kein --allow-write. Kontonummer und Kontoname redigiert. Lauf 1 vom 2026-09-04 (Freitag, offener Markt)
+# steht in 09-smoke-lauf1.txt und traegt die Zahl, die A9 verlangt: Serverzeitversatz +10795,5 s = +3 h.
+#
+# Was dieser Lauf zeigt: BTCUSD ist seit E-019 ein benannter, gruener Schritt (gemessen nicht angeboten);
+# list_instruments liefert 6 Instrumente statt eines Fehlers; currency_margin wird gelesen (EUR/GBP/USD).
+# Was er NICHT zeigt: den Versatz. Der Markt ist geschlossen (Samstag), der letzte Tick ist 15,9 h alt,
+# und ein Lauf am geschlossenen Platz belegt den Platz nicht -- er bleibt rot. Das ist die bestehende
+# Zusicherung aus tests/test_rauchtest_schaerfe.py und wurde NICHT gelockert; neu ist nur, dass der Text
+# den Grund nennt (Sitzungstabelle + Tickalter), damit ein Wochenende nicht wie ein Defekt aussieht.
+$ python tools/mt5_smoke.py
+OK connect: mt5
+OK healthy: 
+OK account: <nr> equity=49975.75
+OK demo_guard: Demokonto bestaetigt
+OK symbol_BTCUSD: laut Katalog bei MetaQuotes-Demo nicht angeboten (gemessen 2026-09-04, PROGRAMM/auftrag-01-fundament/belege/09-smoke-lauf1.txt)
+OK symbol_EURGBP: currency_profit=GBP currency_margin=EUR
+OK symbol_EURUSD: currency_profit=USD currency_margin=EUR
+OK symbol_GBPUSD: currency_profit=USD currency_margin=GBP
+OK symbol_US500: currency_profit=USD currency_margin=USD
+OK symbol_USDJPY: currency_profit=JPY currency_margin=USD
+OK symbol_XAUUSD: currency_profit=USD currency_margin=USD
+!! serverzeitversatz: nicht messbar, weil der Platz geschlossen ist: Sitzungstabelle deckt 2026-09-05T15:57:25+00:00 nicht, letzter Tick EURUSD 16.0 h alt. Kein Versatz gesetzt -- der Eintrittspfad bleibt zu (D20); die Zahl ist erst bei offenem Markt zu haben. Das ist kein Defekt am Terminal, aber auch kein bestandener Rauchtest.
+OK list_instruments: 6 Instrumente
+OK get_instrument: EURUSD fx_major tick=0.00001 min=0.01 sichtbar=True
+OK get_quote: bid=1.16132 ask=1.16135
+OK get_bars: 56 Bars
+!! is_trading_open: False -- Sitzungstabelle deckt 2026-09-05T15:57:23+00:00 nicht, letzter Tick EURUSD 16.0 h alt
+OK adopt_book: 0 Symbole im Buch, 0 gemeldet
+OK reconcile: matched=True
+OK write_probe: uebersprungen (nur lesend)
+OK disconnect: 
+SMOKE FEHLGESCHLAGEN

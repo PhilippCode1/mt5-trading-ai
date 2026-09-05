@@ -39,11 +39,31 @@
         "currency": "USD"
       },
       "sessions": [
-        {"weekday": 0, "open_utc": "00:00", "close_utc": "21:00"},
-        {"weekday": 1, "open_utc": "00:00", "close_utc": "21:00"},
-        {"weekday": 2, "open_utc": "00:00", "close_utc": "21:00"},
-        {"weekday": 3, "open_utc": "00:00", "close_utc": "21:00"},
-        {"weekday": 4, "open_utc": "00:00", "close_utc": "21:00"}
+        {
+          "weekday": 0,
+          "open_utc": "00:00",
+          "close_utc": "21:00"
+        },
+        {
+          "weekday": 1,
+          "open_utc": "00:00",
+          "close_utc": "21:00"
+        },
+        {
+          "weekday": 2,
+          "open_utc": "00:00",
+          "close_utc": "21:00"
+        },
+        {
+          "weekday": 3,
+          "open_utc": "00:00",
+          "close_utc": "21:00"
+        },
+        {
+          "weekday": 4,
+          "open_utc": "00:00",
+          "close_utc": "21:00"
+        }
       ]
     },
     "GBPUSD": {
@@ -57,11 +77,31 @@
         "currency": "USD"
       },
       "sessions": [
-        {"weekday": 0, "open_utc": "00:00", "close_utc": "21:00"},
-        {"weekday": 1, "open_utc": "00:00", "close_utc": "21:00"},
-        {"weekday": 2, "open_utc": "00:00", "close_utc": "21:00"},
-        {"weekday": 3, "open_utc": "00:00", "close_utc": "21:00"},
-        {"weekday": 4, "open_utc": "00:00", "close_utc": "21:00"}
+        {
+          "weekday": 0,
+          "open_utc": "00:00",
+          "close_utc": "21:00"
+        },
+        {
+          "weekday": 1,
+          "open_utc": "00:00",
+          "close_utc": "21:00"
+        },
+        {
+          "weekday": 2,
+          "open_utc": "00:00",
+          "close_utc": "21:00"
+        },
+        {
+          "weekday": 3,
+          "open_utc": "00:00",
+          "close_utc": "21:00"
+        },
+        {
+          "weekday": 4,
+          "open_utc": "00:00",
+          "close_utc": "21:00"
+        }
       ]
     },
     "USDJPY": {
@@ -75,11 +115,31 @@
         "currency": "USD"
       },
       "sessions": [
-        {"weekday": 0, "open_utc": "00:00", "close_utc": "21:00"},
-        {"weekday": 1, "open_utc": "00:00", "close_utc": "21:00"},
-        {"weekday": 2, "open_utc": "00:00", "close_utc": "21:00"},
-        {"weekday": 3, "open_utc": "00:00", "close_utc": "21:00"},
-        {"weekday": 4, "open_utc": "00:00", "close_utc": "21:00"}
+        {
+          "weekday": 0,
+          "open_utc": "00:00",
+          "close_utc": "21:00"
+        },
+        {
+          "weekday": 1,
+          "open_utc": "00:00",
+          "close_utc": "21:00"
+        },
+        {
+          "weekday": 2,
+          "open_utc": "00:00",
+          "close_utc": "21:00"
+        },
+        {
+          "weekday": 3,
+          "open_utc": "00:00",
+          "close_utc": "21:00"
+        },
+        {
+          "weekday": 4,
+          "open_utc": "00:00",
+          "close_utc": "21:00"
+        }
       ]
     },
     "EURGBP": {
@@ -93,11 +153,31 @@
         "currency": "USD"
       },
       "sessions": [
-        {"weekday": 0, "open_utc": "00:00", "close_utc": "21:00"},
-        {"weekday": 1, "open_utc": "00:00", "close_utc": "21:00"},
-        {"weekday": 2, "open_utc": "00:00", "close_utc": "21:00"},
-        {"weekday": 3, "open_utc": "00:00", "close_utc": "21:00"},
-        {"weekday": 4, "open_utc": "00:00", "close_utc": "21:00"}
+        {
+          "weekday": 0,
+          "open_utc": "00:00",
+          "close_utc": "21:00"
+        },
+        {
+          "weekday": 1,
+          "open_utc": "00:00",
+          "close_utc": "21:00"
+        },
+        {
+          "weekday": 2,
+          "open_utc": "00:00",
+          "close_utc": "21:00"
+        },
+        {
+          "weekday": 3,
+          "open_utc": "00:00",
+          "close_utc": "21:00"
+        },
+        {
+          "weekday": 4,
+          "open_utc": "00:00",
+          "close_utc": "21:00"
+        }
       ]
     },
     "XAUUSD": {
@@ -111,11 +191,31 @@
         "currency": "USD"
       },
       "sessions": [
-        {"weekday": 0, "open_utc": "00:00", "close_utc": "21:00"},
-        {"weekday": 1, "open_utc": "00:00", "close_utc": "21:00"},
-        {"weekday": 2, "open_utc": "00:00", "close_utc": "21:00"},
-        {"weekday": 3, "open_utc": "00:00", "close_utc": "21:00"},
-        {"weekday": 4, "open_utc": "00:00", "close_utc": "21:00"}
+        {
+          "weekday": 0,
+          "open_utc": "00:00",
+          "close_utc": "21:00"
+        },
+        {
+          "weekday": 1,
+          "open_utc": "00:00",
+          "close_utc": "21:00"
+        },
+        {
+          "weekday": 2,
+          "open_utc": "00:00",
+          "close_utc": "21:00"
+        },
+        {
+          "weekday": 3,
+          "open_utc": "00:00",
+          "close_utc": "21:00"
+        },
+        {
+          "weekday": 4,
+          "open_utc": "00:00",
+          "close_utc": "21:00"
+        }
       ]
     },
     "US500": {
@@ -129,11 +229,31 @@
         "currency": "USD"
       },
       "sessions": [
-        {"weekday": 0, "open_utc": "00:00", "close_utc": "21:00"},
-        {"weekday": 1, "open_utc": "00:00", "close_utc": "21:00"},
-        {"weekday": 2, "open_utc": "00:00", "close_utc": "21:00"},
-        {"weekday": 3, "open_utc": "00:00", "close_utc": "21:00"},
-        {"weekday": 4, "open_utc": "00:00", "close_utc": "21:00"}
+        {
+          "weekday": 0,
+          "open_utc": "00:00",
+          "close_utc": "21:00"
+        },
+        {
+          "weekday": 1,
+          "open_utc": "00:00",
+          "close_utc": "21:00"
+        },
+        {
+          "weekday": 2,
+          "open_utc": "00:00",
+          "close_utc": "21:00"
+        },
+        {
+          "weekday": 3,
+          "open_utc": "00:00",
+          "close_utc": "21:00"
+        },
+        {
+          "weekday": 4,
+          "open_utc": "00:00",
+          "close_utc": "21:00"
+        }
       ]
     },
     "BTCUSD": {
@@ -148,14 +268,48 @@
       },
       "_sessions_hinweis": "23:59 stand hier bis 2026-08-18 als Tagesschluss und riss jede Nacht ein Loch von einer Minute in einen Strom, der laut derselben Zeile sieben Tage die Woche laeuft. Das war kein Datenstand, sondern ein Ausdrucksmangel: '24:00' war nicht darstellbar. Jetzt ist es das (venue/catalog.py::session_minutes).",
       "sessions": [
-        {"weekday": 0, "open_utc": "00:00", "close_utc": "24:00"},
-        {"weekday": 1, "open_utc": "00:00", "close_utc": "24:00"},
-        {"weekday": 2, "open_utc": "00:00", "close_utc": "24:00"},
-        {"weekday": 3, "open_utc": "00:00", "close_utc": "24:00"},
-        {"weekday": 4, "open_utc": "00:00", "close_utc": "24:00"},
-        {"weekday": 5, "open_utc": "00:00", "close_utc": "24:00"},
-        {"weekday": 6, "open_utc": "00:00", "close_utc": "24:00"}
-      ]
+        {
+          "weekday": 0,
+          "open_utc": "00:00",
+          "close_utc": "24:00"
+        },
+        {
+          "weekday": 1,
+          "open_utc": "00:00",
+          "close_utc": "24:00"
+        },
+        {
+          "weekday": 2,
+          "open_utc": "00:00",
+          "close_utc": "24:00"
+        },
+        {
+          "weekday": 3,
+          "open_utc": "00:00",
+          "close_utc": "24:00"
+        },
+        {
+          "weekday": 4,
+          "open_utc": "00:00",
+          "close_utc": "24:00"
+        },
+        {
+          "weekday": 5,
+          "open_utc": "00:00",
+          "close_utc": "24:00"
+        },
+        {
+          "weekday": 6,
+          "open_utc": "00:00",
+          "close_utc": "24:00"
+        }
+      ],
+      "nicht_angeboten": {
+        "broker": "MetaQuotes-Demo",
+        "gemessen_am": "2026-09-04",
+        "beleg": "PROGRAMM/auftrag-01-fundament/belege/09-smoke-lauf1.txt",
+        "hinweis": "Lesend gemessen: 12.455 Symbole in den Gruppen Forex, Indexes, Metals, Nasdaq; kein Krypto-CFD. 'BTC' ist dort ein Nasdaq-ETF (Grayscale Bitcoin Mini Trust), nicht dieses Instrument. Der Eintrag bleibt im Katalog: Kosten, Hebel und ATR gehoeren zur Datenlage, und ueber das Universum entscheidet Auftrag 3. Faellt die Messung bei einem anderen Broker anders aus, meldet list_instruments das (E-019)."
+      }
     }
   }
 }

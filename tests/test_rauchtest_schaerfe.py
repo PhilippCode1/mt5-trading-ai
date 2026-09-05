@@ -19,6 +19,7 @@ loest sie nicht aus (``test_der_gesunde_lauf_bleibt_gruen``).
 
 from __future__ import annotations
 
+import dataclasses
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
@@ -178,13 +179,19 @@ def test_ein_lauf_am_geschlossenen_platz_ist_nicht_gruen() -> None:
 
     Die Uhr des Venues bleibt bei TS, der Kursstempel ist also frisch: rot wird der
     Schritt allein am Sitzungsfenster, nicht an der Frische.
+
+    Seit 2026-09-05 darf der Text hinter dem ``False`` den Grund nennen (Wochenende
+    statt haengendes Terminal, siehe ``_platz_geschlossen``). Die Zusicherung ist
+    unveraendert und steht hier ausdruecklich: der Schritt ist rot, der Lauf ist rot,
+    und der Text beginnt mit derselben Antwort -- er darf ihr nie widersprechen.
     """
     report = run_smoke(
         _venue(FakeMt5Terminal(is_demo=True)), symbol="EURUSD", now=SAMSTAG
     )
     offen = _schritt(report, "is_trading_open")
     assert offen.ok is False  # type: ignore[attr-defined]
-    assert offen.detail == "False"  # type: ignore[attr-defined]
+    assert offen.detail.startswith("False")  # type: ignore[attr-defined]
+    assert "True" not in offen.detail  # type: ignore[attr-defined]
     assert report.ok is False
 
 
@@ -348,3 +355,52 @@ def test_das_sitzungsfenster_deckt_den_samstag_wirklich_nicht() -> None:
     assert SAMSTAG - TS == timedelta(days=4)
     assert SAMSTAG.weekday() == 5
     assert {s.weekday for s in _catalog()["EURUSD"].sessions} == {0, 1, 2, 3, 4}
+
+
+# --- geschlossener Platz vs. haengendes Terminal --------------------------
+
+
+class _StehenderStrom(FakeMt5Terminal):
+    """Der Kursstrom steht: derselbe Tick, beliebig alt (Wochenende oder Defekt)."""
+
+    def __init__(self, *, alter: timedelta, **kw: object) -> None:
+        super().__init__(**kw)  # type: ignore[arg-type]
+        self._alter = alter
+
+    def tick(self, name: str) -> object:
+        roh = super().tick(name)
+        if roh is None:
+            return None
+        return dataclasses.replace(roh, ts=TS - self._alter)
+
+
+def test_der_geschlossene_platz_steht_im_text_und_bleibt_trotzdem_rot() -> None:
+    """A9 am Wochenende: der Kursstrom steht, und das ist die richtige Antwort des
+    Marktes -- kein Defekt am Terminal. Gruen wird der Lauf davon NICHT: ein Lauf am
+    geschlossenen Platz belegt den Platz nicht (siehe
+    ``test_ein_lauf_am_geschlossenen_platz_ist_nicht_gruen``). Was sich aendert, ist
+    der Text: er nennt beide Belege, damit ein Wochenende nicht wie ein haengendes
+    Terminal aussieht.
+    """
+    venue = _venue(_StehenderStrom(alter=timedelta(hours=16), is_demo=True))
+
+    report = run_smoke(venue, symbol="EURUSD", now=SAMSTAG)
+
+    offen = _schritt(report, "is_trading_open")
+    assert offen.ok is False  # type: ignore[attr-defined]
+    assert "Sitzungstabelle deckt" in offen.detail  # type: ignore[attr-defined]
+    assert "h alt" in offen.detail  # type: ignore[attr-defined]
+    assert report.ok is False
+
+
+def test_am_offenen_platz_nennt_der_text_keinen_geschlossenen_platz() -> None:
+    """Die Gegenprobe, ohne die der Text eine Ausrede waere: dieselbe stehende Lage,
+    aber die Sitzungstabelle sagt offen -- dann ist der Grund NICHT 'geschlossen'.
+    """
+    venue = _venue(_StehenderStrom(alter=timedelta(hours=16), is_demo=True))
+
+    report = run_smoke(venue, symbol="EURUSD", now=TS)
+
+    offen = _schritt(report, "is_trading_open")
+    assert offen.ok is False  # type: ignore[attr-defined]
+    assert offen.detail == "False", offen.detail  # type: ignore[attr-defined]

@@ -694,6 +694,20 @@ class Mt5Venue(TradingVenue):
             active=sym.visible,
         )
 
+    @property
+    def terminal(self) -> Mt5Terminal:
+        """Das Terminal dieses Venues -- lesend. Der Rauchtest fragt den letzten
+        Tick, um einen geschlossenen Platz von einem Defekt zu unterscheiden.
+        """
+        return self._terminal
+
+    @property
+    def catalog(self) -> Mapping[str, CatalogEntry]:
+        """Der Katalog dieses Venues -- lesend. Der Rauchtest braucht ihn, um zu
+        einem nicht aufgeloesten Symbol die Messung zu nennen (E-019).
+        """
+        return self._catalog
+
     def list_instruments(self) -> tuple[Instrument, ...]:
         """Das handelbare Universum: jeder Katalogeintrag, am Terminal aufgeloest.
 
@@ -714,11 +728,31 @@ class Mt5Venue(TradingVenue):
         """
         out: list[Instrument] = []
         fehlend: list[str] = []
-        for symbol in self._catalog:
+        for symbol, eintrag in self._catalog.items():
             try:
                 out.append(self.get_instrument(symbol))
             except UnknownInstrumentError:
-                fehlend.append(symbol)
+                if eintrag.nicht_angeboten is None:
+                    fehlend.append(symbol)
+                    continue
+                # Gemessen, dass dieser Broker das Symbol nicht fuehrt (E-019):
+                # das Universum ist damit vollstaendig, nicht geschrumpft. Wer
+                # den Broker wechselt, faellt hier NICHT durch -- er faellt beim
+                # naechsten Satz auf, wenn das Symbol ploetzlich da ist.
+                continue
+        zuviel = [
+            symbol
+            for symbol, eintrag in self._catalog.items()
+            if eintrag.nicht_angeboten is not None
+            and any(i.symbol == symbol for i in out)
+        ]
+        if zuviel:
+            raise UnknownInstrumentError(
+                "Als nicht angeboten gefuehrt, vom Terminal aber aufgeloest: "
+                f"{', '.join(sorted(zuviel))}. Die Messung im Katalog ist "
+                "veraltet (anderer Broker, anderes Konto, MarketWatch ergaenzt) -- "
+                "sie muss erneuert oder der Eintrag entfernt werden."
+            )
         if fehlend:
             raise UnknownInstrumentError(
                 "Katalogsymbole, die dieses Terminal nicht aufloest: "
