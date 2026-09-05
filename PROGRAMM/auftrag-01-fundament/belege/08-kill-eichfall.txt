@@ -1,0 +1,35 @@
+# T8 Persistenz-Eichfall kill (Katalog A6), 2026-09-05. Skript: 08-kill-eichfall.py
+# Der Unterschied zu tools/wiederanlaufprobe.py: dort werden die Objekte fallengelassen,
+# hier wird der PROZESS abgeschossen (taskkill /F /T) -- kein atexit, kein finally, kein Puffer.
+# Kontoname und Pfade redigiert.
+$ python PROGRAMM/auftrag-01-fundament/belege/08-kill-eichfall.py
+KILL-EICHFALL (A6) -- ueberlebt der Zustand einen harten Abschuss?
+Rechner: Windows 10, Python 3.11.7
+Zeit: 2026-09-05T16:08:45+00:00
+Zustandsordner: <temp>/kill-eichfall-uz_xn8ck (ausserhalb des Arbeitsbaums, A18)
+
+== TEIL 1: das Betriebswerkzeug wird mitten im Takt abgeschossen ==
+  taskkill /F /T -> Rueckgabewert 1
+  Zustandsdatei lesbar, Felder: ['equity', 'geschrieben_am', 'schema'] ...
+  Journale: 1 Datei(en), 8 Saetze, alle lesbar
+  Satzarten: ['kurs', 'start', 'startabgleich', 'takt']
+  halb geschriebene Reste (*.neu, *.tmp): keine
+  -> GRUEN: nichts halb geschrieben
+
+== TEIL 2: Halt, Schwebeakte, Buch -- und dann der Abschuss ==
+  taskkill /F /T -> Rueckgabewert 1
+  risikozustand.json: 724 Zeichen kanonisch
+  schwebende_auftraege.json: 162 Zeichen kanonisch
+  positionsbuch.json: 202 Zeichen kanonisch
+  Neustart mit VOLLEM Konto (10.000, der Drawdown ist weg) sagt:
+    approved: False
+    latch_halt: True
+    reason: risk_drawdown_halt_gelatcht
+    zustand_dauerhaft: True
+    schwebende: ['open-EURUSD-kill']
+    buch: ['open-EURUSD-kill']
+  der Neustart fand vor, was der Abschuss hinterliess: {'risikozustand.json': True, 'schwebende_auftraege.json': True, 'positionsbuch.json': True}
+  -> GRUEN: der Zustand hat den Abschuss ueberlebt
+
+ERGEBNIS: Teil 1 gruen, Teil 2 gruen
+[exit=0]
